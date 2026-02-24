@@ -122,16 +122,16 @@ export default function ProfilePage() {
 
           <div className="space-y-2">
             <Label>Цвет бренда</Label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 type="color"
                 value={brandColor}
                 onChange={(e) => setBrandColor(e.target.value)}
                 className="h-10 w-14 cursor-pointer rounded border"
               />
-              <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} className="w-32" />
+              <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} className="w-28 sm:w-32" />
               <div
-                className="h-10 flex-1 rounded-lg flex items-center justify-center text-white text-sm font-medium"
+                className="h-10 w-full sm:flex-1 sm:w-auto rounded-lg flex items-center justify-center text-white text-sm font-medium"
                 style={{ backgroundColor: brandColor }}
               >
                 Превью цвета

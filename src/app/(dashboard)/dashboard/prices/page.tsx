@@ -91,14 +91,14 @@ export default function PricesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Управление ценами</h1>
           <p className="text-sm text-muted-foreground">
             Настройте цены под ваш бизнес. Все расчёты будут использовать ваши цены.
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+        <Button onClick={handleSave} disabled={saving} className="bg-[#1e3a5f] hover:bg-[#152d4a] w-full sm:w-auto">
           {saving ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -135,11 +135,11 @@ export default function PricesPage() {
           <CardContent>
             <div className="space-y-3">
               {group.items.map((item) => (
-                <div key={item.code} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{item.name}</p>
+                <div key={item.code} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.name}</p>
                     {item.description && (
-                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -149,18 +149,18 @@ export default function PricesPage() {
                       step="100"
                       value={item.price}
                       onChange={(e) => updatePrice(item.code, parseFloat(e.target.value) || 0)}
-                      className={`w-28 text-right ${item.isCustom ? "border-[#1e3a5f]" : ""}`}
+                      className={`w-24 sm:w-28 text-right ${item.isCustom ? "border-[#1e3a5f]" : ""}`}
                       inputMode="numeric"
                     />
                     <span className="text-xs text-muted-foreground w-10">
                       {item.unit}
                     </span>
+                    {item.isCustom && (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        ({item.defaultPrice} ₸)
+                      </span>
+                    )}
                   </div>
-                  {item.isCustom && (
-                    <p className="text-xs text-muted-foreground w-20 text-right">
-                      ({item.defaultPrice} ₸)
-                    </p>
-                  )}
                 </div>
               ))}
             </div>

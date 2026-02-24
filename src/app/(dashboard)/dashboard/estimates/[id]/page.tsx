@@ -42,8 +42,8 @@ export default async function EstimateDetailPage({
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold truncate">
             {estimate.clientName || "Расчёт"}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -130,7 +130,7 @@ export default async function EstimateDetailPage({
           <CardContent>
             <div className="space-y-2">
               {calc.rooms.map((room, i) => (
-                <div key={i} className="flex justify-between text-sm border-b last:border-0 pb-2 last:pb-0">
+                <div key={i} className="flex flex-col sm:flex-row sm:justify-between text-sm border-b last:border-0 pb-2 last:pb-0 gap-0.5">
                   <span>
                     {room.name} — {room.length}×{room.width}м
                   </span>

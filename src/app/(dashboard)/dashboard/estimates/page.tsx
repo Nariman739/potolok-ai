@@ -70,7 +70,7 @@ export default async function EstimatesPage() {
             >
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                       <p className="font-semibold">
                         {est.clientName || "Без имени"}
@@ -79,8 +79,8 @@ export default async function EstimatesPage() {
                         {formatDateShort(est.createdAt)} | {est.totalArea.toFixed(1)} м²
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="flex gap-2 text-sm mb-1">
+                    <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                      <div className="flex gap-2 text-sm">
                         <span className="text-green-600">
                           {formatPrice(est.economyTotal)}
                         </span>

@@ -33,7 +33,7 @@ export function RoomCard({ room, index, onDuplicate, onRemove }: RoomCardProps) 
                 {canvasLabel}
               </Badge>
             </div>
-            <div className="text-sm text-muted-foreground space-x-3">
+            <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
               <span>{room.length}×{room.width}м = {area} м²</span>
               <span>П: {perimeter} м.п.</span>
             </div>
@@ -51,22 +51,22 @@ export function RoomCard({ room, index, onDuplicate, onRemove }: RoomCardProps) 
             </div>
           </div>
 
-          <div className="flex gap-1 ml-2">
+          <div className="flex gap-1 ml-2 shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9"
               onClick={() => onDuplicate(room.id)}
             >
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
+              className="h-9 w-9 text-destructive hover:text-destructive"
               onClick={() => onRemove(room.id)}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

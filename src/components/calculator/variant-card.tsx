@@ -53,7 +53,7 @@ export function VariantCard({ variant, totalArea }: VariantCardProps) {
           {variant.label}
         </CardTitle>
         <div className="space-y-1">
-          <p className="text-3xl font-bold">{formatPrice(variant.total)}</p>
+          <p className="text-2xl sm:text-3xl font-bold">{formatPrice(variant.total)}</p>
           <p className="text-sm text-muted-foreground">
             {formatPrice(variant.pricePerM2)}/м²
           </p>
@@ -97,12 +97,12 @@ export function VariantCard({ variant, totalArea }: VariantCardProps) {
                   {rv.items.map((item, i) => (
                     <div
                       key={i}
-                      className="flex justify-between text-xs text-muted-foreground"
+                      className="flex justify-between text-xs text-muted-foreground gap-2"
                     >
-                      <span>
+                      <span className="min-w-0 break-words">
                         {item.itemName} ({item.quantity} {item.unit} × {formatPrice(item.unitPrice)})
                       </span>
-                      <span className="font-medium text-foreground">
+                      <span className="font-medium text-foreground whitespace-nowrap shrink-0">
                         {formatPrice(item.total)}
                       </span>
                     </div>

@@ -29,7 +29,7 @@ export default function HomePage() {
             Бесплатно для мастеров
           </div>
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
             Расчёт натяжного
             <br />
             потолка{" "}
@@ -85,7 +85,7 @@ export default function HomePage() {
             Три простых шага от размеров до готового КП
           </p>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-4 md:gap-8">
             {[
               {
                 step: "01",
@@ -160,7 +160,7 @@ export default function HomePage() {
       <section className="py-16 px-4 border-t border-[#334155]/30 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.08)_0%,transparent_70%)]" />
         <div className="container mx-auto max-w-3xl relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
             {[
               { value: "150+", label: "мастеров" },
               { value: "2,000+", label: "расчётов" },
@@ -188,7 +188,7 @@ export default function HomePage() {
             Начните бесплатно, переходите на PRO когда будете готовы
           </p>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6 max-w-3xl mx-auto">
             {/* Free */}
             <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6">
               <h3 className="font-bold text-xl mb-1 text-[#F1F5F9]">Старт</h3>

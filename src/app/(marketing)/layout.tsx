@@ -1,10 +1,25 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { Menu } from "lucide-react";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 
 export default function MarketingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0F1724] text-[#F1F5F9]">
       {/* Sticky header with backdrop blur */}
@@ -37,10 +52,73 @@ export default function MarketingLayout({
             </Link>
             <Link
               href="/auth/register"
-              className="inline-flex items-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-5 py-2.5 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.4)] hover:-translate-y-0.5 transition-all"
+              className="hidden sm:inline-flex items-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-5 py-2.5 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.4)] hover:-translate-y-0.5 transition-all"
             >
               Начать бесплатно
             </Link>
+
+            {/* Mobile hamburger menu */}
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <button className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1A2332] transition-colors">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Меню</span>
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="bg-[#0F1724] border-[#334155]/50 w-72"
+              >
+                <SheetHeader>
+                  <SheetTitle className="text-[#F1F5F9]">
+                    Potolok<span className="text-[#F97316]">AI</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-1 px-4">
+                  <SheetClose asChild>
+                    <Link
+                      href="#features"
+                      className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
+                    >
+                      Возможности
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      href="#pricing"
+                      className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
+                    >
+                      Тарифы
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      href="#faq"
+                      className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
+                    >
+                      FAQ
+                    </Link>
+                  </SheetClose>
+                  <Separator className="bg-[#334155]/50 my-2" />
+                  <SheetClose asChild>
+                    <Link
+                      href="/auth/login"
+                      className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
+                    >
+                      Войти
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      href="/auth/register"
+                      className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-5 py-3 text-sm font-semibold text-white mt-2"
+                    >
+                      Начать бесплатно
+                    </Link>
+                  </SheetClose>
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

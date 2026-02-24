@@ -44,7 +44,7 @@ function VariantBlock({ variant, totalArea }: { variant: Variant; totalArea: num
       )}
       <CardHeader className={`pb-3 ${colors.bg} relative`}>
         <CardTitle className={`text-lg ${colors.accent}`}>{variant.label}</CardTitle>
-        <p className="text-3xl font-bold">{formatPrice(variant.total)}</p>
+        <p className="text-2xl sm:text-3xl font-bold">{formatPrice(variant.total)}</p>
         <p className="text-sm text-muted-foreground">{formatPrice(variant.pricePerM2)}/м²</p>
       </CardHeader>
       <CardContent className="pt-3">
@@ -130,7 +130,7 @@ export default async function PublicKpPage({
         </CardHeader>
         <CardContent>
           {calc.rooms.map((room, i) => (
-            <div key={i} className="flex justify-between text-sm py-2 border-b last:border-0">
+            <div key={i} className="flex flex-col sm:flex-row sm:justify-between text-sm py-2 border-b last:border-0 gap-0.5">
               <span className="font-medium">{room.name}</span>
               <span className="text-muted-foreground">
                 {room.length}×{room.width}м = {(room.length * room.width).toFixed(1)} м²
@@ -157,7 +157,7 @@ export default async function PublicKpPage({
       {/* Contact */}
       <div className="text-center space-y-3">
         <h3 className="font-semibold text-lg">Связаться</h3>
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
           {master.phone && (
             <a
               href={`tel:${master.phone}`}
