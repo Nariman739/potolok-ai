@@ -100,7 +100,7 @@ export function ChatContainer() {
               </button>
               <button
                 onClick={() => {
-                  const input = document.querySelector<HTMLInputElement>("input[type='file']");
+                  const input = document.querySelector<HTMLInputElement>("input[type='file']:not([capture])");
                   input?.click();
                 }}
                 className="flex flex-col items-center gap-2 rounded-xl border p-3 text-sm hover:bg-muted transition-colors"

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, Send, X, Loader2 } from "lucide-react";
+import { Camera, ImagePlus, Send, X, Loader2 } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (text: string, imageUrl?: string) => void;
@@ -16,7 +16,8 @@ export function ChatInput({ onSend, onUploadPhoto, disabled, isUploading }: Chat
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = useCallback(() => {
     const trimmed = text.trim();
@@ -100,20 +101,40 @@ export function ChatInput({ onSend, onUploadPhoto, disabled, isUploading }: Chat
 
       {/* Input row */}
       <div className="flex items-end gap-2">
-        {/* Camera button */}
+        {/* Gallery button — выбрать из файлов/галереи */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="h-10 w-10 shrink-0"
           disabled={disabled || isUploading}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => galleryInputRef.current?.click()}
+        >
+          <ImagePlus className="h-5 w-5" />
+        </Button>
+
+        {/* Camera button — сфоткать */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 shrink-0"
+          disabled={disabled || isUploading}
+          onClick={() => cameraInputRef.current?.click()}
         >
           <Camera className="h-5 w-5" />
         </Button>
 
+        {/* Hidden file inputs */}
         <input
-          ref={fileInputRef}
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <input
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
