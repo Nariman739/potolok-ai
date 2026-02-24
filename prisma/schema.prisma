@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// AUTH
+// ============================================
+
+model Master {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+
+  // Profile
+  firstName       String
+  lastName        String?
+  phone           String?
+  companyName     String?
+
+  // Branding (for KP PDFs)
+  logoUrl         String?
+  brandColor      String   @default("#1e3a5f")
+  instagramUrl    String?
+  whatsappPhone   String?
+  address         String?
+
+  // Telegram link (future bot integration)
+  telegramChatId  String?  @unique
+
+  // Subscription
+  subscriptionTier SubscriptionTier @default(FREE)
+  kpGeneratedThisMonth Int  @default(0)
+  kpMonthReset    DateTime @default(now())
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  prices          MasterPrice[]
+  estimates       Estimate[]
+  sessions        Session[]
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  masterId    String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
+// ============================================
+// PRICING
+// ============================================
+
+model MasterPrice {
+  id          String @id @default(uuid())
+  masterId    String
+  itemCode    String
+  price       Float
+
+  master      Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@unique([masterId, itemCode])
+}
+
+// ============================================
+// ESTIMATES
+// ============================================
+
+model Estimate {
+  id              String   @id @default(uuid())
+  publicId        String   @unique @default(uuid())
+  masterId        String
+
+  // Client info
+  clientName      String?
+  clientPhone     String?
+  clientAddress   String?
+
+  // Data (JSON)
+  roomsData       Json
+  calculationData Json
+
+  // Summary
+  totalArea       Float
+  economyTotal    Float
+  standardTotal   Float
+  premiumTotal    Float
+
+  // Status
+  status          EstimateStatus @default(DRAFT)
+
+  // PDF
+  pdfUrl          String?
+
+  // Timestamps
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  master          Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  VIEWED
+  CONFIRMED
+  REJECTED
+}
