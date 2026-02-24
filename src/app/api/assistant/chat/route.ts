@@ -263,10 +263,11 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    console.error("Chat error:", error);
-    return new Response(JSON.stringify({ error: "Ошибка чата" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("Chat error:", errMsg, error);
+    return new Response(
+      JSON.stringify({ error: "Ошибка чата", detail: errMsg }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
