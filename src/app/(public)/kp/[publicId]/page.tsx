@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult, Variant } from "@/lib/types";
 import type { Metadata } from "next";
+import { ConfirmButton } from "./confirm-button";
 
 export async function generateMetadata({
   params,
@@ -27,7 +28,7 @@ export async function generateMetadata({
   };
 }
 
-function VariantBlock({ variant, totalArea }: { variant: Variant; totalArea: number }) {
+function VariantBlock({ variant }: { variant: Variant }) {
   const isHit = variant.type === "standard";
   const colors = {
     economy: { accent: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
@@ -78,8 +79,8 @@ export default async function PublicKpPage({
         select: {
           firstName: true,
           companyName: true,
-          phone: true,
           brandColor: true,
+          logoUrl: true,
           instagramUrl: true,
           whatsappPhone: true,
         },
@@ -97,20 +98,44 @@ export default async function PublicKpPage({
     });
   }
 
+  const effectiveStatus =
+    estimate.status === "DRAFT" || estimate.status === "SENT"
+      ? "VIEWED"
+      : estimate.status;
+
   const calc = estimate.calculationData as unknown as CalculationResult;
   const master = estimate.master;
   const company = master.companyName || master.firstName;
+
+  const isExpired =
+    estimate.validUntil ? new Date(estimate.validUntil) < new Date() : false;
+
+  // Initials: first letter of each word, max 2
+  const initials = company
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <div
-          className="inline-flex h-12 w-12 items-center justify-center rounded-xl text-white font-bold text-xl mb-3"
-          style={{ backgroundColor: master.brandColor }}
-        >
-          {company[0]}
-        </div>
+        {master.logoUrl ? (
+          <img
+            src={master.logoUrl}
+            alt={company}
+            className="h-16 w-16 rounded-xl object-cover mx-auto mb-3"
+          />
+        ) : (
+          <div
+            className="inline-flex h-16 w-16 items-center justify-center rounded-xl text-white font-bold text-xl mb-3"
+            style={{ backgroundColor: master.brandColor }}
+          >
+            {initials}
+          </div>
+        )}
         <h1 className="text-2xl md:text-3xl font-bold">{company}</h1>
         <p className="text-muted-foreground">Коммерческое предложение</p>
         <p className="text-sm text-muted-foreground mt-1">
@@ -119,6 +144,17 @@ export default async function PublicKpPage({
         {estimate.clientName && (
           <p className="text-sm mt-2">
             Для: <span className="font-medium">{estimate.clientName}</span>
+          </p>
+        )}
+        {estimate.validUntil && (
+          <p
+            className={`text-sm mt-2 font-medium ${
+              isExpired ? "text-red-500" : "text-muted-foreground"
+            }`}
+          >
+            {isExpired
+              ? "Срок предложения истёк"
+              : `Действительно до ${formatDate(estimate.validUntil)}`}
           </p>
         )}
       </div>
@@ -130,7 +166,10 @@ export default async function PublicKpPage({
         </CardHeader>
         <CardContent>
           {calc.rooms.map((room, i) => (
-            <div key={i} className="flex flex-col sm:flex-row sm:justify-between text-sm py-2 border-b last:border-0 gap-0.5">
+            <div
+              key={i}
+              className="flex flex-col sm:flex-row sm:justify-between text-sm py-2 border-b last:border-0 gap-0.5"
+            >
               <span className="font-medium">{room.name}</span>
               <span className="text-muted-foreground">
                 {room.length}×{room.width}м = {(room.length * room.width).toFixed(1)} м²
@@ -148,8 +187,16 @@ export default async function PublicKpPage({
       <h2 className="text-xl font-bold mb-4">Варианты стоимости</h2>
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         {calc.variants.map((v) => (
-          <VariantBlock key={v.type} variant={v} totalArea={estimate.totalArea} />
+          <VariantBlock key={v.type} variant={v} />
         ))}
+      </div>
+
+      {/* Confirm button */}
+      <div className="text-center my-8">
+        <ConfirmButton
+          estimateId={estimate.id}
+          initialConfirmed={effectiveStatus === "CONFIRMED"}
+        />
       </div>
 
       <Separator className="my-6" />
@@ -158,12 +205,12 @@ export default async function PublicKpPage({
       <div className="text-center space-y-3">
         <h3 className="font-semibold text-lg">Связаться</h3>
         <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
-          {master.phone && (
+          {master.whatsappPhone && (
             <a
-              href={`tel:${master.phone}`}
+              href={`tel:${master.whatsappPhone}`}
               className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted transition-colors"
             >
-              Позвонить: {master.phone}
+              📞 Позвонить
             </a>
           )}
           {master.whatsappPhone && (
@@ -178,12 +225,16 @@ export default async function PublicKpPage({
           )}
           {master.instagramUrl && (
             <a
-              href={master.instagramUrl.startsWith("http") ? master.instagramUrl : `https://instagram.com/${master.instagramUrl.replace("@", "")}`}
+              href={
+                master.instagramUrl.startsWith("http")
+                  ? master.instagramUrl
+                  : `https://instagram.com/${master.instagramUrl.replace("@", "")}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted transition-colors"
             >
-              Instagram
+              📷 Instagram
             </a>
           )}
         </div>
@@ -194,14 +245,7 @@ export default async function PublicKpPage({
         <p className="text-xs text-muted-foreground">
           * Расчёт предварительный. Точная стоимость после замера.
         </p>
-        {estimate.validUntil && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Действительно до {formatDate(estimate.validUntil)}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground/50 mt-3">
-          Создано в PotolokAI
-        </p>
+        <p className="text-xs text-muted-foreground/40 mt-3">Создано в PotolokAI</p>
       </div>
     </div>
   );
