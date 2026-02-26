@@ -140,17 +140,19 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Расчётов в базе */}
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="rounded-lg bg-blue-50 p-2 w-fit mb-3">
-              <SquareStack className="h-4 w-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold">{estimatesCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Расчётов в базе
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/dashboard/estimates">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="pt-5 pb-4">
+              <div className="rounded-lg bg-blue-50 p-2 w-fit mb-3">
+                <SquareStack className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-2xl font-bold">{estimatesCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Расчётов в базе
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* Общая площадь */}
         <Card>
@@ -177,7 +179,7 @@ export default async function DashboardPage() {
               {avgCheck > 0 ? formatPrice(avgCheck) : "—"}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Средний чек (стандарт)
+              Средний чек
             </p>
           </CardContent>
         </Card>
@@ -217,7 +219,7 @@ export default async function DashboardPage() {
             <div>
               <p className="font-semibold">Новый расчёт</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Ввод вручную — 3 варианта стоимости
+                Ввод вручную с выбором комплектующих
               </p>
             </div>
             <Button
