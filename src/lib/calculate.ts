@@ -4,7 +4,7 @@ import type {
   RoomResult,
   CalculationResult,
 } from "./types";
-import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants";
+import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP, CANVAS_TYPES } from "./constants";
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 
 type PriceMap = Record<string, number>;
@@ -39,12 +39,12 @@ function makeLineItem(
 }
 
 /**
- * Determine canvas code based on canvas type and room dimensions
+ * Determine canvas code based on master's canvas type choice
  */
 function getCanvasCode(room: RoomInput): string {
-  if (room.canvasType === "glyanets" || room.canvasType === "color") {
-    return "canvas_over";
-  }
+  const entry = CANVAS_TYPES.find((ct) => ct.value === room.canvasType);
+  if (entry) return entry.code;
+  // Fallback for old data without canvasType
   const minDim = getBoundingBoxMinDim(room);
   if (minDim <= 3.2) return "canvas_320";
   if (minDim <= 5.5) return "canvas_550";
