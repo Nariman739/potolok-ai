@@ -92,9 +92,14 @@ export function ConfirmSection({
               {rr.items.map((item, i) => (
                 <div
                   key={i}
-                  className="flex justify-between items-center text-xs text-gray-600 py-0.5"
+                  className="flex justify-between items-start text-xs text-gray-600 py-0.5"
                 >
-                  <span className="leading-tight">{item.itemName}</span>
+                  <div className="leading-tight">
+                    <span>{item.itemName}</span>
+                    <span className="text-gray-400 ml-1">
+                      {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
+                    </span>
+                  </div>
                   <span className="font-medium ml-2 shrink-0">
                     {formatPrice(item.total)}
                   </span>
