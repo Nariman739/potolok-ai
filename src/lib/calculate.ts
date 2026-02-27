@@ -9,6 +9,13 @@ import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geom
 
 type PriceMap = Record<string, number>;
 
+export interface CustomItemInfo {
+  code: string;
+  name: string;
+  unit: string;
+  price: number;
+}
+
 function getPrice(prices: PriceMap, code: string): number {
   return prices[code] ?? DEFAULT_PRICES[code] ?? 0;
 }
@@ -53,7 +60,8 @@ function getCanvasCode(room: RoomInput): string {
 
 function calculateRoom(
   room: RoomInput,
-  prices: PriceMap
+  prices: PriceMap,
+  customItemsMap?: Record<string, CustomItemInfo>
 ): RoomResult {
   const area = computeArea(room);
   const perimeter = computePerimeter(room);
@@ -139,6 +147,37 @@ function calculateRoom(
     if (eurobrusItem) items.push(eurobrusItem);
   }
 
+  // Gardina (встроенная гардина)
+  if ((room.gardinaLength ?? 0) > 0) {
+    const gardinaCode = room.gardinaType || "gardina_plastic";
+    const gardinaItem = makeLineItem(gardinaCode, room.gardinaLength, prices);
+    if (gardinaItem) items.push(gardinaItem);
+  }
+
+  // Podshtornik
+  if ((room.podshtornikLength ?? 0) > 0) {
+    const podshtornikCode = room.podshtornikType || "podshtornik_plastic";
+    const podshtornikItem = makeLineItem(podshtornikCode, room.podshtornikLength, prices);
+    if (podshtornikItem) items.push(podshtornikItem);
+  }
+
+  // Custom items
+  if (room.customItems && room.customItems.length > 0 && customItemsMap) {
+    for (const ci of room.customItems) {
+      if (ci.quantity <= 0) continue;
+      const info = customItemsMap[ci.itemId];
+      if (!info) continue;
+      items.push({
+        itemCode: ci.itemId,
+        itemName: info.name,
+        quantity: ci.quantity,
+        unit: info.unit,
+        unitPrice: info.price,
+        total: Math.round(info.price * ci.quantity),
+      });
+    }
+  }
+
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
 
   // Height multiplier
@@ -162,7 +201,8 @@ function calculateRoom(
 
 export function calculate(
   rooms: RoomInput[],
-  prices: PriceMap
+  prices: PriceMap,
+  customItemsMap?: Record<string, CustomItemInfo>
 ): CalculationResult {
   const totalArea = rooms.reduce((sum, r) => sum + computeArea(r), 0);
   const totalPerimeter = rooms.reduce(
@@ -175,7 +215,7 @@ export function calculate(
     0
   );
 
-  const roomResults = rooms.map((room) => calculateRoom(room, prices));
+  const roomResults = rooms.map((room) => calculateRoom(room, prices, customItemsMap));
 
   const subtotal = roomResults.reduce(
     (sum, rr) => sum + rr.subtotalAfterHeight,

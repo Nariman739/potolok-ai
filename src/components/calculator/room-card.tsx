@@ -65,7 +65,10 @@ export function RoomCard({ room, index, onDuplicate, onRemove, onEdit }: RoomCar
               {room.chandelierCount > 0 && <span>Люстры: {room.chandelierCount}</span>}
               {room.cornersCount > 0 && <span>Углы: {room.cornersCount}</span>}
               {room.curtainRodLength > 0 && <span>Карниз: {Math.round(room.curtainRodLength * 100)} см</span>}
+              {(room.gardinaLength ?? 0) > 0 && <span>Гардина: {Math.round(room.gardinaLength * 100)} см</span>}
+              {(room.podshtornikLength ?? 0) > 0 && <span>Подшторник: {Math.round(room.podshtornikLength * 100)} см</span>}
               {room.pipeBypasses > 0 && <span>Трубы: {room.pipeBypasses}</span>}
+              {room.customItems && room.customItems.length > 0 && <span>Доп: {room.customItems.length} поз.</span>}
               {room.ceilingHeight > 3 && (
                 <Badge variant="destructive" className="text-xs">
                   Высота {Math.round(room.ceilingHeight * 100)} см (×1.3)

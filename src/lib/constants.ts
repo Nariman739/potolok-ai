@@ -4,6 +4,8 @@ export type ProductCategory =
   | "spot"
   | "chandelier"
   | "curtain"
+  | "gardina"
+  | "podshtornik"
   | "corner"
   | "other"
   | "special";
@@ -43,7 +45,15 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Карнизы (за м.п.)
   { code: "curtain_ldsp", name: "Карниз ЛДСП", unit: "м.п.", defaultPrice: 3500, category: "curtain" },
   { code: "curtain_aluminum", name: "Карниз алюминиевый", unit: "м.п.", defaultPrice: 5000, category: "curtain" },
-  { code: "curtain_recessed", name: "Карниз встроенный", unit: "м.п.", defaultPrice: 7000, category: "curtain" },
+
+  // Гардина встроенная (за м.п.)
+  { code: "gardina_plastic", name: "Гардина встроенная пластиковая", unit: "м.п.", defaultPrice: 3000, category: "gardina" },
+  { code: "gardina_aluminum", name: "Гардина встроенная алюминиевая", unit: "м.п.", defaultPrice: 5000, category: "gardina" },
+
+  // Подшторник (за м.п.)
+  { code: "podshtornik_plastic", name: "Подшторник пластиковый (брус)", unit: "м.п.", defaultPrice: 2500, category: "podshtornik" },
+  { code: "podshtornik_ldsp", name: "Подшторник ЛДСП", unit: "м.п.", defaultPrice: 3500, category: "podshtornik" },
+  { code: "podshtornik_aluminum", name: "Подшторник алюминиевый", unit: "м.п.", defaultPrice: 5000, category: "podshtornik" },
 
   // Углы
   { code: "corner_plastic", name: "Угол пластик", unit: "шт.", defaultPrice: 1000, category: "corner", description: "Для галтели / вставки" },
@@ -72,6 +82,8 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   spot: "Светильники",
   chandelier: "Люстры и свет",
   curtain: "Карнизы",
+  gardina: "Гардина встроенная",
+  podshtornik: "Подшторник",
   corner: "Углы",
   other: "Прочее",
   special: "Спецпараметры",
@@ -115,7 +127,17 @@ export const PROFILE_CORNER_MAP: Record<string, string> = {
 export const CURTAIN_TYPES = [
   { code: "curtain_ldsp", label: "ЛДСП" },
   { code: "curtain_aluminum", label: "Алюминиевый" },
-  { code: "curtain_recessed", label: "Встроенный" },
+] as const;
+
+export const GARDINA_TYPES = [
+  { code: "gardina_plastic", label: "Пластиковая" },
+  { code: "gardina_aluminum", label: "Алюминиевая" },
+] as const;
+
+export const PODSHTORNIK_TYPES = [
+  { code: "podshtornik_plastic", label: "Пластиковый" },
+  { code: "podshtornik_ldsp", label: "ЛДСП" },
+  { code: "podshtornik_aluminum", label: "Алюминиевый" },
 ] as const;
 
 export const ROOM_PRESETS = [

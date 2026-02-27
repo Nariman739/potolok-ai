@@ -28,7 +28,26 @@ export async function GET() {
       isCustom: item.code in priceMap && priceMap[item.code] !== item.defaultPrice,
     }));
 
-    return NextResponse.json(items);
+    // Also load custom items and append them
+    const customItems = await prisma.customItem.findMany({
+      where: { masterId: master.id },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const customPriceItems = customItems.map((ci) => ({
+      code: ci.code,
+      name: ci.name,
+      unit: ci.unit,
+      category: "custom" as const,
+      description: undefined,
+      defaultPrice: ci.price,
+      price: ci.price,
+      isCustom: false,
+      isCustomItem: true,
+      customItemId: ci.id,
+    }));
+
+    return NextResponse.json([...items, ...customPriceItems]);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

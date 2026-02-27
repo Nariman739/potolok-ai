@@ -48,6 +48,13 @@ export interface RoomInput {
   cornerType?: string;
   curtainType?: string;
   includeTransformer?: boolean;
+  // Gardina + Podshtornik
+  gardinaLength: number;
+  gardinaType?: string;
+  podshtornikLength: number;
+  podshtornikType?: string;
+  // Custom items per room
+  customItems?: { itemId: string; quantity: number }[];
 }
 
 // ============================================

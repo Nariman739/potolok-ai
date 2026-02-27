@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculate } from "@/lib/calculate";
+import { calculate, type CustomItemInfo } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import type { RoomInput } from "@/lib/types";
 
@@ -29,7 +29,21 @@ export async function POST(request: Request) {
       priceMap[mp.itemCode] = mp.price;
     }
 
-    const result = calculate(rooms, priceMap);
+    // Load custom items for calculation
+    const customItems = await prisma.customItem.findMany({
+      where: { masterId: master.id },
+    });
+    const customItemsMap: Record<string, CustomItemInfo> = {};
+    for (const ci of customItems) {
+      customItemsMap[ci.code] = {
+        code: ci.code,
+        name: ci.name,
+        unit: ci.unit,
+        price: ci.price,
+      };
+    }
+
+    const result = calculate(rooms, priceMap, customItemsMap);
 
     return NextResponse.json(result);
   } catch (error) {

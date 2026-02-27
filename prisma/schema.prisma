@@ -46,6 +46,7 @@ model Master {
   estimates       Estimate[]
   sessions        Session[]
   chatSessions    ChatSession[]
+  customItems     CustomItem[]
 }
 
 model Session {
@@ -76,6 +77,27 @@ model MasterPrice {
   master      Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@unique([masterId, itemCode])
+}
+
+// ============================================
+// CUSTOM ITEMS (per-master custom price positions)
+// ============================================
+
+model CustomItem {
+  id        String   @id @default(uuid())
+  masterId  String
+  code      String
+  name      String
+  unit      String   // "м²" | "м.п." | "шт."
+  price     Float
+  category  String   @default("custom")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  master    Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@unique([masterId, code])
 }
 
 // ============================================

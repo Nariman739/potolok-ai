@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import {
   PROFILE_TYPES,
   SPOT_TYPES,
   CURTAIN_TYPES,
+  GARDINA_TYPES,
+  PODSHTORNIK_TYPES,
   PROFILE_CORNER_MAP,
   DEFAULT_PRICES,
 } from "@/lib/constants";
@@ -24,6 +26,7 @@ import { getDefaultCorners, validateLShape, validateTShape } from "@/lib/room-ge
 import { RoomShapeSvg } from "./room-shape-svg";
 import type { RoomInput, RoomShape } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
+import { Plus, Trash2 } from "lucide-react";
 
 // Clear "0" on focus so user can type directly, restore "0" on blur if empty
 function zeroFieldProps(value: string, setter: (v: string) => void) {
@@ -39,11 +42,20 @@ function zeroFieldProps(value: string, setter: (v: string) => void) {
   };
 }
 
+interface CustomItemOption {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  price: number;
+}
+
 interface RoomFormProps {
   onAdd: (room: RoomInput) => void;
   onCancel?: () => void;
   priceMap?: Record<string, number>;
   editRoom?: RoomInput;
+  customItems?: CustomItemOption[];
 }
 
 function formatPriceCompact(n: number): string {
@@ -58,7 +70,7 @@ const SHAPE_OPTIONS: { value: RoomShape; label: string; icon: string }[] = [
   { value: "t-shape", label: "Т-образная", icon: "Т" },
 ];
 
-export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps) {
+export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: customItemsProp }: RoomFormProps) {
   const prices = priceMap ?? DEFAULT_PRICES;
   const er = editRoom; // shorthand
 
@@ -101,6 +113,51 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
   // Corner type auto-determined by profile
   const [curtainType, setCurtainType] = useState(er?.curtainType ?? "curtain_ldsp");
   const [includeTransformer, setIncludeTransformer] = useState(er?.includeTransformer ?? true);
+
+  // Gardina + Podshtornik
+  const [gardinaLength, setGardinaLength] = useState(
+    er ? String(Math.round((er.gardinaLength ?? 0) * 100)) : "0"
+  );
+  const [gardinaType, setGardinaType] = useState(er?.gardinaType ?? "gardina_plastic");
+  const [podshtornikLength, setPodshtornikLength] = useState(
+    er ? String(Math.round((er.podshtornikLength ?? 0) * 100)) : "0"
+  );
+  const [podshtornikType, setPodshtornikType] = useState(er?.podshtornikType ?? "podshtornik_plastic");
+
+  // Custom items
+  const [availableCustomItems, setAvailableCustomItems] = useState<CustomItemOption[]>(customItemsProp ?? []);
+  const [selectedCustomItems, setSelectedCustomItems] = useState<{ itemId: string; quantity: string }[]>(
+    er?.customItems?.map((ci) => ({ itemId: ci.itemId, quantity: String(ci.quantity) })) ?? []
+  );
+
+  useEffect(() => {
+    if (customItemsProp) {
+      setAvailableCustomItems(customItemsProp);
+      return;
+    }
+    fetch("/api/custom-items")
+      .then((r) => r.json())
+      .then((items: CustomItemOption[]) => setAvailableCustomItems(items))
+      .catch(() => {});
+  }, [customItemsProp]);
+
+  function addSelectedCustomItem() {
+    if (availableCustomItems.length === 0) return;
+    setSelectedCustomItems((prev) => [
+      ...prev,
+      { itemId: availableCustomItems[0].code, quantity: "1" },
+    ]);
+  }
+
+  function updateSelectedCustomItem(idx: number, field: "itemId" | "quantity", value: string) {
+    setSelectedCustomItems((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
+    );
+  }
+
+  function removeSelectedCustomItem(idx: number) {
+    setSelectedCustomItems((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   function handleShapeChange(newShape: RoomShape) {
     setShape(newShape);
@@ -147,6 +204,8 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
 
     const heightM = (parseFloat(ceilingHeight) || 300) / 100;
     const curtainM = (parseFloat(curtainRodLength) || 0) / 100;
+    const gardinaM = (parseFloat(gardinaLength) || 0) / 100;
+    const podshtornikM = (parseFloat(podshtornikLength) || 0) / 100;
 
     let lengthM = 0;
     let widthM = 0;
@@ -211,6 +270,13 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
       spotType: (parseInt(spotsCount) || 0) > 0 ? spotType : undefined,
       curtainType: curtainM > 0 ? curtainType : undefined,
       includeTransformer: (parseInt(chandelierCount) || 0) > 0 ? includeTransformer : undefined,
+      gardinaLength: gardinaM,
+      gardinaType: gardinaM > 0 ? gardinaType : undefined,
+      podshtornikLength: podshtornikM,
+      podshtornikType: podshtornikM > 0 ? podshtornikType : undefined,
+      customItems: selectedCustomItems
+        .filter((ci) => ci.itemId && parseFloat(ci.quantity) > 0)
+        .map((ci) => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
     };
 
     onAdd(room);
@@ -224,6 +290,8 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
       setSpotsCount("0"); setChandelierCount("0");
       setCornersCount(String(getDefaultCorners(shape)));
       setCurtainRodLength("0"); setPipeBypasses("0");
+      setGardinaLength("0"); setPodshtornikLength("0");
+      setSelectedCustomItems([]);
       setShapeError(null); setActiveSide(null);
     }
   }
@@ -496,6 +564,32 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
         </div>
       </div>
 
+      {/* Gardina + Podshtornik inputs */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="gardina">Гардина встр. (см)</Label>
+          <Input
+            id="gardina"
+            type="number"
+            step="1"
+            min="0"
+            {...zeroFieldProps(gardinaLength, setGardinaLength)}
+            inputMode="numeric"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="podshtornik">Подшторник (см)</Label>
+          <Input
+            id="podshtornik"
+            type="number"
+            step="1"
+            min="0"
+            {...zeroFieldProps(podshtornikLength, setPodshtornikLength)}
+            inputMode="numeric"
+          />
+        </div>
+      </div>
+
       {/* Component selection */}
       <div className="space-y-3 pt-2 border-t">
         <p className="text-sm font-medium text-muted-foreground">Комплектующие</p>
@@ -604,6 +698,58 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
           </div>
         )}
 
+        {/* Gardina type — only if gardina > 0 */}
+        {parseFloat(gardinaLength) > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Тип гардины</Label>
+            <div className="flex gap-1.5">
+              {GARDINA_TYPES.map((g) => (
+                <button
+                  key={g.code}
+                  type="button"
+                  onClick={() => setGardinaType(g.code)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-lg border transition-colors ${
+                    gardinaType === g.code
+                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                      : "hover:bg-muted border-border"
+                  }`}
+                >
+                  {g.label}
+                  <span className={`block ${gardinaType === g.code ? "text-white/70" : "text-muted-foreground"}`}>
+                    {formatPriceCompact(prices[g.code] ?? 0)}₸/м.п.
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Podshtornik type — only if podshtornik > 0 */}
+        {parseFloat(podshtornikLength) > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Тип подшторника</Label>
+            <div className="flex gap-1.5">
+              {PODSHTORNIK_TYPES.map((p) => (
+                <button
+                  key={p.code}
+                  type="button"
+                  onClick={() => setPodshtornikType(p.code)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-lg border transition-colors ${
+                    podshtornikType === p.code
+                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                      : "hover:bg-muted border-border"
+                  }`}
+                >
+                  {p.label}
+                  <span className={`block ${podshtornikType === p.code ? "text-white/70" : "text-muted-foreground"}`}>
+                    {formatPriceCompact(prices[p.code] ?? 0)}₸/м.п.
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Transformer checkbox — only if chandeliers > 0 */}
         {parseInt(chandelierCount) > 0 && (
           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -620,6 +766,49 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom }: RoomFormProps)
           </label>
         )}
       </div>
+
+      {/* Custom items section */}
+      {availableCustomItems.length > 0 && (
+        <div className="space-y-3 pt-2 border-t">
+          <p className="text-sm font-medium text-muted-foreground">Доп. позиции</p>
+          {selectedCustomItems.map((sci, idx) => {
+            const info = availableCustomItems.find((ci) => ci.code === sci.itemId);
+            return (
+              <div key={idx} className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Select value={sci.itemId} onValueChange={(v) => updateSelectedCustomItem(idx, "itemId", v)}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Выберите" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCustomItems.map((ci) => (
+                        <SelectItem key={ci.code} value={ci.code}>
+                          {ci.name} ({ci.price}₸/{ci.unit})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={sci.quantity}
+                  onChange={(e) => updateSelectedCustomItem(idx, "quantity", e.target.value)}
+                  className="w-20 h-9 text-xs"
+                  placeholder={info?.unit ?? "Кол-во"}
+                />
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeSelectedCustomItem(idx)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={addSelectedCustomItem}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Добавить позицию
+          </Button>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">
