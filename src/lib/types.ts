@@ -144,4 +144,19 @@ export interface MasterProfile {
   subscriptionTier: "FREE" | "PRO";
   kpGeneratedThisMonth: number;
   telegramChatId?: string | null;
+  // Contract settings
+  contractType?: string | null;
+  bin?: string | null;
+  iin?: string | null;
+  legalName?: string | null;
+  legalAddress?: string | null;
+  bankName?: string | null;
+  iban?: string | null;
+  kbe?: string | null;
+  bik?: string | null;
+  passportData?: string | null;
+  prepaymentPercent: number;
+  warrantyMaterials: number;
+  warrantyInstall: number;
+  contractCity?: string | null;
 }

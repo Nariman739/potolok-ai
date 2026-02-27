@@ -3,16 +3,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Share2, MessageCircle, Check, Trash2, Download } from "lucide-react";
+import { Share2, MessageCircle, Check, Trash2, Download, FileText, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface EstimateActionsProps {
   estimateId: string;
   publicId: string;
   clientPhone?: string | null;
+  status?: string;
+  contractConfigured?: boolean;
 }
 
-export function EstimateActions({ estimateId, publicId, clientPhone }: EstimateActionsProps) {
+export function EstimateActions({
+  estimateId,
+  publicId,
+  clientPhone,
+  status,
+  contractConfigured,
+}: EstimateActionsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -85,9 +93,25 @@ export function EstimateActions({ estimateId, publicId, clientPhone }: EstimateA
       <Button variant="outline" size="sm" asChild>
         <a href={`/api/estimates/${estimateId}/pdf`} download>
           <Download className="h-4 w-4 mr-2" />
-          Скачать
+          Скачать КП
         </a>
       </Button>
+      {contractConfigured && (
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/api/estimates/${estimateId}/contract`} download>
+            <FileText className="h-4 w-4 mr-2" />
+            Договор
+          </a>
+        </Button>
+      )}
+      {contractConfigured && status === "CONFIRMED" && (
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/api/estimates/${estimateId}/act`} download>
+            <ClipboardCheck className="h-4 w-4 mr-2" />
+            Акт
+          </a>
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"

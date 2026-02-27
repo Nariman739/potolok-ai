@@ -93,6 +93,8 @@ export default async function EstimateDetailPage({
           estimateId={estimate.id}
           publicId={estimate.publicId}
           clientPhone={estimate.clientPhone}
+          status={estimate.status}
+          contractConfigured={!!master.contractType && master.contractType !== "none"}
         />
       </div>
 

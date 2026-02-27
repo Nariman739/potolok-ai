@@ -32,12 +32,30 @@ export async function PUT(request: Request) {
       "instagramUrl",
       "whatsappPhone",
       "address",
+      "contractType",
+      "bin",
+      "iin",
+      "legalName",
+      "legalAddress",
+      "bankName",
+      "iban",
+      "kbe",
+      "bik",
+      "passportData",
+      "contractCity",
     ];
 
-    const updateData: Record<string, string> = {};
+    const intFields = ["prepaymentPercent", "warrantyMaterials", "warrantyInstall"];
+
+    const updateData: Record<string, string | number> = {};
     for (const field of allowedFields) {
       if (field in body) {
         updateData[field] = body[field];
+      }
+    }
+    for (const field of intFields) {
+      if (field in body) {
+        updateData[field] = parseInt(body[field], 10) || 0;
       }
     }
 

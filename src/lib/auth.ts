@@ -83,6 +83,20 @@ export async function getCurrentMaster(): Promise<MasterProfile | null> {
     subscriptionTier: m.subscriptionTier,
     kpGeneratedThisMonth: m.kpGeneratedThisMonth,
     telegramChatId: m.telegramChatId,
+    contractType: m.contractType,
+    bin: m.bin,
+    iin: m.iin,
+    legalName: m.legalName,
+    legalAddress: m.legalAddress,
+    bankName: m.bankName,
+    iban: m.iban,
+    kbe: m.kbe,
+    bik: m.bik,
+    passportData: m.passportData,
+    prepaymentPercent: m.prepaymentPercent,
+    warrantyMaterials: m.warrantyMaterials,
+    warrantyInstall: m.warrantyInstall,
+    contractCity: m.contractCity,
   };
 }
 

@@ -33,6 +33,22 @@ model Master {
   telegramChatId   String?  @unique
   telegramLinkCode String?  @unique  // temp code for /start deep link
 
+  // Contract settings
+  contractType      String?  // "ip" | "individual" | null
+  bin               String?  // БИН (для ИП)
+  iin               String?  // ИИН (для физлица)
+  legalName         String?  // Полное ФИО / наименование ИП
+  legalAddress      String?  // Юридический адрес
+  bankName          String?  // Название банка
+  iban              String?  // IBAN (расчётный счёт)
+  kbe               String?  // КБе (код бенефициара)
+  bik               String?  // БИК банка
+  passportData      String?  // Серия/номер удостоверения (для физлица)
+  prepaymentPercent Int      @default(50)
+  warrantyMaterials Int      @default(10)
+  warrantyInstall   Int      @default(2)
+  contractCity      String?
+
   // Subscription
   subscriptionTier SubscriptionTier @default(FREE)
   kpGeneratedThisMonth Int  @default(0)

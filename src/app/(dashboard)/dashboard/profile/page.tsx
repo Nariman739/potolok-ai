@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw } from "lucide-react";
 import type { MasterProfile } from "@/lib/types";
@@ -32,6 +39,22 @@ export default function ProfilePage() {
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [address, setAddress] = useState("");
 
+  // Contract settings state
+  const [contractType, setContractType] = useState("");
+  const [bin, setBin] = useState("");
+  const [iin, setIin] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [legalAddress, setLegalAddress] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [iban, setIban] = useState("");
+  const [kbe, setKbe] = useState("");
+  const [bik, setBik] = useState("");
+  const [passportData, setPassportData] = useState("");
+  const [prepaymentPercent, setPrepaymentPercent] = useState("50");
+  const [warrantyMaterials, setWarrantyMaterials] = useState("10");
+  const [warrantyInstall, setWarrantyInstall] = useState("2");
+  const [contractCity, setContractCity] = useState("");
+
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
@@ -45,6 +68,21 @@ export default function ProfilePage() {
         setInstagramUrl(data.instagramUrl || "");
         setWhatsappPhone(data.whatsappPhone || "");
         setAddress(data.address || "");
+        // Contract
+        setContractType(data.contractType || "");
+        setBin(data.bin || "");
+        setIin(data.iin || "");
+        setLegalName(data.legalName || "");
+        setLegalAddress(data.legalAddress || "");
+        setBankName(data.bankName || "");
+        setIban(data.iban || "");
+        setKbe(data.kbe || "");
+        setBik(data.bik || "");
+        setPassportData(data.passportData || "");
+        setPrepaymentPercent(String(data.prepaymentPercent ?? 50));
+        setWarrantyMaterials(String(data.warrantyMaterials ?? 10));
+        setWarrantyInstall(String(data.warrantyInstall ?? 2));
+        setContractCity(data.contractCity || "");
       })
       .finally(() => setLoading(false));
 
@@ -70,6 +108,20 @@ export default function ProfilePage() {
           instagramUrl,
           whatsappPhone,
           address,
+          contractType: contractType || null,
+          bin: bin || null,
+          iin: iin || null,
+          legalName: legalName || null,
+          legalAddress: legalAddress || null,
+          bankName: bankName || null,
+          iban: iban || null,
+          kbe: kbe || null,
+          bik: bik || null,
+          passportData: passportData || null,
+          prepaymentPercent,
+          warrantyMaterials,
+          warrantyInstall,
+          contractCity: contractCity || null,
         }),
       });
       if (!res.ok) throw new Error();
@@ -273,6 +325,144 @@ export default function ProfilePage() {
               <Input value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)} placeholder="+77001234567" />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Contract settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Настройки договора</CardTitle>
+          <CardDescription>
+            Заполните реквизиты для автоматической генерации договоров
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Тип договора</Label>
+            <Select value={contractType} onValueChange={setContractType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Не использую" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Не использую</SelectItem>
+                <SelectItem value="ip">ИП (Индивидуальный предприниматель)</SelectItem>
+                <SelectItem value="individual">Физическое лицо</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* ИП fields */}
+          {contractType === "ip" && (
+            <>
+              <Separator />
+              <p className="text-sm font-medium text-muted-foreground">Реквизиты ИП</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>БИН</Label>
+                  <Input value={bin} onChange={(e) => setBin(e.target.value)} placeholder="123456789012" maxLength={12} />
+                </div>
+                <div className="space-y-2">
+                  <Label>ИИН</Label>
+                  <Input value={iin} onChange={(e) => setIin(e.target.value)} placeholder="012345678901" maxLength={12} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Наименование ИП</Label>
+                <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder='ИП "Иванов Иван Иванович"' />
+              </div>
+              <div className="space-y-2">
+                <Label>Юридический адрес</Label>
+                <Input value={legalAddress} onChange={(e) => setLegalAddress(e.target.value)} placeholder="г. Караганда, ул. Ермекова 1" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Банк</Label>
+                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="АО Каспи Банк" />
+                </div>
+                <div className="space-y-2">
+                  <Label>IBAN</Label>
+                  <Input value={iban} onChange={(e) => setIban(e.target.value)} placeholder="KZ12345678901234567" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>КБе</Label>
+                  <Input value={kbe} onChange={(e) => setKbe(e.target.value)} placeholder="19" maxLength={2} />
+                </div>
+                <div className="space-y-2">
+                  <Label>БИК</Label>
+                  <Input value={bik} onChange={(e) => setBik(e.target.value)} placeholder="CASPKZKA" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Individual fields */}
+          {contractType === "individual" && (
+            <>
+              <Separator />
+              <p className="text-sm font-medium text-muted-foreground">Данные физического лица</p>
+              <div className="space-y-2">
+                <Label>ИИН</Label>
+                <Input value={iin} onChange={(e) => setIin(e.target.value)} placeholder="012345678901" maxLength={12} />
+              </div>
+              <div className="space-y-2">
+                <Label>ФИО полностью</Label>
+                <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Иванов Иван Иванович" />
+              </div>
+              <div className="space-y-2">
+                <Label>Удостоверение личности (серия и номер)</Label>
+                <Input value={passportData} onChange={(e) => setPassportData(e.target.value)} placeholder="№ 012345678" />
+              </div>
+            </>
+          )}
+
+          {/* Common contract settings */}
+          {contractType && contractType !== "none" && (
+            <>
+              <Separator />
+              <p className="text-sm font-medium text-muted-foreground">Условия договора</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Предоплата (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={prepaymentPercent}
+                    onChange={(e) => setPrepaymentPercent(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Гарантия материалы (лет)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="25"
+                    value={warrantyMaterials}
+                    onChange={(e) => setWarrantyMaterials(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Гарантия монтаж (лет)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={warrantyInstall}
+                    onChange={(e) => setWarrantyInstall(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Город (для шапки договора)</Label>
+                <Input value={contractCity} onChange={(e) => setContractCity(e.target.value)} placeholder="г. Караганда" />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
