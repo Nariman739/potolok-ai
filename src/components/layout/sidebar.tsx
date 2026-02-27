@@ -13,6 +13,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
+import { Logo } from "@/components/logo";
 
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
@@ -28,11 +29,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-white">
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1e3a5f] text-white font-bold text-sm">
-          P
-        </div>
-        <span className="text-lg font-bold text-[#1e3a5f]">PotolokAI</span>
+      <div className="flex h-16 items-center border-b px-6">
+        <Logo size="sm" variant="dark" />
       </div>
 
       <nav className="flex-1 space-y-1 p-3">

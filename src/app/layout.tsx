@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   },
   description: "Мгновенный расчёт стоимости натяжных потолков. Создавайте профессиональные коммерческие предложения за секунды.",
   keywords: "натяжные потолки, расчёт, калькулятор, коммерческое предложение, КП, мастер",
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

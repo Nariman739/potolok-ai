@@ -12,6 +12,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Logo } from "@/components/logo";
 
 export default function MarketingLayout({
   children,
@@ -26,9 +27,7 @@ export default function MarketingLayout({
       <header className="sticky top-0 z-50 border-b border-[#334155]/50 bg-[#0F1724]/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-extrabold tracking-tight">
-              Potolok<span className="text-[#F97316]">AI</span>
-            </span>
+            <Logo size="sm" variant="light" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[#94A3B8]">
@@ -71,7 +70,7 @@ export default function MarketingLayout({
               >
                 <SheetHeader>
                   <SheetTitle className="text-[#F1F5F9]">
-                    Potolok<span className="text-[#F97316]">AI</span>
+                    <Logo size="sm" variant="light" />
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-1 px-4">
