@@ -4,7 +4,7 @@ import type { CanvasType } from "./constants";
 // Room Shapes
 // ============================================
 
-export type RoomShape = "rectangle" | "l-shape" | "t-shape";
+export type RoomShape = "rectangle" | "l-shape" | "t-shape" | "custom";
 
 export interface LShapeDimensions {
   a: number; // top width (meters) →
@@ -21,6 +21,15 @@ export interface TShapeDimensions {
   b: number; // top height (meters)
   c: number; // stem width (meters)
   d: number; // stem height (meters)
+}
+
+export interface CustomWall {
+  length: number;      // wall length in meters
+  turnRight: boolean;  // true = right turn (interior 90°), false = left turn (exterior 90°)
+}
+
+export interface CustomDimensions {
+  walls: CustomWall[];
 }
 
 // ============================================
@@ -46,6 +55,7 @@ export interface RoomInput {
   shape?: RoomShape;
   lShapeDims?: LShapeDimensions;
   tShapeDims?: TShapeDimensions;
+  customDims?: CustomDimensions;
   // Component selection (master chooses)
   profileType?: string;
   spotType?: string;

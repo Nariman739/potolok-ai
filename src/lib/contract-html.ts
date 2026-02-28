@@ -37,8 +37,9 @@ function esc(s: string | null | undefined): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function fmtPrice(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₸";
+function fmtPrice(n: number | undefined | null): string {
+  const val = Number(n) || 0;
+  return new Intl.NumberFormat("ru-RU").format(Math.round(val)) + " ₸";
 }
 
 function fmtDate(d: Date): string {
@@ -57,7 +58,8 @@ function getMasterPhone(m: MasterData): string {
   return m.whatsappPhone || m.phone || "";
 }
 
-function getRoomResults(calc: CalculationResult): RoomResult[] {
+function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[] {
+  if (!calc) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return calc.roomResults ?? (calc as any).variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
 }
@@ -66,7 +68,7 @@ function buildWorksTable(roomResults: RoomResult[]): string {
   let rows = "";
   let num = 0;
   for (const rr of roomResults) {
-    for (const item of rr.items) {
+    for (const item of (rr.items ?? [])) {
       num++;
       rows += `<tr>
         <td style="${tdStyle}">${num}</td>

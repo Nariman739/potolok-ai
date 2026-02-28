@@ -11,6 +11,7 @@ import { CANVAS_TYPES } from "@/lib/constants";
 const SHAPE_LABELS: Record<string, string> = {
   "l-shape": "Г-образная",
   "t-shape": "Т-образная",
+  "custom": "Произвольная",
 };
 
 interface RoomCardProps {

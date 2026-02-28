@@ -22,9 +22,9 @@ import {
   PROFILE_CORNER_MAP,
   DEFAULT_PRICES,
 } from "@/lib/constants";
-import { getDefaultCorners, validateLShape, validateTShape } from "@/lib/room-geometry";
-import { RoomShapeSvg } from "./room-shape-svg";
-import type { RoomInput, RoomShape } from "@/lib/types";
+import { getDefaultCorners, validateLShape, validateTShape, validateCustomDims, wallsToVertices, shoelaceArea, polygonGap } from "@/lib/room-geometry";
+import { RoomShapeSvg, CustomRoomSvg } from "./room-shape-svg";
+import type { RoomInput, RoomShape, CustomDimensions } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -67,6 +67,14 @@ const SHAPE_OPTIONS: { value: RoomShape; label: string; icon: string }[] = [
   { value: "rectangle", label: "Прямоугольник", icon: "▭" },
   { value: "l-shape", label: "Г-образная", icon: "Г" },
   { value: "t-shape", label: "Т-образная", icon: "Т" },
+  { value: "custom", label: "Произвольная", icon: "⬡" },
+];
+
+const DEFAULT_CUSTOM_WALLS = [
+  { length: "", turnRight: true },
+  { length: "", turnRight: true },
+  { length: "", turnRight: true },
+  { length: "", turnRight: true },
 ];
 
 export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: customItemsProp }: RoomFormProps) {
@@ -98,6 +106,14 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
   const [tB, setTB] = useState(er?.tShapeDims ? String(Math.round(er.tShapeDims.b * 100)) : "");
   const [tC, setTC] = useState(er?.tShapeDims ? String(Math.round(er.tShapeDims.c * 100)) : "");
   const [tD, setTD] = useState(er?.tShapeDims ? String(Math.round(er.tShapeDims.d * 100)) : "");
+
+  // Custom polygon walls (stored in cm as strings)
+  const [customWalls, setCustomWalls] = useState<{ length: string; turnRight: boolean }[]>(
+    er?.customDims
+      ? er.customDims.walls.map(w => ({ length: String(Math.round(w.length * 100)), turnRight: w.turnRight }))
+      : DEFAULT_CUSTOM_WALLS.map(w => ({ ...w }))
+  );
+  const [activeWallIndex, setActiveWallIndex] = useState<number | null>(null);
 
   // Active side for SVG highlight
   const [activeSide, setActiveSide] = useState<"a" | "b" | "c" | "d" | "e" | null>(null);
@@ -165,11 +181,32 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
     setSelectedCustomItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function updateWall(idx: number, field: "length" | "turnRight", value: string | boolean) {
+    setCustomWalls(prev => prev.map((w, i) => i === idx ? { ...w, [field]: value } : w));
+  }
+  function addWall() {
+    setCustomWalls(prev => [...prev, { length: "", turnRight: true }]);
+  }
+  function removeWall(idx: number) {
+    setCustomWalls(prev => prev.filter((_, i) => i !== idx));
+  }
+
   function handleShapeChange(newShape: RoomShape) {
     setShape(newShape);
-    setCornersCount(String(getDefaultCorners(newShape)));
+    if (newShape === "custom") {
+      setCornersCount(String(customWalls.length));
+    } else {
+      setCornersCount(String(getDefaultCorners(newShape)));
+    }
     setShapeError(null);
   }
+
+  // Sync corners count with wall count in custom mode
+  useEffect(() => {
+    if (shape === "custom") {
+      setCornersCount(String(customWalls.length));
+    }
+  }, [customWalls.length, shape]);
 
   function computePreview(): { area: number; perimeter: number } | null {
     if (shape === "rectangle") {
@@ -196,6 +233,18 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         perimeter: (2 * (a + b + d)) / 100,
       };
     }
+    if (shape === "custom") {
+      const parsed = customWalls.map(w => ({
+        length: (parseFloat(w.length) || 0) / 100,
+        turnRight: w.turnRight,
+      }));
+      if (parsed.some(w => w.length <= 0)) return null;
+      const verts = wallsToVertices(parsed);
+      const area = shoelaceArea(verts);
+      const perimeter = parsed.reduce((s, w) => s + w.length, 0);
+      if (area <= 0) return null;
+      return { area, perimeter };
+    }
     return null;
   }
 
@@ -213,6 +262,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
     let roomShape: RoomShape = shape;
     let lShapeDims = undefined;
     let tShapeDims = undefined;
+    let customDims: CustomDimensions | undefined = undefined;
 
     if (shape === "rectangle") {
       lengthM = (parseFloat(length) || 0) / 100;
@@ -243,6 +293,21 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       tShapeDims = dims;
       lengthM = dims.a;       // bounding box width
       widthM = dims.b + dims.d; // bounding box height
+    } else if (shape === "custom") {
+      const dims: CustomDimensions = {
+        walls: customWalls.map(w => ({
+          length: (parseFloat(w.length) || 0) / 100,
+          turnRight: w.turnRight,
+        })),
+      };
+      const err = validateCustomDims(dims);
+      if (err) { setShapeError(err); return; }
+      customDims = dims;
+      const verts = wallsToVertices(dims.walls);
+      const xs = verts.map(v => v.x);
+      const ys = verts.map(v => v.y);
+      lengthM = Math.max(...xs) - Math.min(...xs);
+      widthM = Math.max(...ys) - Math.min(...ys);
     }
 
     const room: RoomInput = {
@@ -264,6 +329,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       shape: roomShape,
       lShapeDims,
       tShapeDims,
+      customDims,
       profileType,
       spotType: (parseInt(spotsCount) || 0) > 0 ? spotType : undefined,
       curtainType: curtainM > 0 ? curtainType : undefined,
@@ -290,6 +356,8 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       setCurtainRodLength("0"); setPipeBypasses("0");
       setGardinaLength("0"); setPodshtornikLength("0");
       setSelectedCustomItems([]);
+      setCustomWalls(DEFAULT_CUSTOM_WALLS.map(w => ({ ...w })));
+      setActiveWallIndex(null);
       setShapeError(null); setActiveSide(null);
     }
   }
@@ -327,7 +395,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       {/* Shape selector */}
       <div className="space-y-2">
         <Label>Форма комнаты</Label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SHAPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -453,6 +521,78 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 onFocus={() => setActiveSide("d")} onBlur={() => setActiveSide(null)} required />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Custom polygon walls */}
+      {shape === "custom" && (
+        <div className="space-y-3">
+          <CustomRoomSvg walls={customWalls} activeWallIndex={activeWallIndex} />
+
+          {/* Closure status */}
+          {(() => {
+            const parsed = customWalls.map(w => ({
+              length: (parseFloat(w.length) || 0) / 100,
+              turnRight: w.turnRight,
+            }));
+            const allFilled = parsed.every(w => w.length > 0);
+            if (!allFilled) return null;
+            const gap = polygonGap(parsed);
+            const closed = gap < 0.01;
+            return (
+              <div className={`text-xs px-2 py-1 rounded ${closed ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
+                {closed ? "Полигон замкнут" : `Не замкнут (разрыв ${(gap * 100).toFixed(0)} см)`}
+              </div>
+            );
+          })()}
+
+          {/* Wall list */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">
+              Обходите комнату по часовой стрелке, начиная с верхней стены
+            </Label>
+            {customWalls.map((wall, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{idx + 1}.</span>
+                <Input
+                  type="number"
+                  step="1"
+                  min="1"
+                  className="flex-1 h-9"
+                  value={wall.length}
+                  onChange={e => updateWall(idx, "length", e.target.value)}
+                  onFocus={() => setActiveWallIndex(idx)}
+                  onBlur={() => setActiveWallIndex(null)}
+                  placeholder="см"
+                  inputMode="numeric"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateWall(idx, "turnRight", !wall.turnRight)}
+                  className={`px-2 py-1.5 text-xs rounded-lg border min-w-[70px] transition-colors ${
+                    wall.turnRight
+                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                      : "bg-amber-100 text-amber-800 border-amber-300"
+                  }`}
+                >
+                  {wall.turnRight ? "→ внутр." : "← внеш."}
+                </button>
+                {customWalls.length > 4 && (
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                    onClick={() => removeWall(idx)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add wall button */}
+          {customWalls.length < 20 && (
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={addWall}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Добавить стену
+            </Button>
+          )}
         </div>
       )}
 

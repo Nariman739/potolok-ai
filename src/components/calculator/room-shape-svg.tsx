@@ -211,3 +211,132 @@ function renderTShape(
     </svg>
   );
 }
+
+// ============================================
+// Custom polygon room SVG preview
+// ============================================
+
+interface CustomRoomSvgProps {
+  walls: { length: string; turnRight: boolean }[];
+  activeWallIndex?: number | null;
+}
+
+export function CustomRoomSvg({ walls, activeWallIndex }: CustomRoomSvgProps) {
+  // Parse walls to numbers (cm)
+  const parsed = walls.map(w => ({
+    length: parseFloat(w.length) || 0,
+    turnRight: w.turnRight,
+  }));
+
+  // Need at least 2 walls with length to render
+  const filledCount = parsed.filter(w => w.length > 0).length;
+  if (filledCount < 2) {
+    return (
+      <div className="w-full h-32 flex items-center justify-center text-sm text-muted-foreground border rounded">
+        Введите длины стен...
+      </div>
+    );
+  }
+
+  // Build vertices (cm space)
+  const dxArr = [1, 0, -1, 0];
+  const dyArr = [0, 1, 0, -1];
+  const vertices: { x: number; y: number }[] = [];
+  let x = 0, y = 0, dir = 0;
+
+  for (const wall of parsed) {
+    vertices.push({ x, y });
+    x += dxArr[dir] * wall.length;
+    y += dyArr[dir] * wall.length;
+    dir = wall.turnRight ? (dir + 1) % 4 : (dir + 3) % 4;
+  }
+  vertices.push({ x, y }); // last point
+
+  // Bounding box
+  const xs = vertices.map(v => v.x);
+  const ys = vertices.map(v => v.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = maxX - minX || 1;
+  const h = maxY - minY || 1;
+
+  // Scale to fit SVG
+  const pad = 35;
+  const svgW = 220, svgH = 200;
+  const scale = Math.min((svgW - 2 * pad) / w, (svgH - 2 * pad) / h);
+  const offX = pad + ((svgW - 2 * pad) - w * scale) / 2 - minX * scale;
+  const offY = pad + ((svgH - 2 * pad) - h * scale) / 2 - minY * scale;
+
+  const toSvg = (v: { x: number; y: number }) => ({
+    x: v.x * scale + offX,
+    y: v.y * scale + offY,
+  });
+
+  const svgPoints = vertices.map(toSvg);
+
+  // Check if polygon is closed
+  const last = vertices[vertices.length - 1];
+  const gap = Math.sqrt(last.x * last.x + last.y * last.y);
+  const isClosed = gap < 1; // < 1 cm
+
+  return (
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full max-w-[220px] h-auto mx-auto">
+      {/* Filled polygon (if closed) */}
+      {isClosed && svgPoints.length > 3 && (
+        <polygon
+          points={svgPoints.slice(0, -1).map(p => `${p.x},${p.y}`).join(" ")}
+          fill={FILL_COLOR} fillOpacity={0.08}
+          stroke="none"
+        />
+      )}
+
+      {/* Wall segments */}
+      {parsed.map((wall, i) => {
+        if (wall.length <= 0) return null;
+        const p1 = svgPoints[i];
+        const p2 = svgPoints[i + 1];
+        if (!p1 || !p2) return null;
+        const isActive = activeWallIndex === i;
+        const color = isActive ? ACTIVE_COLOR : DEFAULT_COLOR;
+
+        // Mid point for label
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2;
+
+        // Label offset based on wall direction
+        const isHorizontal = Math.abs(p2.y - p1.y) < 0.5;
+        const labelDx = isHorizontal ? 0 : 12;
+        const labelDy = isHorizontal ? -8 : 4;
+
+        return (
+          <g key={i}>
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+              stroke={color} strokeWidth={isActive ? 3 : 1.5} />
+            <text x={mx + labelDx} y={my + labelDy}
+              textAnchor="middle" fontSize={9}
+              fill={color} fontWeight={isActive ? 700 : 500}>
+              {i + 1}: {wall.length} см
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Closing gap line (dashed, if not closed) */}
+      {!isClosed && filledCount >= 3 && (
+        <line
+          x1={svgPoints[svgPoints.length - 1].x}
+          y1={svgPoints[svgPoints.length - 1].y}
+          x2={svgPoints[0].x}
+          y2={svgPoints[0].y}
+          stroke={DERIVED_COLOR} strokeWidth={1} strokeDasharray="4 2"
+        />
+      )}
+
+      {/* Vertex dots */}
+      {svgPoints.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={2.5}
+          fill={i === 0 ? ACTIVE_COLOR : DEFAULT_COLOR} />
+      ))}
+    </svg>
+  );
+}
