@@ -2,24 +2,26 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { CalculationResult, RoomResult } from "@/lib/types";
-import chromium from "@sparticuz/chromium";
-import puppeteerCore from "puppeteer-core";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import fs from "fs";
+import path from "path";
 
 function fmtPrice(n: number | undefined | null): string {
   const val = Number(n) || 0;
   return new Intl.NumberFormat("ru-RU").format(Math.round(val)) + " ₸";
 }
 
-function escXml(s: unknown): string {
-  const str = String(s ?? "");
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function sanitizeFilename(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-export const maxDuration = 30;
+function loadFont(doc: jsPDF, filename: string, fontName: string, style: string) {
+  const fontPath = path.join(process.cwd(), "public", "fonts", filename);
+  const fontData = fs.readFileSync(fontPath, { encoding: "latin1" });
+  doc.addFileToVFS(filename, fontData);
+  doc.addFont(filename, fontName, style);
+}
 
 export async function GET(
   _request: Request,
@@ -41,112 +43,204 @@ export async function GET(
     const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult;
     const company = estimate.master.companyName || estimate.master.firstName || "";
     const total = estimate.total || estimate.standardTotal || 0;
+    const contactPhone = estimate.master.whatsappPhone || estimate.master.phone || "";
 
-    // Support both new (roomResults) and old (variants) format
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const roomResults: RoomResult[] = calc?.roomResults
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms
       ?? [];
 
-    // Build HTML
-    let roomsHtml = "";
-    for (const rr of roomResults) {
-      let itemsHtml = "";
-      for (const item of (rr.items ?? [])) {
-        itemsHtml += `<tr>
-          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;">${escXml(item.itemName)}</td>
-          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${item.quantity} ${escXml(item.unit)}</td>
-          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;">${fmtPrice(item.unitPrice)}</td>
-          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:600;">${fmtPrice(item.total)}</td>
-        </tr>`;
-      }
-      roomsHtml += `
-        <h3 style="margin:16px 0 8px;font-size:14px;color:#1e3a5f;">${escXml(rr.roomName)} — ${(rr.area ?? 0).toFixed(1)} м²</h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-          <thead>
-            <tr style="background:#f3f4f6;">
-              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#6b7280;">Наименование</th>
-              <th style="padding:6px 8px;text-align:center;font-size:11px;color:#6b7280;">Кол-во</th>
-              <th style="padding:6px 8px;text-align:right;font-size:11px;color:#6b7280;">Цена</th>
-              <th style="padding:6px 8px;text-align:right;font-size:11px;color:#6b7280;">Сумма</th>
-            </tr>
-          </thead>
-          <tbody>${itemsHtml}</tbody>
-        </table>
-        ${rr.heightMultiplied ? '<p style="font-size:11px;color:#d97706;">× 1.3 (высота > 3м)</p>' : ""}
-        <p style="text-align:right;font-size:13px;font-weight:600;margin-top:4px;">Итого ${escXml(rr.roomName)}: ${fmtPrice(rr.subtotalAfterHeight ?? 0)}</p>
-      `;
+    // Create PDF
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginL = 15;
+    const marginR = 15;
+    const contentW = pageW - marginL - marginR;
+
+    // Load Cyrillic fonts
+    loadFont(doc, "Roboto-Regular.ttf", "Roboto", "normal");
+    loadFont(doc, "Roboto-Bold.ttf", "Roboto", "bold");
+    doc.setFont("Roboto", "normal");
+
+    let y = 20;
+
+    // Header: company name + date
+    doc.setFont("Roboto", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(30, 58, 95); // #1e3a5f
+    doc.text(company, marginL, y);
+
+    doc.setFont("Roboto", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128); // #6b7280
+    doc.text("Коммерческое предложение", pageW - marginR, y - 4, { align: "right" });
+    const dateStr = new Date(estimate.createdAt).toLocaleDateString("ru-RU");
+    doc.text(dateStr, pageW - marginR, y + 1, { align: "right" });
+
+    if (contactPhone) {
+      doc.setFontSize(9);
+      doc.text(contactPhone, marginL, y + 6);
+      y += 6;
     }
 
-    const contactPhone = estimate.master.whatsappPhone || estimate.master.phone || "";
+    y += 10;
 
-    const html = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { margin: 20mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; margin: 0; padding: 24px; }
-  </style>
-</head>
-<body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
-    <div>
-      <h1 style="margin:0;font-size:22px;color:#1e3a5f;">${escXml(company)}</h1>
-      ${contactPhone ? `<p style="margin:4px 0 0;font-size:12px;color:#6b7280;">${escXml(contactPhone)}</p>` : ""}
-    </div>
-    <div style="text-align:right;">
-      <p style="margin:0;font-size:11px;color:#6b7280;">Коммерческое предложение</p>
-      <p style="margin:4px 0 0;font-size:11px;color:#6b7280;">${new Date(estimate.createdAt).toLocaleDateString("ru-RU")}</p>
-    </div>
-  </div>
+    // Client info
+    doc.setFontSize(11);
+    doc.setTextColor(31, 41, 55); // #1f2937
+    if (estimate.clientName) {
+      doc.setFont("Roboto", "bold");
+      doc.text("Клиент: ", marginL, y);
+      const klW = doc.getTextWidth("Клиент: ");
+      doc.setFont("Roboto", "normal");
+      doc.text(estimate.clientName, marginL + klW, y);
+      y += 6;
+    }
+    if (estimate.clientPhone) {
+      doc.setFont("Roboto", "bold");
+      doc.text("Телефон: ", marginL, y);
+      const phW = doc.getTextWidth("Телефон: ");
+      doc.setFont("Roboto", "normal");
+      doc.text(estimate.clientPhone, marginL + phW, y);
+      y += 6;
+    }
+    if (estimate.clientAddress) {
+      doc.setFont("Roboto", "bold");
+      doc.text("Адрес: ", marginL, y);
+      const adW = doc.getTextWidth("Адрес: ");
+      doc.setFont("Roboto", "normal");
+      doc.text(estimate.clientAddress, marginL + adW, y);
+      y += 6;
+    }
 
-  ${estimate.clientName ? `<p style="font-size:13px;margin-bottom:4px;"><strong>Клиент:</strong> ${escXml(estimate.clientName)}</p>` : ""}
-  ${estimate.clientPhone ? `<p style="font-size:13px;margin-bottom:4px;"><strong>Телефон:</strong> ${escXml(estimate.clientPhone)}</p>` : ""}
-  ${estimate.clientAddress ? `<p style="font-size:13px;margin-bottom:4px;"><strong>Адрес:</strong> ${escXml(estimate.clientAddress)}</p>` : ""}
+    // Separator
+    y += 2;
+    doc.setDrawColor(30, 58, 95);
+    doc.setLineWidth(0.5);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 6;
 
-  <hr style="border:none;border-top:2px solid #1e3a5f;margin:16px 0;">
+    // Rooms
+    for (const rr of roomResults) {
+      // Check if we need a new page (at least 30mm for header + one row)
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
 
-  ${roomsHtml}
+      // Room header
+      doc.setFont("Roboto", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 58, 95);
+      doc.text(`${rr.roomName ?? "Комната"} — ${(rr.area ?? 0).toFixed(1)} м²`, marginL, y);
+      y += 2;
 
-  <hr style="border:none;border-top:2px solid #1e3a5f;margin:16px 0;">
+      // Room items table
+      const items = rr.items ?? [];
+      if (items.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          margin: { left: marginL, right: marginR },
+          head: [["Наименование", "Кол-во", "Цена", "Сумма"]],
+          body: items.map(item => [
+            String(item.itemName ?? ""),
+            `${item.quantity ?? 0} ${item.unit ?? ""}`,
+            fmtPrice(item.unitPrice),
+            fmtPrice(item.total),
+          ]),
+          styles: {
+            font: "Roboto",
+            fontSize: 9,
+            cellPadding: 2,
+          },
+          headStyles: {
+            font: "Roboto",
+            fontStyle: "bold",
+            fillColor: [243, 244, 246],
+            textColor: [107, 114, 128],
+            fontSize: 8,
+          },
+          columnStyles: {
+            0: { cellWidth: contentW * 0.45 },
+            1: { cellWidth: contentW * 0.15, halign: "center" },
+            2: { cellWidth: contentW * 0.18, halign: "right" },
+            3: { cellWidth: contentW * 0.22, halign: "right", fontStyle: "bold" },
+          },
+          theme: "plain",
+          didDrawPage: () => { /* autoTable handles page breaks */ },
+        });
 
-  <div style="text-align:right;">
-    ${calc.minOrderApplied ? '<p style="font-size:11px;color:#6b7280;margin-bottom:4px;">* Применён минимальный заказ</p>' : ""}
-    <p style="font-size:20px;font-weight:bold;color:#1e3a5f;margin:0;">
-      ИТОГО: ${fmtPrice(total)}
-    </p>
-    ${(calc.totalArea ?? 0) > 0 ? `<p style="font-size:12px;color:#6b7280;margin-top:4px;">${fmtPrice(Math.round(total / calc.totalArea))}/м² | ${calc.totalArea.toFixed(1)} м²</p>` : ""}
-  </div>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        y = (doc as any).lastAutoTable.finalY + 2;
+      }
 
-  <p style="font-size:10px;color:#9ca3af;text-align:center;margin-top:32px;">
-    * Расчёт предварительный. Точная стоимость определяется после замера.<br>
-    Создано в PotolokAI
-  </p>
-</body>
-</html>`;
+      // Height multiplier note
+      if (rr.heightMultiplied) {
+        doc.setFont("Roboto", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(217, 119, 6); // #d97706
+        doc.text("× 1.3 (высота > 3м)", marginL, y + 3);
+        y += 5;
+      }
 
-    // Render HTML to PDF via headless Chromium
-    const browser = await puppeteerCore.launch({
-      args: chromium.args,
-      defaultViewport: { width: 1280, height: 720 },
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
+      // Room subtotal
+      doc.setFont("Roboto", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      const subtotalText = `Итого ${rr.roomName ?? "Комната"}: ${fmtPrice(rr.subtotalAfterHeight ?? 0)}`;
+      doc.text(subtotalText, pageW - marginR, y + 3, { align: "right" });
+      y += 10;
+    }
 
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
-    });
-    await browser.close();
+    // Bottom separator
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setDrawColor(30, 58, 95);
+    doc.setLineWidth(0.5);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 8;
 
+    // Min order note
+    if (calc.minOrderApplied) {
+      doc.setFont("Roboto", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text("* Применён минимальный заказ", pageW - marginR, y, { align: "right" });
+      y += 5;
+    }
+
+    // Grand total
+    doc.setFont("Roboto", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(30, 58, 95);
+    doc.text(`ИТОГО: ${fmtPrice(total)}`, pageW - marginR, y, { align: "right" });
+    y += 6;
+
+    // Price per m² info
+    if ((calc.totalArea ?? 0) > 0) {
+      doc.setFont("Roboto", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        `${fmtPrice(Math.round(total / calc.totalArea))}/м²  |  ${calc.totalArea.toFixed(1)} м²`,
+        pageW - marginR, y, { align: "right" }
+      );
+      y += 6;
+    }
+
+    // Footer
+    doc.setFont("Roboto", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(156, 163, 175); // #9ca3af
+    const footerY = Math.max(y + 15, 275);
+    doc.text("* Расчёт предварительный. Точная стоимость определяется после замера.", pageW / 2, footerY, { align: "center" });
+    doc.text("Создано в PotolokAI", pageW / 2, footerY + 4, { align: "center" });
+
+    // Output
+    const pdfArrayBuffer = doc.output("arraybuffer");
     const filename = sanitizeFilename(`KP-${estimate.clientName || "estimate"}-${estimate.publicId.slice(0, 8)}`);
 
-    return new NextResponse(Buffer.from(pdfBuffer), {
+    return new NextResponse(Buffer.from(pdfArrayBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}.pdf"`,
