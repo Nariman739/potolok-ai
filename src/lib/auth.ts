@@ -62,11 +62,16 @@ export async function getCurrentMaster(): Promise<MasterProfile | null> {
     if (session) {
       await prisma.session.delete({ where: { id: session.id } });
     }
+    // Clear stale cookie to prevent redirect loops
+    cookieStore.delete(SESSION_COOKIE);
     return null;
   }
 
   const m = session.master;
-  if (!m.isActive) return null;
+  if (!m.isActive) {
+    cookieStore.delete(SESSION_COOKIE);
+    return null;
+  }
 
   return {
     id: m.id,
