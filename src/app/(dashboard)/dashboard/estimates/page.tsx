@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Bot, Calculator } from "lucide-react";
 import { formatPrice, formatDateShort } from "@/lib/format";
 import type { Metadata } from "next";
 
@@ -53,16 +53,34 @@ export default async function EstimatesPage() {
       </div>
 
       {estimates.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-1">Нет расчётов</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Создайте первый расчёт в калькуляторе
+        <Card className="border-dashed">
+          <CardContent className="py-12 flex flex-col items-center gap-4 text-center">
+            <div className="rounded-2xl bg-[#1e3a5f]/10 p-4">
+              <FileText className="h-8 w-8 text-[#1e3a5f]" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Пока нет расчётов</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Создайте первый расчёт через AI Ассистент (по фото или тексту) или Калькулятор (ручной ввод)
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+                <Link href="/dashboard/assistant">
+                  <Bot className="h-4 w-4 mr-2" />
+                  AI Ассистент
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard/calculator">
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Калькулятор
+                </Link>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Цены по умолчанию уже настроены — можно считать сразу
             </p>
-            <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
-              <Link href="/dashboard/calculator">Рассчитать</Link>
-            </Button>
           </CardContent>
         </Card>
       ) : (

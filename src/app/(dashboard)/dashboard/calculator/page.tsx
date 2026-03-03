@@ -10,7 +10,7 @@ import { CalculationResults } from "@/components/calculator/calculation-results"
 import { SaveDialog } from "@/components/calculator/save-dialog";
 import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
-import { Plus, Calculator, Loader2 } from "lucide-react";
+import { Plus, Calculator, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { RoomInput } from "@/lib/types";
 
@@ -165,6 +165,15 @@ function CalculatorContent() {
           Добавьте комнаты и получите стоимость
         </p>
       </div>
+
+      {rooms.length === 0 && !result && (
+        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-4 py-3">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+          <p className="text-sm text-emerald-800">
+            Цены по умолчанию уже настроены. Добавьте комнату и нажмите «Рассчитать».
+          </p>
+        </div>
+      )}
 
       {/* Room list */}
       {rooms.length > 0 && (

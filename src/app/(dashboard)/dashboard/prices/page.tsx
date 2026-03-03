@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Save, Loader2, RotateCcw, Plus, Trash2 } from "lucide-react";
+import { Save, Loader2, RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { CATEGORY_LABELS, type ProductCategory } from "@/lib/constants";
 
 interface PriceItem {
@@ -205,6 +205,13 @@ export default function PricesPage() {
           )}
           Сохранить
         </Button>
+      </div>
+
+      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
+        <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+        <p className="text-sm text-blue-800">
+          Все цены заполнены средними рыночными значениями. Можно начать делать расчёты прямо сейчас, а цены настроить позже.
+        </p>
       </div>
 
       {grouped.map((group) => (
