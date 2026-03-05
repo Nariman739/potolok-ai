@@ -28,10 +28,11 @@ async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
     const raw = result.choices[0]?.message?.content?.trim() || null;
     if (!raw) return null;
 
-    // Extract JSON from ```json...``` block (chain-of-thought response)
-    const jsonBlockMatch = raw.match(/```json\s*([\s\S]*?)```/i);
-    const cleaned = jsonBlockMatch
-      ? jsonBlockMatch[1].trim()
+    // Extract JSON — supports chain-of-thought (find first { to last })
+    const jsonStart = raw.indexOf("{");
+    const jsonEnd = raw.lastIndexOf("}");
+    const cleaned = jsonStart !== -1 && jsonEnd > jsonStart
+      ? raw.slice(jsonStart, jsonEnd + 1).trim()
       : raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
     // Validate it's parseable JSON before returning
