@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>potolok.ai — Logo Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      background: #ECEFFE;
+      padding: 48px;
+    }
+    .label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: #9BA3C4; margin-bottom: 16px;
+    }
+    .row { margin-bottom: 52px; }
+    .cards { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .card {
+      border-radius: 20px;
+      padding: 36px 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .light  { background: #F8F9FF; box-shadow: 0 4px 24px rgba(27,63,228,.07); }
+    .white  { background: #ffffff; box-shadow: 0 4px 24px rgba(0,0,0,.05); }
+    .dark   { background: #0F1729; }
+    .brand  { background: #1B3FE4; }
+
+    .sizes { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+    .size-item { text-align: center; }
+    .size-label { font-size: 10px; color: #9BA3C4; margin-top: 8px;
+                  letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .palette { display: flex; gap: 14px; flex-wrap: wrap; }
+    .swatch { width: 88px; }
+    .swatch-color { height: 52px; border-radius: 12px; margin-bottom: 8px; }
+    .swatch-name { font-size: 12px; font-weight: 600; color: #444; }
+    .swatch-hex  { font-size: 11px; color: #999; font-family: monospace; }
+
+    hr { border: none; border-top: 1px solid #D8DCEE; margin: 52px 0; }
+
+    .fix-tag {
+      display: inline-block; background: #1B3FE4; color: white;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 6px;
+      margin-left: 8px; vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo: light backgrounds -->
+  <div class="row">
+    <div class="label">Logo — Light Backgrounds</div>
+    <div class="cards">
+      <div class="card light"><img src="logo.svg" height="56"></div>
+      <div class="card white"><img src="logo.svg" height="56"></div>
+    </div>
+  </div>
+
+  <!-- Logo: dark/brand backgrounds — используем белую версию -->
+  <div class="row">
+    <div class="label">Logo — Dark &amp; Brand Backgrounds <span class="fix-tag">fix #1</span></div>
+    <div class="cards">
+      <div class="card dark"><img src="logo-white.svg" height="56"></div>
+      <div class="card brand"><img src="logo-white.svg" height="56"></div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Icon sizes -->
+  <div class="row">
+    <div class="label">Icon — All Sizes <span class="fix-tag">fix #2 &amp; #3</span></div>
+    <div class="sizes">
+      <div class="size-item"><img src="icon.svg" width="96"><div class="size-label">96px</div></div>
+      <div class="size-item"><img src="icon.svg" width="64"><div class="size-label">64px</div></div>
+      <div class="size-item"><img src="icon.svg" width="48"><div class="size-label">48px</div></div>
+      <div class="size-item"><img src="icon.svg" width="32"><div class="size-label">32px</div></div>
+      <div class="size-item"><img src="icon.svg" width="24"><div class="size-label">24px</div></div>
+      <div class="size-item"><img src="icon.svg" width="16"><div class="size-label">16px favicon</div></div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Palette -->
+  <div class="row">
+    <div class="label">Brand Colors</div>
+    <div class="palette">
+      <div class="swatch">
+        <div class="swatch-color" style="background:#1B3FE4;"></div>
+        <div class="swatch-name">Primary</div>
+        <div class="swatch-hex">#1B3FE4</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#FF6B35;"></div>
+        <div class="swatch-name">Accent</div>
+        <div class="swatch-hex">#FF6B35</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#0F1729; border:1px solid #333;"></div>
+        <div class="swatch-name">Dark</div>
+        <div class="swatch-hex">#0F1729</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#F8F9FF; border:1px solid #DDE0F0;"></div>
+        <div class="swatch-name">Light</div>
+        <div class="swatch-hex">#F8F9FF</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

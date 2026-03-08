@@ -9,7 +9,7 @@ interface LogoProps {
 
 const sizes = {
   sm: { icon: 28, text: "text-base" },
-  md: { icon: 36, text: "text-lg" },
+  md: { icon: 36, text: "text-xl" },
   lg: { icon: 48, text: "text-2xl" },
 };
 
@@ -22,71 +22,46 @@ export function Logo({
   const s = sizes[size];
 
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo.svg"
-        alt="PotolokAI"
-        width={s.icon}
-        height={s.icon}
-        className="shrink-0"
-      />
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <LogoIcon size={s.icon} />
       {showText && (
-        <span
-          className={cn(
-            "font-extrabold tracking-tight",
-            s.text,
-            variant === "light" ? "text-white" : "text-[#0F1724]"
-          )}
-        >
-          Potolok
-          <span className="text-[#F97316]">AI</span>
+        <span className={cn("font-bold tracking-tight", s.text)}>
+          <span className={variant === "light" ? "text-white" : "text-[#1B3FE4]"}>
+            potolok
+          </span>
+          <span className="text-[#FF6B35]">.ai</span>
         </span>
       )}
     </span>
   );
 }
 
-/** Inline SVG version for places where Image import isn't ideal (e.g. favicon, OG) */
 export function LogoIcon({ size = 40, className }: { size?: number; className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 40 40"
-      fill="none"
+      viewBox="0 0 80 80"
       width={size}
       height={size}
       className={className}
     >
-      <rect width="40" height="40" rx="10" fill="url(#logo-bg)" />
+      <rect width="80" height="80" rx="18" fill="#1B3FE4" />
+      <rect x="16" y="12" width="12" height="56" rx="6" fill="white" />
       <path
-        d="M8 12 Q20 8 32 12"
-        stroke="url(#logo-accent)"
-        strokeWidth="2"
-        strokeLinecap="round"
+        d="M28 18 C64 18 64 50 28 50"
         fill="none"
-        opacity="0.6"
+        stroke="white"
+        strokeWidth="13"
+        strokeLinecap="round"
       />
       <path
-        d="M14 30V14h6.5a5.5 5.5 0 0 1 0 11H14"
-        stroke="white"
-        strokeWidth="3.5"
+        d="M42 26 L37 34 L42 34 L37 43"
+        stroke="#FF6B35"
+        strokeWidth="4"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-      <circle cx="29" cy="28" r="2.5" fill="url(#logo-accent)" />
-      <circle cx="29" cy="28" r="4.5" fill="url(#logo-accent)" opacity="0.2" />
-      <defs>
-        <linearGradient id="logo-bg" x1="0" y1="0" x2="40" y2="40">
-          <stop offset="0%" stopColor="#0F1724" />
-          <stop offset="100%" stopColor="#1a2d4a" />
-        </linearGradient>
-        <linearGradient id="logo-accent" x1="0" y1="0" x2="40" y2="40">
-          <stop offset="0%" stopColor="#F97316" />
-          <stop offset="100%" stopColor="#FB923C" />
-        </linearGradient>
-      </defs>
     </svg>
   );
 }

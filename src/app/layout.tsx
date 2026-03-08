@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -11,15 +12,31 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: {
-    default: "PotolokAI — Умный расчёт натяжных потолков",
-    template: "%s | PotolokAI",
+    default: "potolok.ai — Умный расчёт натяжных потолков",
+    template: "%s | potolok.ai",
   },
   description: "Мгновенный расчёт стоимости натяжных потолков. Создавайте профессиональные коммерческие предложения за секунды.",
   keywords: "натяжные потолки, расчёт, калькулятор, коммерческое предложение, КП, мастер",
-  icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PotolokAI",
   },
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -32,6 +49,7 @@ export default function RootLayout({
       <body className={`${montserrat.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
         <Toaster position="top-right" richColors />
+        <PwaRegister />
       </body>
     </html>
   );

@@ -102,10 +102,10 @@ function calculateRoom(
     const chandelierItem = makeLineItem("chandelier", room.chandelierCount, prices);
     if (chandelierItem) items.push(chandelierItem);
 
-    // Transformer — master's choice (default: NOT included)
-    const includeTransformer = room.includeTransformer ?? false;
-    if (includeTransformer) {
-      const transformerItem = makeLineItem("transformer", room.chandelierCount, prices);
+    // Transformer — quantity entered by master
+    const transformerCount = room.transformerCount ?? 0;
+    if (transformerCount > 0) {
+      const transformerItem = makeLineItem("transformer", transformerCount, prices);
       if (transformerItem) items.push(transformerItem);
     }
   }

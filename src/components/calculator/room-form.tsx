@@ -59,8 +59,7 @@ interface RoomFormProps {
 }
 
 function formatPriceCompact(n: number): string {
-  if (n >= 1000) return `${Math.round(n / 1000)}к`;
-  return String(n);
+  return new Intl.NumberFormat("ru-RU").format(Math.round(n));
 }
 
 const SHAPE_OPTIONS: { value: RoomShape; label: string; icon: string }[] = [
@@ -134,7 +133,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
   const [spotType, setSpotType] = useState(er?.spotType ?? "spot_ours");
   // Corner type auto-determined by profile
   const [curtainType, setCurtainType] = useState(er?.curtainType ?? "curtain_ldsp");
-  const [includeTransformer, setIncludeTransformer] = useState(er?.includeTransformer ?? false);
+  const [transformerCount, setTransformerCount] = useState(String(er?.transformerCount ?? 0));
 
   // Gardina + Podshtornik
   const [gardinaLength, setGardinaLength] = useState(
@@ -333,7 +332,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       profileType,
       spotType: (parseInt(spotsCount) || 0) > 0 ? spotType : undefined,
       curtainType: curtainM > 0 ? curtainType : undefined,
-      includeTransformer: (parseInt(chandelierCount) || 0) > 0 ? includeTransformer : undefined,
+      transformerCount: (parseInt(chandelierCount) || 0) > 0 ? (parseInt(transformerCount) || 0) : undefined,
       gardinaLength: gardinaM,
       gardinaType: gardinaM > 0 ? gardinaType : undefined,
       podshtornikLength: podshtornikM,
@@ -899,20 +898,22 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
           </div>
         )}
 
-        {/* Transformer checkbox — only if chandeliers > 0 */}
+        {/* Transformer count — only if chandeliers > 0 */}
         {parseInt(chandelierCount) > 0 && (
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeTransformer}
-              onChange={(e) => setIncludeTransformer(e.target.checked)}
-              className="rounded border-border"
-            />
+          <div className="flex items-center gap-2 text-sm">
             <span>Трансформатор</span>
+            <input
+              type="number"
+              min="0"
+              value={transformerCount}
+              onChange={(e) => setTransformerCount(e.target.value)}
+              className="w-16 rounded border border-border px-2 py-0.5 text-center text-sm bg-background"
+              placeholder="0"
+            />
             <span className="text-muted-foreground text-xs">
-              {formatPriceCompact(prices["transformer"] ?? 0)}₸/шт
+              шт · {formatPriceCompact(prices["transformer"] ?? 0)}₸/шт
             </span>
-          </label>
+          </div>
         )}
       </div>
 

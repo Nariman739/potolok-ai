@@ -61,7 +61,7 @@ export interface RoomInput {
   spotType?: string;
   cornerType?: string;
   curtainType?: string;
-  includeTransformer?: boolean;
+  transformerCount?: number;
   // Gardina + Podshtornik
   gardinaLength: number;
   gardinaType?: string;
