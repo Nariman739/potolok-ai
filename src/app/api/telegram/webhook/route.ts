@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { handleTelegramBotMessage, handleBotCommand } from "@/lib/telegram-bot";
 
+// Simple email regex
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
   try {
@@ -11,104 +14,158 @@ export async function POST(request: Request) {
     if (!message) return NextResponse.json({ ok: true });
 
     const chatId = String(message.chat?.id ?? "");
-    const text: string = message.text ?? "";
+    const text: string = (message.text ?? "").trim();
 
-    // ── /start CODE — link master account ──
+    // ── Check if user is already linked ──
+    const linkedMaster = await prisma.master.findUnique({
+      where: { telegramChatId: chatId },
+      select: { id: true, firstName: true },
+    });
+
+    // ── /start — greeting + link flow ──
     if (text.startsWith("/start")) {
       const parts = text.split(" ");
       const code = parts[1]?.trim();
 
-      if (!code) {
-        await sendTelegramMessage(
-          chatId,
-          "👋 Привет! Это бот <b>PotolokAI</b>.\n\n" +
-          "📸 Отправьте фото замеров — посчитаю стоимость\n" +
-          "🎤 Или наговорите голосом\n" +
-          "✏️ Или напишите размеры текстом\n\n" +
-          "Чтобы привязать аккаунт, перейдите в <b>Профиль → Telegram</b> на potolok.ai и нажмите «Привязать».\n\n" +
-          "/help — все команды"
-        );
+      // /start CODE — old link code flow (still works from profile page)
+      if (code) {
+        const master = await prisma.master.findUnique({
+          where: { telegramLinkCode: code },
+          select: { id: true, firstName: true },
+        });
+
+        if (!master) {
+          await sendTelegramMessage(
+            chatId,
+            "❌ Код не найден или уже использован."
+          );
+          return NextResponse.json({ ok: true });
+        }
+
+        await prisma.master.update({
+          where: { id: master.id },
+          data: { telegramChatId: chatId, telegramLinkCode: null },
+        });
+
+        await sendLinkedMessage(chatId, master.firstName);
         return NextResponse.json({ ok: true });
       }
 
-      // Find master by link code
+      // /start without code
+      if (linkedMaster) {
+        // Already linked — just greet
+        await sendTelegramMessage(
+          chatId,
+          `👋 <b>${linkedMaster.firstName}, с возвращением!</b>\n\n` +
+          `📸 Отправьте фото замеров — посчитаю стоимость\n` +
+          `🎤 Или наговорите голосом\n` +
+          `✏️ Или напишите размеры текстом\n\n` +
+          `/new — новый расчёт\n` +
+          `/kp — ваши КП\n` +
+          `/help — все команды`
+        );
+      } else {
+        // Not linked — ask for email
+        await sendTelegramMessage(
+          chatId,
+          `👋 Привет! Это бот <b>PotolokAI</b>.\n\n` +
+          `Чтобы начать, напишите <b>email</b> от вашего аккаунта на potolok.ai\n\n` +
+          `Например: <code>master@gmail.com</code>\n\n` +
+          `Ещё нет аккаунта? Зарегистрируйтесь на potolok.ai`
+        );
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Email linking — if not linked and text looks like email ──
+    if (!linkedMaster && EMAIL_RE.test(text.toLowerCase())) {
+      const email = text.toLowerCase();
       const master = await prisma.master.findUnique({
-        where: { telegramLinkCode: code },
+        where: { email },
         select: { id: true, firstName: true, telegramChatId: true },
       });
 
       if (!master) {
         await sendTelegramMessage(
           chatId,
-          "❌ Код не найден или уже использован.\n\nСгенерируйте новый код в профиле PotolokAI."
+          `❌ Аккаунт с email <b>${email}</b> не найден.\n\n` +
+          `Проверьте email или зарегистрируйтесь на potolok.ai`
         );
         return NextResponse.json({ ok: true });
       }
 
-      // Save chat_id, clear link code
+      if (master.telegramChatId && master.telegramChatId !== chatId) {
+        await sendTelegramMessage(
+          chatId,
+          `⚠️ Этот аккаунт уже привязан к другому Telegram.\n\n` +
+          `Отвяжите старый в <b>Профиль → Telegram</b> на сайте, потом попробуйте снова.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // Link!
       await prisma.master.update({
         where: { id: master.id },
-        data: {
-          telegramChatId: chatId,
-          telegramLinkCode: null,
-        },
+        data: { telegramChatId: chatId, telegramLinkCode: null },
       });
 
+      await sendLinkedMessage(chatId, master.firstName);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Not linked and not email — prompt to link ──
+    if (!linkedMaster) {
       await sendTelegramMessage(
         chatId,
-        `✅ <b>${master.firstName}, аккаунт PotolokAI привязан!</b>\n\n` +
-        `Теперь вы можете:\n` +
-        `📸 Отправить фото замеров — AI посчитает\n` +
-        `🎤 Наговорить размеры голосом\n` +
-        `✏️ Написать размеры текстом\n\n` +
-        `/help — все команды`
+        `Для начала работы напишите <b>email</b> от аккаунта potolok.ai\n\n` +
+        `Например: <code>master@gmail.com</code>`
       );
       return NextResponse.json({ ok: true });
     }
 
+    // ══════════════════════════════════════════════════
+    // From here — user is linked (linkedMaster exists)
+    // ══════════════════════════════════════════════════
+
     // ── Bot commands ──
     if (text.startsWith("/")) {
-      const command = text.split(" ")[0].split("@")[0]; // strip @botname
-      const master = await prisma.master.findUnique({
-        where: { telegramChatId: chatId },
-        select: { id: true },
-      });
-
-      if (master) {
-        await handleBotCommand(chatId, command, master.id);
-      } else {
-        await sendTelegramMessage(
-          chatId,
-          "❌ Аккаунт не привязан.\n\nПерейдите в <b>Профиль → Telegram</b> на potolok.ai."
-        );
-      }
+      const command = text.split(" ")[0].split("@")[0];
+      await handleBotCommand(chatId, command, linkedMaster.id);
       return NextResponse.json({ ok: true });
     }
 
     // ── Photo message ──
     const photo = message.photo;
     const photoFileId = photo
-      ? photo[photo.length - 1]?.file_id // largest resolution
+      ? photo[photo.length - 1]?.file_id
       : null;
 
     // ── Voice message ──
     const voiceFileId = message.voice?.file_id || message.audio?.file_id || null;
 
     // ── Process message (text / photo / voice) ──
-    // Run in background — respond 200 immediately so Telegram doesn't retry
-    const chatIdCopy = chatId;
-    const textCopy = text || message.caption || null;
-    const photoCopy = photoFileId;
-    const voiceCopy = voiceFileId;
+    const textContent = text || message.caption || null;
 
-    // Use waitUntil-like pattern: start processing but don't await
-    handleTelegramBotMessage(chatIdCopy, textCopy, photoCopy, voiceCopy).catch(
+    handleTelegramBotMessage(chatId, textContent, photoFileId, voiceFileId).catch(
       (err) => console.error("Telegram bot processing error:", err)
     );
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram webhook error:", error);
-    return NextResponse.json({ ok: true }); // always 200 to Telegram
+    return NextResponse.json({ ok: true });
   }
+}
+
+// ── Helper: send "linked successfully" message ──
+async function sendLinkedMessage(chatId: string, firstName: string) {
+  await sendTelegramMessage(
+    chatId,
+    `✅ <b>${firstName}, аккаунт привязан!</b>\n\n` +
+    `Теперь можете:\n` +
+    `📸 Отправить фото замеров — AI посчитает\n` +
+    `🎤 Наговорить размеры голосом\n` +
+    `✏️ Написать размеры текстом\n\n` +
+    `Попробуйте прямо сейчас — отправьте фото! 👆`
+  );
 }
