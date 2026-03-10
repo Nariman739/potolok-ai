@@ -2,12 +2,8 @@
 // Handles: text messages, photos (vision), voice messages (STT)
 
 import { prisma } from "@/lib/prisma";
-import { getOpenRouter, AI_MODEL, VISION_MODEL } from "@/lib/openrouter";
-import {
-  buildSystemPrompt,
-  VISION_EXTRACTION_PROMPT,
-  computeRoomSummary,
-} from "@/lib/assistant-prompt";
+import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
+import { buildSystemPrompt } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
 import { DEFAULT_PRICES, KP_LIMITS } from "@/lib/constants";
 import {
@@ -149,31 +145,17 @@ async function processAIChat(
   const photoUrls = [...(chatSession.photoUrls || [])];
   if (imageUrl) photoUrls.push(imageUrl);
 
-  // Vision extraction if photo
-  let visionData: string | null = null;
-  if (imageUrl) {
-    visionData = await extractRoomsFromPhoto(imageUrl);
-  }
-
-  // Build enriched user content
-  let userContent: string;
-  if (visionData) {
-    const summary = computeRoomSummary(visionData);
-    const summaryBlock = summary ? `\n[СВОДКА: ${summary}]` : "";
-    userContent = `[ФОТО-АНАЛИЗ: ${visionData}]${summaryBlock}\n\n${message || "Посчитай"}`;
-  } else {
-    userContent = message || "Отправлено фото";
-  }
-
+  // Skip separate vision extraction — pass photo directly to conversation AI
+  // This saves ~8 seconds (critical for Vercel Hobby 10s limit)
   const systemPrompt = buildSystemPrompt(masterName, prices);
 
-  // Build OpenAI messages — limit to last 10 messages to avoid timeouts
+  // Build OpenAI messages — limit to last 6 messages to stay within timeout
   const openaiMessages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
   ];
 
-  const recentMessages = allMessages.length > 10
-    ? allMessages.slice(-10)
+  const recentMessages = allMessages.length > 6
+    ? allMessages.slice(-6)
     : allMessages;
 
   for (let i = 0; i < recentMessages.length; i++) {
@@ -181,14 +163,12 @@ async function processAIChat(
     const isCurrentMsg = i === recentMessages.length - 1;
 
     if (msg.role === "user") {
-      if (isCurrentMsg && visionData) {
-        openaiMessages.push({ role: "user", content: userContent });
-      } else if (isCurrentMsg && imageUrl) {
-        // Vision failed — pass image directly
+      if (isCurrentMsg && imageUrl) {
+        // Send photo directly to conversation AI
         openaiMessages.push({
           role: "user",
           content: [
-            { type: "text", text: message || "Посчитай" },
+            { type: "text", text: message || "Посчитай по этому фото замеров" },
             { type: "image_url", image_url: { url: imageUrl } },
           ],
         });
@@ -311,46 +291,6 @@ async function processAIChat(
     clientData,
     sessionId: chatSession.id,
   };
-}
-
-// ─────────────────────────────────────────────────────
-// Vision Extractor — один проход, улучшенный промпт
-// ─────────────────────────────────────────────────────
-async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
-  try {
-    const result = await getOpenRouter().chat.completions.create({
-      model: VISION_MODEL,
-      messages: [
-        { role: "system", content: VISION_EXTRACTION_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Извлеки все помещения из этого чертежа замеров. Сначала прочитай ВСЕ числа, потом разбери каждую фигуру." },
-            { type: "image_url", image_url: { url: imageUrl } },
-          ],
-        },
-      ],
-      stream: false,
-      max_tokens: 4000,
-    });
-    const raw = result.choices[0]?.message?.content?.trim() || null;
-    if (!raw) return null;
-
-    console.log("Vision extraction raw:", raw.slice(0, 500));
-
-    const jsonStart = raw.indexOf("{");
-    const jsonEnd = raw.lastIndexOf("}");
-    const cleaned =
-      jsonStart !== -1 && jsonEnd > jsonStart
-        ? raw.slice(jsonStart, jsonEnd + 1).trim()
-        : raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch (e) {
-    console.error("Vision extraction failed:", e);
-    return null;
-  }
 }
 
 // ─────────────────────────────────────────────────────
