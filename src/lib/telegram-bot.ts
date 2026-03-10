@@ -10,7 +10,6 @@ import {
   sendTelegramMessage,
   sendTypingAction,
   downloadTelegramFile,
-  getTelegramFileUrl,
 } from "@/lib/telegram";
 import type { ChatMessage, RoomInput, CalculationResult } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
@@ -55,14 +54,17 @@ export async function handleTelegramBotMessage(
     }
   }
 
-  // Handle photo → get URL for vision
+  // Handle photo → download and convert to base64 data URL
+  // (Telegram URLs are temporary and may not be accessible by OpenRouter)
   let imageUrl: string | null = null;
   if (photoFileId) {
-    imageUrl = await getTelegramFileUrl(photoFileId);
-    if (!imageUrl) {
+    const photoBuffer = await downloadTelegramFile(photoFileId);
+    if (!photoBuffer) {
       await sendTelegramMessage(chatId, "⚠️ Не удалось загрузить фото. Попробуйте ещё раз.");
       return;
     }
+    const base64 = Buffer.from(photoBuffer).toString("base64");
+    imageUrl = `data:image/jpeg;base64,${base64}`;
   }
 
   if (!messageText && !imageUrl) {
@@ -87,8 +89,9 @@ export async function handleTelegramBotMessage(
       );
     }
   } catch (error) {
-    console.error("Telegram bot AI error:", error);
-    await sendTelegramMessage(chatId, "⚠️ Ошибка AI. Попробуйте ещё раз через минуту.");
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("Telegram bot AI error:", errMsg, error);
+    await sendTelegramMessage(chatId, `⚠️ Ошибка AI: ${errMsg.slice(0, 200)}\n\nПопробуйте /new и отправьте фото ещё раз.`);
   }
 }
 
