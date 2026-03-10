@@ -215,13 +215,15 @@ async function processAIChat(
     try {
       const rawRooms = JSON.parse(roomDataMatch[1]);
       extractedRooms = rawRooms.map((r: Record<string, unknown>) => {
-        const area = Number(r.area) || 0;
-        let length = Number(r.length) || 0;
-        let width = Number(r.width) || 0;
+        const area = Math.round((Number(r.area) || 0) * 100) / 100;
+        let length = Math.round((Number(r.length) || 0) * 100) / 100;
+        let width = Math.round((Number(r.width) || 0) * 100) / 100;
 
         if (area > 0 && (length === 0 || width === 0)) {
-          length = Math.round(Math.sqrt(area * 1.3) * 10) / 10;
-          width = Math.round(Math.sqrt(area / 1.3) * 10) / 10;
+          // Estimate dimensions from area, keeping length * width = area exactly
+          const ratio = 1.3;
+          width = Math.round(Math.sqrt(area / ratio) * 100) / 100;
+          length = Math.round((area / width) * 100) / 100;
         }
 
         return {
