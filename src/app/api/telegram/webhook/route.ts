@@ -4,6 +4,9 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { handleTelegramBotMessage, handleBotCommand } from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
 
+// Allow up to 60s for AI processing (vision + conversation)
+export const maxDuration = 60;
+
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
   try {

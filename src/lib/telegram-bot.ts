@@ -167,14 +167,18 @@ async function processAIChat(
 
   const systemPrompt = buildSystemPrompt(masterName, prices);
 
-  // Build OpenAI messages
+  // Build OpenAI messages — limit to last 10 messages to avoid timeouts
   const openaiMessages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
   ];
 
-  for (let i = 0; i < allMessages.length; i++) {
-    const msg = allMessages[i];
-    const isCurrentMsg = i === allMessages.length - 1;
+  const recentMessages = allMessages.length > 10
+    ? allMessages.slice(-10)
+    : allMessages;
+
+  for (let i = 0; i < recentMessages.length; i++) {
+    const msg = recentMessages[i];
+    const isCurrentMsg = i === recentMessages.length - 1;
 
     if (msg.role === "user") {
       if (isCurrentMsg && visionData) {

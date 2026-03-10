@@ -7,6 +7,8 @@ import { DEFAULT_PRICES } from "@/lib/constants";
 import type { ChatMessage, RoomInput } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
+export const maxDuration = 60;
+
 // Agent 1: Vision Extractor — extracts all rooms from photo document
 async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
   try {
