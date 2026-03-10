@@ -145,10 +145,10 @@ export interface QuickAction {
 
 export interface MasterProfile {
   id: string;
-  email: string;
+  phone: string;
+  email?: string | null;
   firstName: string;
   lastName?: string | null;
-  phone?: string | null;
   companyName?: string | null;
   logoUrl?: string | null;
   brandColor: string;

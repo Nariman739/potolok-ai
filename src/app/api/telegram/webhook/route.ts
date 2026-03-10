@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { handleTelegramBotMessage, handleBotCommand } from "@/lib/telegram-bot";
-
-// Simple email regex
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { normalizePhone, looksLikePhone } from "@/lib/phone";
 
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
@@ -27,7 +25,7 @@ export async function POST(request: Request) {
       const parts = text.split(" ");
       const code = parts[1]?.trim();
 
-      // /start CODE — old link code flow (still works from profile page)
+      // /start CODE — link code flow (from profile page)
       if (code) {
         const master = await prisma.master.findUnique({
           where: { telegramLinkCode: code },
@@ -53,7 +51,6 @@ export async function POST(request: Request) {
 
       // /start without code
       if (linkedMaster) {
-        // Already linked — just greet
         await sendTelegramMessage(
           chatId,
           `👋 <b>${linkedMaster.firstName}, с возвращением!</b>\n\n` +
@@ -65,31 +62,39 @@ export async function POST(request: Request) {
           `/help — все команды`
         );
       } else {
-        // Not linked — ask for email
         await sendTelegramMessage(
           chatId,
           `👋 Привет! Это бот <b>PotolokAI</b>.\n\n` +
-          `Чтобы начать, напишите <b>email</b> от вашего аккаунта на potolok.ai\n\n` +
-          `Например: <code>master@gmail.com</code>\n\n` +
+          `Чтобы начать, напишите <b>номер телефона</b> от аккаунта potolok.ai\n\n` +
+          `Например: <code>+7 700 123 4567</code>\n\n` +
           `Ещё нет аккаунта? Зарегистрируйтесь на potolok.ai`
         );
       }
       return NextResponse.json({ ok: true });
     }
 
-    // ── Email linking — if not linked and text looks like email ──
-    if (!linkedMaster && EMAIL_RE.test(text.toLowerCase())) {
-      const email = text.toLowerCase();
+    // ── Phone linking — if not linked and text looks like phone ──
+    if (!linkedMaster && looksLikePhone(text)) {
+      const phone = normalizePhone(text);
+
+      if (!phone) {
+        await sendTelegramMessage(
+          chatId,
+          `❌ Неверный формат номера.\n\nНапишите в формате: <code>+7 700 123 4567</code>`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
       const master = await prisma.master.findUnique({
-        where: { email },
+        where: { phone },
         select: { id: true, firstName: true, telegramChatId: true },
       });
 
       if (!master) {
         await sendTelegramMessage(
           chatId,
-          `❌ Аккаунт с email <b>${email}</b> не найден.\n\n` +
-          `Проверьте email или зарегистрируйтесь на potolok.ai`
+          `❌ Аккаунт с номером <b>${phone}</b> не найден.\n\n` +
+          `Проверьте номер или зарегистрируйтесь на potolok.ai`
         );
         return NextResponse.json({ ok: true });
       }
@@ -103,7 +108,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
       }
 
-      // Link!
       await prisma.master.update({
         where: { id: master.id },
         data: { telegramChatId: chatId, telegramLinkCode: null },
@@ -113,12 +117,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Not linked and not email — prompt to link ──
+    // ── Not linked and not phone — prompt to link ──
     if (!linkedMaster) {
       await sendTelegramMessage(
         chatId,
-        `Для начала работы напишите <b>email</b> от аккаунта potolok.ai\n\n` +
-        `Например: <code>master@gmail.com</code>`
+        `Для начала работы напишите <b>номер телефона</b> от аккаунта potolok.ai\n\n` +
+        `Например: <code>+7 700 123 4567</code>`
       );
       return NextResponse.json({ ok: true });
     }

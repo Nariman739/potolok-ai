@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession } from "@/lib/auth";
+import { normalizePhone } from "@/lib/phone";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email: rawEmail, password } = body;
+    const { phone: rawPhone, password } = body;
 
-    if (!rawEmail || !password) {
+    if (!rawPhone || !password) {
       return NextResponse.json(
-        { error: "Введите email и пароль" },
+        { error: "Введите телефон и пароль" },
         { status: 400 }
       );
     }
 
-    const email = rawEmail.toLowerCase().trim();
+    const phone = normalizePhone(rawPhone);
+    if (!phone) {
+      return NextResponse.json(
+        { error: "Неверный формат телефона" },
+        { status: 400 }
+      );
+    }
 
-    const master = await prisma.master.findUnique({ where: { email } });
+    const master = await prisma.master.findUnique({ where: { phone } });
     if (!master) {
       return NextResponse.json(
-        { error: "Неверный email или пароль" },
+        { error: "Неверный телефон или пароль" },
         { status: 401 }
       );
     }
@@ -34,7 +41,7 @@ export async function POST(request: Request) {
     const valid = await verifyPassword(password, master.passwordHash);
     if (!valid) {
       return NextResponse.json(
-        { error: "Неверный email или пароль" },
+        { error: "Неверный телефон или пароль" },
         { status: 401 }
       );
     }
@@ -43,7 +50,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       id: master.id,
-      email: master.email,
+      phone: master.phone,
       firstName: master.firstName,
       companyName: master.companyName,
     });

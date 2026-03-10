@@ -25,14 +25,14 @@ export default function LoginPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
     const password = formData.get("password") as string;
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone, password }),
       });
 
       const data = await res.json();
@@ -61,14 +61,14 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="phone">Номер телефона</Label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="master@example.com"
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="+7 700 123 4567"
               required
-              autoComplete="email"
+              autoComplete="tel"
             />
           </div>
           <div className="space-y-2">

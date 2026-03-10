@@ -13,13 +13,13 @@ datasource db {
 
 model Master {
   id              String   @id @default(uuid())
-  email           String   @unique
+  phone           String   @unique
+  email           String?  @unique
   passwordHash    String
 
   // Profile
   firstName       String
   lastName        String?
-  phone           String?
   companyName     String?
 
   // Branding (for KP PDFs)

@@ -25,7 +25,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
     const password = formData.get("password") as string;
     const firstName = formData.get("firstName") as string;
     const companyName = formData.get("companyName") as string;
@@ -34,7 +34,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, firstName, companyName }),
+        body: JSON.stringify({ phone, password, firstName, companyName }),
       });
 
       const data = await res.json();
@@ -84,14 +84,14 @@ export default function RegisterPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="phone">Номер телефона</Label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="master@example.com"
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="+7 700 123 4567"
               required
-              autoComplete="email"
+              autoComplete="tel"
             />
           </div>
           <div className="space-y-2">
