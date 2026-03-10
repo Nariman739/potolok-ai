@@ -11,6 +11,7 @@ import {
   sendTypingAction,
   downloadTelegramFile,
 } from "@/lib/telegram";
+import { runVisionAgents, formatVisionResults } from "@/lib/vision-agents";
 import type { ChatMessage, RoomInput, CalculationResult } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
@@ -74,7 +75,26 @@ export async function handleTelegramBotMessage(
 
   // Process through AI
   try {
-    const result = await processAIChat(master.id, master.companyName || master.firstName, messageText, imageUrl);
+    // If photo → run multi-agent vision first, then conversation without photo
+    let visionContext: string | null = null;
+    if (imageUrl) {
+      try {
+        const visionResult = await runVisionAgents(imageUrl);
+        visionContext = formatVisionResults(visionResult);
+        console.log("[Multi-agent] Vision context:", visionContext);
+      } catch (visionErr) {
+        console.error("Vision agents error:", visionErr);
+        // Fall back to single-agent with photo
+      }
+    }
+
+    const result = await processAIChat(
+      master.id,
+      master.companyName || master.firstName,
+      messageText,
+      visionContext ? null : imageUrl, // No photo if vision agents succeeded
+      visionContext
+    );
     await sendTelegramMessage(chatId, result.response);
 
     // If client_data was extracted and we have a calculation → auto-create КП
@@ -110,7 +130,8 @@ async function processAIChat(
   masterId: string,
   masterName: string,
   message: string | null,
-  imageUrl: string | null
+  imageUrl: string | null,
+  visionContext: string | null = null
 ): Promise<AIResult> {
   // Load master prices
   const masterPrices = await prisma.masterPrice.findMany({
@@ -166,8 +187,14 @@ async function processAIChat(
     const isCurrentMsg = i === recentMessages.length - 1;
 
     if (msg.role === "user") {
-      if (isCurrentMsg && imageUrl) {
-        // Send photo directly to conversation AI
+      if (isCurrentMsg && visionContext) {
+        // Multi-agent: pass structured vision data instead of photo (saves tokens!)
+        openaiMessages.push({
+          role: "user",
+          content: `${message || "Посчитай по фото замеров"}\n\n--- РЕЗУЛЬТАТ АНАЛИЗА ФОТО ---\n${visionContext}`,
+        });
+      } else if (isCurrentMsg && imageUrl) {
+        // Fallback: send photo directly to conversation AI
         openaiMessages.push({
           role: "user",
           content: [
@@ -184,11 +211,12 @@ async function processAIChat(
   }
 
   // Non-streaming AI call
+  // When vision context is provided, conversation agent needs fewer tokens
   const result = await getOpenRouter().chat.completions.create({
     model: AI_MODEL,
     messages: openaiMessages,
     stream: false,
-    max_tokens: 2000,
+    max_tokens: visionContext ? 1200 : 2000,
   });
 
   const fullContent = result.choices[0]?.message?.content?.trim() || "Нет ответа от AI";
