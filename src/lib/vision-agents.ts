@@ -313,24 +313,22 @@ export async function runVisionAgents(imageBase64Url: string): Promise<MultiAgen
 // Format results for conversation agent
 // ─────────────────────────────────────────────────────
 export function formatVisionResults(result: MultiAgentResult): string {
-  const lines = [`Данные с фото замеров (${result.totalRooms} комнат):\n`];
+  const n = result.totalRooms;
+  const roomWord = n === 1 ? "комнату" : n < 5 ? "комнаты" : "комнат";
+  const lines = [`Нашёл ${n} ${roomWord}:`];
 
   for (const room of result.rooms) {
     const extra = room.corners > 4 ? ` (${room.corners - 4} доп.)` : "";
     lines.push(
-      `• ${room.name}: ${room.area} м², периметр ${room.perimeter} м, ` +
-      `${room.corners} углов${extra}, форма: ${room.shape}`
+      `• ${room.name} — ${room.area} м², периметр ${room.perimeter} м, ${room.corners} углов${extra}`
     );
-    if (room.walls.length > 0) {
-      lines.push(`  стены: ${room.walls.map(w => w + "м").join(" + ")} = ${room.perimeter} м`);
-    }
     if (room.area === 0) {
       lines.push(`  ⚠️ Площадь не удалось рассчитать — проверьте данные`);
     }
   }
 
-  lines.push(`\nИтого: ${result.totalArea} м², периметр ${result.totalPerimeter} м, ${result.totalCorners} углов`);
-  lines.push(`\n✅ Периметр и площадь рассчитаны программой (не AI)`);
+  lines.push(`\nОбщая площадь: ${result.totalArea} м², общий периметр: ${result.totalPerimeter} м`);
+  lines.push(`\nПроверьте — всё верно? Можете переименовать ('1 — зал, 2 — спальня').`);
 
   return lines.join("\n");
 }
