@@ -146,7 +146,7 @@ export default function VisionTestPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-lg">{room.name}</h3>
                 <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                  {room.shape}
+                  {room.corners} углов
                 </span>
               </div>
 
@@ -177,10 +177,17 @@ export default function VisionTestPage() {
                 {room.walls_cm.join(" + ")} ={" "}
                 {room.walls_cm.reduce((a, b) => a + b, 0)} см
               </div>
-              <div className="text-sm">
-                <span className="font-medium">Повороты:</span>{" "}
-                {room.turns.join(", ")}
-              </div>
+              {room.rectangles_cm.length > 0 && (
+                <div className="text-sm">
+                  <span className="font-medium">Разбивка:</span>{" "}
+                  {room.rectangles_cm.map((r, i) => (
+                    <span key={i}>
+                      {i > 0 && " + "}
+                      {r.w_cm}×{r.h_cm}см
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {room.area === 0 && (
                 <div className="text-sm text-amber-600 dark:text-amber-400 font-medium">
