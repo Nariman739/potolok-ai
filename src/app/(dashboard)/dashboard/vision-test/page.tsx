@@ -177,15 +177,9 @@ export default function VisionTestPage() {
                 {room.walls_cm.join(" + ")} ={" "}
                 {room.walls_cm.reduce((a, b) => a + b, 0)} см
               </div>
-              {room.rectangles_cm.length > 0 && (
-                <div className="text-sm">
-                  <span className="font-medium">Разбивка:</span>{" "}
-                  {room.rectangles_cm.map((r, i) => (
-                    <span key={i}>
-                      {i > 0 && " + "}
-                      {r.w_cm}×{r.h_cm}см
-                    </span>
-                  ))}
+              {room.areaMethod && (
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">Метод:</span> {room.areaMethod}
                 </div>
               )}
 
