@@ -27,7 +27,7 @@ export default async function EstimateDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const master = await getCurrentMaster();
-  if (!master) redirect("/auth/login");
+  if (!master) redirect("/api/auth/clear");
 
   const { id } = await params;
 

@@ -28,7 +28,7 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
 
 export default async function EstimatesPage() {
   const master = await getCurrentMaster();
-  if (!master) redirect("/auth/login");
+  if (!master) redirect("/api/auth/clear");
 
   const estimates = await prisma.estimate.findMany({
     where: { masterId: master.id },
