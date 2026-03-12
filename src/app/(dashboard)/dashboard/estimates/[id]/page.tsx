@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   VIEWED: { label: "Просмотрено", variant: "outline" },
   CONFIRMED: { label: "Подтверждено ✓", variant: "default" },
   REJECTED: { label: "Отклонено", variant: "destructive" },
+  REVISED: { label: "Пересмотрено", variant: "secondary" },
 };
 
 
@@ -95,6 +96,7 @@ export default async function EstimateDetailPage({
           clientPhone={estimate.clientPhone}
           status={estimate.status}
           contractConfigured={!!master.contractType && master.contractType !== "none"}
+          validUntil={estimate.validUntil}
         />
       </div>
 

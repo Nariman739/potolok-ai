@@ -44,6 +44,7 @@ export default async function PublicKpPage({
           logoUrl: true,
           instagramUrl: true,
           whatsappPhone: true,
+          phone: true,
         },
       },
     },
@@ -272,16 +273,16 @@ export default async function PublicKpPage({
       )}
 
       {/* ── CONTACT ── */}
-      {(master.whatsappPhone || master.instagramUrl) && (
+      {(master.whatsappPhone || master.phone || master.instagramUrl) && (
         <section className="px-4 pb-6">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 text-center">
             <p className="font-semibold text-gray-900 mb-4">
               Остались вопросы?
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              {master.whatsappPhone && (
+              {(master.whatsappPhone || master.phone) && (
                 <a
-                  href={`tel:${master.whatsappPhone}`}
+                  href={`tel:${(master.whatsappPhone || master.phone)!.replace(/\D/g, "")}`}
                   className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   📞 Позвонить

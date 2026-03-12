@@ -54,11 +54,30 @@ function CalculatorContent() {
   const [loadingFrom, setLoadingFrom] = useState(false);
   const loadedRef = useRef(false);
 
-  // Load rooms from existing estimate (?from=estimateId)
+  // Load rooms from existing estimate (?from=estimateId) or from vision (?from=vision)
   useEffect(() => {
     const fromId = searchParams.get("from");
     if (!fromId || loadedRef.current) return;
     loadedRef.current = true;
+
+    if (fromId === "vision") {
+      try {
+        const stored = localStorage.getItem("vision-rooms");
+        if (stored) {
+          const importedRooms: RoomInput[] = JSON.parse(stored);
+          localStorage.removeItem("vision-rooms");
+          if (importedRooms.length > 0) {
+            loadRooms(importedRooms);
+            setShowForm(false);
+            toast.success(`Загружено ${importedRooms.length} комнат из замеров — выберите тип полотна и рассчитайте`);
+          }
+        }
+      } catch {
+        toast.error("Не удалось загрузить комнаты из замеров");
+      }
+      return;
+    }
+
     setLoadingFrom(true);
     fetch(`/api/estimates/${fromId}`)
       .then((r) => r.ok ? r.json() : null)

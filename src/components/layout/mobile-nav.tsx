@@ -7,17 +7,16 @@ import {
   LayoutDashboard,
   Calculator,
   FileText,
-  DollarSign,
-  User,
   MessageSquare,
+  Camera,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/dashboard/assistant", label: "AI", icon: MessageSquare },
+  { href: "/dashboard/vision-test", label: "Замеры", icon: Camera },
   { href: "/dashboard/calculator", label: "Расчёт", icon: Calculator },
   { href: "/dashboard/estimates", label: "КП", icon: FileText },
-  { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
 ];
 
 export function MobileNav() {

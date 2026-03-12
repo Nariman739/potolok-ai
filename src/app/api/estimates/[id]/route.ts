@@ -54,10 +54,10 @@ export async function PUT(
       );
     }
 
-    const { clientName, clientPhone, clientAddress, status } = body;
+    const { clientName, clientPhone, clientAddress, status, validUntil } = body;
 
     // Validate status transitions that master can do
-    const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED"];
+    const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED"];
     if (status !== undefined && !allowedMasterStatuses.includes(status)) {
       return NextResponse.json(
         { error: "Недопустимый статус" },
@@ -72,6 +72,7 @@ export async function PUT(
         ...(clientPhone !== undefined && { clientPhone }),
         ...(clientAddress !== undefined && { clientAddress }),
         ...(status !== undefined && { status }),
+        ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
       },
     });
 

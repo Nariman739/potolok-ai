@@ -59,7 +59,7 @@ export default function MarketingLayout({
             {/* Mobile hamburger menu */}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <button className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1A2332] transition-colors">
+                <button suppressHydrationWarning className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1A2332] transition-colors">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Меню</span>
                 </button>

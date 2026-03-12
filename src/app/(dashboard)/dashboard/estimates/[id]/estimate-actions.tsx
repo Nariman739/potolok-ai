@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Share2, MessageCircle, Check, Trash2, Download, FileText, ClipboardCheck, RotateCcw } from "lucide-react";
+import { Share2, MessageCircle, Check, Trash2, Download, FileText, ClipboardCheck, RotateCcw, Copy, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 interface EstimateActionsProps {
@@ -12,6 +12,7 @@ interface EstimateActionsProps {
   clientPhone?: string | null;
   status?: string;
   contractConfigured?: boolean;
+  validUntil?: Date | null;
 }
 
 export function EstimateActions({
@@ -20,11 +21,13 @@ export function EstimateActions({
   clientPhone,
   status,
   contractConfigured,
+  validUntil,
 }: EstimateActionsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [revising, setRevising] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -72,6 +75,46 @@ export function EstimateActions({
     }
   };
 
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}/duplicate`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success("КП скопировано");
+        router.push(`/dashboard/estimates/${data.id}`);
+      } else {
+        toast.error("Ошибка копирования");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const handleValidUntil = async (dateStr: string) => {
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ validUntil: dateStr || null }),
+      });
+      if (res.ok) {
+        toast.success(dateStr ? "Срок действия установлен" : "Срок действия убран");
+        router.refresh();
+      } else {
+        toast.error("Ошибка");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    }
+  };
+
+  const validUntilValue = validUntil
+    ? new Date(validUntil).toISOString().split("T")[0]
+    : "";
+
   return (
     <div className="flex flex-wrap gap-3">
       <Button variant="outline" size="sm" onClick={handleCopy}>
@@ -113,6 +156,15 @@ export function EstimateActions({
           </a>
         </Button>
       )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDuplicate}
+        disabled={duplicating}
+      >
+        <Copy className="h-4 w-4 mr-2" />
+        {duplicating ? "..." : "Дублировать"}
+      </Button>
       {(status === "CONFIRMED" || status === "SENT" || status === "VIEWED") && (
         <Button
           variant="outline"
@@ -145,6 +197,19 @@ export function EstimateActions({
           {revising ? "..." : "Пересмотреть"}
         </Button>
       )}
+
+      {/* Срок действия КП */}
+      <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
+        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+        <label className="text-muted-foreground text-xs whitespace-nowrap">Действительно до:</label>
+        <input
+          type="date"
+          defaultValue={validUntilValue}
+          className="text-sm bg-transparent outline-none w-32"
+          onChange={(e) => handleValidUntil(e.target.value)}
+        />
+      </div>
+
       <Button
         variant="outline"
         size="sm"

@@ -3,27 +3,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Bot, Calculator } from "lucide-react";
-import { formatPrice, formatDateShort } from "@/lib/format";
 import type { Metadata } from "next";
+import { EstimatesList } from "./estimates-list";
 
 export const metadata: Metadata = {
   title: "Расчёты",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Черновик",
-  SENT: "Отправлено",
-  VIEWED: "Просмотрено",
-  CONFIRMED: "Подтверждено",
-  REJECTED: "Отклонено",
-  REVISED: "Пересмотрено",
-};
-
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-  REVISED: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 export default async function EstimatesPage() {
@@ -33,6 +19,15 @@ export default async function EstimatesPage() {
   const estimates = await prisma.estimate.findMany({
     where: { masterId: master.id },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      clientName: true,
+      createdAt: true,
+      totalArea: true,
+      total: true,
+      standardTotal: true,
+      status: true,
+    },
   });
 
   return (
@@ -84,41 +79,7 @@ export default async function EstimatesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {estimates.map((est) => (
-            <Link
-              key={est.id}
-              href={`/dashboard/estimates/${est.id}`}
-              className="block"
-            >
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="py-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div>
-                      <p className="font-semibold">
-                        {est.clientName || "Без имени"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDateShort(est.createdAt)} | {est.totalArea.toFixed(1)} м²
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 sm:flex-col sm:items-end">
-                      <span className="font-bold text-[#1e3a5f] text-sm">
-                        {formatPrice(est.total || est.standardTotal || 0)}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs ${STATUS_BADGE_CLASSES[est.status] || ""}`}
-                      >
-                        {STATUS_LABELS[est.status] || est.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <EstimatesList estimates={estimates} />
       )}
     </div>
   );

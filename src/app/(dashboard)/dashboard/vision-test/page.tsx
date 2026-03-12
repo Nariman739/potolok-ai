@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { compressImage } from "@/lib/compress-image";
-import type { MultiAgentResult } from "@/lib/vision-agents";
+import type { MultiAgentResult, MergedRoom } from "@/lib/vision-agents";
+import type { RoomInput } from "@/lib/types";
+import type { CanvasType } from "@/lib/constants";
 
 // ─────────────────────────────────────────────────────
 // Rectilinear polygon solver (client-side copy for manual testing)
@@ -204,16 +207,71 @@ function ManualCalculator() {
 }
 
 // ─────────────────────────────────────────────────────
+// Convert vision rooms → RoomInput for calculator
+// ─────────────────────────────────────────────────────
+
+function visionToRoomInputs(rooms: MergedRoom[]): RoomInput[] {
+  return rooms.map((room) => {
+    let length: number;
+    let width: number;
+
+    if (room.walls_cm.length === 4) {
+      length = Math.round(room.walls_cm[0]) / 100;
+      width = Math.round(room.walls_cm[1]) / 100;
+    } else {
+      const maxWall = Math.max(...room.walls_cm) / 100;
+      const area = room.area;
+      if (maxWall > 0 && area > 0) {
+        length = maxWall;
+        width = Math.round((area / maxWall) * 100) / 100;
+      } else {
+        length = Math.round(Math.sqrt(area) * 100) / 100;
+        width = length;
+      }
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      name: room.name,
+      length,
+      width,
+      ceilingHeight: 2.7,
+      canvasType: "matte" as CanvasType,
+      spotsCount: 0,
+      chandelierCount: 0,
+      chandelierInstallCount: 0,
+      trackMagneticLength: 0,
+      lightLineLength: 0,
+      curtainRodLength: 0,
+      pipeBypasses: 0,
+      cornersCount: room.corners,
+      eurobrusCount: 0,
+      gardinaLength: 0,
+      podshtornikLength: 0,
+      shape: room.walls_cm.length === 4 ? "rectangle" : undefined,
+    } satisfies RoomInput;
+  });
+}
+
+// ─────────────────────────────────────────────────────
 // AI Vision Test Component
 // ─────────────────────────────────────────────────────
 
 export default function VisionTestPage() {
+  const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MultiAgentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rawJson, setRawJson] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleCreateEstimate() {
+    if (!result) return;
+    const rooms = visionToRoomInputs(result.rooms);
+    localStorage.setItem("vision-rooms", JSON.stringify(rooms));
+    router.push("/dashboard/calculator?from=vision");
+  }
 
   async function handleFile(file: File) {
     setError(null);
@@ -310,10 +368,16 @@ export default function VisionTestPage() {
 
       {result && (
         <div className="space-y-4">
-          <div className="rounded-lg bg-green-50 dark:bg-green-950/30 p-4">
+          <div className="rounded-lg bg-green-50 dark:bg-green-950/30 p-4 flex items-center justify-between gap-4 flex-wrap">
             <h2 className="text-lg font-bold text-green-800 dark:text-green-200">
               Итого: {result.totalArea} м² | Периметр: {result.totalPerimeter} м | {result.totalCorners} углов
             </h2>
+            <button
+              onClick={handleCreateEstimate}
+              className="rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#152d4a] shrink-0"
+            >
+              Создать КП →
+            </button>
           </div>
 
           {result.rooms.map((room) => (
