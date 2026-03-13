@@ -2,9 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+    if (!rl.allowed) {
+      const retryAfterSec = Math.ceil(rl.retryAfterMs / 1000);
+      return NextResponse.json(
+        { error: `Слишком много попыток. Попробуйте через ${Math.ceil(retryAfterSec / 60)} мин.` },
+        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+      );
+    }
+
     const body = await request.json();
     const { phone: rawPhone, password } = body;
 

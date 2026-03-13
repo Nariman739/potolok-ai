@@ -11,7 +11,6 @@ import {
   User,
   LogOut,
   MessageSquare,
-  Camera,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -19,7 +18,6 @@ import { Logo } from "@/components/logo";
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/dashboard/assistant", label: "Ассистент", icon: MessageSquare },
-  { href: "/dashboard/vision-test", label: "Замеры", icon: Camera },
   { href: "/dashboard/calculator", label: "Калькулятор", icon: Calculator },
   { href: "/dashboard/estimates", label: "Расчёты", icon: FileText },
   { href: "/dashboard/prices", label: "Цены", icon: DollarSign },

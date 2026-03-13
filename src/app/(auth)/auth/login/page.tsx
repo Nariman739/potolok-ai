@@ -106,6 +106,14 @@ export default function LoginPage() {
               Зарегистрироваться
             </Link>
           </p>
+          <p className="text-sm text-muted-foreground">
+            <Link
+              href="/auth/forgot-password"
+              className="font-medium text-[#1e3a5f] hover:underline"
+            >
+              Забыли пароль?
+            </Link>
+          </p>
         </CardFooter>
       </form>
     </Card>

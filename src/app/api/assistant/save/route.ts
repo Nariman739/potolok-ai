@@ -9,9 +9,27 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
 
+    // Auto-reset KP counter if new month
+    const now = new Date();
+    const masterDb = await prisma.master.findUnique({
+      where: { id: master.id },
+      select: { kpGeneratedThisMonth: true, kpMonthReset: true },
+    });
+    let kpCount = masterDb?.kpGeneratedThisMonth ?? master.kpGeneratedThisMonth;
+    if (masterDb) {
+      const resetDate = new Date(masterDb.kpMonthReset);
+      if (now.getMonth() !== resetDate.getMonth() || now.getFullYear() !== resetDate.getFullYear()) {
+        await prisma.master.update({
+          where: { id: master.id },
+          data: { kpGeneratedThisMonth: 0, kpMonthReset: now },
+        });
+        kpCount = 0;
+      }
+    }
+
     // Check KP limit
     const limit = KP_LIMITS[master.subscriptionTier];
-    if (master.kpGeneratedThisMonth >= limit) {
+    if (kpCount >= limit) {
       return NextResponse.json(
         { error: `Лимит КП исчерпан (${limit}/мес). Перейдите на PRO.` },
         { status: 403 }

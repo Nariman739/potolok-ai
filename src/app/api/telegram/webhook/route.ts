@@ -10,6 +10,14 @@ export const maxDuration = 60;
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
   try {
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (secret) {
+      const header = request.headers.get("x-telegram-bot-api-secret-token");
+      if (header !== secret) {
+        return NextResponse.json({ ok: false }, { status: 403 });
+      }
+    }
+
     const body = await request.json();
     const message = body?.message;
     if (!message) return NextResponse.json({ ok: true });

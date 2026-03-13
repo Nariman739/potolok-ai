@@ -1,28 +1,65 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { RoomInput, CalculationResult } from "@/lib/types";
+
+const AUTOSAVE_KEY = "calculator-rooms-draft";
+
+function saveToStorage(rooms: RoomInput[]) {
+  try {
+    if (rooms.length > 0) {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(rooms));
+    } else {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    }
+  } catch {}
+}
 
 export function useCalculator() {
   const [rooms, setRooms] = useState<RoomInput[]>([]);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+
+  // Restore draft on first mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const parsed: RoomInput[] = JSON.parse(saved);
+        if (parsed.length > 0) {
+          setRooms(parsed);
+          setRestoredDraft(true);
+        }
+      }
+    } catch {}
+  }, []);
 
   const addRoom = useCallback((room: RoomInput) => {
-    setRooms((prev) => [...prev, room]);
+    setRooms((prev) => {
+      const next = [...prev, room];
+      saveToStorage(next);
+      return next;
+    });
     setResult(null);
   }, []);
 
   const updateRoom = useCallback((id: string, updates: Partial<RoomInput>) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
-    );
+    setRooms((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, ...updates } : r));
+      saveToStorage(next);
+      return next;
+    });
     setResult(null);
   }, []);
 
   const removeRoom = useCallback((id: string) => {
-    setRooms((prev) => prev.filter((r) => r.id !== id));
+    setRooms((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      saveToStorage(next);
+      return next;
+    });
     setResult(null);
   }, []);
 
@@ -30,7 +67,7 @@ export function useCalculator() {
     setRooms((prev) => {
       const room = prev.find((r) => r.id === id);
       if (!room) return prev;
-      return [
+      const next = [
         ...prev,
         {
           ...room,
@@ -38,6 +75,8 @@ export function useCalculator() {
           name: room.name + " (копия)",
         },
       ];
+      saveToStorage(next);
+      return next;
     });
     setResult(null);
   }, []);
@@ -82,6 +121,7 @@ export function useCalculator() {
 
   const reset = useCallback(() => {
     setRooms([]);
+    saveToStorage([]);
     setResult(null);
     setError(null);
   }, []);
@@ -91,6 +131,7 @@ export function useCalculator() {
     result,
     isCalculating,
     error,
+    restoredDraft,
     addRoom,
     updateRoom,
     removeRoom,

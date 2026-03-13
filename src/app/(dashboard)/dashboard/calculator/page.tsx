@@ -36,6 +36,7 @@ function CalculatorContent() {
     result,
     isCalculating,
     error,
+    restoredDraft,
     addRoom,
     updateRoom,
     removeRoom,
@@ -53,6 +54,24 @@ function CalculatorContent() {
   const [priceMap, setPriceMap] = useState<Record<string, number>>({});
   const [loadingFrom, setLoadingFrom] = useState(false);
   const loadedRef = useRef(false);
+
+  // Toast when draft is restored from localStorage
+  useEffect(() => {
+    if (restoredDraft) {
+      toast.info("Восстановлен черновик из предыдущего сеанса");
+    }
+  }, [restoredDraft]);
+
+  // Warn before leaving if rooms are added
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (rooms.length > 0 && !result) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [rooms.length, result]);
 
   // Load rooms from existing estimate (?from=estimateId) or from vision (?from=vision)
   useEffect(() => {

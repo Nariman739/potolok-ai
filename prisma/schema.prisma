@@ -33,6 +33,10 @@ model Master {
   telegramChatId   String?  @unique
   telegramLinkCode String?  @unique  // temp code for /start deep link
 
+  // Password reset OTP (sent via Telegram)
+  resetOtp          String?
+  resetOtpExpiresAt DateTime?
+
   // Contract settings
   contractType      String?  // "ip" | "individual" | null
   bin               String?  // БИН (для ИП)

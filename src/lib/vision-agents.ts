@@ -114,7 +114,7 @@ async function callVisionAgent(imageBase64Url: string): Promise<string> {
       {
         role: "user",
         content: [
-          { type: "text", text: "Прочитай все размеры с этого чертежа замеров. Сначала перечисли все числа, потом определи комнаты, потом запиши стены." },
+          { type: "text", text: "Найди все комнаты на чертеже и выпиши числа с каждой стены." },
           { type: "image_url", image_url: { url: imageBase64Url } },
         ],
       },
