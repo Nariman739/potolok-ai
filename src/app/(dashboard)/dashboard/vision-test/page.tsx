@@ -48,6 +48,8 @@ interface Vertex { x: number; y: number }
 function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
   vertices: Vertex[];
   closed: boolean;
+  gapX: number;
+  gapY: number;
 } {
   const n = walls.length;
   const reflex = new Set<number>();
@@ -62,8 +64,8 @@ function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
     vertices.push({ x, y });
     dir = reflex.has((i + 1) % n) ? (dir + 3) % 4 : (dir + 1) % 4;
   }
-  const closed = vertices.length === n + 1 && Math.abs(x) < 0.5 && Math.abs(y) < 0.5;
-  return { vertices, closed };
+  const closed = vertices.length === n + 1 && Math.abs(x) < 2 && Math.abs(y) < 2;
+  return { vertices, closed, gapX: x, gapY: y };
 }
 
 function RoomPreview({
@@ -75,7 +77,7 @@ function RoomPreview({
   committedCount?: number;
   nextDir?: number;
 }) {
-  const { vertices, closed } = buildVertices(walls);
+  const { vertices, closed, gapX, gapY } = buildVertices(walls);
   const committed = committedCount ?? walls.length;
 
   if (vertices.length < 2) {
@@ -142,23 +144,26 @@ function RoomPreview({
           );
         })}
 
-        {/* Ghost: next wall direction (green dashed stub) */}
+        {/* Gap line: dashed red from last point back to start when not closed and 4+ walls */}
+        {!closed && vertices.length >= 5 && (Math.abs(gapX) > 2 || Math.abs(gapY) > 2) && (() => {
+          const lastV = vertices[vertices.length - 1];
+          return (
+            <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(0)} y2={sy(0)}
+              stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4,3" strokeLinecap="round" opacity={0.5} />
+          );
+        })()}
+
+        {/* Ghost: short fixed-pixel stub showing next wall direction */}
         {nextDir !== undefined && !closed && (() => {
           const lastV = vertices[vertices.length - 1];
-          const stubLen = Math.max(W, H) * 0.22;
+          const stubLen = 20 / scale; // fixed 20px in SVG coords
           const gx = lastV.x + DX[nextDir] * stubLen;
           const gy = lastV.y + DY[nextDir] * stubLen;
-          const mx = sx((lastV.x + gx) / 2);
-          const my = sy((lastV.y + gy) / 2);
           return (
             <g>
               <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(gx)} y2={sy(gy)}
-                stroke="#10b981" strokeWidth={2.5} strokeDasharray="5,3" strokeLinecap="round" />
-              <circle cx={sx(gx)} cy={sy(gy)} r={3} fill="#10b981" />
-              <rect x={mx - 8} y={my - 8} width={16} height={14} rx={3} fill="#d1fae5" fillOpacity={0.9} />
-              <text x={mx} y={my + 3} textAnchor="middle" fontSize={9} fill="#065f46" fontWeight="700">
-                {["→","↓","←","↑"][nextDir]}
-              </text>
+                stroke="#10b981" strokeWidth={3} strokeLinecap="round" />
+              <circle cx={sx(gx)} cy={sy(gy)} r={4} fill="#10b981" />
             </g>
           );
         })()}
@@ -277,12 +282,27 @@ function WallWizard({ onDone, onCancel }: {
         </div>
 
         {/* SVG Preview */}
-        <div className="shrink-0 p-3" style={{ height: 200 }}>
+        <div className="shrink-0 px-3 pt-3" style={{ height: 210 }}>
           <RoomPreview
             walls={previewWalls}
             committedCount={committed.length}
             nextDir={isStep ? (currentWallDir + 3) % 4 : (currentWallDir + 1) % 4}
           />
+          {/* Gap hint */}
+          {(() => {
+            const preview = committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner }));
+            const { closed: c, gapX: gx, gapY: gy } = buildVertices(preview);
+            if (c || committed.length < 4) return null;
+            const parts: string[] = [];
+            if (Math.abs(gx) > 2) parts.push(`${Math.abs(Math.round(gx))} см ${gx > 0 ? "←" : "→"}`);
+            if (Math.abs(gy) > 2) parts.push(`${Math.abs(Math.round(gy))} см ${gy > 0 ? "↑" : "↓"}`);
+            if (parts.length === 0) return null;
+            return (
+              <p className="text-xs text-center text-red-500 mt-1">
+                Не сходится: нужно ещё {parts.join(" и ")}
+              </p>
+            );
+          })()}
         </div>
 
         {isValid && doneResult ? (
