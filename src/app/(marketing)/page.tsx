@@ -13,6 +13,7 @@ import {
   Bell,
   Layers,
 } from "lucide-react";
+import { FaqList } from "./faq-list";
 
 export default function HomePage() {
   return (
@@ -363,49 +364,7 @@ export default function HomePage() {
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-14">
             Частые вопросы
           </h2>
-          <div className="space-y-4">
-            {[
-              {
-                q: "Как начать пользоваться?",
-                a: "Зарегистрируйтесь, настройте свои цены, добавьте комнаты в калькуляторе — и получите расчёт за минуту. Это бесплатно.",
-              },
-              {
-                q: "Какие позиции есть в калькуляторе?",
-                a: "28+ стандартных позиций: полотно (мат/сатин/глянец), профиль (пластик/алюминий/теневой), споты, люстры, карниз, гардина, подшторник, обход труб и многое другое. Также можете добавить свои позиции.",
-              },
-              {
-                q: "Как работает генератор договора?",
-                a: "Заполните реквизиты в профиле (ИП или физлицо) — и для каждого КП автоматически формируется договор с предоплатой, гарантией и актом выполненных работ.",
-              },
-              {
-                q: "Можно ли отправить КП клиенту?",
-                a: "Да! Каждое КП имеет красивую публичную ссылку. Отправьте в WhatsApp — клиент посмотрит и подтвердит онлайн. Вы получите уведомление в Telegram.",
-              },
-              {
-                q: "Нужно ли устанавливать приложение?",
-                a: "Нет, PotolokAI работает в браузере на любом устройстве. Также есть Telegram-бот @potolokaiBot для уведомлений.",
-              },
-              {
-                q: "Есть бесплатный период?",
-                a: "Тариф «Старт» бесплатный навсегда — 5 КП в месяц с калькулятором и PDF. Этого хватит чтобы оценить сервис.",
-              },
-            ].map((faq) => (
-              <details
-                key={faq.q}
-                className="group rounded-2xl border border-[#334155] bg-[#1A2332] transition-colors open:border-[rgba(37,99,235,0.3)]"
-              >
-                <summary className="flex cursor-pointer items-center justify-between p-5 text-[#F1F5F9] font-medium">
-                  {faq.q}
-                  <span className="text-[#64748B] group-open:rotate-45 transition-transform text-xl ml-4 shrink-0">
-                    +
-                  </span>
-                </summary>
-                <p className="px-5 pb-5 text-sm text-[#94A3B8] leading-relaxed">
-                  {faq.a}
-                </p>
-              </details>
-            ))}
-          </div>
+          <FaqList />
         </div>
       </section>
 

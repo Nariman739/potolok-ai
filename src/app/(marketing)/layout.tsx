@@ -124,11 +124,33 @@ export default function MarketingLayout({
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-[#334155]/50 py-8 bg-[#0a1018]">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-[#64748B]">
-            &copy; {new Date().getFullYear()} PotolokAI. Казахстан.
-          </p>
+      <footer className="border-t border-[#334155]/50 py-10 bg-[#0a1018]">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col items-center md:items-start gap-1">
+              <Logo size="sm" variant="light" />
+              <p className="text-xs text-[#64748B] mt-1">Казахстан · potolok.ai</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
+              <a href="#features" className="hover:text-[#94A3B8] transition-colors">Возможности</a>
+              <a href="#pricing" className="hover:text-[#94A3B8] transition-colors">Тарифы</a>
+              <a href="#faq" className="hover:text-[#94A3B8] transition-colors">FAQ</a>
+              <a
+                href="https://t.me/potolokaiBot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-[#94A3B8] transition-colors"
+              >
+                Telegram-бот
+              </a>
+              <a href="/auth/login" className="hover:text-[#94A3B8] transition-colors">Войти</a>
+            </div>
+          </div>
+          <div className="mt-8 border-t border-[#334155]/30 pt-6 text-center">
+            <p className="text-xs text-[#475569]">
+              &copy; {new Date().getFullYear()} PotolokAI. Все права защищены.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

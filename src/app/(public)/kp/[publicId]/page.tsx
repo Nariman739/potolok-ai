@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
-import { computeArea } from "@/lib/room-geometry";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
 
@@ -216,61 +215,6 @@ export default async function PublicKpPage({
         />
       </section>
 
-      {/* ── ROOMS ── */}
-      {calc.rooms && calc.rooms.length > 0 && (
-        <section className="px-4 pb-6">
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/80">
-              <h2 className="font-semibold text-gray-900 text-base">
-                Объект —{" "}
-                {calc.rooms.length === 1
-                  ? "1 помещение"
-                  : calc.rooms.length < 5
-                  ? `${calc.rooms.length} помещения`
-                  : `${calc.rooms.length} помещений`}
-              </h2>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {calc.rooms.map((room, i) => {
-                const area = computeArea(room);
-                const shape = room.shape || "rectangle";
-                const dimLabel = (shape === "rectangle" || (shape as string) === "square")
-                  ? `${Math.round(room.length * 100)}×${Math.round(room.width * 100)} см`
-                  : shape === "l-shape" ? "Г-образная" : shape === "t-shape" ? "Т-образная" : "";
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <span className="font-medium text-sm text-gray-900">
-                      {room.name}
-                    </span>
-                    <div className="text-right">
-                      <span className="text-sm text-gray-500">
-                        {dimLabel} ={" "}
-                        <span className="font-semibold text-gray-700">
-                          {area.toFixed(1)} м²
-                        </span>
-                      </span>
-                      {room.spotsCount > 0 && (
-                        <p className="text-xs text-gray-400">
-                          💡 {room.spotsCount} спотов
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50/80 flex justify-between">
-              <span className="text-sm font-semibold text-gray-700">Итого</span>
-              <span className="text-sm font-bold text-gray-900">
-                {formatArea(estimate.totalArea)}
-              </span>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ── CONTACT ── */}
       {(master.whatsappPhone || master.phone || master.instagramUrl) && (
