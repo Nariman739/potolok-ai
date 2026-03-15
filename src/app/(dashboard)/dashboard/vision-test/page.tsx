@@ -69,9 +69,11 @@ function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
 function RoomPreview({
   walls,
   committedCount,
+  nextDir,
 }: {
   walls: { length: string; normalCorner: boolean }[];
   committedCount?: number;
+  nextDir?: number;
 }) {
   const { vertices, closed } = buildVertices(walls);
   const committed = committedCount ?? walls.length;
@@ -139,6 +141,27 @@ function RoomPreview({
             </g>
           );
         })}
+
+        {/* Ghost: next wall direction (green dashed stub) */}
+        {nextDir !== undefined && !closed && (() => {
+          const lastV = vertices[vertices.length - 1];
+          const stubLen = Math.max(W, H) * 0.22;
+          const gx = lastV.x + DX[nextDir] * stubLen;
+          const gy = lastV.y + DY[nextDir] * stubLen;
+          const mx = sx((lastV.x + gx) / 2);
+          const my = sy((lastV.y + gy) / 2);
+          return (
+            <g>
+              <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(gx)} y2={sy(gy)}
+                stroke="#10b981" strokeWidth={2.5} strokeDasharray="5,3" strokeLinecap="round" />
+              <circle cx={sx(gx)} cy={sy(gy)} r={3} fill="#10b981" />
+              <rect x={mx - 8} y={my - 8} width={16} height={14} rx={3} fill="#d1fae5" fillOpacity={0.9} />
+              <text x={mx} y={my + 3} textAnchor="middle" fontSize={9} fill="#065f46" fontWeight="700">
+                {["→","↓","←","↑"][nextDir]}
+              </text>
+            </g>
+          );
+        })()}
 
         {/* Vertices dots */}
         {vertices.map((v, i) => (
@@ -255,7 +278,11 @@ function WallWizard({ onDone, onCancel }: {
 
         {/* SVG Preview */}
         <div className="shrink-0 p-3" style={{ height: 200 }}>
-          <RoomPreview walls={previewWalls} committedCount={committed.length} />
+          <RoomPreview
+            walls={previewWalls}
+            committedCount={committed.length}
+            nextDir={isStep ? (currentWallDir + 3) % 4 : (currentWallDir + 1) % 4}
+          />
         </div>
 
         {isValid && doneResult ? (
@@ -335,8 +362,16 @@ function WallWizard({ onDone, onCancel }: {
                   {d}
                 </button>
               ))}
-              <button onPointerDown={() => setInput(p => p.slice(0, -1))}
-                className="py-5 text-2xl text-center border-b border-r border-gray-100 active:bg-gray-100 text-muted-foreground">
+              <button
+                onPointerDown={() => {
+                  if (input) {
+                    setInput(p => p.slice(0, -1));
+                  } else if (committed.length > 0) {
+                    setCommitted(prev => prev.slice(0, -1));
+                    setIsStep(false);
+                  }
+                }}
+                className="py-5 text-2xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
                 ⌫
               </button>
               <button onPointerDown={() => digit("0")}
