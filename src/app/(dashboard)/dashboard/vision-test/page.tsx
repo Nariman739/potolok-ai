@@ -105,7 +105,7 @@ function RoomPreview({
         {closed && (
           <polygon
             points={vertices.map(v => `${sx(v.x)},${sy(v.y)}`).join(" ")}
-            fill="#1e3a5f18" stroke="none"
+            fill="#1e3a5f28" stroke="none"
           />
         )}
 
@@ -118,7 +118,7 @@ function RoomPreview({
             <line key={i}
               x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
               stroke={closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8"}
-              strokeWidth={isCurrent ? 3 : isCommitted || closed ? 2.5 : 1.5}
+              strokeWidth={isCurrent ? 5 : isCommitted || closed ? 2.5 : 1.5}
               strokeDasharray={(!isCommitted && !isCurrent && !closed) ? "5,3" : undefined}
               strokeLinecap="round"
             />
@@ -153,17 +153,17 @@ function RoomPreview({
           );
         })()}
 
-        {/* Ghost: short fixed-pixel stub showing next wall direction */}
+        {/* Direction stub — always yellow, grows when user types */}
         {nextDir !== undefined && !closed && (() => {
           const lastV = vertices[vertices.length - 1];
-          const stubLen = 20 / scale; // fixed 20px in SVG coords
+          const stubLen = 28 / scale;
           const gx = lastV.x + DX[nextDir] * stubLen;
           const gy = lastV.y + DY[nextDir] * stubLen;
           return (
             <g>
               <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(gx)} y2={sy(gy)}
-                stroke="#10b981" strokeWidth={3} strokeLinecap="round" />
-              <circle cx={sx(gx)} cy={sy(gy)} r={4} fill="#10b981" />
+                stroke="#f59e0b" strokeWidth={4} strokeLinecap="round" strokeDasharray="6,3" />
+              <circle cx={sx(gx)} cy={sy(gy)} r={5} fill="#f59e0b" />
             </g>
           );
         })()}
