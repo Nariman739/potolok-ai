@@ -209,12 +209,33 @@ function WallWizard({ onDone, onCancel }: {
   ];
 
   const committedPreview = committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner }));
-  const { closed: isDone } = buildVertices(committedPreview);
+  const { closed: isDone, vertices: committedVerts, gapX, gapY } = buildVertices(committedPreview);
+  const gap = Math.sqrt(gapX * gapX + gapY * gapY); // total gap in cm
 
   const doneResult = isDone && committed.length >= 4
     ? calcWithTurns(committed.map(w => w.length), committed.map(w => w.normalCorner))
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
+
+  // Approximate result using Shoelace on current vertices (even if not perfectly closed)
+  const approxResult = !isValid && committed.length >= 4 && committedVerts.length >= 4 ? (() => {
+    const verts = committedVerts;
+    let sum = 0;
+    for (let i = 0; i < verts.length; i++) {
+      const j = (i + 1) % verts.length;
+      sum += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+    }
+    const area = Math.round(Math.abs(sum) / 2 / 100) / 100;
+    const perimeter = Math.round(committed.reduce((s, w) => s + w.length, 0)) / 100;
+    return area > 0 ? { area, perimeter, gap } : null;
+  })() : null;
+
+  // Gap description for user
+  const gapParts: string[] = [];
+  if (committed.length >= 4 && !isDone) {
+    if (Math.abs(gapX) > 2) gapParts.push(`${Math.abs(Math.round(gapX))} см ${gapX > 0 ? "влево" : "вправо"}`);
+    if (Math.abs(gapY) > 2) gapParts.push(`${Math.abs(Math.round(gapY))} см ${gapY > 0 ? "вверх" : "вниз"}`);
+  }
 
   // Direction of the current wall being entered
   const currentWallDir = committed.reduce(
@@ -248,13 +269,14 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   function handleAdd() {
-    if (!isValid || !doneResult) return;
+    const result = doneResult ?? approxResult;
+    if (!result) return;
     onDone({
       id: crypto.randomUUID(),
       name: roomName,
       walls: committed.map(w => w.length),
-      area: doneResult.area,
-      perimeter: doneResult.perimeter,
+      area: result.area,
+      perimeter: result.perimeter,
     });
   }
 
@@ -270,7 +292,7 @@ function WallWizard({ onDone, onCancel }: {
             <X className="h-5 w-5" />
           </button>
           <span className="text-sm font-semibold">
-            {isValid ? "✓ Готово" : `Стена ${committed.length + 1}`}
+            {isValid ? "✓ Готово" : approxResult ? "~ Приблизительно" : `Стена ${committed.length + 1}`}
           </span>
           <button
             onClick={handleBack}
@@ -289,32 +311,30 @@ function WallWizard({ onDone, onCancel }: {
             nextDir={isStep ? (currentWallDir + 3) % 4 : (currentWallDir + 1) % 4}
           />
           {/* Gap hint */}
-          {(() => {
-            const preview = committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner }));
-            const { closed: c, gapX: gx, gapY: gy } = buildVertices(preview);
-            if (c || committed.length < 4) return null;
-            const parts: string[] = [];
-            if (Math.abs(gx) > 2) parts.push(`${Math.abs(Math.round(gx))} см ${gx > 0 ? "←" : "→"}`);
-            if (Math.abs(gy) > 2) parts.push(`${Math.abs(Math.round(gy))} см ${gy > 0 ? "↑" : "↓"}`);
-            if (parts.length === 0) return null;
-            return (
-              <p className="text-xs text-center text-red-500 mt-1">
-                Не сходится: нужно ещё {parts.join(" и ")}
-              </p>
-            );
-          })()}
+          {!isValid && gapParts.length > 0 && (
+            <p className={`text-xs text-center mt-1 ${gap < 15 ? "text-amber-600" : "text-red-500"}`}>
+              {gap < 15
+                ? `Погрешность ${Math.round(gap)} см — можно принять`
+                : `Не сходится: нужно ещё ${gapParts.join(" и ")}`}
+            </p>
+          )}
         </div>
 
-        {isValid && doneResult ? (
-          /* Done */
+        {(isValid && doneResult) || approxResult ? (
+          /* Done or approx */
           <div className="shrink-0 p-4 space-y-3 border-t">
+            {!isValid && approxResult && (
+              <p className="text-xs text-center text-amber-600 font-medium">
+                ⚠ Погрешность {Math.round(approxResult.gap)} см — результат приблизительный
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-blue-50 p-4 text-center">
-                <div className="text-4xl font-bold text-blue-600">{doneResult.area}</div>
+                <div className="text-4xl font-bold text-blue-600">{(doneResult ?? approxResult)!.area}</div>
                 <div className="text-xs text-muted-foreground mt-1">м² площадь</div>
               </div>
               <div className="rounded-xl bg-purple-50 p-4 text-center">
-                <div className="text-4xl font-bold text-purple-600">{doneResult.perimeter}</div>
+                <div className="text-4xl font-bold text-purple-600">{(doneResult ?? approxResult)!.perimeter}</div>
                 <div className="text-xs text-muted-foreground mt-1">м периметр</div>
               </div>
             </div>
@@ -326,9 +346,11 @@ function WallWizard({ onDone, onCancel }: {
             />
             <button
               onClick={handleAdd}
-              className="w-full rounded-xl bg-[#1e3a5f] py-3.5 text-base font-semibold text-white active:bg-[#152d4a]"
+              className={`w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 ${
+                isValid ? "bg-[#1e3a5f]" : "bg-amber-500"
+              }`}
             >
-              Добавить помещение
+              {isValid ? "Добавить помещение" : "Принять приблизительно"}
             </button>
           </div>
         ) : (
