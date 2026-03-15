@@ -550,9 +550,23 @@ export default function ZameryPage() {
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [objectName, setObjectName] = useState("");
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
   const totalPerimeter = Math.round(rooms.reduce((s, r) => s + r.perimeter, 0) * 100) / 100;
+
+  function handleShare() {
+    const header = objectName
+      ? `📐 Замеры: ${objectName}`
+      : `📐 Замеры потолков`;
+    const lines = rooms.map((r, i) => {
+      const name = r.name || `Помещение ${i + 1}`;
+      return `${i + 1}. ${name}: ${r.area} м², P = ${r.perimeter} м\n   Стены: ${r.walls.join(" · ")} см`;
+    });
+    const footer = `\nИТОГО: ${totalArea} м², P = ${totalPerimeter} м`;
+    const text = [header, "", ...lines, footer].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
 
   function handleCreateEstimate() {
     const roomInputs: RoomInput[] = rooms.map(room => {
@@ -595,6 +609,13 @@ export default function ZameryPage() {
           </p>
         </div>
 
+        <input
+          value={objectName}
+          onChange={e => setObjectName(e.target.value)}
+          placeholder="Адрес объекта (необязательно)"
+          className="w-full rounded-xl border px-4 py-3 text-sm"
+        />
+
         <PhotoUpload onRoomsLoaded={loaded => setRooms(prev => [...prev, ...loaded])} />
 
         {rooms.length > 0 && (
@@ -615,10 +636,16 @@ export default function ZameryPage() {
                   <span className="text-sm font-medium text-purple-600">P = {totalPerimeter} м</span>
                 </div>
               </div>
-              <button onClick={handleCreateEstimate}
-                className="rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#152d4a]">
-                Создать КП →
-              </button>
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={handleShare}
+                  className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 active:opacity-80">
+                  WhatsApp 📤
+                </button>
+                <button onClick={handleCreateEstimate}
+                  className="rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#152d4a]">
+                  Создать КП →
+                </button>
+              </div>
             </div>
           </div>
         )}
