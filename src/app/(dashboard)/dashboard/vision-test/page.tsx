@@ -66,8 +66,15 @@ function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
   return { vertices, closed };
 }
 
-function RoomPreview({ walls }: { walls: { length: string; normalCorner: boolean }[] }) {
+function RoomPreview({
+  walls,
+  committedCount,
+}: {
+  walls: { length: string; normalCorner: boolean }[];
+  committedCount?: number;
+}) {
   const { vertices, closed } = buildVertices(walls);
+  const committed = committedCount ?? walls.length;
 
   if (vertices.length < 2) {
     return (
@@ -86,34 +93,57 @@ function RoomPreview({ walls }: { walls: { length: string; normalCorner: boolean
   const scale = Math.min((SVG_W - PAD * 2) / W, (SVG_H - PAD * 2) / H);
   const sx = (x: number) => PAD + (x - minX) * scale;
   const sy = (y: number) => PAD + (y - minY) * scale;
-  const pts = vertices.map(v => `${sx(v.x)},${sy(v.y)}`).join(" ");
 
   return (
     <div className="w-full h-full rounded-xl border bg-gray-50 overflow-hidden">
       <svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet">
-        {closed ? (
-          <polygon points={pts} fill="#1e3a5f18" stroke="#1e3a5f" strokeWidth={2} strokeLinejoin="round" />
-        ) : (
-          <polyline points={pts} fill="none" stroke="#94a3b8" strokeWidth={2} strokeLinejoin="round" strokeDasharray="6,3" />
+        {/* Closing fill when done */}
+        {closed && (
+          <polygon
+            points={vertices.map(v => `${sx(v.x)},${sy(v.y)}`).join(" ")}
+            fill="#1e3a5f18" stroke="none"
+          />
         )}
+
+        {/* Wall segments */}
+        {vertices.slice(0, -1).map((v, i) => {
+          const next = vertices[i + 1];
+          const isCommitted = i < committed;
+          const isCurrent = i === committed;
+          return (
+            <line key={i}
+              x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
+              stroke={closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8"}
+              strokeWidth={isCurrent ? 3 : isCommitted || closed ? 2.5 : 1.5}
+              strokeDasharray={(!isCommitted && !isCurrent && !closed) ? "5,3" : undefined}
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        {/* Wall length labels */}
         {vertices.slice(0, -1).map((v, i) => {
           const next = vertices[i + 1];
           const mx = sx((v.x + next.x) / 2);
           const my = sy((v.y + next.y) / 2);
           const len = parseFloat(walls[i]?.length) || 0;
+          const isCurrent = i === committed;
           return (
             <g key={i}>
-              <rect x={mx - 14} y={my - 9} width={28} height={16} rx={3} fill="white" fillOpacity={0.9} />
+              <rect x={mx - 14} y={my - 9} width={28} height={16} rx={3}
+                fill={isCurrent ? "#fef3c7" : "white"} fillOpacity={0.92} />
               <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fontFamily="monospace"
-                fill={closed ? "#1e3a5f" : "#64748b"} fontWeight="500">
+                fill={closed ? "#1e3a5f" : isCurrent ? "#92400e" : "#64748b"} fontWeight="600">
                 {len > 0 ? len : "?"}
               </text>
             </g>
           );
         })}
+
+        {/* Vertices dots */}
         {vertices.map((v, i) => (
           <circle key={i} cx={sx(v.x)} cy={sy(v.y)} r={i === 0 ? 5 : 3}
-            fill={i === 0 ? "#1e3a5f" : closed ? "#1e3a5f" : "#94a3b8"} />
+            fill={i === 0 ? "#1e3a5f" : closed ? "#1e3a5f" : i <= committed ? "#1e3a5f" : "#94a3b8"} />
         ))}
       </svg>
     </div>
@@ -158,6 +188,14 @@ function WallWizard({ onDone, onCancel }: {
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
 
+  // Direction of the current wall being entered
+  const currentWallDir = committed.reduce(
+    (dir, w) => w.normalCorner ? (dir + 1) % 4 : (dir + 3) % 4, 0
+  );
+  const dirArrows = ["→", "↓", "←", "↑"];
+  const nextDirNormal = (currentWallDir + 1) % 4;
+  const nextDirStep  = (currentWallDir + 3) % 4;
+
   function digit(d: string) {
     if (isValid) return;
     setInput(p => p.length < 5 ? p + d : p);
@@ -171,10 +209,14 @@ function WallWizard({ onDone, onCancel }: {
     setIsStep(false);
   }
 
-  function undoLast() {
-    setCommitted(prev => prev.slice(0, -1));
-    setInput("");
-    setIsStep(false);
+  function handleBack() {
+    if (input) {
+      setInput("");
+      setIsStep(false);
+    } else if (committed.length > 0) {
+      setCommitted(prev => prev.slice(0, -1));
+      setIsStep(false);
+    }
   }
 
   function handleAdd() {
@@ -203,17 +245,17 @@ function WallWizard({ onDone, onCancel }: {
             {isValid ? "✓ Готово" : `Стена ${committed.length + 1}`}
           </span>
           <button
-            onClick={undoLast}
-            disabled={committed.length === 0}
-            className="text-xs text-muted-foreground disabled:opacity-30"
+            onClick={handleBack}
+            disabled={committed.length === 0 && !input}
+            className="text-xs text-muted-foreground disabled:opacity-30 px-1"
           >
-            Отмена
+            ← Назад
           </button>
         </div>
 
         {/* SVG Preview */}
         <div className="shrink-0 p-3" style={{ height: 200 }}>
-          <RoomPreview walls={previewWalls} />
+          <RoomPreview walls={previewWalls} committedCount={committed.length} />
         </div>
 
         {isValid && doneResult ? (
@@ -253,18 +295,33 @@ function WallWizard({ onDone, onCancel }: {
               <span className="text-xl text-muted-foreground">см</span>
             </div>
 
-            {/* Corner toggle */}
-            <div className="px-3 pb-2">
-              <button
-                onClick={() => setIsStep(p => !p)}
-                className={`w-full rounded-xl py-2.5 text-sm font-semibold border-2 transition-all ${
-                  isStep
-                    ? "bg-amber-50 text-amber-700 border-amber-400"
-                    : "bg-gray-50 text-gray-400 border-gray-200"
-                }`}
-              >
-                {isStep ? "↙ ступенька — угол внутрь" : "┐ обычный угол"}
-              </button>
+            {/* Corner selector */}
+            <div className="px-3 pb-2 space-y-1">
+              <p className="text-xs text-center text-muted-foreground">
+                Сейчас идём {dirArrows[currentWallDir]} — выберите угол после этой стены:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setIsStep(false)}
+                  className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all flex flex-col items-center gap-0.5 ${
+                    !isStep ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
+                >
+                  <span className="text-base">┐</span>
+                  <span>обычный</span>
+                  <span className={`text-xs ${!isStep ? "opacity-70" : "opacity-50"}`}>дальше {dirArrows[nextDirNormal]}</span>
+                </button>
+                <button
+                  onClick={() => setIsStep(true)}
+                  className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all flex flex-col items-center gap-0.5 ${
+                    isStep ? "bg-amber-500 text-white border-amber-500" : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
+                >
+                  <span className="text-base">↙</span>
+                  <span>ступенька</span>
+                  <span className={`text-xs ${isStep ? "opacity-70" : "opacity-50"}`}>дальше {dirArrows[nextDirStep]}</span>
+                </button>
+              </div>
             </div>
 
             {/* Numpad */}
