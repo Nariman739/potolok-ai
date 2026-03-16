@@ -72,10 +72,14 @@ function RoomPreview({
   walls,
   committedCount,
   nextDir,
+  onWallClick,
+  activeWallIdx,
 }: {
   walls: { length: string; normalCorner: boolean }[];
   committedCount?: number;
   nextDir?: number;
+  onWallClick?: (i: number) => void;
+  activeWallIdx?: number;
 }) {
   const { vertices, closed } = buildVertices(walls);
   const committed = committedCount ?? walls.length;
@@ -114,14 +118,26 @@ function RoomPreview({
           const next = vertices[i + 1];
           const isCommitted = i < committed;
           const isCurrent = i === committed;
+          const isActive = activeWallIdx === i;
           return (
-            <line key={i}
-              x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
-              stroke={closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8"}
-              strokeWidth={isCurrent ? 5 : isCommitted || closed ? 2.5 : 1.5}
-              strokeDasharray={(!isCommitted && !isCurrent && !closed) ? "5,3" : undefined}
-              strokeLinecap="round"
-            />
+            <g key={i}>
+              <line
+                x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
+                stroke={isActive ? "#f59e0b" : closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8"}
+                strokeWidth={isActive ? 5 : isCurrent ? 5 : isCommitted || closed ? 2.5 : 1.5}
+                strokeDasharray={(!isCommitted && !isCurrent && !closed) ? "5,3" : undefined}
+                strokeLinecap="round"
+              />
+              {/* Wide invisible tap target */}
+              {onWallClick && (
+                <line
+                  x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
+                  stroke="transparent" strokeWidth={24} strokeLinecap="round"
+                  style={{ cursor: "pointer" }}
+                  onPointerDown={() => onWallClick(i)}
+                />
+              )}
+            </g>
           );
         })}
 
@@ -577,7 +593,11 @@ function RoomDetail({ room, onUpdate, onClose }: {
 
       {/* SVG Preview */}
       <div className="shrink-0 px-4 py-3" style={{ height: 240 }}>
-        <RoomPreview walls={previewWalls} />
+        <RoomPreview
+          walls={previewWalls}
+          onWallClick={i => startEdit(i)}
+          activeWallIdx={editingIdx ?? undefined}
+        />
       </div>
 
       {/* Stats */}
