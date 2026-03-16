@@ -251,14 +251,22 @@ function WallWizard({ onDone, onCancel }: {
   const nextDirStep   = (currentWallDir + 3) % 4;
 
   function digit(d: string) {
-    if (isValid || phase === "corner") return;
+    if (isValid) return;
+    if (phase === "corner") {
+      // Auto-select обычный, commit pending wall, start typing
+      setCommitted(prev => [...prev, { length: pendingLength, normalCorner: true }]);
+      setPendingLength(0);
+      setPhase("typing");
+      setInput(d);
+      return;
+    }
     setInput(p => p.length < 5 ? p + d : p);
   }
 
   function confirm() {
     const len = parseFloat(input);
     if (!len || len <= 0) return;
-    // Auto-close check: would this wall close the shape?
+    // Auto-close check
     const testPreview = [
       ...committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner })),
       { length: String(len), normalCorner: true },
@@ -290,6 +298,26 @@ function WallWizard({ onDone, onCancel }: {
     } else if (committed.length > 0) {
       setCommitted(prev => prev.slice(0, -1));
     }
+  }
+
+  // Manual finish: use Shoelace area on committed verts regardless of gap
+  function handleForceFinish() {
+    if (committed.length < 4) return;
+    let sum = 0;
+    for (let i = 0; i < committedVerts.length; i++) {
+      const j = (i + 1) % committedVerts.length;
+      sum += committedVerts[i].x * committedVerts[j].y - committedVerts[j].x * committedVerts[i].y;
+    }
+    const area = Math.round(Math.abs(sum) / 2 / 100) / 100;
+    const perimeter = Math.round(committed.reduce((s, w) => s + w.length, 0)) / 100;
+    if (area <= 0) return;
+    onDone({
+      id: crypto.randomUUID(),
+      name: roomName,
+      walls: committed.map(w => w.length),
+      area,
+      perimeter,
+    });
   }
 
   function handleAdd() {
@@ -381,39 +409,39 @@ function WallWizard({ onDone, onCancel }: {
             </button>
           </div>
 
-        ) : phase === "corner" ? (
-          /* ── Corner chooser ── */
-          <div className="flex-1 flex flex-col justify-center px-4 pb-6 border-t space-y-4">
-            <p className="text-base text-center font-semibold pt-4">
-              Шли <span className="text-[#1e3a5f]">{dirArrows[currentWallDir]}</span> — куда поворачиваем?
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onPointerDown={() => chooseCorner(true)}
-                className="rounded-2xl bg-[#1e3a5f] text-white flex flex-col items-center justify-center gap-2 py-8 active:opacity-80"
-              >
-                <span className="text-5xl">┐</span>
-                <span className="font-semibold">Обычный</span>
-                <span className="text-4xl font-bold">{dirArrows[nextDirNormal]}</span>
-              </button>
-              <button
-                onPointerDown={() => chooseCorner(false)}
-                className="rounded-2xl bg-amber-500 text-white flex flex-col items-center justify-center gap-2 py-8 active:opacity-80"
-              >
-                <span className="text-5xl">↙</span>
-                <span className="font-semibold">Ступенька</span>
-                <span className="text-4xl font-bold">{dirArrows[nextDirStep]}</span>
-              </button>
-            </div>
-          </div>
-
         ) : (
-          /* ── Numpad ── */
+          /* ── Numpad (+ compact corner strip in corner phase) ── */
           <div className="shrink-0 border-t">
-            <div className="flex items-baseline justify-center gap-2 py-2">
-              <span className="text-5xl font-bold tabular-nums text-[#1e3a5f]">{input || "0"}</span>
+            {/* Corner strip — shown right after ✓, above numpad */}
+            {phase === "corner" && (
+              <div className="px-3 pt-2 pb-1 space-y-1">
+                <p className="text-xs text-center text-muted-foreground">
+                  Шли {dirArrows[currentWallDir]} — куда поворачиваем?
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onPointerDown={() => chooseCorner(true)}
+                    className="rounded-xl py-2 text-sm font-bold bg-[#1e3a5f] text-white flex items-center justify-center gap-2 active:opacity-80">
+                    <span>┐ Обычный</span>
+                    <span className="text-base">{dirArrows[nextDirNormal]}</span>
+                  </button>
+                  <button onPointerDown={() => chooseCorner(false)}
+                    className="rounded-xl py-2 text-sm font-bold bg-amber-500 text-white flex items-center justify-center gap-2 active:opacity-80">
+                    <span>↙ Ступенька</span>
+                    <span className="text-base">{dirArrows[nextDirStep]}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Number display */}
+            <div className="flex items-baseline justify-center gap-2 py-2 border-t">
+              <span className="text-5xl font-bold tabular-nums text-[#1e3a5f]">
+                {phase === "corner" ? "0" : (input || "0")}
+              </span>
               <span className="text-lg text-muted-foreground">см</span>
             </div>
+
+            {/* Numpad */}
             <div className="grid grid-cols-3 border-t select-none">
               {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
                 <button key={d} onPointerDown={() => digit(d)}
@@ -423,6 +451,7 @@ function WallWizard({ onDone, onCancel }: {
               ))}
               <button
                 onPointerDown={() => {
+                  if (phase === "corner") { handleBack(); return; }
                   if (input) setInput(p => p.slice(0, -1));
                   else if (committed.length > 0) setCommitted(prev => prev.slice(0, -1));
                 }}
@@ -433,11 +462,20 @@ function WallWizard({ onDone, onCancel }: {
                 className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
-              <button onPointerDown={confirm} disabled={!input || parseFloat(input) <= 0}
+              <button onPointerDown={phase === "typing" ? confirm : undefined}
+                disabled={phase === "typing" && (!input || parseFloat(input) <= 0)}
                 className="py-4 text-3xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
                 ✓
               </button>
             </div>
+
+            {/* Manual finish button — appears when 4+ walls entered */}
+            {committed.length >= 4 && phase === "typing" && !isValid && (
+              <button onPointerDown={handleForceFinish}
+                className="w-full py-3 text-sm font-semibold text-[#1e3a5f] border-t active:bg-blue-50">
+                Завершить комнату ({committed.length} стен) →
+              </button>
+            )}
           </div>
         )}
       </div>
