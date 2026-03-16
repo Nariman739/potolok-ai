@@ -284,7 +284,7 @@ function WallWizard({ onDone, onCancel }: {
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
       <div
         className="bg-white flex flex-col overflow-hidden w-full sm:max-w-sm sm:rounded-2xl sm:shadow-2xl"
-        style={{ height: "100dvh", maxHeight: "100dvh" }}
+        style={{ height: "100svh", maxHeight: "100svh" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
@@ -304,7 +304,7 @@ function WallWizard({ onDone, onCancel }: {
         </div>
 
         {/* SVG Preview */}
-        <div className="shrink-0 px-3 pt-3" style={{ height: 210 }}>
+        <div className="shrink-0 px-3 pt-2" style={{ height: 160 }}>
           <RoomPreview
             walls={previewWalls}
             committedCount={committed.length}
@@ -357,38 +357,36 @@ function WallWizard({ onDone, onCancel }: {
           /* Input */
           <div className="shrink-0 border-t">
             {/* Big number display */}
-            <div className="flex items-baseline justify-center gap-2 py-3">
-              <span className="text-6xl font-bold tabular-nums text-[#1e3a5f]">
+            <div className="flex items-baseline justify-center gap-2 py-2">
+              <span className="text-5xl font-bold tabular-nums text-[#1e3a5f]">
                 {input || "0"}
               </span>
-              <span className="text-xl text-muted-foreground">см</span>
+              <span className="text-lg text-muted-foreground">см</span>
             </div>
 
             {/* Corner selector */}
-            <div className="px-3 pb-2 space-y-1">
+            <div className="px-3 pb-1.5 space-y-1">
               <p className="text-xs text-center text-muted-foreground">
-                Сейчас идём {dirArrows[currentWallDir]} — выберите угол после этой стены:
+                Идём {dirArrows[currentWallDir]} — угол после стены:
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setIsStep(false)}
-                  className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all flex flex-col items-center gap-0.5 ${
+                  className={`rounded-xl py-1.5 text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 ${
                     !isStep ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "bg-gray-50 text-gray-500 border-gray-200"
                   }`}
                 >
-                  <span className="text-base">┐</span>
-                  <span>обычный</span>
-                  <span className={`text-xs ${!isStep ? "opacity-70" : "opacity-50"}`}>дальше {dirArrows[nextDirNormal]}</span>
+                  <span>┐ обычный</span>
+                  <span className="text-xs opacity-70">{dirArrows[nextDirNormal]}</span>
                 </button>
                 <button
                   onClick={() => setIsStep(true)}
-                  className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all flex flex-col items-center gap-0.5 ${
+                  className={`rounded-xl py-1.5 text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 ${
                     isStep ? "bg-amber-500 text-white border-amber-500" : "bg-gray-50 text-gray-500 border-gray-200"
                   }`}
                 >
-                  <span className="text-base">↙</span>
-                  <span>ступенька</span>
-                  <span className={`text-xs ${isStep ? "opacity-70" : "opacity-50"}`}>дальше {dirArrows[nextDirStep]}</span>
+                  <span>↙ ступенька</span>
+                  <span className="text-xs opacity-70">{dirArrows[nextDirStep]}</span>
                 </button>
               </div>
             </div>
@@ -399,7 +397,7 @@ function WallWizard({ onDone, onCancel }: {
                 <button
                   key={d}
                   onPointerDown={() => digit(d)}
-                  className="py-5 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100"
+                  className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100"
                 >
                   {d}
                 </button>
@@ -413,17 +411,17 @@ function WallWizard({ onDone, onCancel }: {
                     setIsStep(false);
                   }
                 }}
-                className="py-5 text-2xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
+                className="py-4 text-2xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
                 ⌫
               </button>
               <button onPointerDown={() => digit("0")}
-                className="py-5 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
               <button
                 onPointerDown={confirm}
                 disabled={!input || parseFloat(input) <= 0}
-                className="py-5 text-3xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30"
+                className="py-4 text-3xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30"
               >
                 ✓
               </button>
