@@ -77,7 +77,7 @@ function RoomPreview({
   committedCount?: number;
   nextDir?: number;
 }) {
-  const { vertices, closed, gapX, gapY } = buildVertices(walls);
+  const { vertices, closed } = buildVertices(walls);
   const committed = committedCount ?? walls.length;
 
   if (vertices.length < 2) {
@@ -144,14 +144,6 @@ function RoomPreview({
           );
         })}
 
-        {/* Gap line: dashed red from last point back to start when not closed and 4+ walls */}
-        {!closed && vertices.length >= 5 && (Math.abs(gapX) > 2 || Math.abs(gapY) > 2) && (() => {
-          const lastV = vertices[vertices.length - 1];
-          return (
-            <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(0)} y2={sy(0)}
-              stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4,3" strokeLinecap="round" opacity={0.5} />
-          );
-        })()}
 
         {/* Direction stub — always yellow, grows when user types */}
         {nextDir !== undefined && !closed && (() => {
@@ -186,6 +178,7 @@ interface Room {
   id: string;
   name: string;
   walls: number[];
+  normalCorners: boolean[];
   area: number;
   perimeter: number;
 }
@@ -315,6 +308,7 @@ function WallWizard({ onDone, onCancel }: {
       id: crypto.randomUUID(),
       name: roomName,
       walls: committed.map(w => w.length),
+      normalCorners: committed.map(w => w.normalCorner),
       area,
       perimeter,
     });
@@ -327,6 +321,7 @@ function WallWizard({ onDone, onCancel }: {
       id: crypto.randomUUID(),
       name: roomName,
       walls: committed.map(w => w.length),
+      normalCorners: committed.map(w => w.normalCorner),
       area: result.area,
       perimeter: result.perimeter,
     });
@@ -487,13 +482,14 @@ function WallWizard({ onDone, onCancel }: {
 // Room Card
 // ─────────────────────────────────────────────────────
 
-function RoomCard({ room, index, onRemove }: {
+function RoomCard({ room, index, onRemove, onView }: {
   room: Room;
   index: number;
   onRemove: () => void;
+  onView: () => void;
 }) {
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border p-4 cursor-pointer active:bg-gray-50" onClick={onView}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -511,10 +507,119 @@ function RoomCard({ room, index, onRemove }: {
             {room.walls.join(" · ")} см
           </div>
         </div>
-        <button onClick={onRemove}
+        <button
+          onClick={e => { e.stopPropagation(); onRemove(); }}
           className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
           <Trash2 className="h-4 w-4" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────
+// Room Detail / Edit
+// ─────────────────────────────────────────────────────
+
+function RoomDetail({ room, onUpdate, onClose }: {
+  room: Room;
+  onUpdate: (updated: Room) => void;
+  onClose: () => void;
+}) {
+  const [walls, setWalls] = useState<number[]>(room.walls);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const normalCorners = room.normalCorners;
+  const previewWalls = walls.map((l, i) => ({
+    length: String(l),
+    normalCorner: normalCorners[i] ?? true,
+  }));
+
+  function startEdit(i: number) {
+    setEditingIdx(i);
+    setEditValue(String(walls[i]));
+  }
+
+  function confirmEdit() {
+    if (editingIdx === null) return;
+    const val = parseFloat(editValue);
+    if (val > 0) {
+      const next = [...walls];
+      next[editingIdx] = val;
+      setWalls(next);
+    }
+    setEditingIdx(null);
+  }
+
+  function handleSave() {
+    const result = calcWithTurns(walls, normalCorners);
+    onUpdate({ ...room, walls, area: result.area, perimeter: result.perimeter });
+    onClose();
+  }
+
+  const result = calcWithTurns(walls, normalCorners);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <button onClick={onClose} className="p-1 -ml-1 text-muted-foreground">
+          <X className="h-5 w-5" />
+        </button>
+        <span className="text-sm font-semibold">{room.name || "Помещение"}</span>
+        <button
+          onClick={handleSave}
+          className="text-sm font-semibold text-[#1e3a5f] px-1">
+          Сохранить
+        </button>
+      </div>
+
+      {/* SVG Preview */}
+      <div className="shrink-0 px-4 py-3" style={{ height: 240 }}>
+        <RoomPreview walls={previewWalls} />
+      </div>
+
+      {/* Stats */}
+      <div className="shrink-0 flex gap-3 px-4 pb-3">
+        <div className="flex-1 rounded-xl bg-blue-50 p-3 text-center">
+          <div className="text-2xl font-bold text-blue-600">{result.area}</div>
+          <div className="text-xs text-muted-foreground">м² площадь</div>
+        </div>
+        <div className="flex-1 rounded-xl bg-purple-50 p-3 text-center">
+          <div className="text-2xl font-bold text-purple-600">{result.perimeter}</div>
+          <div className="text-xs text-muted-foreground">м периметр</div>
+        </div>
+      </div>
+
+      {/* Walls list */}
+      <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-6 border-t pt-3">
+        <p className="text-xs text-muted-foreground mb-1">Нажмите на стену чтобы изменить длину</p>
+        {walls.map((len, i) => (
+          <div key={i} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+            <span className="text-sm text-muted-foreground">Стена {i + 1}</span>
+            {editingIdx === i ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onBlur={confirmEdit}
+                  onKeyDown={e => e.key === "Enter" && confirmEdit()}
+                  className="w-20 border rounded-lg px-2 py-1 text-right text-sm font-mono"
+                  autoFocus
+                  inputMode="numeric"
+                />
+                <span className="text-sm text-muted-foreground">см</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => startEdit(i)}
+                className="font-mono font-bold text-[#1e3a5f] text-sm bg-blue-50 px-3 py-1 rounded-lg active:bg-blue-100">
+                {len} см
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -551,6 +656,7 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
           id: crypto.randomUUID(),
           name: r.name,
           walls: r.walls_cm,
+          normalCorners: r.walls_cm.map(() => true),
           area: r.area,
           perimeter: r.perimeter,
         })));
@@ -598,6 +704,7 @@ export default function ZameryPage() {
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
   const [objectName, setObjectName] = useState("");
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
@@ -648,6 +755,16 @@ export default function ZameryPage() {
           onCancel={() => setShowWizard(false)}
         />
       )}
+      {viewingRoom && (
+        <RoomDetail
+          room={viewingRoom}
+          onUpdate={updated => {
+            setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
+            setViewingRoom(null);
+          }}
+          onClose={() => setViewingRoom(null)}
+        />
+      )}
 
       <div className="space-y-6">
         <div>
@@ -674,6 +791,7 @@ export default function ZameryPage() {
                 room={room}
                 index={i}
                 onRemove={() => setRooms(prev => prev.filter(r => r.id !== room.id))}
+                onView={() => setViewingRoom(room)}
               />
             ))}
             <div className="rounded-lg border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/5 p-4 flex items-center justify-between flex-wrap gap-3">
