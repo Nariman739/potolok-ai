@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload } from "lucide-react";
 import type { RoomInput } from "@/lib/types";
@@ -722,10 +722,22 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 
 export default function ZameryPage() {
   const router = useRouter();
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    try { return JSON.parse(localStorage.getItem("zamery-rooms") ?? "[]"); } catch { return []; }
+  });
+  const [objectName, setObjectName] = useState<string>(() => {
+    try { return localStorage.getItem("zamery-object") ?? ""; } catch { return ""; }
+  });
   const [showWizard, setShowWizard] = useState(false);
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
-  const [objectName, setObjectName] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("zamery-rooms", JSON.stringify(rooms));
+  }, [rooms]);
+
+  useEffect(() => {
+    localStorage.setItem("zamery-object", objectName);
+  }, [objectName]);
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
   const totalPerimeter = Math.round(rooms.reduce((s, r) => s + r.perimeter, 0) * 100) / 100;
@@ -787,11 +799,20 @@ export default function ZameryPage() {
       )}
 
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Замеры</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Введите стены каждого помещения — площадь и периметр рассчитаются автоматически
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">Замеры</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Введите стены каждого помещения — площадь и периметр рассчитаются автоматически
+            </p>
+          </div>
+          {rooms.length > 0 && (
+            <button
+              onClick={() => { if (confirm("Начать новый объект? Текущие замеры удалятся.")) { setRooms([]); setObjectName(""); } }}
+              className="shrink-0 mt-1 text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors">
+              Новый объект
+            </button>
+          )}
         </div>
 
         <input
