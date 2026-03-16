@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X, Camera, Loader2, Upload } from "lucide-react";
+import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight } from "lucide-react";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
@@ -197,6 +197,14 @@ interface Room {
   normalCorners: boolean[];
   area: number;
   perimeter: number;
+}
+
+interface SavedObject {
+  id: string;
+  address: string;
+  rooms: Room[];
+  totalArea: number;
+  savedAt: number;
 }
 
 // ─────────────────────────────────────────────────────
@@ -646,6 +654,57 @@ function RoomDetail({ room, onUpdate, onClose }: {
 }
 
 // ─────────────────────────────────────────────────────
+// History Drawer
+// ─────────────────────────────────────────────────────
+
+function HistoryDrawer({ saved, onResume, onDelete, onClose }: {
+  saved: SavedObject[];
+  onResume: (obj: SavedObject) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <button onClick={onClose} className="p-1 -ml-1 text-muted-foreground">
+          <X className="h-5 w-5" />
+        </button>
+        <span className="text-sm font-semibold">История объектов</span>
+        <div className="w-8" />
+      </div>
+
+      {saved.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          Сохранённых объектов нет
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {saved.slice().reverse().map(obj => {
+            const date = new Date(obj.savedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+            return (
+              <div key={obj.id} className="rounded-xl border p-4 flex items-center gap-3">
+                <button className="flex-1 min-w-0 text-left" onClick={() => onResume(obj)}>
+                  <div className="font-medium truncate">{obj.address || "Без адреса"}</div>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {obj.rooms.length} помещ. · <span className="font-semibold text-blue-600">{obj.totalArea} м²</span> · {date}
+                  </div>
+                </button>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" onClick={() => onResume(obj)} />
+                <button
+                  onClick={() => onDelete(obj.id)}
+                  className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────
 // Photo Upload
 // ─────────────────────────────────────────────────────
 
@@ -728,8 +787,12 @@ export default function ZameryPage() {
   const [objectName, setObjectName] = useState<string>(() => {
     try { return localStorage.getItem("zamery-object") ?? ""; } catch { return ""; }
   });
+  const [savedObjects, setSavedObjects] = useState<SavedObject[]>(() => {
+    try { return JSON.parse(localStorage.getItem("zamery-saved") ?? "[]"); } catch { return []; }
+  });
   const [showWizard, setShowWizard] = useState(false);
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("zamery-rooms", JSON.stringify(rooms));
@@ -738,6 +801,35 @@ export default function ZameryPage() {
   useEffect(() => {
     localStorage.setItem("zamery-object", objectName);
   }, [objectName]);
+
+  useEffect(() => {
+    localStorage.setItem("zamery-saved", JSON.stringify(savedObjects));
+  }, [savedObjects]);
+
+  function handleSaveObject() {
+    if (rooms.length === 0) return;
+    const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
+    const obj: SavedObject = {
+      id: crypto.randomUUID(),
+      address: objectName,
+      rooms,
+      totalArea,
+      savedAt: Date.now(),
+    };
+    setSavedObjects(prev => [...prev, obj]);
+    setRooms([]);
+    setObjectName("");
+  }
+
+  function handleResume(obj: SavedObject) {
+    if (rooms.length > 0) {
+      if (!confirm("Заменить текущие замеры на этот объект?")) return;
+    }
+    setRooms(obj.rooms);
+    setObjectName(obj.address);
+    setSavedObjects(prev => prev.filter(o => o.id !== obj.id));
+    setShowHistory(false);
+  }
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
   const totalPerimeter = Math.round(rooms.reduce((s, r) => s + r.perimeter, 0) * 100) / 100;
@@ -797,6 +889,14 @@ export default function ZameryPage() {
           onClose={() => setViewingRoom(null)}
         />
       )}
+      {showHistory && (
+        <HistoryDrawer
+          saved={savedObjects}
+          onResume={handleResume}
+          onDelete={id => setSavedObjects(prev => prev.filter(o => o.id !== id))}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-2">
@@ -806,13 +906,12 @@ export default function ZameryPage() {
               Введите стены каждого помещения — площадь и периметр рассчитаются автоматически
             </p>
           </div>
-          {rooms.length > 0 && (
-            <button
-              onClick={() => { if (confirm("Начать новый объект? Текущие замеры удалятся.")) { setRooms([]); setObjectName(""); } }}
-              className="shrink-0 mt-1 text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors">
-              Новый объект
-            </button>
-          )}
+          <button
+            onClick={() => setShowHistory(true)}
+            className="shrink-0 mt-1 flex items-center gap-1.5 text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+            <History className="h-3.5 w-3.5" />
+            {savedObjects.length > 0 ? `История (${savedObjects.length})` : "История"}
+          </button>
         </div>
 
         <input
@@ -844,6 +943,10 @@ export default function ZameryPage() {
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
+                <button onClick={handleSaveObject}
+                  className="rounded-lg border border-[#1e3a5f] px-4 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50 active:opacity-80">
+                  Сохранить 💾
+                </button>
                 <button onClick={handleShare}
                   className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 active:opacity-80">
                   WhatsApp 📤
