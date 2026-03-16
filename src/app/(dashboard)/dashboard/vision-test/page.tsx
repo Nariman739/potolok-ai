@@ -540,13 +540,26 @@ function RoomDetail({ room, onUpdate, onClose }: {
     setEditingIdx(null);
   }
 
+  function shoelace(w: number[], nc: boolean[]) {
+    const { vertices } = buildVertices(w.map((l, i) => ({ length: String(l), normalCorner: nc[i] ?? true })));
+    let sum = 0;
+    for (let i = 0; i < vertices.length; i++) {
+      const j = (i + 1) % vertices.length;
+      sum += vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+    }
+    return {
+      area: Math.round(Math.abs(sum) / 2 / 100) / 100,
+      perimeter: Math.round(w.reduce((s, v) => s + v, 0)) / 100,
+    };
+  }
+
   function handleSave() {
-    const result = calcWithTurns(walls, normalCorners);
-    onUpdate({ ...room, walls, area: result.area, perimeter: result.perimeter });
+    const res = shoelace(walls, normalCorners);
+    onUpdate({ ...room, walls, area: res.area, perimeter: res.perimeter });
     onClose();
   }
 
-  const result = calcWithTurns(walls, normalCorners);
+  const result = shoelace(walls, normalCorners);
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
