@@ -74,14 +74,17 @@ function RoomPreview({
   nextDir,
   onWallClick,
   activeWallIdx,
+  forceClose,
 }: {
   walls: { length: string; normalCorner: boolean }[];
   committedCount?: number;
   nextDir?: number;
   onWallClick?: (i: number) => void;
   activeWallIdx?: number;
+  forceClose?: boolean;
 }) {
-  const { vertices, closed } = buildVertices(walls);
+  const { vertices, closed: _closed } = buildVertices(walls);
+  const closed = _closed || !!forceClose;
   const committed = committedCount ?? walls.length;
 
   if (vertices.length < 2) {
@@ -217,18 +220,11 @@ function WallWizard({ onDone, onCancel }: {
 }) {
   const [committed, setCommitted] = useState<{ length: number; normalCorner: boolean }[]>([]);
   const [input, setInput] = useState("");
-  // phase: "typing" — enter length; "corner" — choose turn after last wall
-  const [phase, setPhase] = useState<"typing" | "corner">("typing");
-  const [pendingLength, setPendingLength] = useState(0);
   const [roomName, setRoomName] = useState("");
 
   const previewWalls = [
     ...committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner })),
-    ...(phase === "typing" && input
-      ? [{ length: input, normalCorner: true }]
-      : phase === "corner"
-      ? [{ length: String(pendingLength), normalCorner: true }]
-      : []),
+    ...(input ? [{ length: input, normalCorner: true }] : []),
   ];
 
   const committedPreview = committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner }));
@@ -240,8 +236,7 @@ function WallWizard({ onDone, onCancel }: {
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
 
-  // Approx only when gap is small (< 30 cm) — don't interrupt mid-room
-  const approxResult = !isValid && phase === "typing" && committed.length >= 4 && gap < 30 && committedVerts.length >= 4 ? (() => {
+  const approxResult = !isValid && committed.length >= 4 && gap < 30 && committedVerts.length >= 4 ? (() => {
     let sum = 0;
     for (let i = 0; i < committedVerts.length; i++) {
       const j = (i + 1) % committedVerts.length;
@@ -252,72 +247,51 @@ function WallWizard({ onDone, onCancel }: {
     return area > 0 ? { area, perimeter, gap } : null;
   })() : null;
 
-  // Gap hint (only show when gap is large enough to matter, in typing phase)
   const gapParts: string[] = [];
-  if (phase === "typing" && committed.length >= 4 && !isDone && gap >= 5) {
+  if (committed.length >= 4 && !isDone && gap >= 5) {
     if (Math.abs(gapX) > 2) gapParts.push(`${Math.abs(Math.round(gapX))} см ${gapX > 0 ? "влево" : "вправо"}`);
     if (Math.abs(gapY) > 2) gapParts.push(`${Math.abs(Math.round(gapY))} см ${gapY > 0 ? "вверх" : "вниз"}`);
   }
 
-  // Current direction (end of committed walls)
+  // Direction tracking
   const currentWallDir = committed.reduce(
     (dir, w) => w.normalCorner ? (dir + 1) % 4 : (dir + 3) % 4, 0
   );
   const dirArrows = ["→", "↓", "←", "↑"];
-  const nextDirNormal = (currentWallDir + 1) % 4;
-  const nextDirStep   = (currentWallDir + 3) % 4;
+  const nextDir = (currentWallDir + 1) % 4;
+  // Whether last committed wall has a step corner
+  const lastIsStep = committed.length > 0 && !committed[committed.length - 1].normalCorner;
 
   function digit(d: string) {
     if (isValid) return;
-    if (phase === "corner") {
-      // Auto-select обычный, commit pending wall, start typing
-      setCommitted(prev => [...prev, { length: pendingLength, normalCorner: true }]);
-      setPendingLength(0);
-      setPhase("typing");
-      setInput(d);
-      return;
-    }
     setInput(p => p.length < 5 ? p + d : p);
   }
 
   function confirm() {
     const len = parseFloat(input);
     if (!len || len <= 0) return;
-    // Auto-close check
-    const testPreview = [
-      ...committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner })),
-      { length: String(len), normalCorner: true },
-    ];
-    const { closed: wouldClose } = buildVertices(testPreview);
-    if (wouldClose) {
-      setCommitted(prev => [...prev, { length: len, normalCorner: true }]);
-      setInput("");
-      return;
-    }
-    setPendingLength(len);
+    // Always auto-commit with normal corner — user can toggle with ступенька button
+    setCommitted(prev => [...prev, { length: len, normalCorner: true }]);
     setInput("");
-    setPhase("corner");
   }
 
-  function chooseCorner(normal: boolean) {
-    setCommitted(prev => [...prev, { length: pendingLength, normalCorner: normal }]);
-    setPendingLength(0);
-    setPhase("typing");
+  // Toggle last committed wall between normal and step corner
+  function toggleLastStep() {
+    if (committed.length === 0 || isValid) return;
+    setCommitted(prev => {
+      const last = prev[prev.length - 1];
+      return [...prev.slice(0, -1), { ...last, normalCorner: !last.normalCorner }];
+    });
   }
 
   function handleBack() {
-    if (phase === "corner") {
-      setInput(String(pendingLength));
-      setPendingLength(0);
-      setPhase("typing");
-    } else if (input) {
-      setInput("");
+    if (input) {
+      setInput(p => p.slice(0, -1));
     } else if (committed.length > 0) {
       setCommitted(prev => prev.slice(0, -1));
     }
   }
 
-  // Manual finish: use Shoelace area on committed verts regardless of gap
   function handleForceFinish() {
     if (committed.length < 4) return;
     let sum = 0;
@@ -351,13 +325,7 @@ function WallWizard({ onDone, onCancel }: {
     });
   }
 
-  const headerText = isValid
-    ? "✓ Готово"
-    : approxResult
-    ? "~ Приблизительно"
-    : phase === "corner"
-    ? `Угол после стены ${committed.length + 1}`
-    : `Стена ${committed.length + 1}`;
+  const headerText = isValid ? "✓ Готово" : approxResult ? "~ Приблизительно" : `Стена ${committed.length + 1}`;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
@@ -373,7 +341,7 @@ function WallWizard({ onDone, onCancel }: {
           <span className="text-sm font-semibold">{headerText}</span>
           <button
             onClick={handleBack}
-            disabled={committed.length === 0 && !input && phase !== "corner"}
+            disabled={committed.length === 0 && !input}
             className="text-xs text-muted-foreground disabled:opacity-30 px-1"
           >
             ← Назад
@@ -385,9 +353,10 @@ function WallWizard({ onDone, onCancel }: {
           <RoomPreview
             walls={previewWalls}
             committedCount={committed.length}
-            nextDir={phase === "typing" && !isValid ? (currentWallDir + 1) % 4 : undefined}
+            nextDir={!isValid ? nextDir : undefined}
+            forceClose={!!approxResult}
           />
-          {phase === "typing" && !isValid && gapParts.length > 0 && (
+          {!isValid && gapParts.length > 0 && (
             <p className={`text-xs text-center mt-1 ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
               {gap < 30
                 ? `Погрешность ${Math.round(gap)} см — можно принять`
@@ -429,39 +398,36 @@ function WallWizard({ onDone, onCancel }: {
           </div>
 
         ) : (
-          /* ── Numpad (+ compact corner strip in corner phase) ── */
+          /* ── Numpad ── */
           <div className="shrink-0 border-t">
-            {/* Corner strip — shown right after ✓, above numpad */}
-            {phase === "corner" && (
-              <div className="px-3 pt-2 pb-1 space-y-1">
-                <p className="text-xs text-center text-muted-foreground">
-                  Шли {dirArrows[currentWallDir]} — куда поворачиваем?
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onPointerDown={() => chooseCorner(true)}
-                    className="rounded-xl py-2 text-sm font-bold bg-[#1e3a5f] text-white flex items-center justify-center gap-2 active:opacity-80">
-                    <span>┐ Обычный</span>
-                    <span className="text-base">{dirArrows[nextDirNormal]}</span>
-                  </button>
-                  <button onPointerDown={() => chooseCorner(false)}
-                    className="rounded-xl py-2 text-sm font-bold bg-amber-500 text-white flex items-center justify-center gap-2 active:opacity-80">
-                    <span>↙ Ступенька</span>
-                    <span className="text-base">{dirArrows[nextDirStep]}</span>
-                  </button>
-                </div>
+            {/* Direction + Ступенька toggle */}
+            {committed.length > 0 && (
+              <div className="flex items-center justify-between px-3 py-1.5 border-b bg-gray-50">
+                <span className="text-xs text-muted-foreground">
+                  Следующая стена {dirArrows[nextDir]}
+                </span>
+                <button
+                  onPointerDown={toggleLastStep}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors active:scale-95 ${
+                    lastIsStep
+                      ? "bg-amber-100 border-amber-400 text-amber-700 font-semibold"
+                      : "border-gray-300 text-gray-500"
+                  }`}>
+                  {lastIsStep ? "↙ Ступенька ✓" : "↙ Ступенька?"}
+                </button>
               </div>
             )}
 
             {/* Number display */}
-            <div className="flex items-baseline justify-center gap-2 py-2 border-t">
+            <div className="flex items-baseline justify-center gap-2 py-2 border-b">
               <span className="text-5xl font-bold tabular-nums text-[#1e3a5f]">
-                {phase === "corner" ? "0" : (input || "0")}
+                {input || "0"}
               </span>
               <span className="text-lg text-muted-foreground">см</span>
             </div>
 
             {/* Numpad */}
-            <div className="grid grid-cols-3 border-t select-none">
+            <div className="grid grid-cols-3 select-none">
               {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
                 <button key={d} onPointerDown={() => digit(d)}
                   className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
@@ -470,7 +436,6 @@ function WallWizard({ onDone, onCancel }: {
               ))}
               <button
                 onPointerDown={() => {
-                  if (phase === "corner") { handleBack(); return; }
                   if (input) setInput(p => p.slice(0, -1));
                   else if (committed.length > 0) setCommitted(prev => prev.slice(0, -1));
                 }}
@@ -481,15 +446,14 @@ function WallWizard({ onDone, onCancel }: {
                 className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
-              <button onPointerDown={phase === "typing" ? confirm : undefined}
-                disabled={phase === "typing" && (!input || parseFloat(input) <= 0)}
+              <button onPointerDown={confirm}
+                disabled={!input || parseFloat(input) <= 0}
                 className="py-4 text-3xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
                 ✓
               </button>
             </div>
 
-            {/* Manual finish button — appears when 4+ walls entered */}
-            {committed.length >= 4 && phase === "typing" && !isValid && (
+            {committed.length >= 4 && !isValid && (
               <button onPointerDown={handleForceFinish}
                 className="w-full py-3 text-sm font-semibold text-[#1e3a5f] border-t active:bg-blue-50">
                 Завершить комнату ({committed.length} стен) →
