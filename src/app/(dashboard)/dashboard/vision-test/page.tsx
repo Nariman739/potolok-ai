@@ -281,7 +281,7 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
       <div
         className="bg-white flex flex-col overflow-hidden w-full sm:max-w-sm sm:rounded-2xl sm:shadow-2xl"
         style={{ height: "100dvh", maxHeight: "100dvh" }}
