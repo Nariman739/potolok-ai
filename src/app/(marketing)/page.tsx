@@ -17,11 +17,46 @@ import { FaqList } from "./faq-list";
 
 export default function HomePage() {
   return (
-    <div>
+    <div className="relative">
+      {/* Global keyframes + dot grid via style tag */}
+      <style>{`
+        @keyframes orb-drift-1 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(40px, -30px) scale(1.08); }
+          66% { transform: translate(-20px, 20px) scale(0.94); }
+        }
+        @keyframes orb-drift-2 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(-30px, 25px) scale(0.93); }
+          66% { transform: translate(25px, -20px) scale(1.07); }
+        }
+        @keyframes orb-drift-3 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(20px, 30px) scale(1.05); }
+        }
+        .orb-1 { animation: orb-drift-1 14s ease-in-out infinite; }
+        .orb-2 { animation: orb-drift-2 18s ease-in-out infinite; }
+        .orb-3 { animation: orb-drift-3 22s ease-in-out infinite; }
+        .dot-grid {
+          background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+          background-size: 28px 28px;
+        }
+      `}</style>
+
       {/* Hero */}
       <section className="relative py-20 md:py-32 px-4 overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,rgba(37,99,235,0.15)_0%,transparent_60%)]" />
+        {/* Orb 1 — blue, top-left */}
+        <div className="orb-1 absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-blue-600/18 blur-[120px] pointer-events-none" />
+        {/* Orb 2 — orange, top-right */}
+        <div className="orb-2 absolute -top-16 -right-16 w-[420px] h-[420px] rounded-full bg-orange-500/14 blur-[100px] pointer-events-none" />
+        {/* Orb 3 — indigo, bottom-center */}
+        <div className="orb-3 absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
+
+        {/* Dot grid overlay */}
+        <div className="dot-grid absolute inset-0 opacity-20 pointer-events-none" />
+
+        {/* Horizontal glow line at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
 
         <div className="container mx-auto max-w-5xl relative z-10">
           <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
@@ -64,7 +99,10 @@ export default function HomePage() {
 
             {/* Right: KP mockup */}
             <div className="relative">
-              <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-5 shadow-2xl shadow-blue-500/5">
+              {/* Glow behind card */}
+              <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-3xl scale-110" />
+
+              <div className="relative rounded-2xl border border-[#334155] bg-[#1A2332] p-5 shadow-2xl shadow-blue-500/10">
                 {/* KP header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -126,7 +164,7 @@ export default function HomePage() {
               </div>
 
               {/* Floating badge */}
-              <div className="absolute -top-3 -right-3 md:-right-6 rounded-full bg-[#10B981] text-white text-[10px] font-bold px-3 py-1.5 shadow-lg">
+              <div className="absolute -top-3 -right-3 md:-right-6 rounded-full bg-[#10B981] text-white text-[10px] font-bold px-3 py-1.5 shadow-lg shadow-emerald-500/30">
                 Готово за 60 сек
               </div>
             </div>
@@ -135,8 +173,11 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="py-20 px-4 border-t border-[#334155]/30">
-        <div className="container mx-auto max-w-4xl">
+      <section id="how" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        {/* Subtle blue glow left */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-64 h-64 bg-blue-600/8 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="container mx-auto max-w-4xl relative z-10">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
             Как это работает
           </h2>
@@ -173,7 +214,7 @@ export default function HomePage() {
             ].map((item) => (
               <div
                 key={item.step}
-                className="relative rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-[rgba(37,99,235,0.4)] transition-colors group"
+                className="relative rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-blue-500/40 hover:bg-[#1e2d45] transition-all group"
               >
                 <span className="text-xs font-mono text-[#64748B] mb-3 block">
                   {item.step}
@@ -190,8 +231,14 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 px-4 border-t border-[#334155]/30">
-        <div className="container mx-auto max-w-4xl">
+      <section id="features" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        {/* Orb right side */}
+        <div className="orb-1 absolute -right-32 top-1/3 w-96 h-96 rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
+
+        {/* Dot grid */}
+        <div className="dot-grid absolute inset-0 opacity-10 pointer-events-none" />
+
+        <div className="container mx-auto max-w-4xl relative z-10">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
             Всё что нужно мастеру
           </h2>
@@ -249,7 +296,7 @@ export default function HomePage() {
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-[rgba(37,99,235,0.4)] transition-all hover:bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.08)_0%,#1A2332_70%)]"
+                className="rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-blue-500/40 hover:bg-[#1e2d45] transition-all"
               >
                 <feature.icon className="h-6 w-6 text-[#3B82F6] mb-3" />
                 <h3 className="font-semibold mb-1 text-[#F1F5F9] text-sm">{feature.title}</h3>
@@ -261,8 +308,13 @@ export default function HomePage() {
       </section>
 
       {/* Stats */}
-      <section className="py-16 px-4 border-t border-[#334155]/30 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.08)_0%,transparent_70%)]" />
+      <section className="relative py-16 px-4 border-t border-[#334155]/30 overflow-hidden">
+        {/* Full-width center glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.12)_0%,transparent_65%)] pointer-events-none" />
+        {/* Top + bottom gradient lines */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/25 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/25 to-transparent" />
+
         <div className="container mx-auto max-w-3xl relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
@@ -284,8 +336,11 @@ export default function HomePage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 px-4 border-t border-[#334155]/30">
-        <div className="container mx-auto max-w-3xl">
+      <section id="pricing" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        {/* Orange glow behind PRO card */}
+        <div className="orb-2 absolute right-1/4 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
+
+        <div className="container mx-auto max-w-3xl relative z-10">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
             Простые тарифы
           </h2>
@@ -322,16 +377,19 @@ export default function HomePage() {
             </div>
 
             {/* Pro — highlighted */}
-            <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-6 relative bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.08)_0%,#1A2332_70%)]">
+            <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-6 relative overflow-hidden">
+              {/* Inner glow */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
+
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-gradient-to-r from-[#F97316] to-[#FB923C] px-4 py-1 text-xs font-semibold text-white">
+                <span className="rounded-full bg-gradient-to-r from-[#F97316] to-[#FB923C] px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-orange-500/30">
                   Популярный
                 </span>
               </div>
-              <h3 className="font-bold text-xl mb-1 text-[#F1F5F9]">Мастер PRO</h3>
-              <p className="text-3xl font-bold text-[#F1F5F9] mb-1">1 990 ₸</p>
-              <p className="text-sm text-[#64748B] mb-6">в месяц</p>
-              <ul className="space-y-3 text-sm text-[#94A3B8] mb-6">
+              <h3 className="font-bold text-xl mb-1 text-[#F1F5F9] relative z-10">Мастер PRO</h3>
+              <p className="text-3xl font-bold text-[#F1F5F9] mb-1 relative z-10">1 990 ₸</p>
+              <p className="text-sm text-[#64748B] mb-6 relative z-10">в месяц</p>
+              <ul className="space-y-3 text-sm text-[#94A3B8] mb-6 relative z-10">
                 {[
                   "Безлимит КП",
                   "Свои цены + кастомные позиции",
@@ -349,7 +407,7 @@ export default function HomePage() {
               </ul>
               <a
                 href="/auth/register"
-                className="block w-full text-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-all"
+                className="relative z-10 block w-full text-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.35)] transition-all"
               >
                 Попробовать бесплатно
               </a>
@@ -369,8 +427,13 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 px-4 text-center relative border-t border-[#334155]/30">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.08)_0%,transparent_60%)]" />
+      <section className="relative py-24 px-4 text-center border-t border-[#334155]/30 overflow-hidden">
+        {/* Big orange + blue orbs */}
+        <div className="orb-1 absolute -left-20 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-blue-600/12 blur-[100px] pointer-events-none" />
+        <div className="orb-2 absolute -right-20 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-orange-500/12 blur-[100px] pointer-events-none" />
+        {/* Center radial */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.07)_0%,transparent_55%)] pointer-events-none" />
+
         <div className="container mx-auto max-w-2xl relative z-10">
           <h2 className="text-3xl md:text-5xl font-bold mb-4">
             Считайте{" "}

@@ -8,23 +8,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
   SquareStack,
-  TrendingUp,
-  BarChart3,
   Bot,
   Plus,
   ArrowRight,
-  Calendar,
+  BarChart3,
 } from "lucide-react";
 import { formatPrice, formatDateShort } from "@/lib/format";
 import { KP_LIMITS } from "@/lib/constants";
 import { FeedbackButton } from "@/components/feedback-button";
-import { WelcomeModal } from "@/components/onboarding/welcome-modal";
-import { GettingStarted } from "@/components/onboarding/getting-started";
 
 export const metadata = {
   title: "Дашборд",
@@ -41,13 +36,6 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function DashboardPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
-
-  const todayStr = new Date().toLocaleDateString("ru-RU", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 
   const [estimatesCount, aggregates, recentEstimates] = await Promise.all([
     prisma.estimate.count({ where: { masterId: master.id } }),
@@ -77,176 +65,70 @@ export default async function DashboardPage() {
   const kpLimit = KP_LIMITS[master.subscriptionTier];
   const kpUsed = master.kpGeneratedThisMonth;
   const kpLeft = isPro ? null : (kpLimit as number) - kpUsed;
-  const kpProgress = isPro ? 100 : Math.min(100, (kpUsed / (kpLimit as number)) * 100);
 
-  const totalArea = aggregates._sum.totalArea ?? 0;
   const avgCheck = aggregates._avg.total ?? 0;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-5 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5" />
-          <span className="capitalize">{todayStr}</span>
-        </div>
+      <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Привет, {master.firstName}! 👋
+          Привет, {master.firstName}!
         </h1>
         {master.companyName && (
-          <p className="text-sm text-muted-foreground">{master.companyName}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{master.companyName}</p>
         )}
       </div>
 
+      {/* Quick Actions — always visible */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/dashboard/assistant">
+          <Card className="border-[#1e3a5f] bg-[#1e3a5f] text-white h-full hover:bg-[#152d4a] transition-colors cursor-pointer">
+            <CardContent className="p-4 flex flex-col gap-2 h-full">
+              <div className="rounded-lg bg-white/15 p-2 w-fit">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">AI Ассистент</p>
+                <p className="text-xs text-white/70 mt-0.5 leading-snug">
+                  По фото или описанию
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/calculator">
+          <Card className="border-[#1e3a5f]/25 bg-[#1e3a5f]/5 h-full hover:bg-[#1e3a5f]/10 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex flex-col gap-2 h-full">
+              <div className="rounded-lg bg-[#1e3a5f]/15 p-2 w-fit">
+                <Plus className="h-5 w-5 text-[#1e3a5f]" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Новый расчёт</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  Ввод вручную
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
       {estimatesCount === 0 ? (
-        <>
-          <GettingStarted firstName={master.firstName} />
-          <WelcomeModal isNewUser />
-        </>
+        /* Empty state — minimal */
+        <Card className="border-dashed">
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground text-sm">
+              Расчётов пока нет — создайте первый выше
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <>
-          {/* Stats 2x2 */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* КП за месяц */}
-            <Card className="border-[#1e3a5f]/20">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="rounded-lg bg-[#1e3a5f]/10 p-2">
-                    <FileText className="h-4 w-4 text-[#1e3a5f]" />
-                  </div>
-                  <Badge
-                    variant={isPro ? "default" : "secondary"}
-                    className="text-[10px] px-1.5"
-                  >
-                    {isPro ? "PRO ∞" : "FREE"}
-                  </Badge>
-                </div>
-                <p className="text-2xl font-bold">
-                  {isPro ? "∞" : `${kpUsed} / ${kpLimit}`}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  КП за этот месяц
-                </p>
-                {!isPro && (
-                  <div className="mt-3 space-y-1">
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${kpProgress}%`,
-                          backgroundColor: kpProgress >= 100 ? "#ef4444" : "#1e3a5f",
-                        }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {(kpLeft ?? 0) > 0
-                        ? `Осталось ${kpLeft} из ${kpLimit}`
-                        : "Лимит исчерпан — перейди на PRO"}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Расчётов в базе */}
-            <Link href="/dashboard/estimates">
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="pt-5 pb-4">
-                  <div className="rounded-lg bg-blue-50 p-2 w-fit mb-3">
-                    <SquareStack className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <p className="text-2xl font-bold">{estimatesCount}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Расчётов в базе
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            {/* Общая площадь */}
-            <Card>
-              <CardContent className="pt-5 pb-4">
-                <div className="rounded-lg bg-emerald-50 p-2 w-fit mb-3">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" />
-                </div>
-                <p className="text-2xl font-bold">
-                  {totalArea > 0 ? `${totalArea.toFixed(0)} м²` : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Общая площадь за всё время
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Средний чек */}
-            <Card>
-              <CardContent className="pt-5 pb-4">
-                <div className="rounded-lg bg-amber-50 p-2 w-fit mb-3">
-                  <BarChart3 className="h-4 w-4 text-amber-600" />
-                </div>
-                <p className="text-2xl font-bold">
-                  {avgCheck > 0 ? formatPrice(avgCheck) : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Средний чек
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="border-[#1e3a5f] bg-[#1e3a5f] text-white">
-              <CardContent className="pt-5 pb-4 flex flex-col gap-3">
-                <div className="rounded-lg bg-white/10 p-2 w-fit">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold">AI Ассистент</p>
-                  <p className="text-xs text-white/70 mt-0.5">
-                    Расчёт по фото или описанию
-                  </p>
-                </div>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="secondary"
-                  className="w-fit bg-white text-[#1e3a5f] hover:bg-white/90"
-                >
-                  <Link href="/dashboard/assistant">
-                    Открыть <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[#1e3a5f]/20 bg-[#1e3a5f]/5">
-              <CardContent className="pt-5 pb-4 flex flex-col gap-3">
-                <div className="rounded-lg bg-[#1e3a5f]/10 p-2 w-fit">
-                  <Plus className="h-5 w-5 text-[#1e3a5f]" />
-                </div>
-                <div>
-                  <p className="font-semibold">Новый расчёт</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Ввод вручную с выбором комплектующих
-                  </p>
-                </div>
-                <Button
-                  asChild
-                  size="sm"
-                  className="w-fit bg-[#1e3a5f] hover:bg-[#152d4a] text-white"
-                >
-                  <Link href="/dashboard/calculator">
-                    Рассчитать <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Recent Estimates */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Последние расчёты</CardTitle>
                 <Link
@@ -257,13 +139,13 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-4 pb-4">
               <div className="space-y-2">
                 {recentEstimates.map((est) => (
                   <Link
                     key={est.id}
                     href={`/dashboard/estimates/${est.id}`}
-                    className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-muted/50 transition-colors group"
+                    className="flex items-center justify-between rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group"
                   >
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">
@@ -273,7 +155,7 @@ export default async function DashboardPage() {
                         {formatDateShort(est.createdAt)} · {est.totalArea.toFixed(1)} м²
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 ml-4 shrink-0">
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-semibold text-[#1e3a5f]">
                           {formatPrice(est.total || est.standardTotal || 0)}
@@ -282,18 +164,55 @@ export default async function DashboardPage() {
                           {STATUS_LABELS[est.status] ?? est.status}
                         </Badge>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </Link>
                 ))}
               </div>
             </CardContent>
           </Card>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <Card>
+              <CardContent className="p-3 text-center">
+                <SquareStack className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                <p className="text-xl font-bold">{estimatesCount}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  Расчётов
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3 text-center">
+                <BarChart3 className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                <p className="text-xl font-bold">
+                  {avgCheck > 0 ? formatPrice(avgCheck) : "—"}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  Средний чек
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3 text-center">
+                <FileText className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                <p className="text-xl font-bold">
+                  {isPro ? "∞" : `${kpUsed}`}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  {isPro ? "PRO" : `КП / ${kpLeft != null && kpLeft <= 0 ? "лимит" : `ост. ${kpLeft}`}`}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
 
-      {/* Feedback - visible on mobile where sidebar is hidden */}
-      <div className="flex justify-center pt-2 pb-4 md:hidden">
+      {/* Feedback */}
+      <div className="flex justify-center pt-1 pb-4 md:hidden">
         <FeedbackButton variant="compact" />
       </div>
     </div>
