@@ -348,28 +348,27 @@ function WallWizard({ onDone, onCancel }: {
           </button>
         </div>
 
-        {/* SVG Preview — занимает всё свободное пространство */}
-        <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
-          <div className="flex-1 min-h-0">
-            <RoomPreview
-              walls={previewWalls}
-              committedCount={committed.length}
-              nextDir={!isValid ? nextDir : undefined}
-              forceClose={!!approxResult}
-            />
-          </div>
-          {!isValid && gapParts.length > 0 && (
-            <p className={`text-xs text-center mt-1 shrink-0 ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
-              {gap < 30
-                ? `Погрешность ${Math.round(gap)} см — можно принять`
-                : `Не сходится: ${gapParts.join(" и ")}`}
-            </p>
-          )}
-        </div>
-
         {(isValid && doneResult) || approxResult ? (
-          /* ── Done ── */
-          <div className="shrink-0 overflow-y-auto p-4 pb-20 space-y-3 border-t">
+          /* ── Done: всё скроллится ── */
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Превью комнаты — фиксированная высота */}
+            <div className="px-3 pt-2 pb-2" style={{ height: "40svh" }}>
+              <RoomPreview
+                walls={previewWalls}
+                committedCount={committed.length}
+                nextDir={undefined}
+                forceClose={!!approxResult}
+              />
+            </div>
+            {!isValid && gapParts.length > 0 && (
+              <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
+                {gap < 30
+                  ? `Погрешность ${Math.round(gap)} см — можно принять`
+                  : `Не сходится: ${gapParts.join(" и ")}`}
+              </p>
+            )}
+            {/* Результаты */}
+            <div className="p-4 pb-20 space-y-3 border-t">
             {!isValid && approxResult && (
               <p className="text-xs text-center text-amber-600 font-medium">
                 ⚠ Погрешность {Math.round(approxResult.gap)} см — результат приблизительный
@@ -398,9 +397,20 @@ function WallWizard({ onDone, onCancel }: {
               {isValid ? "Добавить помещение" : "Принять приблизительно"}
             </button>
           </div>
+          </div>
 
         ) : (
           /* ── Numpad ── */
+          <>
+          {/* Превью комнаты — заполняет всё свободное место */}
+          <div className="flex-1 min-h-0 px-3 pt-2 pb-2">
+            <RoomPreview
+              walls={previewWalls}
+              committedCount={committed.length}
+              nextDir={nextDir}
+              forceClose={false}
+            />
+          </div>
           <div className="shrink-0 border-t">
             {/* Direction + Ступенька toggle */}
             {committed.length > 0 && (
@@ -421,18 +431,18 @@ function WallWizard({ onDone, onCancel }: {
             )}
 
             {/* Number display */}
-            <div className="flex items-baseline justify-center gap-2 py-2 border-b">
-              <span className="text-5xl font-bold tabular-nums text-[#1e3a5f]">
+            <div className="flex items-baseline justify-center gap-2 py-1.5 border-b">
+              <span className="text-4xl font-bold tabular-nums text-[#1e3a5f]">
                 {input || "0"}
               </span>
-              <span className="text-lg text-muted-foreground">см</span>
+              <span className="text-base text-muted-foreground">см</span>
             </div>
 
             {/* Numpad */}
             <div className="grid grid-cols-3 select-none">
               {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
                 <button key={d} onPointerDown={() => digit(d)}
-                  className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                  className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                   {d}
                 </button>
               ))}
@@ -441,16 +451,16 @@ function WallWizard({ onDone, onCancel }: {
                   if (input) setInput(p => p.slice(0, -1));
                   else if (committed.length > 0) setCommitted(prev => prev.slice(0, -1));
                 }}
-                className="py-4 text-2xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
+                className="py-2.5 text-xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
                 ⌫
               </button>
               <button onPointerDown={() => digit("0")}
-                className="py-4 text-3xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
               <button onPointerDown={confirm}
                 disabled={!input || parseFloat(input) <= 0}
-                className="py-4 text-3xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
+                className="py-2.5 text-2xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
                 ✓
               </button>
             </div>
@@ -462,6 +472,7 @@ function WallWizard({ onDone, onCancel }: {
               </button>
             )}
           </div>
+          </>
         )}
       </div>
     </div>
