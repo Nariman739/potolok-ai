@@ -51,12 +51,35 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
 
+    // Авто-генерация slug для портфолио
+    const baseSlug = (firstName || "master")
+      .toLowerCase()
+      .replace(/[а-яё]/g, (c: string) => {
+        const map: Record<string, string> = {
+          а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+          к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+          х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+        };
+        return map[c] || c;
+      })
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    let portfolioSlug = baseSlug;
+    let suffix = 1;
+    while (await prisma.master.findUnique({ where: { portfolioSlug } })) {
+      portfolioSlug = `${baseSlug}-${suffix}`;
+      suffix++;
+    }
+
     const master = await prisma.master.create({
       data: {
         phone,
         passwordHash,
         firstName,
         companyName: companyName || null,
+        portfolioSlug,
         prices: {
           create: PRODUCT_ITEMS.map((item) => ({
             itemCode: item.code,

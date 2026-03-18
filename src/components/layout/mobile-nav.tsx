@@ -5,16 +5,16 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Calculator,
   FileText,
   MessageSquare,
   ImageIcon,
+  Ruler,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/dashboard/assistant", label: "AI", icon: MessageSquare },
-  { href: "/dashboard/calculator", label: "Расчёт", icon: Calculator },
+  { href: "/dashboard/vision-test", label: "Замеры", icon: Ruler },
   { href: "/dashboard/estimates", label: "КП", icon: FileText },
   { href: "/dashboard/portfolio", label: "Работы", icon: ImageIcon },
 ];
