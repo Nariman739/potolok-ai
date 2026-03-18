@@ -369,7 +369,7 @@ function WallWizard({ onDone, onCancel }: {
 
         {(isValid && doneResult) || approxResult ? (
           /* ── Done ── */
-          <div className="shrink-0 p-4 space-y-3 border-t">
+          <div className="shrink-0 overflow-y-auto p-4 pb-20 space-y-3 border-t">
             {!isValid && approxResult && (
               <p className="text-xs text-center text-amber-600 font-medium">
                 ⚠ Погрешность {Math.round(approxResult.gap)} см — результат приблизительный
