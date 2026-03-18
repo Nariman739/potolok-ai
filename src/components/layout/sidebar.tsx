@@ -12,6 +12,7 @@ import {
   LogOut,
   MessageSquare,
   Ruler,
+  ImageIcon,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard/vision-test", label: "Замеры", icon: Ruler },
   { href: "/dashboard/calculator", label: "Калькулятор", icon: Calculator },
   { href: "/dashboard/estimates", label: "Расчёты", icon: FileText },
+  { href: "/dashboard/portfolio", label: "Портфолио", icon: ImageIcon },
   { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
 ];

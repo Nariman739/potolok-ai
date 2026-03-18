@@ -67,6 +67,11 @@ model Master {
   sessions        Session[]
   chatSessions    ChatSession[]
   customItems     CustomItem[]
+  portfolioWorks  PortfolioWork[]
+
+  // Portfolio
+  portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
+  portfolioBio    String?            // Краткое описание мастера для публичной страницы
 }
 
 model Session {
@@ -199,4 +204,28 @@ enum ChatStatus {
   ACTIVE
   COMPLETED
   ABANDONED
+}
+
+// ============================================
+// PORTFOLIO
+// ============================================
+
+model PortfolioWork {
+  id            String   @id @default(uuid())
+  masterId      String
+
+  title         String?            // "Двухуровневый потолок в гостиной"
+  description   String?            // Свободное описание
+  ceilingType   String?            // "матовый" | "глянцевый" | "сатин" | "двухуровневый"
+  area          Float?             // Площадь в м²
+  photos        String[]  @default([])  // URLs из Vercel Blob
+  videoUrl      String?            // Ссылка на видео (YouTube/Vercel Blob)
+
+  isPublished   Boolean  @default(true)
+  sortOrder     Int      @default(0)   // Для ручной сортировки
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  master        Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
