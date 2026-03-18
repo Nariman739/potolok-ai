@@ -365,6 +365,9 @@ function WallWizard({ onDone, onCancel }: {
           )}
         </div>
 
+        {/* Spacer — толкает нампад вниз */}
+        <div className="flex-1" />
+
         {(isValid && doneResult) || approxResult ? (
           /* ── Done ── */
           <div className="shrink-0 p-4 space-y-3 border-t">
