@@ -100,7 +100,7 @@ function RoomPreview({
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const minY = Math.min(...ys), maxY = Math.max(...ys);
   const W = maxX - minX || 1, H = maxY - minY || 1;
-  const PAD = 32, SVG_W = 320, SVG_H = 200;
+  const PAD = 40, SVG_W = 400, SVG_H = 400;
   const scale = Math.min((SVG_W - PAD * 2) / W, (SVG_H - PAD * 2) / H);
   const sx = (x: number) => PAD + (x - minX) * scale;
   const sy = (y: number) => PAD + (y - minY) * scale;
@@ -348,25 +348,24 @@ function WallWizard({ onDone, onCancel }: {
           </button>
         </div>
 
-        {/* SVG Preview */}
-        <div className="shrink-0 px-3 pt-2" style={{ height: 160 }}>
-          <RoomPreview
-            walls={previewWalls}
-            committedCount={committed.length}
-            nextDir={!isValid ? nextDir : undefined}
-            forceClose={!!approxResult}
-          />
+        {/* SVG Preview — занимает всё свободное пространство */}
+        <div className="flex-1 min-h-0 px-3 pt-2 pb-2 flex flex-col">
+          <div className="flex-1 min-h-0">
+            <RoomPreview
+              walls={previewWalls}
+              committedCount={committed.length}
+              nextDir={!isValid ? nextDir : undefined}
+              forceClose={!!approxResult}
+            />
+          </div>
           {!isValid && gapParts.length > 0 && (
-            <p className={`text-xs text-center mt-1 ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
+            <p className={`text-xs text-center mt-1 shrink-0 ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
               {gap < 30
                 ? `Погрешность ${Math.round(gap)} см — можно принять`
                 : `Не сходится: ${gapParts.join(" и ")}`}
             </p>
           )}
         </div>
-
-        {/* Spacer — толкает нампад вниз */}
-        <div className="flex-1" />
 
         {(isValid && doneResult) || approxResult ? (
           /* ── Done ── */
