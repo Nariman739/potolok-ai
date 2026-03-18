@@ -14,7 +14,6 @@ import {
   Check,
   Trash2,
   X,
-  QrCode,
   Eye,
   Pencil,
   Loader2,
@@ -508,7 +507,7 @@ function NewWorkForm({
                 )}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   multiple
                   className="hidden"
                   onChange={handleFiles}
@@ -626,7 +625,7 @@ function EditWorkCard({
             )}
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               multiple
               className="hidden"
               onChange={handleFiles}

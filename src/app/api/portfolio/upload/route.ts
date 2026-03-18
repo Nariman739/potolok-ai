@@ -13,9 +13,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Файл не найден" }, { status: 400 });
     }
 
-    // Фото и видео
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
+    // Определяем тип по расширению если file.type пустой (бывает на мобилках)
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const imageExts = ["jpg", "jpeg", "png", "webp", "heic", "heif", "gif"];
+    const videoExts = ["mp4", "mov", "webm"];
+
+    const isImage = file.type.startsWith("image/") || imageExts.includes(ext);
+    const isVideo = file.type.startsWith("video/") || videoExts.includes(ext);
 
     if (!isImage && !isVideo) {
       return NextResponse.json(
@@ -33,9 +37,8 @@ export async function POST(request: Request) {
     }
 
     const timestamp = Date.now();
-    const rawExt = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const ext = rawExt === "heic" || rawExt === "heif" ? "jpg" : rawExt;
-    const path = `portfolio/${master.id}/${timestamp}.${ext}`;
+    const blobExt = (ext === "heic" || ext === "heif") ? "jpg" : (ext || "jpg");
+    const path = `portfolio/${master.id}/${timestamp}.${blobExt}`;
 
     const contentType =
       file.type === "image/heic" || file.type === "image/heif"
