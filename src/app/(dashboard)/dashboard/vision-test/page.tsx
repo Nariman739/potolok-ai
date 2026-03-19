@@ -1041,7 +1041,9 @@ export default function ZameryPage() {
 
       // Auto-fill from designer elements
       const els = room.elements || [];
-      const spotsCount = els.filter(e => e.type === "spot").length;
+      const spotsOurs = els.filter(e => e.type === "spot" && e.variant !== "client").length;
+      const spotsClient = els.filter(e => e.type === "spot" && e.variant === "client").length;
+      const spotsCount = spotsOurs + spotsClient;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
       const trackMagneticLength = Math.round(
         els.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0)
@@ -1064,6 +1066,7 @@ export default function ZameryPage() {
         ceilingHeight: 2.7,
         canvasType: "matte" as CanvasType,
         spotsCount,
+        spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined,
         chandelierCount,
         chandelierInstallCount: chandelierCount,
         trackMagneticLength,

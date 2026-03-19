@@ -15,6 +15,7 @@ export interface RoomElement {
   y?: number;
   wallIndex?: number;
   length?: number; // cm
+  variant?: "ours" | "client"; // for spots and tracks: ours = с материалом, client = клиентские
 }
 
 interface Room {
@@ -93,6 +94,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 }) {
   const [elements, setElements] = useState<RoomElement[]>(room.elements || []);
   const [activeType, setActiveType] = useState<ElementType | null>(null);
+  const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
@@ -200,11 +202,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const config = ELEMENTS.find(el => el.type === activeType)!;
 
     if (config.category === "point") {
+      const hasVariant = activeType === "spot";
       setElements(prev => [...prev, {
         id: crypto.randomUUID(),
         type: activeType,
         x: coords.x,
         y: coords.y,
+        ...(hasVariant && { variant: activeVariant }),
       }]);
     } else if (config.category === "wall") {
       const nearest = nearestWall(coords.x, coords.y, vertices);
@@ -237,11 +241,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (!lengthInput || !activeType) return;
     const len = parseFloat(lengthValue);
     if (!len || len <= 0) { setLengthInput(null); return; }
+    const hasVariant = activeType === "track";
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: activeType,
       wallIndex: lengthInput.wallIndex,
       length: len,
+      ...(hasVariant && { variant: activeVariant }),
     }]);
     setLengthInput(null);
     setLengthValue("");
@@ -369,16 +375,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   function spotCircle(el: RoomElement) {
     const pos = getElPos(el);
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const isClient = el.variant === "client";
+    const fillColor = isClient ? "#6B7280" : "#F59E0B";
+    const glowColor = isClient ? "#E5E7EB" : "#FEF3C7";
+    const strokeColor = isClient ? "#4B5563" : "#D97706";
     return (
       <g key={el.id}
         onPointerDown={(e) => handleElementPointerDown(el.id, e)}
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Larger invisible hit area for easier grab */}
         <circle cx={pos.x} cy={pos.y} r={spotR * 4} fill="transparent" />
-        <circle cx={pos.x} cy={pos.y} r={spotR * 2.2} fill="#FEF3C7" opacity={0.6} />
-        <circle cx={pos.x} cy={pos.y} r={spotR} fill="#F59E0B" stroke="#D97706" strokeWidth={spotR * 0.25} />
+        <circle cx={pos.x} cy={pos.y} r={spotR * 2.2} fill={glowColor} opacity={0.6} />
+        <circle cx={pos.x} cy={pos.y} r={spotR} fill={fillColor} stroke={strokeColor} strokeWidth={spotR * 0.25} />
+        {isClient && (
+          <text x={pos.x} y={pos.y + spotR * 3.5} textAnchor="middle" fontSize={labelSize * 0.6} fill="#6B7280">кл.</text>
+        )}
       </g>
     );
   }
@@ -416,8 +428,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   // ── Summary badges ──
   const summary: { icon: string; label: string; color: string }[] = [];
   const spots = elements.filter(e => e.type === "spot").length;
+  const spotsOursCount = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
+  const spotsClientCount = elements.filter(e => e.type === "spot" && e.variant === "client").length;
   const chands = elements.filter(e => e.type === "chandelier").length;
-  if (spots > 0) summary.push({ icon: "💡", label: `${spots} шт`, color: "bg-amber-50 text-amber-700" });
+  if (spotsOursCount > 0) summary.push({ icon: "💡", label: `${spotsOursCount} наши`, color: "bg-amber-50 text-amber-700" });
+  if (spotsClientCount > 0) summary.push({ icon: "💡", label: `${spotsClientCount} кл.`, color: "bg-gray-100 text-gray-600" });
   if (chands > 0) summary.push({ icon: "🔆", label: `${chands} шт`, color: "bg-purple-50 text-purple-700" });
   for (const type of ["curtain", "subcurtain", "track", "lightline"] as ElementType[]) {
     const items = elements.filter(e => e.type === type);
@@ -443,13 +458,18 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     cost += room.perimeter * (p.insert || 1000);
     // Corners
     cost += room.walls.length * (p.corner_plastic || 1000);
-    // Spots
-    cost += spots * (p.spot_client || 2500);
+    // Spots — client's = installation only, ours = with material
+    const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
+    const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
+    cost += spotsOurs * (p.spot_ours || 5000);
+    cost += spotsClient * (p.spot_client || 2500);
     // Chandeliers
     cost += chands * ((p.chandelier || 2000) + (p.chandelier_install || 5000));
-    // Tracks (cm → m)
-    const trackM = elements.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0) / 100;
-    cost += trackM * (p.track_magnetic || 27000);
+    // Tracks — client's = installation only (half price), ours = full
+    const trackOursM = elements.filter(e => e.type === "track" && e.variant !== "client").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    const trackClientM = elements.filter(e => e.type === "track" && e.variant === "client").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    cost += trackOursM * (p.track_magnetic || 27000);
+    cost += trackClientM * Math.round((p.track_magnetic || 27000) * 0.4); // only installation
     // Light lines (cm → m)
     const lightM = elements.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += lightM * (p.light_line || 15000);
@@ -607,13 +627,45 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
+      {/* Variant toggle — shows when spot or track is selected */}
+      {(activeType === "spot" || activeType === "track") && (
+        <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex items-center justify-center gap-2">
+          <span className="text-xs text-amber-800 font-medium">
+            {activeType === "spot" ? "Софиты:" : "Трек:"}
+          </span>
+          <button
+            onClick={() => setActiveVariant("ours")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              activeVariant === "ours"
+                ? "bg-[#1e3a5f] text-white"
+                : "bg-white border border-amber-300 text-amber-700"
+            }`}
+          >
+            Наши (с материалом)
+          </button>
+          <button
+            onClick={() => setActiveVariant("client")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              activeVariant === "client"
+                ? "bg-gray-600 text-white"
+                : "bg-white border border-amber-300 text-amber-700"
+            }`}
+          >
+            Клиентские
+          </button>
+        </div>
+      )}
+
       {/* Element toolbar */}
       <div className="shrink-0 border-t bg-gray-50 px-2 py-2">
         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
           {ELEMENTS.map(el => (
             <button
               key={el.type}
-              onClick={() => setActiveType(activeType === el.type ? null : el.type)}
+              onClick={() => {
+                if (activeType === el.type) { setActiveType(null); }
+                else { setActiveType(el.type); setActiveVariant("ours"); }
+              }}
               className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
                 activeType === el.type
                   ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
