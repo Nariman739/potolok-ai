@@ -1038,6 +1038,24 @@ export default function ZameryPage() {
       const w = room.walls.length === 4
         ? room.walls[1] / 100
         : Math.round((room.area / Math.max(l, 0.1)) * 100) / 100;
+
+      // Auto-fill from designer elements
+      const els = room.elements || [];
+      const spotsCount = els.filter(e => e.type === "spot").length;
+      const chandelierCount = els.filter(e => e.type === "chandelier").length;
+      const trackMagneticLength = Math.round(
+        els.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0)
+      ) / 100;
+      const lightLineLength = Math.round(
+        els.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0)
+      ) / 100;
+      const gardinaLength = Math.round(
+        els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
+      ) / 100;
+      const podshtornikLength = Math.round(
+        els.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0)
+      ) / 100;
+
       return {
         id: crypto.randomUUID(),
         name: room.name || "Помещение",
@@ -1045,10 +1063,17 @@ export default function ZameryPage() {
         width: Math.round(w * 100) / 100,
         ceilingHeight: 2.7,
         canvasType: "matte" as CanvasType,
-        spotsCount: 0, chandelierCount: 0, chandelierInstallCount: 0,
-        trackMagneticLength: 0, lightLineLength: 0, curtainRodLength: 0,
-        pipeBypasses: 0, cornersCount: room.walls.length, eurobrusCount: 0,
-        gardinaLength: 0, podshtornikLength: 0,
+        spotsCount,
+        chandelierCount,
+        chandelierInstallCount: chandelierCount,
+        trackMagneticLength,
+        lightLineLength,
+        curtainRodLength: 0,
+        pipeBypasses: 0,
+        cornersCount: room.walls.length,
+        eurobrusCount: 0,
+        gardinaLength,
+        podshtornikLength,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
       } satisfies RoomInput;
     });

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Undo2, Check } from "lucide-react";
+import { X, Undo2, Check, Share2 } from "lucide-react";
+import { DEFAULT_PRICES } from "@/lib/constants";
 
 // ── Types ──
 
@@ -427,7 +428,68 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     }
   }
   const floatingCount = elements.filter(e => e.type === "floating").length;
+  const floatingLenCm = elements.filter(e => e.type === "floating").reduce((s, e) => s + (e.length || 0), 0);
   if (floatingCount > 0) summary.push({ icon: "〰️", label: `${floatingCount} стен`, color: "bg-blue-50 text-blue-700" });
+
+  // ── Live cost estimate ──
+  function calcLiveCost(): number {
+    const p = DEFAULT_PRICES;
+    let cost = 0;
+    // Canvas (area × price)
+    cost += room.area * (p.canvas_320 || 2000);
+    // Profile (perimeter × price)
+    cost += room.perimeter * (p.profile_plastic || 500);
+    // Insert (perimeter)
+    cost += room.perimeter * (p.insert || 1000);
+    // Corners
+    cost += room.walls.length * (p.corner_plastic || 1000);
+    // Spots
+    cost += spots * (p.spot_client || 2500);
+    // Chandeliers
+    cost += chands * ((p.chandelier || 2000) + (p.chandelier_install || 5000));
+    // Tracks (cm → m)
+    const trackM = elements.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    cost += trackM * (p.track_magnetic || 27000);
+    // Light lines (cm → m)
+    const lightM = elements.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    cost += lightM * (p.light_line || 15000);
+    // Curtain/gardina (cm → m)
+    const gardinaM = elements.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    cost += gardinaM * (p.gardina_plastic || 5000);
+    // Subcurtain/podshtornik (cm → m)
+    const podM = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    cost += podM * (p.podshtornik_plastic || 2500);
+    // Floating profile (cm → m)
+    const floatingM = floatingLenCm / 100;
+    cost += floatingM * (p.profile_floating || 14000);
+    return Math.round(cost);
+  }
+
+  const liveCost = elements.length > 0 ? calcLiveCost() : 0;
+
+  function formatPrice(n: number): string {
+    return n.toLocaleString("ru-RU");
+  }
+
+  // ── WhatsApp share ──
+  function handleShare() {
+    const name = room.name || "Помещение";
+    const lines = [`📐 ${name}: ${room.area} м², P = ${room.perimeter} м`];
+    lines.push(`Стены: ${room.walls.join(" · ")} см`);
+    if (spots > 0) lines.push(`💡 Софиты: ${spots} шт`);
+    if (chands > 0) lines.push(`🔆 Люстры: ${chands} шт`);
+    const trackCm = elements.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0);
+    if (trackCm > 0) lines.push(`🔲 Магнитный трек: ${trackCm} см`);
+    const lightCm = elements.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0);
+    if (lightCm > 0) lines.push(`✨ Световая линия: ${lightCm} см`);
+    const gardinaCm = elements.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0);
+    if (gardinaCm > 0) lines.push(`📏 Гардина: ${gardinaCm} см`);
+    const podCm = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0);
+    if (podCm > 0) lines.push(`📐 Подшторник: ${podCm} см`);
+    if (floatingCount > 0) lines.push(`〰️ Парящий: ${floatingCount} стен`);
+    if (liveCost > 0) lines.push(`\n💰 Ориентировочно: ${formatPrice(liveCost)} ₸`);
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+  }
 
   const activeConfig = activeType ? ELEMENTS.find(e => e.type === activeType) : null;
 
@@ -514,19 +576,34 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </svg>
       </div>
 
-      {/* Summary + Undo */}
+      {/* Summary + Cost + Actions */}
       {elements.length > 0 && (
-        <div className="shrink-0 px-3 py-1.5 flex items-center justify-between border-t bg-white">
-          <div className="flex gap-1.5 flex-wrap overflow-x-auto">
-            {summary.map((s, i) => (
-              <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
-                {s.icon} {s.label}
-              </span>
-            ))}
+        <div className="shrink-0 border-t bg-white">
+          {/* Badges row */}
+          <div className="px-3 py-1.5 flex items-center justify-between">
+            <div className="flex gap-1.5 flex-wrap overflow-x-auto">
+              {summary.map((s, i) => (
+                <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
+                  {s.icon} {s.label}
+                </span>
+              ))}
+            </div>
+            <button onClick={undo} className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500 ml-2">
+              <Undo2 className="h-4 w-4" />
+            </button>
           </div>
-          <button onClick={undo} className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500 ml-2">
-            <Undo2 className="h-4 w-4" />
-          </button>
+          {/* Live cost + WhatsApp */}
+          <div className="px-3 pb-1.5 flex items-center justify-between gap-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">~</span>
+              <span className="text-lg font-bold text-[#1e3a5f]">{formatPrice(liveCost)} ₸</span>
+            </div>
+            <button onClick={handleShare}
+              className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white active:bg-green-700">
+              <Share2 className="h-3.5 w-3.5" />
+              WhatsApp
+            </button>
+          </div>
         </div>
       )}
 
