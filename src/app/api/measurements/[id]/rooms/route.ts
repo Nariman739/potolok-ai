@@ -32,6 +32,8 @@ export async function POST(
         normalCorners: boolean[];
         area: number;
         perimeter: number;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        elements?: any;
       };
 
       const room = await prisma.measurementRoom.create({
@@ -42,6 +44,7 @@ export async function POST(
           normalCorners: r.normalCorners,
           area: r.area,
           perimeter: r.perimeter,
+          elements: r.elements ?? [],
           sortOrder: obj._count.rooms + i,
         },
       });

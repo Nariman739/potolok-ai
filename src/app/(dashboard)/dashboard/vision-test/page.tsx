@@ -6,6 +6,8 @@ import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight } from 
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
+import RoomDesigner from "./room-designer";
+import type { RoomElement } from "./room-designer";
 
 // ─────────────────────────────────────────────────────
 // Geometry
@@ -200,6 +202,7 @@ interface Room {
   normalCorners: boolean[];
   area: number;
   perimeter: number;
+  elements?: RoomElement[];
 }
 
 interface SavedObject {
@@ -485,12 +488,14 @@ function WallWizard({ onDone, onCancel }: {
 // Room Card
 // ─────────────────────────────────────────────────────
 
-function RoomCard({ room, index, onRemove, onView }: {
+function RoomCard({ room, index, onRemove, onView, onDesign }: {
   room: Room;
   index: number;
   onRemove: () => void;
   onView: () => void;
+  onDesign: () => void;
 }) {
+  const elCount = room.elements?.length || 0;
   return (
     <div className="rounded-lg border p-4 cursor-pointer active:bg-gray-50" onClick={onView}>
       <div className="flex items-start justify-between gap-2">
@@ -509,12 +514,24 @@ function RoomCard({ room, index, onRemove, onView }: {
           <div className="mt-1 text-xs text-muted-foreground font-mono">
             {room.walls.join(" · ")} см
           </div>
+          {elCount > 0 && (
+            <div className="mt-1.5 text-xs text-emerald-600 font-medium">
+              ✓ {elCount} элементов размещено
+            </div>
+          )}
         </div>
-        <button
-          onClick={e => { e.stopPropagation(); onRemove(); }}
-          className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex flex-col gap-1 shrink-0">
+          <button
+            onClick={e => { e.stopPropagation(); onDesign(); }}
+            className="rounded-lg px-2.5 py-1.5 text-xs font-medium bg-[#1e3a5f] text-white active:bg-[#152d4a]">
+            {elCount > 0 ? "Дизайн ✎" : "Дизайн +"}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onRemove(); }}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors self-center">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -778,6 +795,7 @@ export default function ZameryPage() {
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
   const [savedObjects, setSavedObjects] = useState<SavedObject[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [designingRoom, setDesigningRoom] = useState<Room | null>(null);
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -804,6 +822,7 @@ export default function ZameryPage() {
               normalCorners: r.normalCorners as boolean[],
               area: r.area,
               perimeter: r.perimeter,
+              elements: (r.elements as RoomElement[]) || [],
             })));
           }
         }
@@ -908,6 +927,7 @@ export default function ZameryPage() {
           normalCorners: updated.normalCorners,
           area: updated.area,
           perimeter: updated.perimeter,
+          elements: updated.elements || [],
         }),
       }).catch(() => {});
     }
@@ -1048,8 +1068,30 @@ export default function ZameryPage() {
     <>
       {showWizard && (
         <WallWizard
-          onDone={room => { addRooms([room]); setShowWizard(false); }}
+          onDone={room => { setDesigningRoom(room); setShowWizard(false); }}
           onCancel={() => setShowWizard(false)}
+        />
+      )}
+      {designingRoom && (
+        <RoomDesigner
+          room={designingRoom}
+          onDone={elements => {
+            const roomWithElements = { ...designingRoom, elements };
+            // Check if this room already exists in the list (editing) or is new
+            const exists = rooms.some(r => r.id === designingRoom.id);
+            if (exists) {
+              updateRoom(roomWithElements);
+            } else {
+              addRooms([roomWithElements]);
+            }
+            setDesigningRoom(null);
+          }}
+          onCancel={() => {
+            // If new room, add without elements; if existing, just close
+            const exists = rooms.some(r => r.id === designingRoom.id);
+            if (!exists) addRooms([designingRoom]);
+            setDesigningRoom(null);
+          }}
         />
       )}
       {viewingRoom && (
@@ -1102,6 +1144,7 @@ export default function ZameryPage() {
                 index={i}
                 onRemove={() => removeRoom(room.id)}
                 onView={() => setViewingRoom(room)}
+                onDesign={() => setDesigningRoom(room)}
               />
             ))}
             <div className="rounded-lg border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/5 p-4 flex items-center justify-between flex-wrap gap-3">

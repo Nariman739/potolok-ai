@@ -240,6 +240,7 @@ model MeasurementRoom {
   normalCorners  Json     // boolean[] — тип углов
   area           Float
   perimeter      Float
+  elements       Json     @default("[]")  // RoomElement[] — софиты, люстры, гардины и т.д.
   sortOrder      Int      @default(0)
 
   createdAt      DateTime @default(now())

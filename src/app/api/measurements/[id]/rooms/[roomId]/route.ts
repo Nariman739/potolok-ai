@@ -10,12 +10,13 @@ export async function PATCH(
     const master = await requireAuth();
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, area, perimeter } = body as {
+    const { name, walls, normalCorners, area, perimeter, elements } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
       area?: number;
       perimeter?: number;
+      elements?: unknown;
     };
 
     // Verify ownership
@@ -27,15 +28,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: Record<string, any> = {};
+    if (name !== undefined) data.name = name;
+    if (walls !== undefined) data.walls = walls;
+    if (normalCorners !== undefined) data.normalCorners = normalCorners;
+    if (area !== undefined) data.area = area;
+    if (perimeter !== undefined) data.perimeter = perimeter;
+    if (elements !== undefined) data.elements = elements;
+
     const result = await prisma.measurementRoom.updateMany({
       where: { id: roomId, objectId: id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(walls !== undefined && { walls }),
-        ...(normalCorners !== undefined && { normalCorners }),
-        ...(area !== undefined && { area }),
-        ...(perimeter !== undefined && { perimeter }),
-      },
+      data,
     });
 
     if (result.count === 0) {

@@ -68,6 +68,7 @@ export type MeasurementRoomCountAggregateOutputType = {
   normalCorners: number
   area: number
   perimeter: number
+  elements: number
   sortOrder: number
   createdAt: number
   updatedAt: number
@@ -117,6 +118,7 @@ export type MeasurementRoomCountAggregateInputType = {
   normalCorners?: true
   area?: true
   perimeter?: true
+  elements?: true
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
@@ -217,6 +219,7 @@ export type MeasurementRoomGroupByOutputType = {
   normalCorners: runtime.JsonValue
   area: number
   perimeter: number
+  elements: runtime.JsonValue
   sortOrder: number
   createdAt: Date
   updatedAt: Date
@@ -253,6 +256,7 @@ export type MeasurementRoomWhereInput = {
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
+  elements?: Prisma.JsonFilter<"MeasurementRoom">
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -267,6 +271,7 @@ export type MeasurementRoomOrderByWithRelationInput = {
   normalCorners?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
+  elements?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -284,6 +289,7 @@ export type MeasurementRoomWhereUniqueInput = Prisma.AtLeast<{
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
+  elements?: Prisma.JsonFilter<"MeasurementRoom">
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -298,6 +304,7 @@ export type MeasurementRoomOrderByWithAggregationInput = {
   normalCorners?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
+  elements?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -319,6 +326,7 @@ export type MeasurementRoomScalarWhereWithAggregatesInput = {
   normalCorners?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
   area?: Prisma.FloatWithAggregatesFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatWithAggregatesFilter<"MeasurementRoom"> | number
+  elements?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
   sortOrder?: Prisma.IntWithAggregatesFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementRoom"> | Date | string
@@ -331,6 +339,7 @@ export type MeasurementRoomCreateInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -345,6 +354,7 @@ export type MeasurementRoomUncheckedCreateInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -357,6 +367,7 @@ export type MeasurementRoomUpdateInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -371,6 +382,7 @@ export type MeasurementRoomUncheckedUpdateInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -384,6 +396,7 @@ export type MeasurementRoomCreateManyInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -396,6 +409,7 @@ export type MeasurementRoomUpdateManyMutationInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -409,6 +423,7 @@ export type MeasurementRoomUncheckedUpdateManyInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -432,6 +447,7 @@ export type MeasurementRoomCountOrderByAggregateInput = {
   normalCorners?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
+  elements?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -520,6 +536,7 @@ export type MeasurementRoomCreateWithoutObjectInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -532,6 +549,7 @@ export type MeasurementRoomUncheckedCreateWithoutObjectInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -574,6 +592,7 @@ export type MeasurementRoomScalarWhereInput = {
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
+  elements?: Prisma.JsonFilter<"MeasurementRoom">
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -586,6 +605,7 @@ export type MeasurementRoomCreateManyObjectInput = {
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -598,6 +618,7 @@ export type MeasurementRoomUpdateWithoutObjectInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -610,6 +631,7 @@ export type MeasurementRoomUncheckedUpdateWithoutObjectInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -622,6 +644,7 @@ export type MeasurementRoomUncheckedUpdateManyWithoutObjectInput = {
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
+  elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -637,6 +660,7 @@ export type MeasurementRoomSelect<ExtArgs extends runtime.Types.Extensions.Inter
   normalCorners?: boolean
   area?: boolean
   perimeter?: boolean
+  elements?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -651,6 +675,7 @@ export type MeasurementRoomSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   normalCorners?: boolean
   area?: boolean
   perimeter?: boolean
+  elements?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -665,6 +690,7 @@ export type MeasurementRoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   normalCorners?: boolean
   area?: boolean
   perimeter?: boolean
+  elements?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -679,12 +705,13 @@ export type MeasurementRoomSelectScalar = {
   normalCorners?: boolean
   area?: boolean
   perimeter?: boolean
+  elements?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "area" | "perimeter" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
+export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "area" | "perimeter" | "elements" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
 export type MeasurementRoomInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   object?: boolean | Prisma.MeasurementObjectDefaultArgs<ExtArgs>
 }
@@ -708,6 +735,7 @@ export type $MeasurementRoomPayload<ExtArgs extends runtime.Types.Extensions.Int
     normalCorners: runtime.JsonValue
     area: number
     perimeter: number
+    elements: runtime.JsonValue
     sortOrder: number
     createdAt: Date
     updatedAt: Date
@@ -1142,6 +1170,7 @@ export interface MeasurementRoomFieldRefs {
   readonly normalCorners: Prisma.FieldRef<"MeasurementRoom", 'Json'>
   readonly area: Prisma.FieldRef<"MeasurementRoom", 'Float'>
   readonly perimeter: Prisma.FieldRef<"MeasurementRoom", 'Float'>
+  readonly elements: Prisma.FieldRef<"MeasurementRoom", 'Json'>
   readonly sortOrder: Prisma.FieldRef<"MeasurementRoom", 'Int'>
   readonly createdAt: Prisma.FieldRef<"MeasurementRoom", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MeasurementRoom", 'DateTime'>
