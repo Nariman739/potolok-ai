@@ -207,7 +207,9 @@ interface SavedObject {
   address: string;
   rooms: Room[];
   totalArea: number;
-  savedAt: number;
+  savedAt: number; // kept for localStorage compat
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ─────────────────────────────────────────────────────
@@ -771,54 +773,227 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 
 export default function ZameryPage() {
   const router = useRouter();
-  const [rooms, setRooms] = useState<Room[]>(() => {
-    try { return JSON.parse(localStorage.getItem("zamery-rooms") ?? "[]"); } catch { return []; }
-  });
-  const [objectName, setObjectName] = useState<string>(() => {
-    try { return localStorage.getItem("zamery-object") ?? ""; } catch { return ""; }
-  });
-  const [savedObjects, setSavedObjects] = useState<SavedObject[]>(() => {
-    try { return JSON.parse(localStorage.getItem("zamery-saved") ?? "[]"); } catch { return []; }
-  });
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [objectName, setObjectName] = useState("");
+  const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
+  const [savedObjects, setSavedObjects] = useState<SavedObject[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const addressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Load from server on mount ──
   useEffect(() => {
-    localStorage.setItem("zamery-rooms", JSON.stringify(rooms));
-  }, [rooms]);
+    async function load() {
+      try {
+        const [activeRes, savedRes] = await Promise.all([
+          fetch("/api/measurements?status=active"),
+          fetch("/api/measurements?status=saved"),
+        ]);
+        if (activeRes.ok) {
+          const activeList = await activeRes.json();
+          if (activeList.length > 0) {
+            const obj = activeList[0];
+            setActiveObjectId(obj.id);
+            setObjectName(obj.address || "");
+            setRooms(obj.rooms.map((r: Room & { objectId?: string }) => ({
+              id: r.id,
+              name: r.name,
+              walls: r.walls as number[],
+              normalCorners: r.normalCorners as boolean[],
+              area: r.area,
+              perimeter: r.perimeter,
+            })));
+          }
+        }
+        if (savedRes.ok) {
+          const savedList = await savedRes.json();
+          setSavedObjects(savedList.map((o: SavedObject & { createdAt?: string; updatedAt?: string }) => ({
+            id: o.id,
+            address: o.address,
+            totalArea: o.totalArea,
+            savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
+            rooms: (o.rooms || []).map((r: Room) => ({
+              id: r.id,
+              name: r.name,
+              walls: r.walls as number[],
+              normalCorners: r.normalCorners as boolean[],
+              area: r.area,
+              perimeter: r.perimeter,
+            })),
+          })));
+        }
+      } catch {
+        // Fallback to localStorage if offline
+        try {
+          const lr = localStorage.getItem("zamery-rooms");
+          const lo = localStorage.getItem("zamery-object");
+          const ls = localStorage.getItem("zamery-saved");
+          if (lr) setRooms(JSON.parse(lr));
+          if (lo) setObjectName(lo);
+          if (ls) setSavedObjects(JSON.parse(ls));
+        } catch { /* ignore */ }
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("zamery-object", objectName);
-  }, [objectName]);
+  // ── Helper: ensure active object exists on server ──
+  async function ensureActiveObject(): Promise<string> {
+    if (activeObjectId) return activeObjectId;
+    const res = await fetch("/api/measurements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: objectName, status: "active" }),
+    });
+    const obj = await res.json();
+    setActiveObjectId(obj.id);
+    return obj.id;
+  }
 
-  useEffect(() => {
-    localStorage.setItem("zamery-saved", JSON.stringify(savedObjects));
-  }, [savedObjects]);
+  // ── Add room (from WallWizard or PhotoUpload) ──
+  async function addRooms(newRooms: Room[]) {
+    setRooms(prev => [...prev, ...newRooms]);
+    try {
+      const objId = await ensureActiveObject();
+      const res = await fetch(`/api/measurements/${objId}/rooms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newRooms.map(r => ({
+          name: r.name,
+          walls: r.walls,
+          normalCorners: r.normalCorners,
+          area: r.area,
+          perimeter: r.perimeter,
+        }))),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const arr = Array.isArray(created) ? created : [created];
+        // Update local room IDs to match server IDs
+        setRooms(prev => {
+          const updated = [...prev];
+          for (let i = 0; i < arr.length; i++) {
+            const idx = updated.findIndex(r => r.id === newRooms[i]?.id);
+            if (idx >= 0) updated[idx] = { ...updated[idx], id: arr[i].id };
+          }
+          return updated;
+        });
+      }
+    } catch { /* optimistic — local state already updated */ }
+  }
 
-  function handleSaveObject() {
+  // ── Remove room ──
+  async function removeRoom(roomId: string) {
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+    if (activeObjectId) {
+      fetch(`/api/measurements/${activeObjectId}/rooms/${roomId}`, { method: "DELETE" }).catch(() => {});
+    }
+  }
+
+  // ── Update room (from RoomDetail editor) ──
+  async function updateRoom(updated: Room) {
+    setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
+    setViewingRoom(null);
+    if (activeObjectId) {
+      fetch(`/api/measurements/${activeObjectId}/rooms/${updated.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: updated.name,
+          walls: updated.walls,
+          normalCorners: updated.normalCorners,
+          area: updated.area,
+          perimeter: updated.perimeter,
+        }),
+      }).catch(() => {});
+    }
+  }
+
+  // ── Address change (debounced) ──
+  function handleAddressChange(value: string) {
+    setObjectName(value);
+    if (addressTimer.current) clearTimeout(addressTimer.current);
+    addressTimer.current = setTimeout(() => {
+      if (activeObjectId) {
+        fetch(`/api/measurements/${activeObjectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address: value }),
+        }).catch(() => {});
+      }
+    }, 500);
+  }
+
+  // ── Save to history ──
+  async function handleSaveObject() {
     if (rooms.length === 0) return;
     const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
-    const obj: SavedObject = {
-      id: crypto.randomUUID(),
+
+    const savedObj: SavedObject = {
+      id: activeObjectId || crypto.randomUUID(),
       address: objectName,
-      rooms,
+      rooms: [...rooms],
       totalArea,
       savedAt: Date.now(),
     };
-    setSavedObjects(prev => [...prev, obj]);
+    setSavedObjects(prev => [...prev, savedObj]);
     setRooms([]);
     setObjectName("");
+
+    if (activeObjectId) {
+      // Mark current as saved, clear active
+      await fetch(`/api/measurements/${activeObjectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "saved", totalArea }),
+      }).catch(() => {});
+    } else {
+      // Never saved to server yet, create as saved
+      await fetch("/api/measurements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: objectName,
+          status: "saved",
+          rooms: rooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, area: r.area, perimeter: r.perimeter })),
+        }),
+      }).catch(() => {});
+    }
+    setActiveObjectId(null);
   }
 
-  function handleResume(obj: SavedObject) {
+  // ── Resume from history ──
+  async function handleResume(obj: SavedObject) {
     if (rooms.length > 0) {
       if (!confirm("Заменить текущие замеры на этот объект?")) return;
     }
+
+    // Delete current active on server
+    if (activeObjectId) {
+      fetch(`/api/measurements/${activeObjectId}`, { method: "DELETE" }).catch(() => {});
+    }
+
     setRooms(obj.rooms);
     setObjectName(obj.address);
     setSavedObjects(prev => prev.filter(o => o.id !== obj.id));
     setShowHistory(false);
+
+    // Change resumed object status to active
+    fetch(`/api/measurements/${obj.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    }).then(() => setActiveObjectId(obj.id)).catch(() => {});
+  }
+
+  // ── Delete from history ──
+  async function handleDeleteSaved(id: string) {
+    setSavedObjects(prev => prev.filter(o => o.id !== id));
+    fetch(`/api/measurements/${id}`, { method: "DELETE" }).catch(() => {});
   }
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
@@ -861,21 +1036,26 @@ export default function ZameryPage() {
     router.push("/dashboard/calculator?from=vision");
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <>
       {showWizard && (
         <WallWizard
-          onDone={room => { setRooms(prev => [...prev, room]); setShowWizard(false); }}
+          onDone={room => { addRooms([room]); setShowWizard(false); }}
           onCancel={() => setShowWizard(false)}
         />
       )}
       {viewingRoom && (
         <RoomDetail
           room={viewingRoom}
-          onUpdate={updated => {
-            setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
-            setViewingRoom(null);
-          }}
+          onUpdate={updateRoom}
           onClose={() => setViewingRoom(null)}
         />
       )}
@@ -883,7 +1063,7 @@ export default function ZameryPage() {
         <HistoryDrawer
           saved={savedObjects}
           onResume={handleResume}
-          onDelete={id => setSavedObjects(prev => prev.filter(o => o.id !== id))}
+          onDelete={handleDeleteSaved}
           onClose={() => setShowHistory(false)}
         />
       )}
@@ -906,12 +1086,12 @@ export default function ZameryPage() {
 
         <input
           value={objectName}
-          onChange={e => setObjectName(e.target.value)}
+          onChange={e => handleAddressChange(e.target.value)}
           placeholder="Адрес объекта (необязательно)"
           className="w-full rounded-xl border px-4 py-3 text-sm"
         />
 
-        <PhotoUpload onRoomsLoaded={loaded => setRooms(prev => [...prev, ...loaded])} />
+        <PhotoUpload onRoomsLoaded={loaded => addRooms(loaded)} />
 
         {rooms.length > 0 && (
           <div className="space-y-3">
@@ -920,7 +1100,7 @@ export default function ZameryPage() {
                 key={room.id}
                 room={room}
                 index={i}
-                onRemove={() => setRooms(prev => prev.filter(r => r.id !== room.id))}
+                onRemove={() => removeRoom(room.id)}
                 onView={() => setViewingRoom(room)}
               />
             ))}

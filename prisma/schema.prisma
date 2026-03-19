@@ -68,6 +68,7 @@ model Master {
   chatSessions    ChatSession[]
   customItems     CustomItem[]
   portfolioWorks  PortfolioWork[]
+  measurements    MeasurementObject[]
 
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
@@ -204,6 +205,49 @@ enum ChatStatus {
   ACTIVE
   COMPLETED
   ABANDONED
+}
+
+// ============================================
+// PORTFOLIO
+// ============================================
+
+// ============================================
+// MEASUREMENTS (замеры объектов)
+// ============================================
+
+model MeasurementObject {
+  id          String   @id @default(uuid())
+  masterId    String
+  address     String   @default("")
+  totalArea   Float    @default(0)
+  status      String   @default("active")  // "active" | "saved"
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms       MeasurementRoom[]
+  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId, status])
+  @@index([masterId, createdAt])
+}
+
+model MeasurementRoom {
+  id             String   @id @default(uuid())
+  objectId       String
+  name           String   @default("")
+  walls          Json     // number[] — длины стен в см
+  normalCorners  Json     // boolean[] — тип углов
+  area           Float
+  perimeter      Float
+  sortOrder      Int      @default(0)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  object         MeasurementObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@index([objectId])
 }
 
 // ============================================
