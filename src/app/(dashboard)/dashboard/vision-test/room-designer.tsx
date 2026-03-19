@@ -94,8 +94,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [activeType, setActiveType] = useState<ElementType | null>(null);
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const pointerHandled = useRef(false);
+  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
 
   const vertices = getVertices(room.walls, room.normalCorners);
 
@@ -126,7 +129,67 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     return { x: pt.x, y: pt.y };
   }
 
-  function handlePointerUp(e: React.PointerEvent<SVGSVGElement>) {
+  // ── Drag & Drop ──
+
+  const DRAG_THRESHOLD = 8; // px on screen before considered a drag
+
+  function handleElementPointerDown(id: string, e: React.PointerEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false };
+    setDragId(id);
+  }
+
+  function handleSVGPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const ds = dragStartRef.current;
+    if (!ds) return;
+
+    const dx = e.clientX - ds.cx;
+    const dy = e.clientY - ds.cy;
+
+    if (!ds.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
+    ds.moved = true;
+
+    const coords = svgCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    setDragPos(coords);
+  }
+
+  function handleSVGPointerUp(e: React.PointerEvent<SVGSVGElement>) {
+    const ds = dragStartRef.current;
+
+    if (ds) {
+      if (ds.moved && dragPos) {
+        // Finish drag — move element to new position
+        const el = elements.find(el => el.id === ds.id);
+        if (el) {
+          const config = ELEMENTS.find(c => c.type === el.type);
+          if (config?.category === "point") {
+            // Point element: set new x,y
+            setElements(prev => prev.map(e =>
+              e.id === ds.id ? { ...e, x: dragPos.x, y: dragPos.y } : e
+            ));
+          } else if (config?.category === "wall") {
+            // Wall element: snap to nearest wall, keep length
+            const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
+            setElements(prev => prev.map(e =>
+              e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex } : e
+            ));
+          }
+        }
+      } else {
+        // Short tap — remove element
+        setElements(prev => prev.filter(el => el.id !== ds.id));
+      }
+      dragStartRef.current = null;
+      setDragId(null);
+      setDragPos(null);
+      pointerHandled.current = true;
+      return;
+    }
+
+    // Not dragging — place new element
     if (pointerHandled.current) { pointerHandled.current = false; return; }
     if (!activeType) return;
 
@@ -159,6 +222,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         }];
       });
     }
+  }
+
+  // Get element position (real or dragging)
+  function getElPos(el: RoomElement): { x: number; y: number } {
+    if (dragId === el.id && dragPos && dragStartRef.current?.moved) {
+      return dragPos;
+    }
+    return { x: el.x ?? 0, y: el.y ?? 0 };
   }
 
   function confirmLength() {
@@ -209,14 +280,49 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const config = ELEMENTS.find(c => c.type === el.type)!;
     const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
 
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+
+    // If being dragged, show on the nearest wall to drag position
+    let drawX1 = x1, drawY1 = y1, drawX2 = x2, drawY2 = y2;
+    let drawMidX = midX, drawMidY = midY;
+    let drawPerpX = perpX, drawPerpY = perpY;
+
+    if (isDragging && dragPos) {
+      const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
+      const da = vertices[nearest.wallIndex], db = vertices[nearest.wallIndex + 1];
+      if (da && db) {
+        const ddx = db.x - da.x, ddy = db.y - da.y;
+        const dwLen = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (dwLen > 0) {
+          const dnx = ddx / dwLen, dny = ddy / dwLen;
+          drawPerpX = -dny; drawPerpY = dnx;
+          const dElLen = Math.min(el.length!, dwLen);
+          const dStartT = (dwLen - dElLen) / 2;
+          drawX1 = da.x + dnx * dStartT + drawPerpX * offset;
+          drawY1 = da.y + dny * dStartT + drawPerpY * offset;
+          drawX2 = da.x + dnx * (dStartT + dElLen) + drawPerpX * offset;
+          drawY2 = da.y + dny * (dStartT + dElLen) + drawPerpY * offset;
+          drawMidX = (drawX1 + drawX2) / 2;
+          drawMidY = (drawY1 + drawY2) / 2;
+        }
+      }
+    }
+
     return (
-      <g key={el.id} onPointerUp={(e) => removeElement(el.id, e)} className="cursor-pointer">
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        {/* Invisible hit area for easier grab */}
+        <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
+          stroke="transparent" strokeWidth={strokeW * 6} strokeLinecap="round" />
         {/* Glow for light line */}
         {el.type === "lightline" && (
-          <line x1={x1} y1={y1} x2={x2} y2={y2}
+          <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
             stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
         )}
-        <line x1={x1} y1={y1} x2={x2} y2={y2}
+        <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke={config.color}
           strokeWidth={el.type === "lightline" ? strokeW * 1.5 : strokeW}
           strokeLinecap="round"
@@ -226,13 +332,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         {/* End caps for track */}
         {el.type === "track" && (
           <>
-            <circle cx={x1} cy={y1} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-            <circle cx={x2} cy={y2} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+            <circle cx={drawX1} cy={drawY1} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+            <circle cx={drawX2} cy={drawY2} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
           </>
         )}
         {/* Length label */}
         <text
-          x={midX + perpX * labelSize * 1.5} y={midY + perpY * labelSize * 1.5}
+          x={drawMidX + drawPerpX * labelSize * 1.5} y={drawMidY + drawPerpY * labelSize * 1.5}
           textAnchor="middle" dominantBaseline="central"
           fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
         >
@@ -260,29 +366,44 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   function spotCircle(el: RoomElement) {
+    const pos = getElPos(el);
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
     return (
-      <g key={el.id} onPointerUp={(e) => removeElement(el.id, e)} className="cursor-pointer">
-        <circle cx={el.x} cy={el.y} r={spotR * 2.2} fill="#FEF3C7" opacity={0.6} />
-        <circle cx={el.x} cy={el.y} r={spotR} fill="#F59E0B" stroke="#D97706" strokeWidth={spotR * 0.25} />
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        {/* Larger invisible hit area for easier grab */}
+        <circle cx={pos.x} cy={pos.y} r={spotR * 4} fill="transparent" />
+        <circle cx={pos.x} cy={pos.y} r={spotR * 2.2} fill="#FEF3C7" opacity={0.6} />
+        <circle cx={pos.x} cy={pos.y} r={spotR} fill="#F59E0B" stroke="#D97706" strokeWidth={spotR * 0.25} />
       </g>
     );
   }
 
   function chandelierIcon(el: RoomElement) {
+    const pos = getElPos(el);
     const r = chandelierR;
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
     return (
-      <g key={el.id} onPointerUp={(e) => removeElement(el.id, e)} className="cursor-pointer">
-        <circle cx={el.x} cy={el.y} r={r * 1.6} fill="#EDE9FE" opacity={0.5} />
-        <circle cx={el.x} cy={el.y} r={r} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.35} />
-        <circle cx={el.x} cy={el.y} r={spotR * 0.7} fill="#8B5CF6" />
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        <circle cx={pos.x} cy={pos.y} r={r * 2} fill="transparent" />
+        <circle cx={pos.x} cy={pos.y} r={r * 1.6} fill="#EDE9FE" opacity={0.5} />
+        <circle cx={pos.x} cy={pos.y} r={r} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.35} />
+        <circle cx={pos.x} cy={pos.y} r={spotR * 0.7} fill="#8B5CF6" />
         {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
           const rad = (angle * Math.PI) / 180;
           return (
             <line key={angle}
-              x1={el.x! + Math.cos(rad) * r * 0.45}
-              y1={el.y! + Math.sin(rad) * r * 0.45}
-              x2={el.x! + Math.cos(rad) * r * 0.85}
-              y2={el.y! + Math.sin(rad) * r * 0.85}
+              x1={pos.x + Math.cos(rad) * r * 0.45}
+              y1={pos.y + Math.sin(rad) * r * 0.45}
+              x2={pos.x + Math.cos(rad) * r * 0.85}
+              y2={pos.y + Math.sin(rad) * r * 0.85}
               stroke="#8B5CF6" strokeWidth={spotR * 0.22} strokeLinecap="round"
             />
           );
@@ -341,7 +462,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           ref={svgRef}
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           className="w-full h-full"
-          onPointerUp={handlePointerUp}
+          onPointerMove={handleSVGPointerMove}
+          onPointerUp={handleSVGPointerUp}
           style={{ touchAction: "none" }}
         >
           {/* Room fill */}
