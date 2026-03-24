@@ -8,7 +8,8 @@ export type ProductCategory =
   | "podshtornik"
   | "corner"
   | "other"
-  | "special";
+  | "special"
+  | "install";
 
 export interface ProductItem {
   code: string;
@@ -67,6 +68,18 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Спецпараметры
   { code: "min_order", name: "Минимальный заказ", unit: "₸", defaultPrice: 90000, category: "special" },
   { code: "height_coefficient", name: "Коэффициент высоты (>3м)", unit: "×", defaultPrice: 1.3, category: "special" },
+
+  // Монтажные цены (для КП монтажникам)
+  { code: "install_canvas", name: "Монтаж полотна", unit: "м²", defaultPrice: 800, category: "install", description: "Натяжка полотна" },
+  { code: "install_profile", name: "Монтаж профиля", unit: "м.п.", defaultPrice: 300, category: "install", description: "Установка багета" },
+  { code: "install_spot", name: "Монтаж софита", unit: "шт.", defaultPrice: 1000, category: "install", description: "Установка светильника" },
+  { code: "install_chandelier", name: "Монтаж люстры", unit: "шт.", defaultPrice: 3000, category: "install", description: "Установка люстры" },
+  { code: "install_track", name: "Монтаж трека", unit: "м.п.", defaultPrice: 5000, category: "install", description: "Монтаж магнитного трека" },
+  { code: "install_lightline", name: "Монтаж световой линии", unit: "м.п.", defaultPrice: 4000, category: "install", description: "Монтаж световой линии" },
+  { code: "install_curtain", name: "Монтаж карниза", unit: "м.п.", defaultPrice: 1500, category: "install", description: "Установка карниза" },
+  { code: "install_gardina", name: "Монтаж гардины", unit: "м.п.", defaultPrice: 2000, category: "install", description: "Установка встроенной гардины" },
+  { code: "install_corner", name: "Обработка угла", unit: "шт.", defaultPrice: 500, category: "install", description: "Доп. обработка угла" },
+  { code: "install_pipe", name: "Обход трубы (работа)", unit: "шт.", defaultPrice: 1000, category: "install", description: "Обход трубы" },
 ];
 
 export const DEFAULT_PRICES: Record<string, number> = Object.fromEntries(
@@ -88,6 +101,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   corner: "Углы",
   other: "Прочее",
   special: "Спецпараметры",
+  install: "Монтаж (для монтажников)",
 };
 
 export const CANVAS_TYPES = [

@@ -137,7 +137,13 @@ export function EstimateActions({
       <Button variant="outline" size="sm" asChild>
         <a href={`/api/estimates/${estimateId}/pdf`}>
           <Download className="h-4 w-4 mr-2" />
-          Скачать КП
+          КП клиенту
+        </a>
+      </Button>
+      <Button variant="outline" size="sm" asChild>
+        <a href={`/api/estimates/${estimateId}/installer-pdf`}>
+          <FileText className="h-4 w-4 mr-2 text-blue-600" />
+          КП монтажнику
         </a>
       </Button>
       {contractConfigured && (
