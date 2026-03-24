@@ -23,6 +23,7 @@ interface Room {
   name: string;
   walls: number[];
   normalCorners: boolean[];
+  angles?: number[];
   area: number;
   perimeter: number;
   elements?: RoomElement[];
@@ -52,18 +53,31 @@ const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 
 interface Vertex { x: number; y: number }
 
-function getVertices(walls: number[], normalCorners: boolean[]): Vertex[] {
+function getVertices(walls: number[], normalCorners: boolean[], angles?: number[]): Vertex[] {
   const n = walls.length;
-  const reflex = new Set<number>();
-  normalCorners.forEach((normal, i) => { if (!normal) reflex.add((i + 1) % n); });
-  let x = 0, y = 0, dir = 0;
+  const wallAngles = angles ?? normalCorners.map(nc => nc ? 90 : -90);
+  const allRectilinear = wallAngles.every(a => a === 90 || a === -90);
+
   const vertices: Vertex[] = [{ x: 0, y: 0 }];
-  for (let i = 0; i < n; i++) {
-    x += DX[dir] * walls[i];
-    y += DY[dir] * walls[i];
-    vertices.push({ x, y });
-    dir = reflex.has((i + 1) % n) ? (dir + 3) % 4 : (dir + 1) % 4;
+
+  if (allRectilinear) {
+    let x = 0, y = 0, dir = 0;
+    for (let i = 0; i < n; i++) {
+      x += DX[dir] * walls[i];
+      y += DY[dir] * walls[i];
+      vertices.push({ x, y });
+      dir = wallAngles[i] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+  } else {
+    let x = 0, y = 0, dirRad = 0;
+    for (let i = 0; i < n; i++) {
+      x += Math.cos(dirRad) * walls[i];
+      y += Math.sin(dirRad) * walls[i];
+      vertices.push({ x, y });
+      dirRad += wallAngles[i] * Math.PI / 180;
+    }
   }
+
   return vertices;
 }
 
@@ -103,7 +117,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const pointerHandled = useRef(false);
   const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
 
-  const vertices = getVertices(room.walls, room.normalCorners);
+  const vertices = getVertices(room.walls, room.normalCorners, room.angles);
 
   // Bounding box
   const xs = vertices.map(v => v.x), ys = vertices.map(v => v.y);

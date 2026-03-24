@@ -26,6 +26,7 @@ export interface TShapeDimensions {
 export interface CustomWall {
   length: number;      // wall length in meters
   turnRight: boolean;  // true = right turn (interior 90°), false = left turn (exterior 90°)
+  angle?: number;      // turn angle in degrees (overrides turnRight). +90 = right, -90 = left/step, any value for custom angles
 }
 
 export interface CustomDimensions {

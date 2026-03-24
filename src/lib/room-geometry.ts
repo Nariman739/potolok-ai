@@ -24,21 +24,52 @@ function isNewLShapeFormat(dims: LShapeDimensions): boolean {
 // Custom polygon helpers
 // ============================================
 
-/** Direction vectors: 0=right(+x), 1=down(+y), 2=left(-x), 3=up(-y) */
+/** Direction vectors for 90°-only legacy mode: 0=right(+x), 1=down(+y), 2=left(-x), 3=up(-y) */
 const DX = [1, 0, -1, 0];
 const DY = [0, 1, 0, -1];
 
+/** Get the turn angle for a wall in degrees.
+ *  If wall.angle is set, use it. Otherwise: turnRight=true → +90°, false → -90°. */
+function getWallAngle(wall: CustomWall): number {
+  if (wall.angle !== undefined) return wall.angle;
+  return wall.turnRight ? 90 : -90;
+}
+
+/** Check if walls use only 90° angles (legacy rectilinear mode) */
+function isRectilinear(walls: CustomWall[]): boolean {
+  return walls.every(w => {
+    const a = getWallAngle(w);
+    return a === 90 || a === -90;
+  });
+}
+
 /** Convert wall-by-wall description to polygon vertices.
- *  Walk starts at origin (0,0) heading RIGHT. */
+ *  Walk starts at origin (0,0) heading RIGHT (angle = 0°).
+ *  Supports arbitrary turn angles via wall.angle field. */
 export function wallsToVertices(walls: CustomWall[]): { x: number; y: number }[] {
   const vertices: { x: number; y: number }[] = [];
-  let x = 0, y = 0, dir = 0;
+
+  if (isRectilinear(walls)) {
+    // Fast path: legacy 4-direction mode (exact integer math, no floating point drift)
+    let x = 0, y = 0, dir = 0;
+    for (const wall of walls) {
+      vertices.push({ x, y });
+      x += DX[dir] * wall.length;
+      y += DY[dir] * wall.length;
+      dir = getWallAngle(wall) > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+    return vertices;
+  }
+
+  // General path: trigonometric calculation for arbitrary angles
+  let x = 0, y = 0;
+  let dirRad = 0; // direction in radians, 0 = right (+x)
 
   for (const wall of walls) {
     vertices.push({ x, y });
-    x += DX[dir] * wall.length;
-    y += DY[dir] * wall.length;
-    dir = wall.turnRight ? (dir + 1) % 4 : (dir + 3) % 4;
+    x += Math.cos(dirRad) * wall.length;
+    y += Math.sin(dirRad) * wall.length;
+    dirRad += getWallAngle(wall) * Math.PI / 180;
   }
 
   return vertices;
@@ -58,11 +89,22 @@ export function shoelaceArea(vertices: { x: number; y: number }[]): number {
 
 /** Distance from last vertex back to origin (0 = closed polygon) */
 export function polygonGap(walls: CustomWall[]): number {
-  let x = 0, y = 0, dir = 0;
+  if (isRectilinear(walls)) {
+    let x = 0, y = 0, dir = 0;
+    for (const wall of walls) {
+      x += DX[dir] * wall.length;
+      y += DY[dir] * wall.length;
+      dir = getWallAngle(wall) > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+    return Math.sqrt(x * x + y * y);
+  }
+
+  let x = 0, y = 0;
+  let dirRad = 0;
   for (const wall of walls) {
-    x += DX[dir] * wall.length;
-    y += DY[dir] * wall.length;
-    dir = wall.turnRight ? (dir + 1) % 4 : (dir + 3) % 4;
+    x += Math.cos(dirRad) * wall.length;
+    y += Math.sin(dirRad) * wall.length;
+    dirRad += getWallAngle(wall) * Math.PI / 180;
   }
   return Math.sqrt(x * x + y * y);
 }

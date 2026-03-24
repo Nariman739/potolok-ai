@@ -217,7 +217,7 @@ function renderTShape(
 // ============================================
 
 interface CustomRoomSvgProps {
-  walls: { length: string; turnRight: boolean }[];
+  walls: { length: string; turnRight: boolean; angle?: number }[];
   activeWallIndex?: number | null;
 }
 
@@ -225,7 +225,7 @@ export function CustomRoomSvg({ walls, activeWallIndex }: CustomRoomSvgProps) {
   // Parse walls to numbers (cm)
   const parsed = walls.map(w => ({
     length: parseFloat(w.length) || 0,
-    turnRight: w.turnRight,
+    angle: w.angle ?? (w.turnRight ? 90 : -90),
   }));
 
   // Need at least 2 walls with length to render
@@ -238,19 +238,31 @@ export function CustomRoomSvg({ walls, activeWallIndex }: CustomRoomSvgProps) {
     );
   }
 
-  // Build vertices (cm space)
-  const dxArr = [1, 0, -1, 0];
-  const dyArr = [0, 1, 0, -1];
+  // Build vertices (cm space) — supports arbitrary angles via trig
+  const allRectilinear = parsed.every(w => w.angle === 90 || w.angle === -90);
   const vertices: { x: number; y: number }[] = [];
-  let x = 0, y = 0, dir = 0;
 
-  for (const wall of parsed) {
+  if (allRectilinear) {
+    const dxArr = [1, 0, -1, 0];
+    const dyArr = [0, 1, 0, -1];
+    let x = 0, y = 0, dir = 0;
+    for (const wall of parsed) {
+      vertices.push({ x, y });
+      x += dxArr[dir] * wall.length;
+      y += dyArr[dir] * wall.length;
+      dir = wall.angle > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
     vertices.push({ x, y });
-    x += dxArr[dir] * wall.length;
-    y += dyArr[dir] * wall.length;
-    dir = wall.turnRight ? (dir + 1) % 4 : (dir + 3) % 4;
+  } else {
+    let x = 0, y = 0, dirRad = 0;
+    for (const wall of parsed) {
+      vertices.push({ x, y });
+      x += Math.cos(dirRad) * wall.length;
+      y += Math.sin(dirRad) * wall.length;
+      dirRad += wall.angle * Math.PI / 180;
+    }
+    vertices.push({ x, y });
   }
-  vertices.push({ x, y }); // last point
 
   // Bounding box
   const xs = vertices.map(v => v.x);
@@ -303,10 +315,11 @@ export function CustomRoomSvg({ walls, activeWallIndex }: CustomRoomSvgProps) {
         const mx = (p1.x + p2.x) / 2;
         const my = (p1.y + p2.y) / 2;
 
-        // Label offset based on wall direction
-        const isHorizontal = Math.abs(p2.y - p1.y) < 0.5;
-        const labelDx = isHorizontal ? 0 : 12;
-        const labelDy = isHorizontal ? -8 : 4;
+        // Label offset: perpendicular to wall direction
+        const dx = p2.x - p1.x, dy = p2.y - p1.y;
+        const wallLen = Math.sqrt(dx * dx + dy * dy) || 1;
+        const labelDx = (-dy / wallLen) * 10;
+        const labelDy = (dx / wallLen) * 10;
 
         return (
           <g key={i}>

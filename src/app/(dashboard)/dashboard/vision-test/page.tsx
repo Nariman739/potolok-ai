@@ -10,35 +10,111 @@ import RoomDesigner from "./room-designer";
 import type { RoomElement } from "./room-designer";
 
 // ─────────────────────────────────────────────────────
-// Geometry
+// Geometry (supports arbitrary angles)
 // ─────────────────────────────────────────────────────
 
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 
+/** Check if all angles are ±90° (legacy rectilinear mode) */
+function isRectilinearAngles(angles: number[]): boolean {
+  return angles.every(a => a === 90 || a === -90);
+}
+
+/** Area of a circular segment given chord length and bulge (sagitta) in cm.
+ *  Positive = adds area (outward), negative = subtracts (inward). */
+function arcSegmentArea(chordLen: number, bulge: number): number {
+  if (!bulge || bulge === 0) return 0;
+  const h = Math.abs(bulge);
+  const c = chordLen;
+  // radius from chord and sagitta: r = (c²/4 + h²) / (2h)
+  const r = (c * c / 4 + h * h) / (2 * h);
+  // angle: θ = 2 * asin(c / (2r))
+  const theta = 2 * Math.asin(Math.min(c / (2 * r), 1));
+  // segment area = r²/2 * (θ - sin(θ))
+  const segArea = (r * r / 2) * (theta - Math.sin(theta));
+  return bulge > 0 ? segArea : -segArea;
+}
+
+/** Area of a column in cm² */
+function columnArea(col: RoomColumn): number {
+  if (col.type === "circle") {
+    const r = (col.diameter || 0) / 2;
+    return Math.PI * r * r;
+  }
+  return (col.width || 0) * (col.height || 0);
+}
+
 function calcWithTurns(
   lengths: number[],
-  normalCorners: boolean[]
+  angles: number[],
+  arcBulges?: number[],
+  columns?: RoomColumn[]
 ): { area: number; perimeter: number } {
   const n = lengths.length;
-  if (n < 4) return { area: 0, perimeter: 0 };
-  const perimeter = Math.round(lengths.reduce((s, w) => s + w, 0)) / 100;
-  const reflex = new Set<number>();
-  normalCorners.forEach((normal, i) => { if (!normal) reflex.add((i + 1) % n); });
-  let x = 0, y = 0, dir = 0;
-  const v: { x: number; y: number }[] = [];
+  if (n < 3) return { area: 0, perimeter: 0 };
+
+  // Perimeter: for arcs, use arc length instead of chord
+  let perimeterCm = 0;
   for (let i = 0; i < n; i++) {
-    v.push({ x, y });
-    x += DX[dir] * lengths[i];
-    y += DY[dir] * lengths[i];
-    dir = reflex.has((i + 1) % n) ? (dir + 3) % 4 : (dir + 1) % 4;
+    const bulge = arcBulges?.[i] || 0;
+    if (bulge !== 0) {
+      const h = Math.abs(bulge), c = lengths[i];
+      const r = (c * c / 4 + h * h) / (2 * h);
+      const theta = 2 * Math.asin(Math.min(c / (2 * r), 1));
+      perimeterCm += r * theta; // arc length
+    } else {
+      perimeterCm += lengths[i];
+    }
   }
-  if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return { area: 0, perimeter };
+  const perimeter = Math.round(perimeterCm) / 100;
+
+  const v: { x: number; y: number }[] = [];
+
+  if (isRectilinearAngles(angles) && !arcBulges?.some(b => b !== 0)) {
+    // Fast path: exact integer math for 90° rooms
+    let x = 0, y = 0, dir = 0;
+    for (let i = 0; i < n; i++) {
+      v.push({ x, y });
+      x += DX[dir] * lengths[i];
+      y += DY[dir] * lengths[i];
+      dir = angles[i] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+    if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return { area: 0, perimeter };
+  } else {
+    // Trig path: arbitrary angles
+    let x = 0, y = 0, dirRad = 0;
+    for (let i = 0; i < n; i++) {
+      v.push({ x, y });
+      x += Math.cos(dirRad) * lengths[i];
+      y += Math.sin(dirRad) * lengths[i];
+      dirRad += angles[i] * Math.PI / 180;
+    }
+    if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return { area: 0, perimeter };
+  }
+
+  // Base polygon area (Shoelace)
   let sum = 0;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
     sum += v[i].x * v[j].y - v[j].x * v[i].y;
   }
-  return { area: Math.round(Math.abs(sum) / 2 / 100) / 100, perimeter };
+  let areaCm2 = Math.abs(sum) / 2;
+
+  // Add/subtract arc segments
+  if (arcBulges) {
+    for (let i = 0; i < n; i++) {
+      areaCm2 += arcSegmentArea(lengths[i], arcBulges[i] || 0);
+    }
+  }
+
+  // Subtract columns
+  if (columns) {
+    for (const col of columns) {
+      areaCm2 -= columnArea(col);
+    }
+  }
+
+  return { area: Math.round(Math.max(areaCm2, 0) / 100) / 100, perimeter };
 }
 
 // ─────────────────────────────────────────────────────
@@ -47,24 +123,40 @@ function calcWithTurns(
 
 interface Vertex { x: number; y: number }
 
-function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
+function buildVertices(walls: { length: string; angle: number }[]): {
   vertices: Vertex[];
   closed: boolean;
   gapX: number;
   gapY: number;
 } {
   const n = walls.length;
-  const reflex = new Set<number>();
-  walls.forEach((w, i) => { if (!w.normalCorner) reflex.add((i + 1) % n); });
-  let x = 0, y = 0, dir = 0;
+  const allRectilinear = walls.every(w => w.angle === 90 || w.angle === -90);
   const vertices: Vertex[] = [{ x: 0, y: 0 }];
+
+  if (allRectilinear) {
+    // Fast path: exact integer math for 90° rooms
+    let x = 0, y = 0, dir = 0;
+    for (let i = 0; i < n; i++) {
+      const len = parseFloat(walls[i].length);
+      if (!len || len <= 0) break;
+      x += DX[dir] * len;
+      y += DY[dir] * len;
+      vertices.push({ x, y });
+      dir = walls[i].angle > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+    const closed = vertices.length === n + 1 && Math.abs(x) < 2 && Math.abs(y) < 2;
+    return { vertices, closed, gapX: x, gapY: y };
+  }
+
+  // Trig path: arbitrary angles
+  let x = 0, y = 0, dirRad = 0;
   for (let i = 0; i < n; i++) {
     const len = parseFloat(walls[i].length);
     if (!len || len <= 0) break;
-    x += DX[dir] * len;
-    y += DY[dir] * len;
+    x += Math.cos(dirRad) * len;
+    y += Math.sin(dirRad) * len;
     vertices.push({ x, y });
-    dir = reflex.has((i + 1) % n) ? (dir + 3) % 4 : (dir + 1) % 4;
+    dirRad += walls[i].angle * Math.PI / 180;
   }
   const closed = vertices.length === n + 1 && Math.abs(x) < 2 && Math.abs(y) < 2;
   return { vertices, closed, gapX: x, gapY: y };
@@ -73,17 +165,19 @@ function buildVertices(walls: { length: string; normalCorner: boolean }[]): {
 function RoomPreview({
   walls,
   committedCount,
-  nextDir,
+  nextDirDeg,
   onWallClick,
   activeWallIdx,
   forceClose,
+  roomColumns,
 }: {
-  walls: { length: string; normalCorner: boolean }[];
+  walls: { length: string; angle: number; bulge?: number }[];
   committedCount?: number;
-  nextDir?: number;
+  nextDirDeg?: number;
   onWallClick?: (i: number) => void;
   activeWallIdx?: number;
   forceClose?: boolean;
+  roomColumns?: RoomColumn[];
 }) {
   const { vertices, closed: _closed } = buildVertices(walls);
   const closed = _closed || !!forceClose;
@@ -118,22 +212,42 @@ function RoomPreview({
           />
         )}
 
-        {/* Wall segments */}
+        {/* Wall segments (lines or arcs) */}
         {vertices.slice(0, -1).map((v, i) => {
           const next = vertices[i + 1];
           const isCommitted = i < committed;
           const isCurrent = i === committed;
           const isActive = activeWallIdx === i;
+          const color = isActive ? "#f59e0b" : closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8";
+          const sw = isActive ? 5 : isCurrent ? 5 : isCommitted || closed ? 2.5 : 1.5;
+          const dash = (!isCommitted && !isCurrent && !closed) ? "5,3" : undefined;
+          const bulge = walls[i]?.bulge || 0;
+
+          // SVG arc for curved walls
+          if (bulge !== 0) {
+            const p1x = sx(v.x), p1y = sy(v.y), p2x = sx(next.x), p2y = sy(next.y);
+            const chordLen = Math.sqrt((next.x - v.x) ** 2 + (next.y - v.y) ** 2);
+            const h = Math.abs(bulge);
+            const r = ((chordLen * chordLen / 4) + h * h) / (2 * h) * scale;
+            const sweep = bulge > 0 ? 1 : 0;
+            const arcPath = `M ${p1x} ${p1y} A ${r} ${r} 0 0 ${sweep} ${p2x} ${p2y}`;
+            return (
+              <g key={i}>
+                <path d={arcPath} fill="none" stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round" />
+                {onWallClick && (
+                  <path d={arcPath} fill="none" stroke="transparent" strokeWidth={24}
+                    style={{ cursor: "pointer" }} onPointerDown={() => onWallClick(i)} />
+                )}
+              </g>
+            );
+          }
+
           return (
             <g key={i}>
               <line
                 x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
-                stroke={isActive ? "#f59e0b" : closed ? "#1e3a5f" : isCommitted ? "#1e3a5f" : isCurrent ? "#f59e0b" : "#94a3b8"}
-                strokeWidth={isActive ? 5 : isCurrent ? 5 : isCommitted || closed ? 2.5 : 1.5}
-                strokeDasharray={(!isCommitted && !isCurrent && !closed) ? "5,3" : undefined}
-                strokeLinecap="round"
+                stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round"
               />
-              {/* Wide invisible tap target */}
               {onWallClick && (
                 <line
                   x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
@@ -167,11 +281,12 @@ function RoomPreview({
 
 
         {/* Direction stub — always yellow, grows when user types */}
-        {nextDir !== undefined && !closed && (() => {
+        {nextDirDeg !== undefined && !closed && (() => {
           const lastV = vertices[vertices.length - 1];
           const stubLen = 28 / scale;
-          const gx = lastV.x + DX[nextDir] * stubLen;
-          const gy = lastV.y + DY[nextDir] * stubLen;
+          const dirRad = nextDirDeg * Math.PI / 180;
+          const gx = lastV.x + Math.cos(dirRad) * stubLen;
+          const gy = lastV.y + Math.sin(dirRad) * stubLen;
           return (
             <g>
               <line x1={sx(lastV.x)} y1={sy(lastV.y)} x2={sx(gx)} y2={sy(gy)}
@@ -180,6 +295,17 @@ function RoomPreview({
             </g>
           );
         })()}
+
+        {/* Columns */}
+        {roomColumns?.map(col => {
+          const cx = sx(col.x), cy = sy(col.y);
+          if (col.type === "circle") {
+            const r = ((col.diameter || 0) / 2) * scale;
+            return <circle key={col.id} cx={cx} cy={cy} r={r} fill="#ef444440" stroke="#ef4444" strokeWidth={1.5} />;
+          }
+          const w = (col.width || 0) * scale, h = (col.height || 0) * scale;
+          return <rect key={col.id} x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill="#ef444440" stroke="#ef4444" strokeWidth={1.5} />;
+        })}
 
         {/* Vertices dots */}
         {vertices.map((v, i) => (
@@ -195,11 +321,24 @@ function RoomPreview({
 // Types
 // ─────────────────────────────────────────────────────
 
+interface RoomColumn {
+  id: string;
+  type: "circle" | "rect";
+  x: number;         // position in cm from room origin (for SVG placement)
+  y: number;
+  diameter?: number;  // cm, for circle
+  width?: number;     // cm, for rect
+  height?: number;    // cm, for rect
+}
+
 interface Room {
   id: string;
   name: string;
   walls: number[];
-  normalCorners: boolean[];
+  normalCorners: boolean[]; // legacy compat
+  angles: number[];         // turn angles in degrees (+90, -90, or any custom)
+  arcBulges?: number[];     // bulge per wall (cm). 0 = straight, >0 = outward arc, <0 = inward arc
+  columns?: RoomColumn[];   // columns/pillars inside room (area subtracted)
   area: number;
   perimeter: number;
   elements?: RoomElement[];
@@ -223,21 +362,39 @@ function WallWizard({ onDone, onCancel }: {
   onDone: (room: Room) => void;
   onCancel: () => void;
 }) {
-  const [committed, setCommitted] = useState<{ length: number; normalCorner: boolean }[]>([]);
+  const [committed, setCommitted] = useState<{ length: number; angle: number; bulge: number }[]>([]);
   const [input, setInput] = useState("");
   const [roomName, setRoomName] = useState("");
+  const [showAngleInput, setShowAngleInput] = useState(false);
+  const [angleInput, setAngleInput] = useState("");
+  const [columns, setColumns] = useState<RoomColumn[]>([]);
+  const [showColumnInput, setShowColumnInput] = useState(false);
+  const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
+  const [columnSize, setColumnSize] = useState("");
+  const [showArcInput, setShowArcInput] = useState(false);
+  const [arcEditIdx, setArcEditIdx] = useState<number | null>(null);
+  const [arcBulgeInput, setArcBulgeInput] = useState("");
 
   const previewWalls = [
-    ...committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner })),
-    ...(input ? [{ length: input, normalCorner: true }] : []),
+    ...committed.map(w => ({ length: String(w.length), angle: w.angle, bulge: w.bulge })),
+    ...(input ? [{ length: input, angle: 90, bulge: 0 }] : []),
   ];
 
-  const committedPreview = committed.map(w => ({ length: String(w.length), normalCorner: w.normalCorner }));
+  const committedPreview = committed.map(w => ({ length: String(w.length), angle: w.angle }));
   const { closed: isDone, vertices: committedVerts, gapX, gapY } = buildVertices(committedPreview);
   const gap = Math.sqrt(gapX * gapX + gapY * gapY);
 
-  const doneResult = isDone && committed.length >= 4
-    ? calcWithTurns(committed.map(w => w.length), committed.map(w => w.normalCorner))
+  const bulges = committed.map(w => w.bulge);
+  const hasBulges = bulges.some(b => b !== 0);
+  const hasColumns = columns.length > 0;
+
+  const doneResult = isDone && committed.length >= 3
+    ? calcWithTurns(
+        committed.map(w => w.length),
+        committed.map(w => w.angle),
+        hasBulges ? bulges : undefined,
+        hasColumns ? columns : undefined,
+      )
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
 
@@ -259,13 +416,16 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   // Direction tracking
-  const currentWallDir = committed.reduce(
-    (dir, w) => w.normalCorner ? (dir + 1) % 4 : (dir + 3) % 4, 0
-  );
+  const allRectilinear = committed.every(w => w.angle === 90 || w.angle === -90);
+  const currentDirDeg = committed.reduce((dir, w) => dir + w.angle, 0);
   const dirArrows = ["→", "↓", "←", "↑"];
-  const nextDir = (currentWallDir + 1) % 4;
-  // Whether last committed wall has a step corner
-  const lastIsStep = committed.length > 0 && !committed[committed.length - 1].normalCorner;
+  // For rectilinear: show arrow; for arbitrary: show degree
+  const currentDirIdx = allRectilinear ? ((currentDirDeg / 90) % 4 + 4) % 4 : -1;
+  const nextDir = allRectilinear ? ((currentDirIdx + 1) % 4) : -1;
+  // Whether last committed wall has a non-90° angle
+  const lastAngle = committed.length > 0 ? committed[committed.length - 1].angle : 90;
+  const lastIsStep = lastAngle === -90;
+  const lastIsCustomAngle = lastAngle !== 90 && lastAngle !== -90;
 
   function digit(d: string) {
     if (isValid) return;
@@ -275,19 +435,49 @@ function WallWizard({ onDone, onCancel }: {
   function confirm() {
     const len = parseFloat(input);
     if (!len || len <= 0) return;
-    // Always auto-commit with normal corner — user can toggle with ступенька button
-    setCommitted(prev => [...prev, { length: len, normalCorner: true }]);
+    setCommitted(prev => [...prev, { length: len, angle: 90, bulge: 0 }]);
     setInput("");
   }
 
-  // Toggle last committed wall between normal and step corner
+  // Toggle last committed wall between normal (90°) and step (-90°)
   function toggleLastStep() {
     if (committed.length === 0 || isValid) return;
     setCommitted(prev => {
       const last = prev[prev.length - 1];
-      return [...prev.slice(0, -1), { ...last, normalCorner: !last.normalCorner }];
+      return [...prev.slice(0, -1), { ...last, angle: last.angle === 90 ? -90 : 90 }];
     });
   }
+
+  // Set custom angle on last committed wall
+  function setLastAngle(angle: number) {
+    if (committed.length === 0 || isValid) return;
+    setCommitted(prev => {
+      const last = prev[prev.length - 1];
+      return [...prev.slice(0, -1), { ...last, angle }];
+    });
+  }
+
+  // Add a column
+  function addColumn() {
+    const size = parseFloat(columnSize);
+    if (!size || size <= 0) return;
+    const col: RoomColumn = {
+      id: crypto.randomUUID(),
+      type: columnType,
+      x: 0, y: 0, // position set later via SVG tap
+      ...(columnType === "circle" ? { diameter: size } : { width: size, height: size }),
+    };
+    setColumns(prev => [...prev, col]);
+    setColumnSize("");
+    setShowColumnInput(false);
+  }
+
+  function removeColumn(id: string) {
+    setColumns(prev => prev.filter(c => c.id !== id));
+  }
+
+  // Total column area for display
+  const totalColumnArea = columns.reduce((sum, c) => sum + columnArea(c), 0);
 
   function handleBack() {
     if (input) {
@@ -297,6 +487,20 @@ function WallWizard({ onDone, onCancel }: {
     }
   }
 
+  function buildRoom(area: number, perimeter: number): Room {
+    return {
+      id: crypto.randomUUID(),
+      name: roomName,
+      walls: committed.map(w => w.length),
+      normalCorners: committed.map(w => w.angle >= 0),
+      angles: committed.map(w => w.angle),
+      ...(hasBulges ? { arcBulges: bulges } : {}),
+      ...(hasColumns ? { columns } : {}),
+      area,
+      perimeter,
+    };
+  }
+
   function handleForceFinish() {
     if (committed.length < 4) return;
     let sum = 0;
@@ -304,30 +508,19 @@ function WallWizard({ onDone, onCancel }: {
       const j = (i + 1) % committedVerts.length;
       sum += committedVerts[i].x * committedVerts[j].y - committedVerts[j].x * committedVerts[i].y;
     }
-    const area = Math.round(Math.abs(sum) / 2 / 100) / 100;
+    let areaCm2 = Math.abs(sum) / 2;
+    if (hasBulges) bulges.forEach((b, i) => { areaCm2 += arcSegmentArea(committed[i].length, b); });
+    if (hasColumns) columns.forEach(c => { areaCm2 -= columnArea(c); });
+    const area = Math.round(Math.max(areaCm2, 0) / 100) / 100;
     const perimeter = Math.round(committed.reduce((s, w) => s + w.length, 0)) / 100;
     if (area <= 0) return;
-    onDone({
-      id: crypto.randomUUID(),
-      name: roomName,
-      walls: committed.map(w => w.length),
-      normalCorners: committed.map(w => w.normalCorner),
-      area,
-      perimeter,
-    });
+    onDone(buildRoom(area, perimeter));
   }
 
   function handleAdd() {
     const result = doneResult ?? approxResult;
     if (!result) return;
-    onDone({
-      id: crypto.randomUUID(),
-      name: roomName,
-      walls: committed.map(w => w.length),
-      normalCorners: committed.map(w => w.normalCorner),
-      area: result.area,
-      perimeter: result.perimeter,
-    });
+    onDone(buildRoom(result.area, result.perimeter));
   }
 
   const headerText = isValid ? "✓ Готово" : approxResult ? "~ Приблизительно" : `Стена ${committed.length + 1}`;
@@ -361,8 +554,9 @@ function WallWizard({ onDone, onCancel }: {
               <RoomPreview
                 walls={previewWalls}
                 committedCount={committed.length}
-                nextDir={undefined}
+                nextDirDeg={undefined}
                 forceClose={!!approxResult}
+                roomColumns={columns.length > 0 ? columns : undefined}
               />
             </div>
             {!isValid && gapParts.length > 0 && (
@@ -395,6 +589,121 @@ function WallWizard({ onDone, onCancel }: {
               placeholder="Название: зал, спальня, кухня..."
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
+
+            {/* ── Arc + Column buttons ── */}
+            <div className="flex gap-2">
+              <button
+                onPointerDown={() => setShowArcInput(!showArcInput)}
+                className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
+                  hasBulges ? "border-blue-400 text-blue-600 bg-blue-50" : "border-gray-300 text-gray-600"
+                }`}>
+                🌙 Дуга {hasBulges ? `(${committed.filter(w => w.bulge !== 0).length})` : ""}
+              </button>
+              <button
+                onPointerDown={() => setShowColumnInput(!showColumnInput)}
+                className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
+                  hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
+                }`}>
+                🏛 Колонна {hasColumns ? `(${columns.length})` : ""}
+              </button>
+            </div>
+
+            {/* ── Arc walls editor ── */}
+            {showArcInput && (
+              <div className="rounded-xl border p-3 space-y-2 bg-gray-50">
+                <p className="text-xs text-muted-foreground text-center">Выберите стену и задайте высоту дуги (см)</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {committed.map((w, i) => (
+                    <button key={i}
+                      onPointerDown={() => setArcEditIdx(arcEditIdx === i ? null : i)}
+                      className={`text-xs py-1.5 px-2 rounded-lg border ${
+                        w.bulge !== 0 ? "bg-blue-100 border-blue-400 text-blue-700" :
+                        arcEditIdx === i ? "bg-amber-50 border-amber-400" : "border-gray-300"
+                      }`}>
+                      Стена {i + 1}: {w.length} см {w.bulge !== 0 ? `🌙${w.bulge}` : ""}
+                    </button>
+                  ))}
+                </div>
+                {arcEditIdx !== null && (
+                  <div className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      value={arcBulgeInput}
+                      onChange={e => setArcBulgeInput(e.target.value)}
+                      placeholder="Высота дуги (+ наружу, − внутрь)"
+                      className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300"
+                    />
+                    <span className="text-xs text-muted-foreground">см</span>
+                    <button
+                      onPointerDown={() => {
+                        const b = parseFloat(arcBulgeInput) || 0;
+                        setCommitted(prev => prev.map((w, i) => i === arcEditIdx ? { ...w, bulge: b } : w));
+                        setArcBulgeInput("");
+                        setArcEditIdx(null);
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80">
+                      ОК
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Column input ── */}
+            {showColumnInput && (
+              <div className="rounded-xl border p-3 space-y-2 bg-gray-50">
+                <div className="flex gap-2">
+                  <button
+                    onPointerDown={() => setColumnType("circle")}
+                    className={`flex-1 text-xs py-2 rounded-lg border ${
+                      columnType === "circle" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                    }`}>
+                    ⭕ Круглая
+                  </button>
+                  <button
+                    onPointerDown={() => setColumnType("rect")}
+                    className={`flex-1 text-xs py-2 rounded-lg border ${
+                      columnType === "rect" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                    }`}>
+                    ⬜ Квадратная
+                  </button>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    value={columnSize}
+                    onChange={e => setColumnSize(e.target.value)}
+                    placeholder={columnType === "circle" ? "Диаметр (см)" : "Сторона (см)"}
+                    className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300"
+                  />
+                  <button
+                    onPointerDown={addColumn}
+                    disabled={!columnSize || parseFloat(columnSize) <= 0}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80 disabled:opacity-30">
+                    Добавить
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Columns list ── */}
+            {columns.length > 0 && (
+              <div className="space-y-1">
+                {columns.map(col => (
+                  <div key={col.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-gray-50 text-xs">
+                    <span>
+                      {col.type === "circle" ? `⭕ ⌀${col.diameter} см` : `⬜ ${col.width}×${col.height} см`}
+                      {" "}= −{(columnArea(col) / 10000).toFixed(2)} м²
+                    </span>
+                    <button onPointerDown={() => removeColumn(col.id)} className="text-red-400 active:text-red-600 px-1">✕</button>
+                  </div>
+                ))}
+                <div className="text-xs text-center text-muted-foreground">
+                  Итого колонны: −{(totalColumnArea / 10000).toFixed(2)} м²
+                </div>
+              </div>
+            )}
+
             <button onClick={handleAdd}
               className={`w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 ${
                 isValid ? "bg-[#1e3a5f]" : "bg-amber-500"
@@ -412,26 +721,82 @@ function WallWizard({ onDone, onCancel }: {
             <RoomPreview
               walls={previewWalls}
               committedCount={committed.length}
-              nextDir={nextDir}
+              nextDirDeg={currentDirDeg + 90}
               forceClose={false}
             />
           </div>
           <div className="shrink-0 border-t">
-            {/* Direction + Ступенька toggle */}
+            {/* Direction + Angle controls */}
             {committed.length > 0 && (
-              <div className="flex items-center justify-between px-3 py-1.5 border-b bg-gray-50">
-                <span className="text-xs text-muted-foreground">
-                  Следующая стена {dirArrows[nextDir]}
-                </span>
-                <button
-                  onPointerDown={toggleLastStep}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors active:scale-95 ${
-                    lastIsStep
-                      ? "bg-amber-100 border-amber-400 text-amber-700 font-semibold"
-                      : "border-gray-300 text-gray-500"
-                  }`}>
-                  {lastIsStep ? "↙ Ступенька ✓" : "↙ Ступенька?"}
-                </button>
+              <div className="border-b bg-gray-50">
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-xs text-muted-foreground">
+                    Поворот: {lastAngle > 0 ? "+" : ""}{lastAngle}°
+                    {nextDir >= 0 ? ` ${dirArrows[nextDir]}` : ""}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onPointerDown={toggleLastStep}
+                      className={`text-xs px-2 py-1 rounded-full border transition-colors active:scale-95 ${
+                        lastIsStep
+                          ? "bg-amber-100 border-amber-400 text-amber-700 font-semibold"
+                          : "border-gray-300 text-gray-500"
+                      }`}>
+                      {lastIsStep ? "↙ Ступ ✓" : "↙ Ступ"}
+                    </button>
+                    <button
+                      onPointerDown={() => setShowAngleInput(!showAngleInput)}
+                      className={`text-xs px-2 py-1 rounded-full border transition-colors active:scale-95 ${
+                        lastIsCustomAngle
+                          ? "bg-blue-100 border-blue-400 text-blue-700 font-semibold"
+                          : "border-gray-300 text-gray-500"
+                      }`}>
+                      {lastIsCustomAngle ? `${lastAngle}°` : "📐 Угол"}
+                    </button>
+                  </div>
+                </div>
+                {/* Custom angle input panel */}
+                {showAngleInput && (
+                  <div className="px-3 pb-2 space-y-1.5">
+                    <div className="flex gap-1.5">
+                      {[45, 90, 135].map(a => (
+                        <button key={a} onPointerDown={() => { setLastAngle(a); setShowAngleInput(false); }}
+                          className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 ${
+                            lastAngle === a ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                          }`}>
+                          +{a}°
+                        </button>
+                      ))}
+                      {[-45, -90, -135].map(a => (
+                        <button key={a} onPointerDown={() => { setLastAngle(a); setShowAngleInput(false); }}
+                          className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 ${
+                            lastAngle === a ? "bg-amber-500 text-white border-amber-500" : "border-gray-300"
+                          }`}>
+                          {a}°
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="number"
+                        value={angleInput}
+                        onChange={e => setAngleInput(e.target.value)}
+                        placeholder="Свой угол..."
+                        className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 w-0"
+                      />
+                      <span className="text-xs text-muted-foreground">°</span>
+                      <button
+                        onPointerDown={() => {
+                          const a = parseFloat(angleInput);
+                          if (a && a !== 0) { setLastAngle(a); setAngleInput(""); setShowAngleInput(false); }
+                        }}
+                        disabled={!angleInput || parseFloat(angleInput) === 0}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80 disabled:opacity-30">
+                        ОК
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -550,10 +915,10 @@ function RoomDetail({ room, onUpdate, onClose }: {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const normalCorners = room.normalCorners;
+  const angles = room.angles ?? room.normalCorners.map(nc => nc ? 90 : -90);
   const previewWalls = walls.map((l, i) => ({
     length: String(l),
-    normalCorner: normalCorners[i] ?? true,
+    angle: angles[i] ?? 90,
   }));
 
   function startEdit(i: number) {
@@ -572,8 +937,8 @@ function RoomDetail({ room, onUpdate, onClose }: {
     setEditingIdx(null);
   }
 
-  function shoelace(w: number[], nc: boolean[]) {
-    const { vertices } = buildVertices(w.map((l, i) => ({ length: String(l), normalCorner: nc[i] ?? true })));
+  function recalc(w: number[]) {
+    const { vertices } = buildVertices(w.map((l, i) => ({ length: String(l), angle: angles[i] ?? 90 })));
     let sum = 0;
     for (let i = 0; i < vertices.length; i++) {
       const j = (i + 1) % vertices.length;
@@ -586,12 +951,12 @@ function RoomDetail({ room, onUpdate, onClose }: {
   }
 
   function handleSave() {
-    const res = shoelace(walls, normalCorners);
-    onUpdate({ ...room, walls, area: res.area, perimeter: res.perimeter });
+    const res = recalc(walls);
+    onUpdate({ ...room, walls, angles, area: res.area, perimeter: res.perimeter });
     onClose();
   }
 
-  const result = shoelace(walls, normalCorners);
+  const result = recalc(walls);
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
@@ -745,6 +1110,7 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
           name: r.name,
           walls: r.walls_cm,
           normalCorners: r.walls_cm.map(() => true),
+          angles: r.walls_cm.map(() => 90),
           area: r.area,
           perimeter: r.perimeter,
         })));
@@ -820,6 +1186,7 @@ export default function ZameryPage() {
               name: r.name,
               walls: r.walls as number[],
               normalCorners: r.normalCorners as boolean[],
+              angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
@@ -838,6 +1205,7 @@ export default function ZameryPage() {
               name: r.name,
               walls: r.walls as number[],
               normalCorners: r.normalCorners as boolean[],
+              angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
               area: r.area,
               perimeter: r.perimeter,
             })),
@@ -885,6 +1253,9 @@ export default function ZameryPage() {
           name: r.name,
           walls: r.walls,
           normalCorners: r.normalCorners,
+          angles: r.angles,
+          arcBulges: r.arcBulges,
+          columns: r.columns,
           area: r.area,
           perimeter: r.perimeter,
         }))),
@@ -925,6 +1296,9 @@ export default function ZameryPage() {
           name: updated.name,
           walls: updated.walls,
           normalCorners: updated.normalCorners,
+          angles: updated.angles,
+          arcBulges: updated.arcBulges,
+          columns: updated.columns,
           area: updated.area,
           perimeter: updated.perimeter,
           elements: updated.elements || [],
@@ -979,7 +1353,7 @@ export default function ZameryPage() {
         body: JSON.stringify({
           address: objectName,
           status: "saved",
-          rooms: rooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, area: r.area, perimeter: r.perimeter })),
+          rooms: rooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
         }),
       }).catch(() => {});
     }
