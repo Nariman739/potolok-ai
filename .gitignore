@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# capacitor native
+/ios
+/android
+
 # production
 /build
 

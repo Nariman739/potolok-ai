@@ -416,15 +416,8 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   // Direction tracking
-  const allRectilinear = committed.every(w => w.angle === 90 || w.angle === -90);
   const currentDirDeg = committed.reduce((dir, w) => dir + w.angle, 0);
-  const dirArrows = ["→", "↓", "←", "↑"];
-  // For rectilinear: show arrow; for arbitrary: show degree
-  const currentDirIdx = allRectilinear ? ((currentDirDeg / 90) % 4 + 4) % 4 : -1;
-  const nextDir = allRectilinear ? ((currentDirIdx + 1) % 4) : -1;
-  // Whether last committed wall has a non-90° angle
   const lastAngle = committed.length > 0 ? committed[committed.length - 1].angle : 90;
-  const lastIsStep = lastAngle === -90;
   const lastIsCustomAngle = lastAngle !== 90 && lastAngle !== -90;
 
   function digit(d: string) {
@@ -437,15 +430,6 @@ function WallWizard({ onDone, onCancel }: {
     if (!len || len <= 0) return;
     setCommitted(prev => [...prev, { length: len, angle: 90, bulge: 0 }]);
     setInput("");
-  }
-
-  // Toggle last committed wall between normal (90°) and step (-90°)
-  function toggleLastStep() {
-    if (committed.length === 0 || isValid) return;
-    setCommitted(prev => {
-      const last = prev[prev.length - 1];
-      return [...prev.slice(0, -1), { ...last, angle: last.angle === 90 ? -90 : 90 }];
-    });
   }
 
   // Set custom angle on last committed wall
@@ -538,9 +522,18 @@ function WallWizard({ onDone, onCancel }: {
           </button>
           <span className="text-sm font-semibold">{headerText}</span>
           <button
-            onClick={handleBack}
+            onPointerDown={() => {
+              // Always allow going back if there are committed walls
+              if (input) setInput(p => p.slice(0, -1));
+              else if (committed.length > 0) {
+                setCommitted(prev => prev.slice(0, -1));
+                setShowAngleInput(false);
+                setShowArcInput(false);
+                setShowColumnInput(false);
+              }
+            }}
             disabled={committed.length === 0 && !input}
-            className="text-xs text-muted-foreground disabled:opacity-30 px-1"
+            className="text-xs text-muted-foreground disabled:opacity-30 px-2 py-1 active:bg-gray-100 rounded"
           >
             ← Назад
           </button>
@@ -726,65 +719,47 @@ function WallWizard({ onDone, onCancel }: {
             />
           </div>
           <div className="shrink-0 border-t">
-            {/* Direction + Angle controls */}
+            {/* Direction controls — intuitive */}
             {committed.length > 0 && (
               <div className="border-b bg-gray-50">
-                <div className="flex items-center justify-between px-3 py-1.5">
-                  <span className="text-xs text-muted-foreground">
-                    Поворот: {lastAngle > 0 ? "+" : ""}{lastAngle}°
-                    {nextDir >= 0 ? ` ${dirArrows[nextDir]}` : ""}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onPointerDown={toggleLastStep}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors active:scale-95 ${
-                        lastIsStep
-                          ? "bg-amber-100 border-amber-400 text-amber-700 font-semibold"
-                          : "border-gray-300 text-gray-500"
-                      }`}>
-                      {lastIsStep ? "↙ Ступ ✓" : "↙ Ступ"}
-                    </button>
-                    <button
-                      onPointerDown={() => setShowAngleInput(!showAngleInput)}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors active:scale-95 ${
-                        lastIsCustomAngle
-                          ? "bg-blue-100 border-blue-400 text-blue-700 font-semibold"
-                          : "border-gray-300 text-gray-500"
-                      }`}>
-                      {lastIsCustomAngle ? `${lastAngle}°` : "📐 Угол"}
-                    </button>
-                  </div>
+                {/* Quick angle buttons — always visible */}
+                <div className="flex items-center gap-1 px-2 py-1.5">
+                  {/* Main direction buttons */}
+                  <button onPointerDown={() => setLastAngle(90)}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
+                      lastAngle === 90 ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold" : "border-gray-300 text-gray-600"
+                    }`}>
+                    ↱ Направо
+                  </button>
+                  <button onPointerDown={() => setLastAngle(-90)}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
+                      lastAngle === -90 ? "bg-amber-500 text-white border-amber-500 font-semibold" : "border-gray-300 text-gray-600"
+                    }`}>
+                    ↰ Налево
+                  </button>
+                  <button onPointerDown={() => setShowAngleInput(!showAngleInput)}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
+                      lastIsCustomAngle ? "bg-blue-500 text-white border-blue-500 font-semibold" : "border-gray-300 text-gray-600"
+                    }`}>
+                    {lastIsCustomAngle ? `${lastAngle}°` : "📐 Угол"}
+                  </button>
                 </div>
-                {/* Custom angle input panel */}
+                {/* Custom angle panel */}
                 {showAngleInput && (
-                  <div className="px-3 pb-2 space-y-1.5">
-                    <div className="flex gap-1.5">
-                      {[45, 90, 135].map(a => (
+                  <div className="px-2 pb-2 space-y-1.5">
+                    <div className="grid grid-cols-4 gap-1">
+                      {[45, 90, 135, 180, -45, -90, -135, -180].map(a => (
                         <button key={a} onPointerDown={() => { setLastAngle(a); setShowAngleInput(false); }}
-                          className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 ${
+                          className={`text-xs py-1.5 rounded-lg border active:scale-95 ${
                             lastAngle === a ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
                           }`}>
-                          +{a}°
-                        </button>
-                      ))}
-                      {[-45, -90, -135].map(a => (
-                        <button key={a} onPointerDown={() => { setLastAngle(a); setShowAngleInput(false); }}
-                          className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 ${
-                            lastAngle === a ? "bg-amber-500 text-white border-amber-500" : "border-gray-300"
-                          }`}>
-                          {a}°
+                          {a > 0 ? "↱" : "↰"} {Math.abs(a)}°
                         </button>
                       ))}
                     </div>
                     <div className="flex gap-1.5 items-center">
-                      <input
-                        type="number"
-                        value={angleInput}
-                        onChange={e => setAngleInput(e.target.value)}
-                        placeholder="Свой угол..."
-                        className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 w-0"
-                      />
-                      <span className="text-xs text-muted-foreground">°</span>
+                      <input type="number" value={angleInput} onChange={e => setAngleInput(e.target.value)}
+                        placeholder="Свой угол..." className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 w-0" />
                       <button
                         onPointerDown={() => {
                           const a = parseFloat(angleInput);
@@ -1512,22 +1487,19 @@ export default function ZameryPage() {
         />
       )}
 
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold">Замеры</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Введите стены каждого помещения — площадь и периметр рассчитаются автоматически
-            </p>
-          </div>
+      <div className="space-y-5">
+        {/* Header with history button */}
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-2xl font-bold">Замеры</h1>
           <button
             onClick={() => setShowHistory(true)}
-            className="shrink-0 mt-1 flex items-center gap-1.5 text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+            className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
             <History className="h-3.5 w-3.5" />
-            {savedObjects.length > 0 ? `История (${savedObjects.length})` : "История"}
+            {savedObjects.length > 0 ? `Сохранённые (${savedObjects.length})` : "Сохранённые"}
           </button>
         </div>
 
+        {/* Address */}
         <input
           value={objectName}
           onChange={e => handleAddressChange(e.target.value)}
@@ -1535,8 +1507,21 @@ export default function ZameryPage() {
           className="w-full rounded-xl border px-4 py-3 text-sm"
         />
 
+        {/* ADD ROOM BUTTONS — always visible at top */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowWizard(true)}
+            className="flex-1 rounded-xl bg-[#1e3a5f] py-4 text-sm font-semibold text-white active:opacity-80 flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить помещение
+          </button>
+        </div>
+
+        {/* Photo upload — compact */}
         <PhotoUpload onRoomsLoaded={loaded => addRooms(loaded)} />
 
+        {/* Rooms list */}
         {rooms.length > 0 && (
           <div className="space-y-3">
             {rooms.map((room, i) => (
@@ -1549,6 +1534,7 @@ export default function ZameryPage() {
                 onDesign={() => setDesigningRoom(room)}
               />
             ))}
+            {/* Summary + actions */}
             <div className="rounded-lg border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/5 p-4 flex items-center justify-between flex-wrap gap-3">
               <div>
                 <div className="text-sm text-muted-foreground">{rooms.length} помещений</div>
@@ -1574,14 +1560,6 @@ export default function ZameryPage() {
             </div>
           </div>
         )}
-
-        <button
-          onClick={() => setShowWizard(true)}
-          className="w-full rounded-xl border-2 border-dashed py-5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50 flex items-center justify-center gap-2 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          {rooms.length === 0 ? "Добавить первое помещение" : "Добавить помещение"}
-        </button>
       </div>
     </>
   );
