@@ -121,6 +121,15 @@ export default async function MasterPortfolioPage({
               </a>
             )}
           </div>
+          {/* Catalog link */}
+          <div className="mt-4">
+            <Link
+              href={`/master/${slug}/catalog`}
+              className="inline-flex items-center gap-2 text-white/80 text-sm hover:text-white transition-colors underline underline-offset-4"
+            >
+              Каталог материалов и цены
+            </Link>
+          </div>
         </div>
       </header>
 
