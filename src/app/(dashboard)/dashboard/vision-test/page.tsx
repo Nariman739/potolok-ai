@@ -714,7 +714,7 @@ function WallWizard({ onDone, onCancel }: {
             <RoomPreview
               walls={previewWalls}
               committedCount={committed.length}
-              nextDirDeg={currentDirDeg + 90}
+              nextDirDeg={currentDirDeg}
               forceClose={false}
             />
           </div>
