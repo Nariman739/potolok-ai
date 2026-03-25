@@ -366,7 +366,6 @@ function WallWizard({ onDone, onCancel }: {
   const [input, setInput] = useState("");
   const [roomName, setRoomName] = useState("");
   const [showAngleInput, setShowAngleInput] = useState(false);
-  const [angleInput, setAngleInput] = useState("");
   const [columns, setColumns] = useState<RoomColumn[]>([]);
   const [showColumnInput, setShowColumnInput] = useState(false);
   const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
@@ -722,9 +721,8 @@ function WallWizard({ onDone, onCancel }: {
             {/* Direction controls — intuitive */}
             {committed.length > 0 && (
               <div className="border-b bg-gray-50">
-                {/* Quick angle buttons — always visible */}
+                {/* Quick angle buttons */}
                 <div className="flex items-center gap-1 px-2 py-1.5">
-                  {/* Main direction buttons */}
                   <button onClick={() => setLastAngle(90)}
                     className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
                       lastAngle === 90 ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold" : "border-gray-300 text-gray-600"
@@ -744,31 +742,69 @@ function WallWizard({ onDone, onCancel }: {
                     {lastIsCustomAngle ? `${lastAngle}°` : "📐 Угол"}
                   </button>
                 </div>
-                {/* Custom angle panel */}
+                {/* Angle slider — drag to set angle */}
                 {showAngleInput && (
-                  <div className="px-2 pb-2 space-y-1.5">
-                    <div className="grid grid-cols-4 gap-1">
-                      {[45, 90, 135, 180, -45, -90, -135, -180].map(a => (
-                        <button key={a} onClick={() => { setLastAngle(a); setShowAngleInput(false); }}
-                          className={`text-xs py-1.5 rounded-lg border active:scale-95 ${
-                            lastAngle === a ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                  <div className="px-3 pb-2 space-y-2">
+                    {/* Mini compass preview */}
+                    <div className="flex items-center justify-center gap-4">
+                      <svg width="56" height="56" viewBox="0 0 56 56">
+                        <circle cx="28" cy="28" r="26" fill="none" stroke="#e2e8f0" strokeWidth="2" />
+                        {/* Tick marks every 45° */}
+                        {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => {
+                          const r1 = 22, r2 = 26;
+                          const rad = (deg - 90) * Math.PI / 180;
+                          return <line key={deg} x1={28 + Math.cos(rad) * r1} y1={28 + Math.sin(rad) * r1}
+                            x2={28 + Math.cos(rad) * r2} y2={28 + Math.sin(rad) * r2}
+                            stroke="#94a3b8" strokeWidth={deg % 90 === 0 ? 2 : 1} />;
+                        })}
+                        {/* Direction arrow */}
+                        {(() => {
+                          const rad = (lastAngle - 90) * Math.PI / 180;
+                          const ex = 28 + Math.cos(rad) * 20;
+                          const ey = 28 + Math.sin(rad) * 20;
+                          return <line x1="28" y1="28" x2={ex} y2={ey} stroke="#F97316" strokeWidth="3" strokeLinecap="round" />;
+                        })()}
+                        <circle cx="28" cy="28" r="3" fill="#1e3a5f" />
+                      </svg>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-[#1e3a5f]">{lastAngle}°</div>
+                        <div className="text-xs text-gray-500">
+                          {lastAngle > 0 ? "направо" : lastAngle < 0 ? "налево" : "прямо"}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Slider */}
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min={-180}
+                        max={180}
+                        step={5}
+                        value={lastAngle}
+                        onChange={e => setLastAngle(parseInt(e.target.value))}
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                        style={{
+                          background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${(lastAngle + 180) / 360 * 100}%, #e2e8f0 ${(lastAngle + 180) / 360 * 100}%, #e2e8f0 100%)`,
+                        }}
+                      />
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
+                        <span>-180°</span>
+                        <span>-90°</span>
+                        <span>0°</span>
+                        <span>+90°</span>
+                        <span>+180°</span>
+                      </div>
+                    </div>
+                    {/* Quick presets */}
+                    <div className="flex gap-1 flex-wrap justify-center">
+                      {[-135, -90, -45, 0, 45, 90, 135].map(a => (
+                        <button key={a} onClick={() => setLastAngle(a)}
+                          className={`text-xs px-2 py-1 rounded-full border active:scale-95 ${
+                            lastAngle === a ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-500"
                           }`}>
-                          {a > 0 ? "↱" : "↰"} {Math.abs(a)}°
+                          {a}°
                         </button>
                       ))}
-                    </div>
-                    <div className="flex gap-1.5 items-center">
-                      <input type="number" value={angleInput} onChange={e => setAngleInput(e.target.value)}
-                        placeholder="Свой угол..." className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 w-0" />
-                      <button
-                        onClick={() => {
-                          const a = parseFloat(angleInput);
-                          if (a && a !== 0) { setLastAngle(a); setAngleInput(""); setShowAngleInput(false); }
-                        }}
-                        disabled={!angleInput || parseFloat(angleInput) === 0}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80 disabled:opacity-30">
-                        ОК
-                      </button>
                     </div>
                   </div>
                 )}
