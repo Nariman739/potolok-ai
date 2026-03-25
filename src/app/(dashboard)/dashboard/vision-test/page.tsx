@@ -162,6 +162,124 @@ function buildVertices(walls: { length: string; angle: number }[]): {
   return { vertices, closed, gapX: x, gapY: y };
 }
 
+/** Wrapper that adds drag-to-curve functionality over the room preview */
+function ArcDragPreview({
+  walls,
+  committed,
+  columns,
+  approxResult,
+  onBulgeChange,
+}: {
+  walls: { length: string; angle: number; bulge: number }[];
+  committed: { length: number; angle: number; bulge: number }[];
+  columns: RoomColumn[];
+  approxResult: { area: number; perimeter: number; gap: number } | null;
+  onBulgeChange: (wallIdx: number, bulge: number) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ wallIndex: number } | null>(null);
+
+  // Build vertices to find wall positions
+  const { vertices } = buildVertices(walls.map(w => ({ length: w.length, angle: w.angle })));
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function getWallMidpoints() {
+      const rect = el!.getBoundingClientRect();
+      const xs = vertices.map(v => v.x), ys = vertices.map(v => v.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const W = maxX - minX || 1, H = maxY - minY || 1;
+      const PAD = 40, SVG_W = 400, SVG_H = 400;
+      const scale = Math.min((SVG_W - PAD * 2) / W, (SVG_H - PAD * 2) / H);
+      const toScreenX = (x: number) => ((PAD + (x - minX) * scale) / SVG_W) * rect.width;
+      const toScreenY = (y: number) => ((PAD + (y - minY) * scale) / SVG_H) * rect.height;
+
+      return { vertices, toScreenX, toScreenY, scale, rect };
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      const touch = e.touches[0];
+      const info = getWallMidpoints();
+      const tx = touch.clientX - info.rect.left;
+      const ty = touch.clientY - info.rect.top;
+
+      // Find nearest wall midpoint
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < vertices.length - 1; i++) {
+        const a = vertices[i], b = vertices[i + 1];
+        const mx = info.toScreenX((a.x + b.x) / 2);
+        const my = info.toScreenY((a.y + b.y) / 2);
+        const d = Math.sqrt((tx - mx) ** 2 + (ty - my) ** 2);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+
+      if (bestDist < 100) {
+        e.preventDefault();
+        dragRef.current = { wallIndex: bestIdx };
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      const wd = dragRef.current;
+      if (!wd) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const info = getWallMidpoints();
+      const tx = touch.clientX - info.rect.left;
+      const ty = touch.clientY - info.rect.top;
+
+      // Get wall endpoints in screen coords
+      const a = vertices[wd.wallIndex], b = vertices[wd.wallIndex + 1];
+      if (!a || !b) return;
+      const ax = info.toScreenX(a.x), ay = info.toScreenY(a.y);
+      const bx = info.toScreenX(b.x), by = info.toScreenY(b.y);
+
+      // Perpendicular distance from touch to wall line
+      const wallDx = bx - ax, wallDy = by - ay;
+      const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy) || 1;
+      const perpDist = ((tx - ax) * wallDy - (ty - ay) * wallDx) / wallLen;
+
+      // Convert screen pixels to cm (approximate)
+      const bulgeCm = Math.round(perpDist / info.scale * 2) / 2;
+      const clamped = Math.max(-80, Math.min(80, Math.round(bulgeCm)));
+      onBulgeChange(wd.wallIndex, clamped);
+    }
+
+    function onTouchEnd() {
+      dragRef.current = null;
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  });
+
+  return (
+    <div className="px-3 pt-2 pb-1" style={{ height: "40svh" }}>
+      <div ref={containerRef} className="w-full h-full relative" style={{ touchAction: "none" }}>
+        <RoomPreview
+          walls={walls}
+          committedCount={committed.length}
+          nextDirDeg={undefined}
+          forceClose={!!approxResult}
+          roomColumns={columns.length > 0 ? columns : undefined}
+        />
+      </div>
+      <p className="text-xs text-center text-muted-foreground mt-1">Потяните стену чтобы сделать дугу</p>
+    </div>
+  );
+}
+
 function RoomPreview({
   walls,
   committedCount,
@@ -170,7 +288,6 @@ function RoomPreview({
   activeWallIdx,
   forceClose,
   roomColumns,
-  onWallDrag,
 }: {
   walls: { length: string; angle: number; bulge?: number }[];
   committedCount?: number;
@@ -179,11 +296,7 @@ function RoomPreview({
   activeWallIdx?: number;
   forceClose?: boolean;
   roomColumns?: RoomColumn[];
-  onWallDrag?: (wallIndex: number, bulge: number) => void;
 }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const wallDragRef = useRef<{ wallIndex: number; startY: number; startBulge: number } | null>(null);
-
   const { vertices, closed: _closed } = buildVertices(walls);
   const closed = _closed || !!forceClose;
   const committed = committedCount ?? walls.length;
@@ -208,47 +321,7 @@ function RoomPreview({
 
   return (
     <div className="w-full h-full rounded-xl border bg-gray-50 overflow-hidden">
-      <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet"
-        style={onWallDrag ? { touchAction: "none" } : undefined}
-        onTouchStart={onWallDrag ? (e) => {
-          if (!svgRef.current) return;
-          const touch = e.touches[0];
-          const ctm = svgRef.current.getScreenCTM();
-          if (!ctm) return;
-          const pt = new DOMPoint(touch.clientX, touch.clientY).matrixTransform(ctm.inverse());
-          // Find nearest wall to touch
-          let bestIdx = 0, bestDist = Infinity;
-          for (let i = 0; i < vertices.length - 1; i++) {
-            const a = vertices[i], b = vertices[i + 1];
-            const mx = sx((a.x + b.x) / 2), my = sy((a.y + b.y) / 2);
-            const d = Math.sqrt((pt.x - mx) ** 2 + (pt.y - my) ** 2);
-            if (d < bestDist) { bestDist = d; bestIdx = i; }
-          }
-          if (bestDist < 80) {
-            e.preventDefault();
-            wallDragRef.current = { wallIndex: bestIdx, startY: touch.clientY, startBulge: walls[bestIdx]?.bulge || 0 };
-          }
-        } : undefined}
-        onTouchMove={onWallDrag ? (e) => {
-          const wd = wallDragRef.current;
-          if (!wd || !svgRef.current) return;
-          e.preventDefault();
-          const touch = e.touches[0];
-          const ctm = svgRef.current.getScreenCTM();
-          if (!ctm) return;
-          const pt = new DOMPoint(touch.clientX, touch.clientY).matrixTransform(ctm.inverse());
-          const v1 = vertices[wd.wallIndex], v2 = vertices[wd.wallIndex + 1];
-          if (!v1 || !v2) return;
-          const ax = sx(v1.x), ay = sy(v1.y), bx = sx(v2.x), by = sy(v2.y);
-          const wallDx = bx - ax, wallDy = by - ay;
-          const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy) || 1;
-          const perpDist = ((pt.x - ax) * wallDy - (pt.y - ay) * wallDx) / wallLen;
-          const bulgeCm = Math.round(perpDist / scale / 2) * 2;
-          const clamped = Math.max(-80, Math.min(80, bulgeCm));
-          onWallDrag(wd.wallIndex, clamped);
-        } : undefined}
-        onTouchEnd={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
-      >
+      <svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet">
         {/* Closing fill when done */}
         {closed && (
           <polygon
@@ -581,20 +654,16 @@ function WallWizard({ onDone, onCancel }: {
         {(isValid && doneResult) || approxResult ? (
           /* ── Done: всё скроллится ── */
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {/* Превью комнаты — фиксированная высота */}
-            <div className="px-3 pt-2 pb-2" style={{ height: "40svh" }}>
-              <RoomPreview
-                walls={previewWalls}
-                committedCount={committed.length}
-                nextDirDeg={undefined}
-                forceClose={!!approxResult}
-                roomColumns={columns.length > 0 ? columns : undefined}
-                onWallDrag={(wallIdx, bulge) => {
-                  setCommitted(prev => prev.map((w, i) => i === wallIdx ? { ...w, bulge } : w));
-                }}
-              />
-            </div>
-            <p className="text-xs text-center text-muted-foreground -mt-1">Потяните стену чтобы сделать дугу</p>
+            {/* Превью комнаты с drag-to-arc */}
+            <ArcDragPreview
+              walls={previewWalls}
+              committed={committed}
+              columns={columns}
+              approxResult={approxResult}
+              onBulgeChange={(wallIdx, bulge) => {
+                setCommitted(prev => prev.map((w, i) => i === wallIdx ? { ...w, bulge } : w));
+              }}
+            />
             {!isValid && gapParts.length > 0 && (
               <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
                 {gap < 30
