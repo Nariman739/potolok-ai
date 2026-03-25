@@ -236,7 +236,7 @@ function RoomPreview({
                 <path d={arcPath} fill="none" stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round" />
                 {onWallClick && (
                   <path d={arcPath} fill="none" stroke="transparent" strokeWidth={24}
-                    style={{ cursor: "pointer" }} onPointerDown={() => onWallClick(i)} />
+                    style={{ cursor: "pointer" }} onClick={() => onWallClick(i)} />
                 )}
               </g>
             );
@@ -253,7 +253,7 @@ function RoomPreview({
                   x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
                   stroke="transparent" strokeWidth={24} strokeLinecap="round"
                   style={{ cursor: "pointer" }}
-                  onPointerDown={() => onWallClick(i)}
+                  onClick={() => onWallClick(i)}
                 />
               )}
             </g>
@@ -513,7 +513,7 @@ function WallWizard({ onDone, onCancel }: {
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
       <div
         className="bg-white flex flex-col overflow-hidden w-full sm:max-w-sm sm:rounded-2xl sm:shadow-2xl"
-        style={{ height: "100dvh", maxHeight: "100dvh", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ height: "100dvh", maxHeight: "100dvh", paddingBottom: "env(safe-area-inset-bottom)", touchAction: "manipulation" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
@@ -522,7 +522,7 @@ function WallWizard({ onDone, onCancel }: {
           </button>
           <span className="text-sm font-semibold">{headerText}</span>
           <button
-            onPointerDown={() => {
+            onClick={() => {
               // Always allow going back if there are committed walls
               if (input) setInput(p => p.slice(0, -1));
               else if (committed.length > 0) {
@@ -586,14 +586,14 @@ function WallWizard({ onDone, onCancel }: {
             {/* ── Arc + Column buttons ── */}
             <div className="flex gap-2">
               <button
-                onPointerDown={() => setShowArcInput(!showArcInput)}
+                onClick={() => setShowArcInput(!showArcInput)}
                 className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
                   hasBulges ? "border-blue-400 text-blue-600 bg-blue-50" : "border-gray-300 text-gray-600"
                 }`}>
                 🌙 Дуга {hasBulges ? `(${committed.filter(w => w.bulge !== 0).length})` : ""}
               </button>
               <button
-                onPointerDown={() => setShowColumnInput(!showColumnInput)}
+                onClick={() => setShowColumnInput(!showColumnInput)}
                 className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
                   hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
                 }`}>
@@ -608,7 +608,7 @@ function WallWizard({ onDone, onCancel }: {
                 <div className="grid grid-cols-2 gap-1.5">
                   {committed.map((w, i) => (
                     <button key={i}
-                      onPointerDown={() => setArcEditIdx(arcEditIdx === i ? null : i)}
+                      onClick={() => setArcEditIdx(arcEditIdx === i ? null : i)}
                       className={`text-xs py-1.5 px-2 rounded-lg border ${
                         w.bulge !== 0 ? "bg-blue-100 border-blue-400 text-blue-700" :
                         arcEditIdx === i ? "bg-amber-50 border-amber-400" : "border-gray-300"
@@ -628,7 +628,7 @@ function WallWizard({ onDone, onCancel }: {
                     />
                     <span className="text-xs text-muted-foreground">см</span>
                     <button
-                      onPointerDown={() => {
+                      onClick={() => {
                         const b = parseFloat(arcBulgeInput) || 0;
                         setCommitted(prev => prev.map((w, i) => i === arcEditIdx ? { ...w, bulge: b } : w));
                         setArcBulgeInput("");
@@ -647,14 +647,14 @@ function WallWizard({ onDone, onCancel }: {
               <div className="rounded-xl border p-3 space-y-2 bg-gray-50">
                 <div className="flex gap-2">
                   <button
-                    onPointerDown={() => setColumnType("circle")}
+                    onClick={() => setColumnType("circle")}
                     className={`flex-1 text-xs py-2 rounded-lg border ${
                       columnType === "circle" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
                     }`}>
                     ⭕ Круглая
                   </button>
                   <button
-                    onPointerDown={() => setColumnType("rect")}
+                    onClick={() => setColumnType("rect")}
                     className={`flex-1 text-xs py-2 rounded-lg border ${
                       columnType === "rect" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
                     }`}>
@@ -670,7 +670,7 @@ function WallWizard({ onDone, onCancel }: {
                     className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300"
                   />
                   <button
-                    onPointerDown={addColumn}
+                    onClick={addColumn}
                     disabled={!columnSize || parseFloat(columnSize) <= 0}
                     className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80 disabled:opacity-30">
                     Добавить
@@ -688,7 +688,7 @@ function WallWizard({ onDone, onCancel }: {
                       {col.type === "circle" ? `⭕ ⌀${col.diameter} см` : `⬜ ${col.width}×${col.height} см`}
                       {" "}= −{(columnArea(col) / 10000).toFixed(2)} м²
                     </span>
-                    <button onPointerDown={() => removeColumn(col.id)} className="text-red-400 active:text-red-600 px-1">✕</button>
+                    <button onClick={() => removeColumn(col.id)} className="text-red-400 active:text-red-600 px-1">✕</button>
                   </div>
                 ))}
                 <div className="text-xs text-center text-muted-foreground">
@@ -725,19 +725,19 @@ function WallWizard({ onDone, onCancel }: {
                 {/* Quick angle buttons — always visible */}
                 <div className="flex items-center gap-1 px-2 py-1.5">
                   {/* Main direction buttons */}
-                  <button onPointerDown={() => setLastAngle(90)}
+                  <button onClick={() => setLastAngle(90)}
                     className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
                       lastAngle === 90 ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold" : "border-gray-300 text-gray-600"
                     }`}>
                     ↱ Направо
                   </button>
-                  <button onPointerDown={() => setLastAngle(-90)}
+                  <button onClick={() => setLastAngle(-90)}
                     className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
                       lastAngle === -90 ? "bg-amber-500 text-white border-amber-500 font-semibold" : "border-gray-300 text-gray-600"
                     }`}>
                     ↰ Налево
                   </button>
-                  <button onPointerDown={() => setShowAngleInput(!showAngleInput)}
+                  <button onClick={() => setShowAngleInput(!showAngleInput)}
                     className={`flex-1 text-xs py-1.5 rounded-lg border active:scale-95 transition-colors ${
                       lastIsCustomAngle ? "bg-blue-500 text-white border-blue-500 font-semibold" : "border-gray-300 text-gray-600"
                     }`}>
@@ -749,7 +749,7 @@ function WallWizard({ onDone, onCancel }: {
                   <div className="px-2 pb-2 space-y-1.5">
                     <div className="grid grid-cols-4 gap-1">
                       {[45, 90, 135, 180, -45, -90, -135, -180].map(a => (
-                        <button key={a} onPointerDown={() => { setLastAngle(a); setShowAngleInput(false); }}
+                        <button key={a} onClick={() => { setLastAngle(a); setShowAngleInput(false); }}
                           className={`text-xs py-1.5 rounded-lg border active:scale-95 ${
                             lastAngle === a ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
                           }`}>
@@ -761,7 +761,7 @@ function WallWizard({ onDone, onCancel }: {
                       <input type="number" value={angleInput} onChange={e => setAngleInput(e.target.value)}
                         placeholder="Свой угол..." className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 w-0" />
                       <button
-                        onPointerDown={() => {
+                        onClick={() => {
                           const a = parseFloat(angleInput);
                           if (a && a !== 0) { setLastAngle(a); setAngleInput(""); setShowAngleInput(false); }
                         }}
@@ -786,24 +786,24 @@ function WallWizard({ onDone, onCancel }: {
             {/* Numpad */}
             <div className="grid grid-cols-3 select-none">
               {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
-                <button key={d} onPointerDown={() => digit(d)}
+                <button key={d} onClick={() => digit(d)}
                   className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                   {d}
                 </button>
               ))}
               <button
-                onPointerDown={() => {
+                onClick={() => {
                   if (input) setInput(p => p.slice(0, -1));
                   else if (committed.length > 0) setCommitted(prev => prev.slice(0, -1));
                 }}
                 className="py-2.5 text-xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
                 ⌫
               </button>
-              <button onPointerDown={() => digit("0")}
+              <button onClick={() => digit("0")}
                 className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
-              <button onPointerDown={confirm}
+              <button onClick={confirm}
                 disabled={!input || parseFloat(input) <= 0}
                 className="py-2.5 text-2xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
                 ✓
@@ -811,7 +811,7 @@ function WallWizard({ onDone, onCancel }: {
             </div>
 
             {committed.length >= 4 && !isValid && (
-              <button onPointerDown={handleForceFinish}
+              <button onClick={handleForceFinish}
                 className="w-full py-3 text-sm font-semibold text-[#1e3a5f] border-t active:bg-blue-50">
                 Завершить комнату ({committed.length} стен) →
               </button>
