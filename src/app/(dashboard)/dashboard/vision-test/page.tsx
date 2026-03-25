@@ -370,9 +370,6 @@ function WallWizard({ onDone, onCancel }: {
   const [showColumnInput, setShowColumnInput] = useState(false);
   const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
   const [columnSize, setColumnSize] = useState("");
-  const [showArcInput, setShowArcInput] = useState(false);
-  const [arcEditIdx, setArcEditIdx] = useState<number | null>(null);
-  const [arcBulgeInput, setArcBulgeInput] = useState("");
 
   const previewWalls = [
     ...committed.map(w => ({ length: String(w.length), angle: w.angle, bulge: w.bulge })),
@@ -527,7 +524,6 @@ function WallWizard({ onDone, onCancel }: {
               else if (committed.length > 0) {
                 setCommitted(prev => prev.slice(0, -1));
                 setShowAngleInput(false);
-                setShowArcInput(false);
                 setShowColumnInput(false);
               }
             }}
@@ -582,62 +578,19 @@ function WallWizard({ onDone, onCancel }: {
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
 
-            {/* ── Arc + Column buttons ── */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowArcInput(!showArcInput)}
-                className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
-                  hasBulges ? "border-blue-400 text-blue-600 bg-blue-50" : "border-gray-300 text-gray-600"
-                }`}>
-                🌙 Дуга {hasBulges ? `(${committed.filter(w => w.bulge !== 0).length})` : ""}
-              </button>
-              <button
-                onClick={() => setShowColumnInput(!showColumnInput)}
-                className={`flex-1 text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
-                  hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
-                }`}>
-                🏛 Колонна {hasColumns ? `(${columns.length})` : ""}
-              </button>
-            </div>
+            {/* ── Column button ── */}
+            <button
+              onClick={() => setShowColumnInput(!showColumnInput)}
+              className={`w-full text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
+                hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
+              }`}>
+              🏛 Добавить колонну {hasColumns ? `(${columns.length})` : ""}
+            </button>
 
-            {/* ── Arc walls editor ── */}
-            {showArcInput && (
-              <div className="rounded-xl border p-3 space-y-2 bg-gray-50">
-                <p className="text-xs text-muted-foreground text-center">Выберите стену и задайте высоту дуги (см)</p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {committed.map((w, i) => (
-                    <button key={i}
-                      onClick={() => setArcEditIdx(arcEditIdx === i ? null : i)}
-                      className={`text-xs py-1.5 px-2 rounded-lg border ${
-                        w.bulge !== 0 ? "bg-blue-100 border-blue-400 text-blue-700" :
-                        arcEditIdx === i ? "bg-amber-50 border-amber-400" : "border-gray-300"
-                      }`}>
-                      Стена {i + 1}: {w.length} см {w.bulge !== 0 ? `🌙${w.bulge}` : ""}
-                    </button>
-                  ))}
-                </div>
-                {arcEditIdx !== null && (
-                  <div className="flex gap-1.5 items-center">
-                    <input
-                      type="number"
-                      value={arcBulgeInput}
-                      onChange={e => setArcBulgeInput(e.target.value)}
-                      placeholder="Высота дуги (+ наружу, − внутрь)"
-                      className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300"
-                    />
-                    <span className="text-xs text-muted-foreground">см</span>
-                    <button
-                      onClick={() => {
-                        const b = parseFloat(arcBulgeInput) || 0;
-                        setCommitted(prev => prev.map((w, i) => i === arcEditIdx ? { ...w, bulge: b } : w));
-                        setArcBulgeInput("");
-                        setArcEditIdx(null);
-                      }}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80">
-                      ОК
-                    </button>
-                  </div>
-                )}
+            {/* Arc info */}
+            {hasBulges && (
+              <div className="text-xs text-blue-600 text-center">
+                🌙 Дуги: {committed.filter(w => w.bulge !== 0).map((w, i) => `стена ${committed.indexOf(w) + 1} (${w.bulge} см)`).join(", ")}
               </div>
             )}
 
@@ -808,6 +761,49 @@ function WallWizard({ onDone, onCancel }: {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Arc toggle for last wall */}
+            {committed.length > 0 && (
+              <div className="border-b bg-gray-50 px-3 py-1.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const cur = committed[committed.length - 1].bulge;
+                      if (cur === 0) {
+                        setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: 20 } : w));
+                      } else {
+                        setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: 0 } : w));
+                      }
+                    }}
+                    className={`text-xs px-3 py-1 rounded-full border active:scale-95 transition-colors ${
+                      committed[committed.length - 1].bulge !== 0
+                        ? "bg-blue-500 text-white border-blue-500 font-semibold"
+                        : "border-gray-300 text-gray-500"
+                    }`}>
+                    {committed[committed.length - 1].bulge !== 0 ? "🌙 Дуга ✓" : "🌙 Дуга?"}
+                  </button>
+                  {committed[committed.length - 1].bulge !== 0 && (
+                    <div className="flex-1 flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400">внутрь</span>
+                      <input
+                        type="range"
+                        min={-50}
+                        max={50}
+                        step={5}
+                        value={committed[committed.length - 1].bulge}
+                        onChange={e => {
+                          const b = parseInt(e.target.value);
+                          setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: b } : w));
+                        }}
+                        className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-[10px] text-gray-400">наружу</span>
+                      <span className="text-xs font-bold text-blue-600 w-10 text-right">{committed[committed.length - 1].bulge} см</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

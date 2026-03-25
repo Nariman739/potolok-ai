@@ -14,6 +14,7 @@ export interface RoomElement {
   x?: number;
   y?: number;
   wallIndex?: number;
+  wallPosition?: number; // 0-1, position along the wall (0.5 = centered)
   length?: number; // cm
   variant?: "ours" | "client"; // for spots and tracks: ours = с материалом, client = клиентские
 }
@@ -81,8 +82,8 @@ function getVertices(walls: number[], normalCorners: boolean[], angles?: number[
   return vertices;
 }
 
-function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: number; dist: number; wallLength: number } {
-  let best = { wallIndex: 0, dist: Infinity, wallLength: 0 };
+function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: number; dist: number; wallLength: number; t: number } {
+  let best = { wallIndex: 0, dist: Infinity, wallLength: 0, t: 0.5 };
   for (let i = 0; i < vertices.length - 1; i++) {
     const a = vertices[i], b = vertices[i + 1];
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -93,7 +94,7 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
     const projX = a.x + t * dx, projY = a.y + t * dy;
     const dist = Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
     if (dist < best.dist) {
-      best = { wallIndex: i, dist, wallLength: Math.sqrt(len2) };
+      best = { wallIndex: i, dist, wallLength: Math.sqrt(len2), t };
     }
   }
   return best;
@@ -188,10 +189,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               e.id === ds.id ? { ...e, x: dragPos.x, y: dragPos.y } : e
             ));
           } else if (config?.category === "wall") {
-            // Wall element: snap to nearest wall, keep length
+            // Wall element: snap to nearest wall at drag position
             const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
             setElements(prev => prev.map(e =>
-              e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex } : e
+              e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
             ));
           }
         }
@@ -290,7 +291,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const perpX = -ny, perpY = nx;
 
     const elLen = Math.min(el.length, wallLen);
-    const startT = (wallLen - elLen) / 2;
+    // Position along wall: wallPosition 0-1, default 0.5 (centered)
+    const pos = el.wallPosition ?? 0.5;
+    const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
     const offset = el.type === "curtain" || el.type === "subcurtain" ? wallOffset * 1.5 : wallOffset;
 
     const x1 = a.x + nx * startT + perpX * offset;
@@ -318,7 +321,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const dnx = ddx / dwLen, dny = ddy / dwLen;
           drawPerpX = -dny; drawPerpY = dnx;
           const dElLen = Math.min(el.length!, dwLen);
-          const dStartT = (dwLen - dElLen) / 2;
+          // Position drag point along the wall
+          const dStartT = Math.max(0, Math.min(dwLen - dElLen, (nearest.t * dwLen) - dElLen / 2));
           drawX1 = da.x + dnx * dStartT + drawPerpX * offset;
           drawY1 = da.y + dny * dStartT + drawPerpY * offset;
           drawX2 = da.x + dnx * (dStartT + dElLen) + drawPerpX * offset;
