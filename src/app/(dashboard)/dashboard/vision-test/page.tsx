@@ -170,6 +170,7 @@ function RoomPreview({
   activeWallIdx,
   forceClose,
   roomColumns,
+  onWallDrag,
 }: {
   walls: { length: string; angle: number; bulge?: number }[];
   committedCount?: number;
@@ -178,7 +179,11 @@ function RoomPreview({
   activeWallIdx?: number;
   forceClose?: boolean;
   roomColumns?: RoomColumn[];
+  onWallDrag?: (wallIndex: number, bulge: number) => void;
 }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const wallDragRef = useRef<{ wallIndex: number; startY: number; startBulge: number } | null>(null);
+
   const { vertices, closed: _closed } = buildVertices(walls);
   const closed = _closed || !!forceClose;
   const committed = committedCount ?? walls.length;
@@ -203,7 +208,29 @@ function RoomPreview({
 
   return (
     <div className="w-full h-full rounded-xl border bg-gray-50 overflow-hidden">
-      <svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet">
+      <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet"
+        onPointerMove={onWallDrag ? (e) => {
+          const wd = wallDragRef.current;
+          if (!wd || !svgRef.current) return;
+          const ctm = svgRef.current.getScreenCTM();
+          if (!ctm) return;
+          const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+          // Calculate perpendicular distance from drag point to original wall chord
+          const v1 = vertices[wd.wallIndex], v2 = vertices[wd.wallIndex + 1];
+          if (!v1 || !v2) return;
+          const ax = sx(v1.x), ay = sy(v1.y), bx = sx(v2.x), by = sy(v2.y);
+          const wallDx = bx - ax, wallDy = by - ay;
+          const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy) || 1;
+          // Perpendicular distance (signed: positive = right side = outward for CW polygon)
+          const perpDist = ((pt.x - ax) * wallDy - (pt.y - ay) * wallDx) / wallLen;
+          // Convert SVG pixels to cm
+          const bulgeCm = Math.round(perpDist / scale / 2) * 2; // snap to 2cm
+          const clamped = Math.max(-80, Math.min(80, bulgeCm));
+          onWallDrag(wd.wallIndex, clamped);
+        } : undefined}
+        onPointerUp={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
+        onPointerLeave={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
+      >
         {/* Closing fill when done */}
         {closed && (
           <polygon
@@ -223,6 +250,13 @@ function RoomPreview({
           const dash = (!isCommitted && !isCurrent && !closed) ? "5,3" : undefined;
           const bulge = walls[i]?.bulge || 0;
 
+          // Wall drag start handler (for arc creation)
+          const wallDragStart = onWallDrag ? (e: React.PointerEvent) => {
+            e.stopPropagation();
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+            wallDragRef.current = { wallIndex: i, startY: e.clientY, startBulge: bulge };
+          } : undefined;
+
           // SVG arc for curved walls
           if (bulge !== 0) {
             const p1x = sx(v.x), p1y = sy(v.y), p2x = sx(next.x), p2y = sy(next.y);
@@ -233,11 +267,12 @@ function RoomPreview({
             const arcPath = `M ${p1x} ${p1y} A ${r} ${r} 0 0 ${sweep} ${p2x} ${p2y}`;
             return (
               <g key={i}>
-                <path d={arcPath} fill="none" stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round" />
-                {onWallClick && (
-                  <path d={arcPath} fill="none" stroke="transparent" strokeWidth={24}
-                    style={{ cursor: "pointer" }} onClick={() => onWallClick(i)} />
-                )}
+                <path d={arcPath} fill="none" stroke={bulge !== 0 ? "#3b82f6" : color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round" />
+                {/* Wide tap target for drag or click */}
+                <path d={arcPath} fill="none" stroke="transparent" strokeWidth={30}
+                  style={{ cursor: onWallDrag ? "grab" : "pointer", touchAction: "none" }}
+                  onPointerDown={wallDragStart}
+                  onClick={onWallClick ? () => onWallClick(i) : undefined} />
               </g>
             );
           }
@@ -248,12 +283,14 @@ function RoomPreview({
                 x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
                 stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round"
               />
-              {onWallClick && (
+              {/* Wide tap target for drag (arc) or click */}
+              {(onWallClick || onWallDrag) && (
                 <line
                   x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
-                  stroke="transparent" strokeWidth={24} strokeLinecap="round"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onWallClick(i)}
+                  stroke="transparent" strokeWidth={30} strokeLinecap="round"
+                  style={{ cursor: onWallDrag ? "grab" : "pointer", touchAction: "none" }}
+                  onPointerDown={wallDragStart}
+                  onClick={onWallClick ? () => onWallClick(i) : undefined}
                 />
               )}
             </g>
@@ -545,8 +582,12 @@ function WallWizard({ onDone, onCancel }: {
                 nextDirDeg={undefined}
                 forceClose={!!approxResult}
                 roomColumns={columns.length > 0 ? columns : undefined}
+                onWallDrag={(wallIdx, bulge) => {
+                  setCommitted(prev => prev.map((w, i) => i === wallIdx ? { ...w, bulge } : w));
+                }}
               />
             </div>
+            <p className="text-xs text-center text-muted-foreground -mt-1">Потяните стену чтобы сделать дугу</p>
             {!isValid && gapParts.length > 0 && (
               <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
                 {gap < 30

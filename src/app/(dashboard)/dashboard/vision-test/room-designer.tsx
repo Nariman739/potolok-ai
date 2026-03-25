@@ -311,25 +311,24 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     let drawMidX = midX, drawMidY = midY;
     let drawPerpX = perpX, drawPerpY = perpY;
 
+    // During drag: element follows finger freely (centered on drag pos)
     if (isDragging && dragPos) {
+      const halfLen = (el.length || 0) / 2;
+      // Use wall direction from nearest wall for orientation
       const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
       const da = vertices[nearest.wallIndex], db = vertices[nearest.wallIndex + 1];
       if (da && db) {
         const ddx = db.x - da.x, ddy = db.y - da.y;
-        const dwLen = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (dwLen > 0) {
-          const dnx = ddx / dwLen, dny = ddy / dwLen;
-          drawPerpX = -dny; drawPerpY = dnx;
-          const dElLen = Math.min(el.length!, dwLen);
-          // Position drag point along the wall
-          const dStartT = Math.max(0, Math.min(dwLen - dElLen, (nearest.t * dwLen) - dElLen / 2));
-          drawX1 = da.x + dnx * dStartT + drawPerpX * offset;
-          drawY1 = da.y + dny * dStartT + drawPerpY * offset;
-          drawX2 = da.x + dnx * (dStartT + dElLen) + drawPerpX * offset;
-          drawY2 = da.y + dny * (dStartT + dElLen) + drawPerpY * offset;
-          drawMidX = (drawX1 + drawX2) / 2;
-          drawMidY = (drawY1 + drawY2) / 2;
-        }
+        const dwLen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+        const dnx = ddx / dwLen, dny = ddy / dwLen;
+        drawPerpX = -dny; drawPerpY = dnx;
+        // Center element on drag position, oriented along nearest wall
+        drawX1 = dragPos.x - dnx * halfLen + drawPerpX * offset;
+        drawY1 = dragPos.y - dny * halfLen + drawPerpY * offset;
+        drawX2 = dragPos.x + dnx * halfLen + drawPerpX * offset;
+        drawY2 = dragPos.y + dny * halfLen + drawPerpY * offset;
+        drawMidX = dragPos.x + drawPerpX * offset;
+        drawMidY = dragPos.y + drawPerpY * offset;
       }
     }
 
