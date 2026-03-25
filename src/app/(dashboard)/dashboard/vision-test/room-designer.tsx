@@ -178,22 +178,24 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const ds = dragStartRef.current;
 
     if (ds) {
-      if (ds.moved && dragPos) {
-        // Finish drag — move element to new position
-        const el = elements.find(el => el.id === ds.id);
-        if (el) {
-          const config = ELEMENTS.find(c => c.type === el.type);
-          if (config?.category === "point") {
-            // Point element: set new x,y
-            setElements(prev => prev.map(e =>
-              e.id === ds.id ? { ...e, x: dragPos.x, y: dragPos.y } : e
-            ));
-          } else if (config?.category === "wall") {
-            // Wall element: snap to nearest wall at drag position
-            const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
-            setElements(prev => prev.map(e =>
-              e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
-            ));
+      if (ds.moved) {
+        // Finish drag — use current pointer position (more reliable than dragPos state)
+        const finalCoords = svgCoords(e.clientX, e.clientY);
+        const dropPos = finalCoords || dragPos;
+        if (dropPos) {
+          const el = elements.find(el => el.id === ds.id);
+          if (el) {
+            const config = ELEMENTS.find(c => c.type === el.type);
+            if (config?.category === "point") {
+              setElements(prev => prev.map(e =>
+                e.id === ds.id ? { ...e, x: dropPos.x, y: dropPos.y } : e
+              ));
+            } else if (config?.category === "wall") {
+              const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
+              setElements(prev => prev.map(e =>
+                e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
+              ));
+            }
           }
         }
       } else {

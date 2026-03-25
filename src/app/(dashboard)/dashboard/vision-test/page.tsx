@@ -209,27 +209,45 @@ function RoomPreview({
   return (
     <div className="w-full h-full rounded-xl border bg-gray-50 overflow-hidden">
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="xMidYMid meet"
-        onPointerMove={onWallDrag ? (e) => {
-          const wd = wallDragRef.current;
-          if (!wd || !svgRef.current) return;
+        style={onWallDrag ? { touchAction: "none" } : undefined}
+        onTouchStart={onWallDrag ? (e) => {
+          if (!svgRef.current) return;
+          const touch = e.touches[0];
           const ctm = svgRef.current.getScreenCTM();
           if (!ctm) return;
-          const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-          // Calculate perpendicular distance from drag point to original wall chord
+          const pt = new DOMPoint(touch.clientX, touch.clientY).matrixTransform(ctm.inverse());
+          // Find nearest wall to touch
+          let bestIdx = 0, bestDist = Infinity;
+          for (let i = 0; i < vertices.length - 1; i++) {
+            const a = vertices[i], b = vertices[i + 1];
+            const mx = sx((a.x + b.x) / 2), my = sy((a.y + b.y) / 2);
+            const d = Math.sqrt((pt.x - mx) ** 2 + (pt.y - my) ** 2);
+            if (d < bestDist) { bestDist = d; bestIdx = i; }
+          }
+          if (bestDist < 80) {
+            e.preventDefault();
+            wallDragRef.current = { wallIndex: bestIdx, startY: touch.clientY, startBulge: walls[bestIdx]?.bulge || 0 };
+          }
+        } : undefined}
+        onTouchMove={onWallDrag ? (e) => {
+          const wd = wallDragRef.current;
+          if (!wd || !svgRef.current) return;
+          e.preventDefault();
+          const touch = e.touches[0];
+          const ctm = svgRef.current.getScreenCTM();
+          if (!ctm) return;
+          const pt = new DOMPoint(touch.clientX, touch.clientY).matrixTransform(ctm.inverse());
           const v1 = vertices[wd.wallIndex], v2 = vertices[wd.wallIndex + 1];
           if (!v1 || !v2) return;
           const ax = sx(v1.x), ay = sy(v1.y), bx = sx(v2.x), by = sy(v2.y);
           const wallDx = bx - ax, wallDy = by - ay;
           const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy) || 1;
-          // Perpendicular distance (signed: positive = right side = outward for CW polygon)
           const perpDist = ((pt.x - ax) * wallDy - (pt.y - ay) * wallDx) / wallLen;
-          // Convert SVG pixels to cm
-          const bulgeCm = Math.round(perpDist / scale / 2) * 2; // snap to 2cm
+          const bulgeCm = Math.round(perpDist / scale / 2) * 2;
           const clamped = Math.max(-80, Math.min(80, bulgeCm));
           onWallDrag(wd.wallIndex, clamped);
         } : undefined}
-        onPointerUp={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
-        onPointerLeave={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
+        onTouchEnd={onWallDrag ? () => { wallDragRef.current = null; } : undefined}
       >
         {/* Closing fill when done */}
         {closed && (
@@ -250,13 +268,6 @@ function RoomPreview({
           const dash = (!isCommitted && !isCurrent && !closed) ? "5,3" : undefined;
           const bulge = walls[i]?.bulge || 0;
 
-          // Wall drag start handler (for arc creation)
-          const wallDragStart = onWallDrag ? (e: React.PointerEvent) => {
-            e.stopPropagation();
-            (e.target as Element).setPointerCapture?.(e.pointerId);
-            wallDragRef.current = { wallIndex: i, startY: e.clientY, startBulge: bulge };
-          } : undefined;
-
           // SVG arc for curved walls
           if (bulge !== 0) {
             const p1x = sx(v.x), p1y = sy(v.y), p2x = sx(next.x), p2y = sy(next.y);
@@ -268,11 +279,10 @@ function RoomPreview({
             return (
               <g key={i}>
                 <path d={arcPath} fill="none" stroke={bulge !== 0 ? "#3b82f6" : color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round" />
-                {/* Wide tap target for drag or click */}
-                <path d={arcPath} fill="none" stroke="transparent" strokeWidth={30}
-                  style={{ cursor: onWallDrag ? "grab" : "pointer", touchAction: "none" }}
-                  onPointerDown={wallDragStart}
-                  onClick={onWallClick ? () => onWallClick(i) : undefined} />
+                {onWallClick && (
+                  <path d={arcPath} fill="none" stroke="transparent" strokeWidth={24}
+                    style={{ cursor: "pointer" }} onClick={() => onWallClick(i)} />
+                )}
               </g>
             );
           }
@@ -283,14 +293,11 @@ function RoomPreview({
                 x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
                 stroke={color} strokeWidth={sw} strokeDasharray={dash} strokeLinecap="round"
               />
-              {/* Wide tap target for drag (arc) or click */}
-              {(onWallClick || onWallDrag) && (
+              {onWallClick && (
                 <line
                   x1={sx(v.x)} y1={sy(v.y)} x2={sx(next.x)} y2={sy(next.y)}
-                  stroke="transparent" strokeWidth={30} strokeLinecap="round"
-                  style={{ cursor: onWallDrag ? "grab" : "pointer", touchAction: "none" }}
-                  onPointerDown={wallDragStart}
-                  onClick={onWallClick ? () => onWallClick(i) : undefined}
+                  stroke="transparent" strokeWidth={24} strokeLinecap="round"
+                  style={{ cursor: "pointer" }} onClick={() => onWallClick(i)}
                 />
               )}
             </g>
