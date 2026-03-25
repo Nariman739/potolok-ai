@@ -306,11 +306,14 @@ function RoomPreview({
           return <rect key={col.id} x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill="#ef444440" stroke="#ef4444" strokeWidth={1.5} />;
         })}
 
-        {/* Vertices dots */}
-        {vertices.map((v, i) => (
-          <circle key={i} cx={sx(v.x)} cy={sy(v.y)} r={i === 0 ? 5 : 3}
-            fill={i === 0 ? "#1e3a5f" : closed ? "#1e3a5f" : i <= committed ? "#1e3a5f" : "#94a3b8"} />
-        ))}
+        {/* Vertices dots — green for rounded corners */}
+        {vertices.map((v, i) => {
+          const wallData = walls[i];
+          const isRounded = wallData && 'cornerRadius' in wallData && (wallData as { cornerRadius?: number }).cornerRadius && (wallData as { cornerRadius?: number }).cornerRadius! > 0;
+          const r = i === 0 ? 5 : isRounded ? 6 : 3;
+          const fill = isRounded ? "#10b981" : i === 0 ? "#1e3a5f" : closed ? "#1e3a5f" : i <= committed ? "#1e3a5f" : "#94a3b8";
+          return <circle key={i} cx={sx(v.x)} cy={sy(v.y)} r={r} fill={fill} stroke={isRounded ? "#10b981" : "none"} strokeWidth={isRounded ? 2 : 0} />;
+        })}
       </svg>
     </div>
   );
@@ -361,7 +364,7 @@ function WallWizard({ onDone, onCancel }: {
   onDone: (room: Room) => void;
   onCancel: () => void;
 }) {
-  const [committed, setCommitted] = useState<{ length: number; angle: number; bulge: number }[]>([]);
+  const [committed, setCommitted] = useState<{ length: number; angle: number; bulge: number; cornerRadius: number }[]>([]);
   const [input, setInput] = useState("");
   const [roomName, setRoomName] = useState("");
   const [showAngleInput, setShowAngleInput] = useState(false);
@@ -373,7 +376,7 @@ function WallWizard({ onDone, onCancel }: {
 
   const previewWalls = [
     ...committed.map(w => ({ length: String(w.length), angle: w.angle, bulge: w.bulge })),
-    ...(input ? [{ length: input, angle: 90, bulge: 0 }] : []),
+    ...(input ? [{ length: input, angle: 90, bulge: 0, cornerRadius: 0 }] : []),
   ];
 
   const committedPreview = committed.map(w => ({ length: String(w.length), angle: w.angle }));
@@ -424,7 +427,7 @@ function WallWizard({ onDone, onCancel }: {
   function confirm() {
     const len = parseFloat(input);
     if (!len || len <= 0) return;
-    setCommitted(prev => [...prev, { length: len, angle: 90, bulge: 0 }]);
+    setCommitted(prev => [...prev, { length: len, angle: 90, bulge: 0, cornerRadius: 0 }]);
     setInput("");
   }
 
@@ -578,26 +581,62 @@ function WallWizard({ onDone, onCancel }: {
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
 
-            {/* ── Wall modifications: arcs + rounded corners ── */}
+            {/* ── Rounded corners ── */}
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Стены — дуги и скругления</p>
-              <div className="grid grid-cols-2 gap-1.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Скруглить углы</p>
+              <div className="flex flex-wrap gap-1.5">
+                {committed.map((w, i) => (
+                  <button key={i}
+                    onClick={() => {
+                      setCommitted(prev => prev.map((wall, idx) =>
+                        idx === i ? { ...wall, cornerRadius: wall.cornerRadius > 0 ? 0 : 15 } : wall
+                      ));
+                    }}
+                    className={`text-xs py-1.5 px-3 rounded-full border active:scale-95 ${
+                      w.cornerRadius > 0
+                        ? "bg-green-100 border-green-500 text-green-700 font-semibold"
+                        : "border-gray-200 text-gray-500"
+                    }`}>
+                    Угол {i + 1} {w.cornerRadius > 0 ? "◠ ✓" : "◿"}
+                  </button>
+                ))}
+              </div>
+              {committed.some(w => w.cornerRadius > 0) && (
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[10px] text-gray-400">Радиус:</span>
+                  <input
+                    type="range" min={5} max={50} step={5}
+                    value={committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}
+                    onChange={e => {
+                      const r = parseInt(e.target.value);
+                      setCommitted(prev => prev.map(w => w.cornerRadius > 0 ? { ...w, cornerRadius: r } : w));
+                    }}
+                    className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-green-500"
+                  />
+                  <span className="text-xs font-bold text-green-600">
+                    {committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15} см
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Arc walls (дуги) ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Дуги на стенах</p>
+              <div className="flex flex-wrap gap-1.5">
                 {committed.map((w, i) => (
                   <button key={i}
                     onClick={() => setArcWallIdx(arcWallIdx === i ? null : i)}
-                    className={`text-xs py-2 px-2.5 rounded-lg border text-left active:scale-95 ${
-                      w.bulge !== 0 ? "bg-blue-50 border-blue-400 text-blue-700 font-semibold" :
-                      arcWallIdx === i ? "bg-gray-100 border-gray-400" : "border-gray-200"
+                    className={`text-xs py-1.5 px-3 rounded-full border active:scale-95 ${
+                      w.bulge !== 0 ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold" :
+                      arcWallIdx === i ? "bg-gray-100 border-gray-400" : "border-gray-200 text-gray-500"
                     }`}>
-                    Стена {i + 1}: {w.length} см {w.bulge !== 0 ? `🌙` : ""}
+                    Стена {i + 1} {w.bulge !== 0 ? "🌙" : ""}
                   </button>
                 ))}
               </div>
               {arcWallIdx !== null && (
                 <div className="rounded-xl border p-3 bg-gray-50 space-y-2">
-                  <p className="text-xs text-gray-600 font-medium">
-                    Стена {arcWallIdx + 1} — {committed[arcWallIdx].length} см
-                  </p>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 w-12">внутрь</span>
                     <input
@@ -613,7 +652,7 @@ function WallWizard({ onDone, onCancel }: {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-blue-600 font-bold">
-                      {committed[arcWallIdx].bulge === 0 ? "Прямая" : `Дуга: ${committed[arcWallIdx].bulge} см`}
+                      {committed[arcWallIdx].bulge === 0 ? "Прямая" : `${committed[arcWallIdx].bulge} см`}
                     </span>
                     {committed[arcWallIdx].bulge !== 0 && (
                       <button onClick={() => setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: 0 } : w))}
