@@ -162,124 +162,6 @@ function buildVertices(walls: { length: string; angle: number }[]): {
   return { vertices, closed, gapX: x, gapY: y };
 }
 
-/** Wrapper that adds drag-to-curve functionality over the room preview */
-function ArcDragPreview({
-  walls,
-  committed,
-  columns,
-  approxResult,
-  onBulgeChange,
-}: {
-  walls: { length: string; angle: number; bulge: number }[];
-  committed: { length: number; angle: number; bulge: number }[];
-  columns: RoomColumn[];
-  approxResult: { area: number; perimeter: number; gap: number } | null;
-  onBulgeChange: (wallIdx: number, bulge: number) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ wallIndex: number } | null>(null);
-
-  // Build vertices to find wall positions
-  const { vertices } = buildVertices(walls.map(w => ({ length: w.length, angle: w.angle })));
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    function getWallMidpoints() {
-      const rect = el!.getBoundingClientRect();
-      const xs = vertices.map(v => v.x), ys = vertices.map(v => v.y);
-      const minX = Math.min(...xs), maxX = Math.max(...xs);
-      const minY = Math.min(...ys), maxY = Math.max(...ys);
-      const W = maxX - minX || 1, H = maxY - minY || 1;
-      const PAD = 40, SVG_W = 400, SVG_H = 400;
-      const scale = Math.min((SVG_W - PAD * 2) / W, (SVG_H - PAD * 2) / H);
-      const toScreenX = (x: number) => ((PAD + (x - minX) * scale) / SVG_W) * rect.width;
-      const toScreenY = (y: number) => ((PAD + (y - minY) * scale) / SVG_H) * rect.height;
-
-      return { vertices, toScreenX, toScreenY, scale, rect };
-    }
-
-    function onTouchStart(e: TouchEvent) {
-      const touch = e.touches[0];
-      const info = getWallMidpoints();
-      const tx = touch.clientX - info.rect.left;
-      const ty = touch.clientY - info.rect.top;
-
-      // Find nearest wall midpoint
-      let bestIdx = 0, bestDist = Infinity;
-      for (let i = 0; i < vertices.length - 1; i++) {
-        const a = vertices[i], b = vertices[i + 1];
-        const mx = info.toScreenX((a.x + b.x) / 2);
-        const my = info.toScreenY((a.y + b.y) / 2);
-        const d = Math.sqrt((tx - mx) ** 2 + (ty - my) ** 2);
-        if (d < bestDist) { bestDist = d; bestIdx = i; }
-      }
-
-      if (bestDist < 100) {
-        e.preventDefault();
-        dragRef.current = { wallIndex: bestIdx };
-      }
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      const wd = dragRef.current;
-      if (!wd) return;
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const info = getWallMidpoints();
-      const tx = touch.clientX - info.rect.left;
-      const ty = touch.clientY - info.rect.top;
-
-      // Get wall endpoints in screen coords
-      const a = vertices[wd.wallIndex], b = vertices[wd.wallIndex + 1];
-      if (!a || !b) return;
-      const ax = info.toScreenX(a.x), ay = info.toScreenY(a.y);
-      const bx = info.toScreenX(b.x), by = info.toScreenY(b.y);
-
-      // Perpendicular distance from touch to wall line
-      const wallDx = bx - ax, wallDy = by - ay;
-      const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy) || 1;
-      const perpDist = ((tx - ax) * wallDy - (ty - ay) * wallDx) / wallLen;
-
-      // Convert screen pixels to cm (approximate)
-      const bulgeCm = Math.round(perpDist / info.scale * 2) / 2;
-      const clamped = Math.max(-80, Math.min(80, Math.round(bulgeCm)));
-      onBulgeChange(wd.wallIndex, clamped);
-    }
-
-    function onTouchEnd() {
-      dragRef.current = null;
-    }
-
-    el.addEventListener("touchstart", onTouchStart, { passive: false });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd);
-
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
-  });
-
-  return (
-    <div className="px-3 pt-2 pb-1" style={{ height: "40svh" }}>
-      <div ref={containerRef} className="w-full h-full relative" style={{ touchAction: "none" }}>
-        <RoomPreview
-          walls={walls}
-          committedCount={committed.length}
-          nextDirDeg={undefined}
-          forceClose={!!approxResult}
-          roomColumns={columns.length > 0 ? columns : undefined}
-        />
-      </div>
-      <p className="text-xs text-center text-muted-foreground mt-1">Потяните стену чтобы сделать дугу</p>
-    </div>
-  );
-}
-
 function RoomPreview({
   walls,
   committedCount,
@@ -483,6 +365,7 @@ function WallWizard({ onDone, onCancel }: {
   const [input, setInput] = useState("");
   const [roomName, setRoomName] = useState("");
   const [showAngleInput, setShowAngleInput] = useState(false);
+  const [arcWallIdx, setArcWallIdx] = useState<number | null>(null);
   const [columns, setColumns] = useState<RoomColumn[]>([]);
   const [showColumnInput, setShowColumnInput] = useState(false);
   const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
@@ -654,16 +537,16 @@ function WallWizard({ onDone, onCancel }: {
         {(isValid && doneResult) || approxResult ? (
           /* ── Done: всё скроллится ── */
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {/* Превью комнаты с drag-to-arc */}
-            <ArcDragPreview
-              walls={previewWalls}
-              committed={committed}
-              columns={columns}
-              approxResult={approxResult}
-              onBulgeChange={(wallIdx, bulge) => {
-                setCommitted(prev => prev.map((w, i) => i === wallIdx ? { ...w, bulge } : w));
-              }}
-            />
+            {/* Room preview */}
+            <div className="px-3 pt-2 pb-2" style={{ height: "36svh" }}>
+              <RoomPreview
+                walls={previewWalls}
+                committedCount={committed.length}
+                nextDirDeg={undefined}
+                forceClose={!!approxResult}
+                roomColumns={columns.length > 0 ? columns : undefined}
+              />
+            </div>
             {!isValid && gapParts.length > 0 && (
               <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
                 {gap < 30
@@ -671,7 +554,7 @@ function WallWizard({ onDone, onCancel }: {
                   : `Не сходится: ${gapParts.join(" и ")}`}
               </p>
             )}
-            {/* Результаты */}
+            {/* Results + modifications */}
             <div className="p-4 pb-20 space-y-3 border-t">
             {!isValid && approxResult && (
               <p className="text-xs text-center text-amber-600 font-medium">
@@ -695,21 +578,60 @@ function WallWizard({ onDone, onCancel }: {
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
 
-            {/* ── Column button ── */}
+            {/* ── Wall modifications: arcs + rounded corners ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Стены — дуги и скругления</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {committed.map((w, i) => (
+                  <button key={i}
+                    onClick={() => setArcWallIdx(arcWallIdx === i ? null : i)}
+                    className={`text-xs py-2 px-2.5 rounded-lg border text-left active:scale-95 ${
+                      w.bulge !== 0 ? "bg-blue-50 border-blue-400 text-blue-700 font-semibold" :
+                      arcWallIdx === i ? "bg-gray-100 border-gray-400" : "border-gray-200"
+                    }`}>
+                    Стена {i + 1}: {w.length} см {w.bulge !== 0 ? `🌙` : ""}
+                  </button>
+                ))}
+              </div>
+              {arcWallIdx !== null && (
+                <div className="rounded-xl border p-3 bg-gray-50 space-y-2">
+                  <p className="text-xs text-gray-600 font-medium">
+                    Стена {arcWallIdx + 1} — {committed[arcWallIdx].length} см
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-12">внутрь</span>
+                    <input
+                      type="range" min={-60} max={60} step={5}
+                      value={committed[arcWallIdx].bulge}
+                      onChange={e => {
+                        const b = parseInt(e.target.value);
+                        setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: b } : w));
+                      }}
+                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                    <span className="text-[10px] text-gray-400 w-12 text-right">наружу</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-600 font-bold">
+                      {committed[arcWallIdx].bulge === 0 ? "Прямая" : `Дуга: ${committed[arcWallIdx].bulge} см`}
+                    </span>
+                    {committed[arcWallIdx].bulge !== 0 && (
+                      <button onClick={() => setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: 0 } : w))}
+                        className="text-xs text-red-500 active:opacity-60">Сбросить</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Column + extras ── */}
             <button
               onClick={() => setShowColumnInput(!showColumnInput)}
               className={`w-full text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
                 hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
               }`}>
-              🏛 Добавить колонну {hasColumns ? `(${columns.length})` : ""}
+              🏛 Колонна {hasColumns ? `(${columns.length})` : ""}
             </button>
-
-            {/* Arc info */}
-            {hasBulges && (
-              <div className="text-xs text-blue-600 text-center">
-                🌙 Дуги: {committed.filter(w => w.bulge !== 0).map((w, i) => `стена ${committed.indexOf(w) + 1} (${w.bulge} см)`).join(", ")}
-              </div>
-            )}
 
             {/* ── Column input ── */}
             {showColumnInput && (
@@ -878,49 +800,6 @@ function WallWizard({ onDone, onCancel }: {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Arc toggle for last wall */}
-            {committed.length > 0 && (
-              <div className="border-b bg-gray-50 px-3 py-1.5">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const cur = committed[committed.length - 1].bulge;
-                      if (cur === 0) {
-                        setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: 20 } : w));
-                      } else {
-                        setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: 0 } : w));
-                      }
-                    }}
-                    className={`text-xs px-3 py-1 rounded-full border active:scale-95 transition-colors ${
-                      committed[committed.length - 1].bulge !== 0
-                        ? "bg-blue-500 text-white border-blue-500 font-semibold"
-                        : "border-gray-300 text-gray-500"
-                    }`}>
-                    {committed[committed.length - 1].bulge !== 0 ? "🌙 Дуга ✓" : "🌙 Дуга?"}
-                  </button>
-                  {committed[committed.length - 1].bulge !== 0 && (
-                    <div className="flex-1 flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400">внутрь</span>
-                      <input
-                        type="range"
-                        min={-50}
-                        max={50}
-                        step={5}
-                        value={committed[committed.length - 1].bulge}
-                        onChange={e => {
-                          const b = parseInt(e.target.value);
-                          setCommitted(prev => prev.map((w, i) => i === prev.length - 1 ? { ...w, bulge: b } : w));
-                        }}
-                        className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                      />
-                      <span className="text-[10px] text-gray-400">наружу</span>
-                      <span className="text-xs font-bold text-blue-600 w-10 text-right">{committed[committed.length - 1].bulge} см</span>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
