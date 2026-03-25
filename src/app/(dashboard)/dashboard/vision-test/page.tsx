@@ -369,6 +369,7 @@ function WallWizard({ onDone, onCancel }: {
   const [roomName, setRoomName] = useState("");
   const [showAngleInput, setShowAngleInput] = useState(false);
   const [arcWallIdx, setArcWallIdx] = useState<number | null>(null);
+  const [showShapeEdit, setShowShapeEdit] = useState(false);
   const [columns, setColumns] = useState<RoomColumn[]>([]);
   const [showColumnInput, setShowColumnInput] = useState(false);
   const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
@@ -581,148 +582,89 @@ function WallWizard({ onDone, onCancel }: {
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
 
-            {/* ── Rounded corners ── */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Скруглить углы</p>
-              <div className="flex flex-wrap gap-1.5">
-                {committed.map((w, i) => (
-                  <button key={i}
-                    onClick={() => {
-                      setCommitted(prev => prev.map((wall, idx) =>
-                        idx === i ? { ...wall, cornerRadius: wall.cornerRadius > 0 ? 0 : 15 } : wall
-                      ));
-                    }}
-                    className={`text-xs py-1.5 px-3 rounded-full border active:scale-95 ${
-                      w.cornerRadius > 0
-                        ? "bg-green-100 border-green-500 text-green-700 font-semibold"
-                        : "border-gray-200 text-gray-500"
-                    }`}>
-                    Угол {i + 1} {w.cornerRadius > 0 ? "◠ ✓" : "◿"}
-                  </button>
-                ))}
-              </div>
-              {committed.some(w => w.cornerRadius > 0) && (
-                <div className="flex items-center gap-2 px-1">
-                  <span className="text-[10px] text-gray-400">Радиус:</span>
-                  <input
-                    type="range" min={5} max={50} step={5}
-                    value={committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}
-                    onChange={e => {
-                      const r = parseInt(e.target.value);
-                      setCommitted(prev => prev.map(w => w.cornerRadius > 0 ? { ...w, cornerRadius: r } : w));
-                    }}
-                    className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-green-500"
-                  />
-                  <span className="text-xs font-bold text-green-600">
-                    {committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15} см
-                  </span>
+            {/* ── Optional: shape modifications (collapsed by default) ── */}
+            {!showShapeEdit ? (
+              <button onClick={() => setShowShapeEdit(true)}
+                className="w-full text-xs py-2 text-gray-400 active:text-gray-600">
+                Скруглить углы, дуги, колонны ▼
+              </button>
+            ) : (
+              <div className="space-y-3 rounded-xl border p-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500">Форма комнаты</span>
+                  <button onClick={() => setShowShapeEdit(false)} className="text-xs text-gray-400">Скрыть ▲</button>
                 </div>
-              )}
-            </div>
 
-            {/* ── Arc walls (дуги) ── */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Дуги на стенах</p>
-              <div className="flex flex-wrap gap-1.5">
-                {committed.map((w, i) => (
-                  <button key={i}
-                    onClick={() => setArcWallIdx(arcWallIdx === i ? null : i)}
-                    className={`text-xs py-1.5 px-3 rounded-full border active:scale-95 ${
-                      w.bulge !== 0 ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold" :
-                      arcWallIdx === i ? "bg-gray-100 border-gray-400" : "border-gray-200 text-gray-500"
-                    }`}>
-                    Стена {i + 1} {w.bulge !== 0 ? "🌙" : ""}
-                  </button>
-                ))}
-              </div>
-              {arcWallIdx !== null && (
-                <div className="rounded-xl border p-3 bg-gray-50 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400 w-12">внутрь</span>
-                    <input
-                      type="range" min={-60} max={60} step={5}
-                      value={committed[arcWallIdx].bulge}
-                      onChange={e => {
-                        const b = parseInt(e.target.value);
-                        setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: b } : w));
-                      }}
-                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                    <span className="text-[10px] text-gray-400 w-12 text-right">наружу</span>
+                {/* Rounded corners */}
+                <div>
+                  <p className="text-[10px] text-gray-400 mb-1">Скруглить углы (тапните):</p>
+                  <div className="flex flex-wrap gap-1">
+                    {committed.map((w, i) => (
+                      <button key={i}
+                        onClick={() => setCommitted(prev => prev.map((wall, idx) =>
+                          idx === i ? { ...wall, cornerRadius: wall.cornerRadius > 0 ? 0 : 15 } : wall
+                        ))}
+                        className={`text-[11px] py-1 px-2.5 rounded-full border active:scale-95 ${
+                          w.cornerRadius > 0 ? "bg-green-100 border-green-400 text-green-700" : "border-gray-200 text-gray-400"
+                        }`}>
+                        {i + 1} {w.cornerRadius > 0 ? "◠" : "◿"}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-blue-600 font-bold">
-                      {committed[arcWallIdx].bulge === 0 ? "Прямая" : `${committed[arcWallIdx].bulge} см`}
-                    </span>
-                    {committed[arcWallIdx].bulge !== 0 && (
-                      <button onClick={() => setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: 0 } : w))}
-                        className="text-xs text-red-500 active:opacity-60">Сбросить</button>
-                    )}
+                  {committed.some(w => w.cornerRadius > 0) && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-gray-400">R:</span>
+                      <input type="range" min={5} max={50} step={5}
+                        value={committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}
+                        onChange={e => setCommitted(prev => prev.map(w => w.cornerRadius > 0 ? { ...w, cornerRadius: parseInt(e.target.value) } : w))}
+                        className="flex-1 h-1 accent-green-500" />
+                      <span className="text-[10px] text-green-600 font-bold w-8">{committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Arc walls */}
+                <div>
+                  <p className="text-[10px] text-gray-400 mb-1">Дуга на стене (тапните):</p>
+                  <div className="flex flex-wrap gap-1">
+                    {committed.map((w, i) => (
+                      <button key={i} onClick={() => setArcWallIdx(arcWallIdx === i ? null : i)}
+                        className={`text-[11px] py-1 px-2.5 rounded-full border active:scale-95 ${
+                          w.bulge !== 0 ? "bg-blue-100 border-blue-400 text-blue-700" :
+                          arcWallIdx === i ? "bg-gray-100 border-gray-300" : "border-gray-200 text-gray-400"
+                        }`}>
+                        {i + 1} {w.bulge !== 0 ? "🌙" : ""}
+                      </button>
+                    ))}
                   </div>
+                  {arcWallIdx !== null && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-gray-400">←</span>
+                      <input type="range" min={-60} max={60} step={5}
+                        value={committed[arcWallIdx].bulge}
+                        onChange={e => setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: parseInt(e.target.value) } : w))}
+                        className="flex-1 h-1 accent-blue-500" />
+                      <span className="text-[10px] text-gray-400">→</span>
+                      <span className="text-[10px] text-blue-600 font-bold w-8">{committed[arcWallIdx].bulge}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* ── Column + extras ── */}
-            <button
-              onClick={() => setShowColumnInput(!showColumnInput)}
-              className={`w-full text-xs py-2.5 rounded-xl border active:bg-gray-50 ${
-                hasColumns ? "border-red-400 text-red-600 bg-red-50" : "border-gray-300 text-gray-600"
-              }`}>
-              🏛 Колонна {hasColumns ? `(${columns.length})` : ""}
-            </button>
-
-            {/* ── Column input ── */}
-            {showColumnInput && (
-              <div className="rounded-xl border p-3 space-y-2 bg-gray-50">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setColumnType("circle")}
-                    className={`flex-1 text-xs py-2 rounded-lg border ${
-                      columnType === "circle" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
-                    }`}>
-                    ⭕ Круглая
-                  </button>
-                  <button
-                    onClick={() => setColumnType("rect")}
-                    className={`flex-1 text-xs py-2 rounded-lg border ${
-                      columnType === "rect" ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
-                    }`}>
-                    ⬜ Квадратная
-                  </button>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    value={columnSize}
-                    onChange={e => setColumnSize(e.target.value)}
-                    placeholder={columnType === "circle" ? "Диаметр (см)" : "Сторона (см)"}
-                    className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300"
-                  />
-                  <button
-                    onClick={addColumn}
-                    disabled={!columnSize || parseFloat(columnSize) <= 0}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white active:opacity-80 disabled:opacity-30">
-                    Добавить
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Columns list ── */}
-            {columns.length > 0 && (
-              <div className="space-y-1">
-                {columns.map(col => (
-                  <div key={col.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-gray-50 text-xs">
-                    <span>
-                      {col.type === "circle" ? `⭕ ⌀${col.diameter} см` : `⬜ ${col.width}×${col.height} см`}
-                      {" "}= −{(columnArea(col) / 10000).toFixed(2)} м²
-                    </span>
-                    <button onClick={() => removeColumn(col.id)} className="text-red-400 active:text-red-600 px-1">✕</button>
+                {/* Columns */}
+                <div>
+                  <p className="text-[10px] text-gray-400 mb-1">Колонны:</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setColumns(prev => [...prev, { id: crypto.randomUUID(), type: "circle", x: 0, y: 0, diameter: 30 }]); }}
+                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ ⭕ Круглая</button>
+                    <button onClick={() => { setColumns(prev => [...prev, { id: crypto.randomUUID(), type: "rect", x: 0, y: 0, width: 30, height: 30 }]); }}
+                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ ⬜ Квадратная</button>
                   </div>
-                ))}
-                <div className="text-xs text-center text-muted-foreground">
-                  Итого колонны: −{(totalColumnArea / 10000).toFixed(2)} м²
+                  {columns.map(col => (
+                    <div key={col.id} className="flex items-center justify-between mt-1 text-[11px]">
+                      <span className="text-gray-500">{col.type === "circle" ? `⭕ ⌀${col.diameter}см` : `⬜ ${col.width}×${col.height}см`}</span>
+                      <button onClick={() => removeColumn(col.id)} className="text-red-400 px-1">✕</button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
