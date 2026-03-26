@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight } from "lucide-react";
+import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
@@ -48,7 +49,8 @@ function calcWithTurns(
   lengths: number[],
   angles: number[],
   arcBulges?: number[],
-  columns?: RoomColumn[]
+  columns?: RoomColumn[],
+  cutoutsArr?: RoomCutout[]
 ): { area: number; perimeter: number } {
   const n = lengths.length;
   if (n < 3) return { area: 0, perimeter: 0 };
@@ -114,6 +116,13 @@ function calcWithTurns(
     }
   }
 
+  // Subtract cutouts
+  if (cutoutsArr) {
+    for (const cut of cutoutsArr) {
+      areaCm2 -= cut.width * cut.height;
+    }
+  }
+
   return { area: Math.round(Math.max(areaCm2, 0) / 100) / 100, perimeter };
 }
 
@@ -167,17 +176,21 @@ function RoomPreview({
   committedCount,
   nextDirDeg,
   onWallClick,
+  onCornerClick,
   activeWallIdx,
   forceClose,
   roomColumns,
+  roomCutouts,
 }: {
-  walls: { length: string; angle: number; bulge?: number }[];
+  walls: { length: string; angle: number; bulge?: number; cornerRadius?: number }[];
   committedCount?: number;
   nextDirDeg?: number;
   onWallClick?: (i: number) => void;
+  onCornerClick?: (i: number) => void;
   activeWallIdx?: number;
   forceClose?: boolean;
   roomColumns?: RoomColumn[];
+  roomCutouts?: RoomCutout[];
 }) {
   const { vertices, closed: _closed } = buildVertices(walls);
   const closed = _closed || !!forceClose;
@@ -306,13 +319,115 @@ function RoomPreview({
           return <rect key={col.id} x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill="#ef444440" stroke="#ef4444" strokeWidth={1.5} />;
         })}
 
-        {/* Vertices dots — green for rounded corners */}
+        {/* Cutouts — rectangular holes with diagonals from room corners */}
+        {closed && roomCutouts?.map(cut => {
+          // Cutout position relative to first vertex (origin)
+          const v0 = vertices[0];
+          // For rectilinear rooms: x = along first wall direction, y = perpendicular (down)
+          const cx1 = v0.x + cut.fromWallA;
+          const cy1 = v0.y + cut.fromWallB;
+          const cx2 = cx1 + cut.width;
+          const cy2 = cy1 + cut.height;
+          // Cutout corners
+          const cutCorners = [
+            { x: cx1, y: cy1 }, { x: cx2, y: cy1 },
+            { x: cx2, y: cy2 }, { x: cx1, y: cy2 },
+          ];
+          // Room corners (all vertices except last duplicate)
+          const roomCorners = vertices.slice(0, -1);
+          return (
+            <g key={cut.id}>
+              {/* Cutout rectangle */}
+              <rect
+                x={sx(cx1)} y={sy(cy1)}
+                width={(cx2 - cx1) * scale} height={(cy2 - cy1) * scale}
+                fill="#ef444420" stroke="#ef4444" strokeWidth={2} strokeDasharray="6,3"
+              />
+              {/* Diagonals from room corners to cutout corners */}
+              {roomCorners.map((rc, ri) => {
+                // Find nearest cutout corner for this room corner
+                let nearest = cutCorners[0], minDist = Infinity;
+                for (const cc of cutCorners) {
+                  const d = Math.hypot(rc.x - cc.x, rc.y - cc.y);
+                  if (d < minDist) { minDist = d; nearest = cc; }
+                }
+                const diagLen = Math.round(minDist);
+                if (diagLen < 5) return null;
+                const mx = (sx(rc.x) + sx(nearest.x)) / 2;
+                const my = (sy(rc.y) + sy(nearest.y)) / 2;
+                return (
+                  <g key={`diag-${ri}`}>
+                    <line
+                      x1={sx(rc.x)} y1={sy(rc.y)} x2={sx(nearest.x)} y2={sy(nearest.y)}
+                      stroke="#ef4444" strokeWidth={1} strokeDasharray="4,3" opacity={0.6}
+                    />
+                    <rect x={mx - 14} y={my - 8} width={28} height={14} rx={3}
+                      fill="white" fillOpacity={0.9} />
+                    <text x={mx} y={my + 3} textAnchor="middle" fontSize={8} fontFamily="monospace"
+                      fill="#ef4444" fontWeight="600">
+                      {diagLen}
+                    </text>
+                  </g>
+                );
+              })}
+              {/* Cutout dimension labels */}
+              <text x={(sx(cx1) + sx(cx2)) / 2} y={sy(cy1) - 5} textAnchor="middle" fontSize={9} fill="#ef4444" fontWeight="600">
+                {cut.width}
+              </text>
+              <text x={sx(cx2) + 5} y={(sy(cy1) + sy(cy2)) / 2 + 3} textAnchor="start" fontSize={9} fill="#ef4444" fontWeight="600">
+                {cut.height}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Rounded corner arcs — visual arc where corner is rounded */}
+        {closed && vertices.slice(0, -1).map((v, i) => {
+          const wallData = walls[i];
+          const cr = wallData?.cornerRadius;
+          if (!cr || cr <= 0) return null;
+          const n = vertices.length - 1; // number of walls
+          const prevIdx = (i - 1 + n) % n;
+          const prev = vertices[prevIdx];
+          const next = vertices[(i + 1) % n];
+          // Directions from vertex to neighbors
+          const toPrevX = prev.x - v.x, toPrevY = prev.y - v.y;
+          const toNextX = next.x - v.x, toNextY = next.y - v.y;
+          const toPrevLen = Math.hypot(toPrevX, toPrevY) || 1;
+          const toNextLen = Math.hypot(toNextX, toNextY) || 1;
+          // Arc points: offset along each wall direction by cornerRadius (in cm)
+          const offset = Math.min(cr, toPrevLen / 2, toNextLen / 2);
+          const ax = v.x + (toPrevX / toPrevLen) * offset;
+          const ay = v.y + (toPrevY / toPrevLen) * offset;
+          const bx = v.x + (toNextX / toNextLen) * offset;
+          const by = v.y + (toNextY / toNextLen) * offset;
+          const arcPath = `M ${sx(ax)} ${sy(ay)} Q ${sx(v.x)} ${sy(v.y)} ${sx(bx)} ${sy(by)}`;
+          return (
+            <path key={`rc-${i}`} d={arcPath} fill="none" stroke="#10b981" strokeWidth={3} strokeLinecap="round" />
+          );
+        })}
+
+        {/* Vertices dots — tappable for rounded corners */}
         {vertices.map((v, i) => {
           const wallData = walls[i];
-          const isRounded = wallData && 'cornerRadius' in wallData && (wallData as { cornerRadius?: number }).cornerRadius && (wallData as { cornerRadius?: number }).cornerRadius! > 0;
-          const r = i === 0 ? 5 : isRounded ? 6 : 3;
+          const isRounded = !!wallData?.cornerRadius && wallData.cornerRadius > 0;
+          const canTap = onCornerClick && closed && i < vertices.length - 1;
           const fill = isRounded ? "#10b981" : i === 0 ? "#1e3a5f" : closed ? "#1e3a5f" : i <= committed ? "#1e3a5f" : "#94a3b8";
-          return <circle key={i} cx={sx(v.x)} cy={sy(v.y)} r={r} fill={fill} stroke={isRounded ? "#10b981" : "none"} strokeWidth={isRounded ? 2 : 0} />;
+          return (
+            <g key={i}>
+              {/* Invisible hit area for tapping */}
+              {canTap && (
+                <circle cx={sx(v.x)} cy={sy(v.y)} r={18} fill="transparent"
+                  style={{ cursor: "pointer" }} onClick={() => onCornerClick(i)} />
+              )}
+              <circle cx={sx(v.x)} cy={sy(v.y)} r={isRounded ? 6 : (i === 0 ? 5 : 3)}
+                fill={fill} stroke={isRounded ? "#10b981" : "none"} strokeWidth={isRounded ? 2 : 0} />
+              {/* Small "◠" label for rounded */}
+              {isRounded && (
+                <text x={sx(v.x)} y={sx(v.y) ? sy(v.y) - 10 : 0} textAnchor="middle" fontSize={10} fill="#10b981" fontWeight="700">◠</text>
+              )}
+            </g>
+          );
         })}
       </svg>
     </div>
@@ -333,6 +448,17 @@ interface RoomColumn {
   height?: number;    // cm, for rect
 }
 
+/** Internal cutout — rectangular hole in the ceiling for factory cutting.
+ *  Diagonals from room corners to cutout corners are shown for measurement. */
+interface RoomCutout {
+  id: string;
+  // Position: distance from first vertex along first wall (x) and perpendicular (y)
+  fromWallA: number; // cm — distance from left wall
+  fromWallB: number; // cm — distance from top wall
+  width: number;     // cm
+  height: number;    // cm
+}
+
 interface Room {
   id: string;
   name: string;
@@ -341,6 +467,7 @@ interface Room {
   angles: number[];         // turn angles in degrees (+90, -90, or any custom)
   arcBulges?: number[];     // bulge per wall (cm). 0 = straight, >0 = outward arc, <0 = inward arc
   columns?: RoomColumn[];   // columns/pillars inside room (area subtracted)
+  cutouts?: RoomCutout[];   // internal rectangular cutouts (area subtracted)
   area: number;
   perimeter: number;
   elements?: RoomElement[];
@@ -374,9 +501,12 @@ function WallWizard({ onDone, onCancel }: {
   const [showColumnInput, setShowColumnInput] = useState(false);
   const [columnType, setColumnType] = useState<"circle" | "rect">("circle");
   const [columnSize, setColumnSize] = useState("");
+  const [cutouts, setCutouts] = useState<RoomCutout[]>([]);
+  const [showCutoutInput, setShowCutoutInput] = useState(false);
+  const [cutoutForm, setCutoutForm] = useState({ fromWallA: "", fromWallB: "", width: "", height: "" });
 
   const previewWalls = [
-    ...committed.map(w => ({ length: String(w.length), angle: w.angle, bulge: w.bulge })),
+    ...committed.map(w => ({ length: String(w.length), angle: w.angle, bulge: w.bulge, cornerRadius: w.cornerRadius })),
     ...(input ? [{ length: input, angle: 90, bulge: 0, cornerRadius: 0 }] : []),
   ];
 
@@ -387,6 +517,7 @@ function WallWizard({ onDone, onCancel }: {
   const bulges = committed.map(w => w.bulge);
   const hasBulges = bulges.some(b => b !== 0);
   const hasColumns = columns.length > 0;
+  const hasCutouts = cutouts.length > 0;
 
   const doneResult = isDone && committed.length >= 3
     ? calcWithTurns(
@@ -394,6 +525,7 @@ function WallWizard({ onDone, onCancel }: {
         committed.map(w => w.angle),
         hasBulges ? bulges : undefined,
         hasColumns ? columns : undefined,
+        hasCutouts ? cutouts : undefined,
       )
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
@@ -480,6 +612,7 @@ function WallWizard({ onDone, onCancel }: {
       angles: committed.map(w => w.angle),
       ...(hasBulges ? { arcBulges: bulges } : {}),
       ...(hasColumns ? { columns } : {}),
+      ...(hasCutouts ? { cutouts } : {}),
       area,
       perimeter,
     };
@@ -495,6 +628,7 @@ function WallWizard({ onDone, onCancel }: {
     let areaCm2 = Math.abs(sum) / 2;
     if (hasBulges) bulges.forEach((b, i) => { areaCm2 += arcSegmentArea(committed[i].length, b); });
     if (hasColumns) columns.forEach(c => { areaCm2 -= columnArea(c); });
+    if (hasCutouts) cutouts.forEach(c => { areaCm2 -= c.width * c.height; });
     const area = Math.round(Math.max(areaCm2, 0) / 100) / 100;
     const perimeter = Math.round(committed.reduce((s, w) => s + w.length, 0)) / 100;
     if (area <= 0) return;
@@ -543,13 +677,21 @@ function WallWizard({ onDone, onCancel }: {
           <div className="flex-1 min-h-0 overflow-y-auto">
             {/* Room preview */}
             <div className="px-3 pt-2 pb-2" style={{ height: "36svh" }}>
-              <RoomPreview
-                walls={previewWalls}
-                committedCount={committed.length}
-                nextDirDeg={undefined}
-                forceClose={!!approxResult}
-                roomColumns={columns.length > 0 ? columns : undefined}
-              />
+              <PinchZoom className="w-full h-full">
+                <RoomPreview
+                  walls={previewWalls}
+                  committedCount={committed.length}
+                  nextDirDeg={undefined}
+                  forceClose={!!approxResult}
+                  roomColumns={columns.length > 0 ? columns : undefined}
+                  roomCutouts={cutouts.length > 0 ? cutouts : undefined}
+                  onCornerClick={(i) => {
+                    setCommitted(prev => prev.map((wall, idx) =>
+                      idx === i ? { ...wall, cornerRadius: wall.cornerRadius > 0 ? 0 : 15 } : wall
+                    ));
+                  }}
+                />
+              </PinchZoom>
             </div>
             {!isValid && gapParts.length > 0 && (
               <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
@@ -582,50 +724,52 @@ function WallWizard({ onDone, onCancel }: {
               className="w-full rounded-lg border px-3 py-2.5 text-sm"
             />
 
-            {/* ── Optional: shape modifications (collapsed by default) ── */}
+            {/* ── Rounded corners hint + radius slider ── */}
+            {committed.some(w => w.cornerRadius > 0) && (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-green-700">
+                    Скруглено: {committed.filter(w => w.cornerRadius > 0).length} угл.
+                  </span>
+                  <button
+                    onClick={() => setCommitted(prev => prev.map(w => ({ ...w, cornerRadius: 0 })))}
+                    className="text-[10px] text-red-400 active:text-red-600"
+                  >
+                    Убрать все
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-green-600 font-medium">R:</span>
+                  <input type="range" min={5} max={50} step={5}
+                    value={committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}
+                    onChange={e => setCommitted(prev => prev.map(w => w.cornerRadius > 0 ? { ...w, cornerRadius: parseInt(e.target.value) } : w))}
+                    className="flex-1 h-1 accent-green-500" />
+                  <span className="text-xs text-green-700 font-bold w-10 text-right">{committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15} см</span>
+                </div>
+              </div>
+            )}
+            {!committed.some(w => w.cornerRadius > 0) && (
+              <p className="text-[10px] text-center text-gray-400">
+                Тапните на угол на чертеже чтобы скруглить
+              </p>
+            )}
+
+            {/* ── Optional: arcs & columns (collapsed) ── */}
             {!showShapeEdit ? (
               <button onClick={() => setShowShapeEdit(true)}
                 className="w-full text-xs py-2 text-gray-400 active:text-gray-600">
-                Скруглить углы, дуги, колонны ▼
+                Дуги, колонны, вырезы ▼
               </button>
             ) : (
               <div className="space-y-3 rounded-xl border p-3 bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500">Форма комнаты</span>
+                  <span className="text-xs font-semibold text-gray-500">Дуги, колонны, вырезы</span>
                   <button onClick={() => setShowShapeEdit(false)} className="text-xs text-gray-400">Скрыть ▲</button>
-                </div>
-
-                {/* Rounded corners */}
-                <div>
-                  <p className="text-[10px] text-gray-400 mb-1">Скруглить углы (тапните):</p>
-                  <div className="flex flex-wrap gap-1">
-                    {committed.map((w, i) => (
-                      <button key={i}
-                        onClick={() => setCommitted(prev => prev.map((wall, idx) =>
-                          idx === i ? { ...wall, cornerRadius: wall.cornerRadius > 0 ? 0 : 15 } : wall
-                        ))}
-                        className={`text-[11px] py-1 px-2.5 rounded-full border active:scale-95 ${
-                          w.cornerRadius > 0 ? "bg-green-100 border-green-400 text-green-700" : "border-gray-200 text-gray-400"
-                        }`}>
-                        {i + 1} {w.cornerRadius > 0 ? "◠" : "◿"}
-                      </button>
-                    ))}
-                  </div>
-                  {committed.some(w => w.cornerRadius > 0) && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-400">R:</span>
-                      <input type="range" min={5} max={50} step={5}
-                        value={committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}
-                        onChange={e => setCommitted(prev => prev.map(w => w.cornerRadius > 0 ? { ...w, cornerRadius: parseInt(e.target.value) } : w))}
-                        className="flex-1 h-1 accent-green-500" />
-                      <span className="text-[10px] text-green-600 font-bold w-8">{committed.find(w => w.cornerRadius > 0)?.cornerRadius || 15}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Arc walls */}
                 <div>
-                  <p className="text-[10px] text-gray-400 mb-1">Дуга на стене (тапните):</p>
+                  <p className="text-[10px] text-gray-400 mb-1">Дуга на стене:</p>
                   <div className="flex flex-wrap gap-1">
                     {committed.map((w, i) => (
                       <button key={i} onClick={() => setArcWallIdx(arcWallIdx === i ? null : i)}
@@ -633,18 +777,18 @@ function WallWizard({ onDone, onCancel }: {
                           w.bulge !== 0 ? "bg-blue-100 border-blue-400 text-blue-700" :
                           arcWallIdx === i ? "bg-gray-100 border-gray-300" : "border-gray-200 text-gray-400"
                         }`}>
-                        {i + 1} {w.bulge !== 0 ? "🌙" : ""}
+                        {i + 1} {w.bulge !== 0 ? "~" : ""}
                       </button>
                     ))}
                   </div>
                   {arcWallIdx !== null && (
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-400">←</span>
+                      <span className="text-[10px] text-gray-400">-</span>
                       <input type="range" min={-60} max={60} step={5}
                         value={committed[arcWallIdx].bulge}
                         onChange={e => setCommitted(prev => prev.map((w, i) => i === arcWallIdx ? { ...w, bulge: parseInt(e.target.value) } : w))}
                         className="flex-1 h-1 accent-blue-500" />
-                      <span className="text-[10px] text-gray-400">→</span>
+                      <span className="text-[10px] text-gray-400">+</span>
                       <span className="text-[10px] text-blue-600 font-bold w-8">{committed[arcWallIdx].bulge}</span>
                     </div>
                   )}
@@ -655,14 +799,73 @@ function WallWizard({ onDone, onCancel }: {
                   <p className="text-[10px] text-gray-400 mb-1">Колонны:</p>
                   <div className="flex gap-2">
                     <button onClick={() => { setColumns(prev => [...prev, { id: crypto.randomUUID(), type: "circle", x: 0, y: 0, diameter: 30 }]); }}
-                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ ⭕ Круглая</button>
+                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ Круглая</button>
                     <button onClick={() => { setColumns(prev => [...prev, { id: crypto.randomUUID(), type: "rect", x: 0, y: 0, width: 30, height: 30 }]); }}
-                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ ⬜ Квадратная</button>
+                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95">+ Квадратная</button>
                   </div>
                   {columns.map(col => (
                     <div key={col.id} className="flex items-center justify-between mt-1 text-[11px]">
-                      <span className="text-gray-500">{col.type === "circle" ? `⭕ ⌀${col.diameter}см` : `⬜ ${col.width}×${col.height}см`}</span>
-                      <button onClick={() => removeColumn(col.id)} className="text-red-400 px-1">✕</button>
+                      <span className="text-gray-500">{col.type === "circle" ? `⌀${col.diameter}см` : `${col.width}x${col.height}см`}</span>
+                      <button onClick={() => removeColumn(col.id)} className="text-red-400 px-1">x</button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Cutouts (вырезы) */}
+                <div>
+                  <p className="text-[10px] text-gray-400 mb-1">Вырез внутри (для цеха):</p>
+                  {!showCutoutInput ? (
+                    <button
+                      onClick={() => setShowCutoutInput(true)}
+                      className="text-[11px] py-1 px-3 rounded-full border border-gray-200 text-gray-500 active:scale-95"
+                    >
+                      + Добавить вырез
+                    </button>
+                  ) : (
+                    <div className="space-y-1.5 mt-1">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input type="number" inputMode="numeric" placeholder="От стены A (см)"
+                          value={cutoutForm.fromWallA} onChange={e => setCutoutForm(f => ({ ...f, fromWallA: e.target.value }))}
+                          className="border rounded-lg px-2 py-1.5 text-[11px]" />
+                        <input type="number" inputMode="numeric" placeholder="От стены B (см)"
+                          value={cutoutForm.fromWallB} onChange={e => setCutoutForm(f => ({ ...f, fromWallB: e.target.value }))}
+                          className="border rounded-lg px-2 py-1.5 text-[11px]" />
+                        <input type="number" inputMode="numeric" placeholder="Ширина (см)"
+                          value={cutoutForm.width} onChange={e => setCutoutForm(f => ({ ...f, width: e.target.value }))}
+                          className="border rounded-lg px-2 py-1.5 text-[11px]" />
+                        <input type="number" inputMode="numeric" placeholder="Высота (см)"
+                          value={cutoutForm.height} onChange={e => setCutoutForm(f => ({ ...f, height: e.target.value }))}
+                          className="border rounded-lg px-2 py-1.5 text-[11px]" />
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => setShowCutoutInput(false)}
+                          className="flex-1 text-[11px] py-1.5 rounded-lg border text-gray-500 active:bg-gray-50">Отмена</button>
+                        <button onClick={() => {
+                          const a = parseFloat(cutoutForm.fromWallA);
+                          const b = parseFloat(cutoutForm.fromWallB);
+                          const w = parseFloat(cutoutForm.width);
+                          const h = parseFloat(cutoutForm.height);
+                          if (!w || !h || w <= 0 || h <= 0) return;
+                          setCutouts(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            fromWallA: a || 0,
+                            fromWallB: b || 0,
+                            width: w,
+                            height: h,
+                          }]);
+                          setCutoutForm({ fromWallA: "", fromWallB: "", width: "", height: "" });
+                          setShowCutoutInput(false);
+                        }}
+                          className="flex-1 text-[11px] py-1.5 rounded-lg bg-[#1e3a5f] text-white font-medium active:opacity-80">Добавить</button>
+                      </div>
+                    </div>
+                  )}
+                  {cutouts.map(cut => (
+                    <div key={cut.id} className="flex items-center justify-between mt-1 text-[11px]">
+                      <span className="text-gray-500">
+                        {cut.width}x{cut.height}см (от стен: {cut.fromWallA}, {cut.fromWallB})
+                      </span>
+                      <button onClick={() => setCutouts(prev => prev.filter(c => c.id !== cut.id))} className="text-red-400 px-1">x</button>
                     </div>
                   ))}
                 </div>
@@ -683,12 +886,14 @@ function WallWizard({ onDone, onCancel }: {
           <>
           {/* Превью комнаты — заполняет всё свободное место */}
           <div className="flex-1 min-h-0 px-3 pt-2 pb-2">
-            <RoomPreview
-              walls={previewWalls}
-              committedCount={committed.length}
-              nextDirDeg={currentDirDeg}
-              forceClose={false}
-            />
+            <PinchZoom className="w-full h-full">
+              <RoomPreview
+                walls={previewWalls}
+                committedCount={committed.length}
+                nextDirDeg={currentDirDeg}
+                forceClose={false}
+              />
+            </PinchZoom>
           </div>
           <div className="shrink-0 border-t">
             {/* Direction controls — intuitive */}
@@ -959,11 +1164,13 @@ function RoomDetail({ room, onUpdate, onClose }: {
 
       {/* SVG Preview */}
       <div className="shrink-0 px-4 py-3" style={{ height: 240 }}>
-        <RoomPreview
-          walls={previewWalls}
-          onWallClick={i => startEdit(i)}
-          activeWallIdx={editingIdx ?? undefined}
-        />
+        <PinchZoom className="w-full h-full">
+          <RoomPreview
+            walls={previewWalls}
+            onWallClick={i => startEdit(i)}
+            activeWallIdx={editingIdx ?? undefined}
+          />
+        </PinchZoom>
       </div>
 
       {/* Stats */}
