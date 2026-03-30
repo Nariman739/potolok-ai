@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Undo2, Check, Share2 } from "lucide-react";
+import { X, Undo2, Check, Share2, RotateCw } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
 
 // ── Types ──
 
-export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating";
+export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating" | "door" | "window" | "furniture";
+export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk";
 
 export interface RoomElement {
   id: string;
@@ -14,9 +15,13 @@ export interface RoomElement {
   x?: number;
   y?: number;
   wallIndex?: number;
-  wallPosition?: number; // 0-1, position along the wall (0.5 = centered)
-  length?: number; // cm
-  variant?: "ours" | "client"; // for spots and tracks: ours = с материалом, client = клиентские
+  wallPosition?: number;
+  length?: number;
+  variant?: "ours" | "client";
+  furnitureType?: FurnitureType;
+  width?: number;
+  height?: number;
+  rotation?: number;
 }
 
 interface Room {
@@ -32,7 +37,9 @@ interface Room {
 
 // ── Element config ──
 
-const ELEMENTS: { type: ElementType; label: string; icon: string; color: string; category: "point" | "wall" | "perimeter" }[] = [
+type ToolbarTab = "light" | "walls" | "furniture";
+
+const LIGHT_ELEMENTS: { type: ElementType; label: string; icon: string; color: string; category: "point" | "wall" | "perimeter" }[] = [
   { type: "spot",        label: "Софит",       icon: "💡", color: "#F59E0B", category: "point" },
   { type: "chandelier",  label: "Люстра",      icon: "🔆", color: "#8B5CF6", category: "point" },
   { type: "curtain",     label: "Гардина",     icon: "📏", color: "#10B981", category: "wall" },
@@ -42,10 +49,31 @@ const ELEMENTS: { type: ElementType; label: string; icon: string; color: string;
   { type: "floating",    label: "Парящий",     icon: "〰️", color: "#3B82F6", category: "perimeter" },
 ];
 
+const WALL_ELEMENTS: { type: ElementType; label: string; icon: string; color: string }[] = [
+  { type: "door",   label: "Дверь",  icon: "🚪", color: "#78716C" },
+  { type: "window", label: "Окно",   icon: "🪟", color: "#60A5FA" },
+];
+
+const FURNITURE: { furnitureType: FurnitureType; label: string; icon: string; color: string; defaultW: number; defaultH: number }[] = [
+  { furnitureType: "bed",        label: "Кровать",    icon: "🛏️", color: "#8B5CF6", defaultW: 200, defaultH: 160 },
+  { furnitureType: "sofa",       label: "Диван",      icon: "🛋️", color: "#6366F1", defaultW: 200, defaultH: 90 },
+  { furnitureType: "table",      label: "Стол",       icon: "🪑", color: "#D97706", defaultW: 120, defaultH: 80 },
+  { furnitureType: "wardrobe",   label: "Шкаф",       icon: "🗄️", color: "#78716C", defaultW: 200, defaultH: 60 },
+  { furnitureType: "tv",         label: "ТВ",         icon: "📺", color: "#1e3a5f", defaultW: 120, defaultH: 10 },
+  { furnitureType: "nightstand", label: "Тумба",      icon: "📦", color: "#A3A3A3", defaultW: 50,  defaultH: 50 },
+  { furnitureType: "chair",      label: "Стул",       icon: "💺", color: "#10B981", defaultW: 45,  defaultH: 45 },
+  { furnitureType: "desk",       label: "Письм.стол", icon: "🖥️", color: "#F59E0B", defaultW: 140, defaultH: 70 },
+];
+
+const ALL_ELEMENTS = LIGHT_ELEMENTS; // backwards compat
+
 const HINTS: Record<string, string> = {
   point: "Нажмите на комнату чтобы разместить",
   wall: "Нажмите на стену чтобы разместить",
   perimeter: "Нажмите на стену чтобы включить/выключить",
+  door: "Нажмите на стену чтобы поставить дверь",
+  window: "Нажмите на стену чтобы поставить окно",
+  furniture: "Нажмите на комнату чтобы разместить",
 };
 
 // ── Geometry ──
@@ -100,6 +128,15 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
   return best;
 }
 
+function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return a;
+  let t = ((px - a.x) * dx + (py - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
 // ── Component ──
 
 export default function RoomDesigner({ room, onDone, onCancel }: {
@@ -108,10 +145,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const [elements, setElements] = useState<RoomElement[]>(room.elements || []);
-  const [activeType, setActiveType] = useState<ElementType | null>(null);
+  const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
   const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
+  const [toolbarTab, setToolbarTab] = useState<ToolbarTab>("light");
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
+  const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
+  const [furnW, setFurnW] = useState("");
+  const [furnH, setFurnH] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -126,16 +168,19 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const minY = Math.min(...ys), maxY = Math.max(...ys);
   const roomW = maxX - minX, roomH = maxY - minY;
   const roomSize = Math.max(roomW, roomH);
-  const pad = roomSize * 0.18;
+  const pad = roomSize * 0.12;
   const vbX = minX - pad, vbY = minY - pad;
   const vbW = roomW + pad * 2, vbH = roomH + pad * 2;
 
-  // Scale factors for element sizes
+  // Scale factors
   const spotR = roomSize * 0.022;
   const chandelierR = roomSize * 0.045;
   const strokeW = roomSize * 0.012;
   const wallOffset = roomSize * 0.05;
   const labelSize = roomSize * 0.028;
+
+  const furnitureElements = elements.filter(e => e.type === "furniture");
+  const fixtureElements = elements.filter(e => e.type === "door" || e.type === "window");
 
   function svgCoords(clientX: number, clientY: number) {
     const svg = svgRef.current;
@@ -147,9 +192,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     return { x: pt.x, y: pt.y };
   }
 
+  // ── Is the active type a furniture type? ──
+  function isFurnitureActive(): FurnitureType | null {
+    if (!activeType) return null;
+    const f = FURNITURE.find(f => f.furnitureType === activeType);
+    return f ? f.furnitureType : null;
+  }
+
   // ── Drag & Drop ──
 
-  const DRAG_THRESHOLD = 8; // px on screen before considered a drag
+  const DRAG_THRESHOLD = 8;
 
   function handleElementPointerDown(id: string, e: React.PointerEvent) {
     e.stopPropagation();
@@ -179,28 +231,39 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
     if (ds) {
       if (ds.moved) {
-        // Finish drag — use current pointer position (more reliable than dragPos state)
         const finalCoords = svgCoords(e.clientX, e.clientY);
         const dropPos = finalCoords || dragPos;
         if (dropPos) {
           const el = elements.find(el => el.id === ds.id);
           if (el) {
-            const config = ELEMENTS.find(c => c.type === el.type);
-            if (config?.category === "point") {
+            if (el.type === "spot" || el.type === "chandelier" || el.type === "furniture") {
               setElements(prev => prev.map(e =>
                 e.id === ds.id ? { ...e, x: dropPos.x, y: dropPos.y } : e
               ));
-            } else if (config?.category === "wall") {
+            } else if (el.type === "door" || el.type === "window") {
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               setElements(prev => prev.map(e =>
                 e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
               ));
+            } else {
+              const config = ALL_ELEMENTS.find(c => c.type === el.type);
+              if (config?.category === "wall") {
+                const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
+                setElements(prev => prev.map(e =>
+                  e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
+                ));
+              }
             }
           }
         }
+        setSelectedId(ds.id);
       } else {
-        // Short tap — remove element
-        setElements(prev => prev.filter(el => el.id !== ds.id));
+        // Short tap — select or deselect
+        if (selectedId === ds.id) {
+          setSelectedId(null);
+        } else {
+          setSelectedId(ds.id);
+        }
       }
       dragStartRef.current = null;
       setDragId(null);
@@ -211,18 +274,45 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
     // Not dragging — place new element
     if (pointerHandled.current) { pointerHandled.current = false; return; }
-    if (!activeType) return;
+
+    setSelectedId(null);
 
     const coords = svgCoords(e.clientX, e.clientY);
     if (!coords) return;
 
-    const config = ELEMENTS.find(el => el.type === activeType)!;
+    // Check if placing furniture
+    const furnType = isFurnitureActive();
+    if (furnType) {
+      const fCfg = FURNITURE.find(f => f.furnitureType === furnType)!;
+      setFurnitureMenu({ x: coords.x, y: coords.y, furnitureType: furnType, defaultW: fCfg.defaultW, defaultH: fCfg.defaultH });
+      setFurnW(String(fCfg.defaultW));
+      setFurnH(String(fCfg.defaultH));
+      return;
+    }
+
+    if (!activeType) return;
+
+    // Door/Window
+    if (activeType === "door" || activeType === "window") {
+      const nearest = nearestWall(coords.x, coords.y, vertices);
+      setElements(prev => [...prev, {
+        id: crypto.randomUUID(),
+        type: activeType,
+        wallIndex: nearest.wallIndex,
+        wallPosition: nearest.t,
+        length: activeType === "door" ? 90 : 120,
+      }]);
+      return;
+    }
+
+    const config = ALL_ELEMENTS.find(el => el.type === activeType);
+    if (!config) return;
 
     if (config.category === "point") {
       const hasVariant = activeType === "spot";
       setElements(prev => [...prev, {
         id: crypto.randomUUID(),
-        type: activeType,
+        type: activeType as ElementType,
         x: coords.x,
         y: coords.y,
         ...(hasVariant && { variant: activeVariant }),
@@ -246,7 +336,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     }
   }
 
-  // Get element position (real or dragging)
   function getElPos(el: RoomElement): { x: number; y: number } {
     if (dragId === el.id && dragPos && dragStartRef.current?.moved) {
       return dragPos;
@@ -261,7 +350,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const hasVariant = activeType === "track";
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
-      type: activeType,
+      type: activeType as ElementType,
       wallIndex: lengthInput.wallIndex,
       length: len,
       ...(hasVariant && { variant: activeVariant }),
@@ -270,12 +359,81 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     setLengthValue("");
   }
 
+  function confirmFurniture() {
+    if (!furnitureMenu) return;
+    const w = parseFloat(furnW), h = parseFloat(furnH);
+    if (!w || !h) { setFurnitureMenu(null); return; }
+    setElements(prev => [...prev, {
+      id: crypto.randomUUID(),
+      type: "furniture",
+      x: furnitureMenu.x,
+      y: furnitureMenu.y,
+      furnitureType: furnitureMenu.furnitureType,
+      width: w,
+      height: h,
+      rotation: 0,
+    }]);
+    setFurnitureMenu(null);
+  }
+
+  function rotateSelected() {
+    if (!selectedId) return;
+    setElements(prev => prev.map(el =>
+      el.id === selectedId ? { ...el, rotation: ((el.rotation || 0) + 90) % 360 } : el
+    ));
+  }
+
+  function removeSelected() {
+    if (!selectedId) return;
+    setElements(prev => prev.filter(el => el.id !== selectedId));
+    setSelectedId(null);
+  }
+
   function undo() { setElements(prev => prev.slice(0, -1)); }
 
-  function removeElement(id: string, e?: React.PointerEvent) {
-    if (e) { e.stopPropagation(); pointerHandled.current = true; }
-    setElements(prev => prev.filter(el => el.id !== id));
+  // ── Dimension lines (from edge for furniture) ──
+
+  function computeDimLines() {
+    const dims: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }[] = [];
+    const sel = elements.find(e => e.id === selectedId);
+    if (sel && (sel.type === "spot" || sel.type === "chandelier" || sel.type === "furniture") && sel.x !== undefined && sel.y !== undefined) {
+      addWallDims(sel, dims);
+    }
+    return dims;
   }
+
+  function addWallDims(el: RoomElement, dims: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }[]) {
+    if (el.x === undefined || el.y === undefined) return;
+    const isFurn = el.type === "furniture" && el.width && el.height;
+    const wallDists: { dist: number; proj: Vertex; edgePt: Vertex }[] = [];
+    for (let i = 0; i < vertices.length - 1; i++) {
+      const a = vertices[i], b = vertices[i + 1];
+      const proj = projectOnWall(el.x, el.y, a, b);
+      const dist = Math.hypot(el.x - proj.x, el.y - proj.y);
+      let edgePt: Vertex = { x: el.x, y: el.y };
+      if (isFurn && dist > 0.01) {
+        const dirX = (proj.x - el.x) / dist;
+        const dirY = (proj.y - el.y) / dist;
+        const rot = (el.rotation || 0) * Math.PI / 180;
+        const localDirX = dirX * Math.cos(-rot) - dirY * Math.sin(-rot);
+        const localDirY = dirX * Math.sin(-rot) + dirY * Math.cos(-rot);
+        const halfW = el.width! / 2, halfH = el.height! / 2;
+        const scaleX = Math.abs(localDirX) > 0.001 ? halfW / Math.abs(localDirX) : Infinity;
+        const scaleY = Math.abs(localDirY) > 0.001 ? halfH / Math.abs(localDirY) : Infinity;
+        const edgeDist = Math.min(scaleX, scaleY);
+        edgePt = { x: el.x + dirX * edgeDist, y: el.y + dirY * edgeDist };
+      }
+      const edgeToWall = Math.hypot(edgePt.x - proj.x, edgePt.y - proj.y);
+      wallDists.push({ dist: edgeToWall, proj, edgePt });
+    }
+    wallDists.sort((a, b) => a.dist - b.dist);
+    for (let i = 0; i < Math.min(2, wallDists.length); i++) {
+      const wd = wallDists[i];
+      if (wd.dist > 5) dims.push({ x1: wd.proj.x, y1: wd.proj.y, x2: wd.edgePt.x, y2: wd.edgePt.y, label: `${Math.round(wd.dist)}`, color: "#94A3B8" });
+    }
+  }
+
+  const dimLines = computeDimLines();
 
   // ── Render helpers ──
 
@@ -289,11 +447,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (wallLen === 0) return null;
 
     const nx = dx / wallLen, ny = dy / wallLen;
-    // Inward normal (left of clockwise direction)
     const perpX = -ny, perpY = nx;
 
     const elLen = Math.min(el.length, wallLen);
-    // Position along wall: wallPosition 0-1, default 0.5 (centered)
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
     const offset = el.type === "curtain" || el.type === "subcurtain" ? wallOffset * 1.5 : wallOffset;
@@ -303,20 +459,17 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const x2 = a.x + nx * (startT + elLen) + perpX * offset;
     const y2 = a.y + ny * (startT + elLen) + perpY * offset;
 
-    const config = ELEMENTS.find(c => c.type === el.type)!;
+    const config = ALL_ELEMENTS.find(c => c.type === el.type)!;
     const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
 
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
 
-    // If being dragged, show on the nearest wall to drag position
     let drawX1 = x1, drawY1 = y1, drawX2 = x2, drawY2 = y2;
     let drawMidX = midX, drawMidY = midY;
     let drawPerpX = perpX, drawPerpY = perpY;
 
-    // During drag: element follows finger freely (centered on drag pos)
     if (isDragging && dragPos) {
       const halfLen = (el.length || 0) / 2;
-      // Use wall direction from nearest wall for orientation
       const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
       const da = vertices[nearest.wallIndex], db = vertices[nearest.wallIndex + 1];
       if (da && db) {
@@ -324,7 +477,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         const dwLen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
         const dnx = ddx / dwLen, dny = ddy / dwLen;
         drawPerpX = -dny; drawPerpY = dnx;
-        // Center element on drag position, oriented along nearest wall
         drawX1 = dragPos.x - dnx * halfLen + drawPerpX * offset;
         drawY1 = dragPos.y - dny * halfLen + drawPerpY * offset;
         drawX2 = dragPos.x + dnx * halfLen + drawPerpX * offset;
@@ -340,10 +492,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Invisible hit area for easier grab */}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke="transparent" strokeWidth={strokeW * 6} strokeLinecap="round" />
-        {/* Glow for light line */}
         {el.type === "lightline" && (
           <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
             stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
@@ -355,14 +505,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
           opacity={0.9}
         />
-        {/* End caps for track */}
         {el.type === "track" && (
           <>
             <circle cx={drawX1} cy={drawY1} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
             <circle cx={drawX2} cy={drawY2} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
           </>
         )}
-        {/* Length label */}
         <text
           x={drawMidX + drawPerpX * labelSize * 1.5} y={drawMidY + drawPerpY * labelSize * 1.5}
           textAnchor="middle" dominantBaseline="central"
@@ -380,7 +528,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (!a || !b) return null;
 
     return (
-      <g key={el.id} onPointerUp={(e) => removeElement(el.id, e)} className="cursor-pointer">
+      <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
           stroke="#60A5FA" strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.2} />
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
@@ -398,6 +546,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const fillColor = isClient ? "#6B7280" : "#F59E0B";
     const glowColor = isClient ? "#E5E7EB" : "#FEF3C7";
     const strokeColor = isClient ? "#4B5563" : "#D97706";
+    const isSel = selectedId === el.id;
     return (
       <g key={el.id}
         onPointerDown={(e) => handleElementPointerDown(el.id, e)}
@@ -405,6 +554,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         opacity={isDragging ? 0.7 : 1}
       >
         <circle cx={pos.x} cy={pos.y} r={spotR * 4} fill="transparent" />
+        {isSel && <circle cx={pos.x} cy={pos.y} r={spotR * 3.5} fill="none" stroke={fillColor} strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
         <circle cx={pos.x} cy={pos.y} r={spotR * 2.2} fill={glowColor} opacity={0.6} />
         <circle cx={pos.x} cy={pos.y} r={spotR} fill={fillColor} stroke={strokeColor} strokeWidth={spotR * 0.25} />
         {isClient && (
@@ -418,6 +568,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const pos = getElPos(el);
     const r = chandelierR;
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const isSel = selectedId === el.id;
     return (
       <g key={el.id}
         onPointerDown={(e) => handleElementPointerDown(el.id, e)}
@@ -425,6 +576,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         opacity={isDragging ? 0.7 : 1}
       >
         <circle cx={pos.x} cy={pos.y} r={r * 2} fill="transparent" />
+        {isSel && <circle cx={pos.x} cy={pos.y} r={r * 2.5} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
         <circle cx={pos.x} cy={pos.y} r={r * 1.6} fill="#EDE9FE" opacity={0.5} />
         <circle cx={pos.x} cy={pos.y} r={r} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.35} />
         <circle cx={pos.x} cy={pos.y} r={spotR * 0.7} fill="#8B5CF6" />
@@ -444,20 +596,165 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     );
   }
 
+  function fixtureRender(el: RoomElement) {
+    if (el.wallIndex === undefined) return null;
+    const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
+    if (!a || !b) return null;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const wallLen = Math.sqrt(dx * dx + dy * dy);
+    if (wallLen === 0) return null;
+    const nx = dx / wallLen, ny = dy / wallLen;
+    const elLen = el.length || (el.type === "door" ? 90 : 120);
+    const pos = el.wallPosition ?? 0.5;
+    const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
+
+    const x1 = a.x + nx * startT;
+    const y1 = a.y + ny * startT;
+    const x2 = a.x + nx * (startT + elLen);
+    const y2 = a.y + ny * (startT + elLen);
+
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const color = el.type === "door" ? "#78716C" : "#60A5FA";
+    const isSel = selectedId === el.id;
+
+    return (
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.6 : 0.5}
+      >
+        <line x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke="transparent" strokeWidth={strokeW * 6} strokeLinecap="round" />
+        <line x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={color} strokeWidth={strokeW * 2.5} strokeLinecap="round"
+        />
+        {isSel && (
+          <line x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke={color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.3}
+          />
+        )}
+        <text
+          x={(x1 + x2) / 2 + ny * labelSize * 1.5} y={(y1 + y2) / 2 - nx * labelSize * 1.5}
+          textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.7} fill={color} fontWeight="500"
+        >
+          {el.type === "door" ? "🚪" : "🪟"}
+        </text>
+      </g>
+    );
+  }
+
+  function furnitureRender(el: RoomElement) {
+    if (el.x === undefined || el.y === undefined || !el.width || !el.height) return null;
+    const fCfg = FURNITURE.find(f => f.furnitureType === el.furnitureType);
+    const clr = fCfg?.color || "#78716C";
+    const isSel = selectedId === el.id;
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const rot = el.rotation || 0;
+    const w = el.width, h = el.height;
+    const pos = getElPos(el);
+
+    // In light tab, furniture should not intercept pointer events
+    const pointerEvents = toolbarTab === "light" ? "none" as const : undefined;
+
+    return (
+      <g key={el.id} transform={`translate(${pos.x}, ${pos.y}) rotate(${rot})`}
+        onPointerDown={toolbarTab !== "light" ? (e) => handleElementPointerDown(el.id, e) : undefined}
+        className={toolbarTab !== "light" ? "cursor-grab active:cursor-grabbing" : ""}
+        opacity={isDragging ? 0.7 : 1}
+        pointerEvents={pointerEvents}
+      >
+        {isSel && (
+          <rect x={-w / 2 - roomSize * 0.01} y={-h / 2 - roomSize * 0.01}
+            width={w + roomSize * 0.02} height={h + roomSize * 0.02}
+            rx={roomSize * 0.01} fill="none" stroke={clr}
+            strokeWidth={spotR * 0.25} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />
+        )}
+        <rect x={-w / 2} y={-h / 2} width={w} height={h}
+          rx={roomSize * 0.008} fill={clr} opacity={0.12}
+          stroke={clr} strokeWidth={strokeW * 0.5} />
+        {/* Inner details */}
+        {el.furnitureType === "bed" && (
+          <>
+            <rect x={-w / 2 + w * 0.08} y={-h / 2 + h * 0.06} width={w * 0.38} height={h * 0.22}
+              rx={roomSize * 0.005} fill={clr} opacity={0.2} />
+            <rect x={w / 2 - w * 0.08 - w * 0.38} y={-h / 2 + h * 0.06} width={w * 0.38} height={h * 0.22}
+              rx={roomSize * 0.005} fill={clr} opacity={0.2} />
+          </>
+        )}
+        {el.furnitureType === "sofa" && (
+          <>
+            <rect x={-w / 2 + w * 0.05} y={-h / 2 + h * 0.05}
+              width={w * 0.9} height={h * 0.25}
+              rx={roomSize * 0.005} fill={clr} opacity={0.2} />
+            <line x1={0} y1={-h / 2 + h * 0.35} x2={0} y2={h / 2 - h * 0.1}
+              stroke={clr} strokeWidth={strokeW * 0.3} opacity={0.2} />
+          </>
+        )}
+        {el.furnitureType === "wardrobe" && (
+          <line x1={0} y1={-h / 2 + h * 0.1} x2={0} y2={h / 2 - h * 0.1}
+            stroke={clr} strokeWidth={strokeW * 0.3} opacity={0.25} />
+        )}
+        {el.furnitureType === "tv" && (
+          <rect x={-w / 2 + w * 0.1} y={-h * 0.3} width={w * 0.8} height={h * 0.6}
+            fill={clr} opacity={0.25} rx={roomSize * 0.003} />
+        )}
+        {/* Label */}
+        <text x={0} y={labelSize * 0.35} textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.7} fill={clr} fontWeight="600" opacity={0.8}>
+          {fCfg?.label || ""}
+        </text>
+        <text x={0} y={h / 2 + labelSize * 1.2} textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.55} fill="#94A3B8" fontWeight="500">
+          {w}x{h}
+        </text>
+      </g>
+    );
+  }
+
+  // ── DimLine component ──
+  function DimLine({ x1, y1, x2, y2, label, color }: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }) {
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return null;
+    const perpX = -dy / len, perpY = dx / len;
+    return (
+      <g>
+        <line x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={color} strokeWidth={spotR * 0.15}
+          strokeDasharray={`${spotR * 0.4},${spotR * 0.3}`} opacity={0.6} />
+        <circle cx={x1} cy={y1} r={spotR * 0.2} fill={color} opacity={0.5} />
+        <circle cx={x2} cy={y2} r={spotR * 0.2} fill={color} opacity={0.5} />
+        <text x={mx + perpX * labelSize * 0.8} y={my + perpY * labelSize * 0.8}
+          textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.7} fill={color} fontWeight="600">
+          {label}
+        </text>
+      </g>
+    );
+  }
+
   // ── Summary badges ──
   const summary: { icon: string; label: string; color: string }[] = [];
   const spots = elements.filter(e => e.type === "spot").length;
   const spotsOursCount = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
   const spotsClientCount = elements.filter(e => e.type === "spot" && e.variant === "client").length;
   const chands = elements.filter(e => e.type === "chandelier").length;
+  const doors = fixtureElements.filter(e => e.type === "door").length;
+  const windows = fixtureElements.filter(e => e.type === "window").length;
+  const furnitureCount = furnitureElements.length;
   if (spotsOursCount > 0) summary.push({ icon: "💡", label: `${spotsOursCount} наши`, color: "bg-amber-50 text-amber-700" });
   if (spotsClientCount > 0) summary.push({ icon: "💡", label: `${spotsClientCount} кл.`, color: "bg-gray-100 text-gray-600" });
   if (chands > 0) summary.push({ icon: "🔆", label: `${chands} шт`, color: "bg-purple-50 text-purple-700" });
+  if (doors > 0) summary.push({ icon: "🚪", label: `${doors} шт`, color: "bg-gray-100 text-gray-600" });
+  if (windows > 0) summary.push({ icon: "🪟", label: `${windows} шт`, color: "bg-blue-50 text-blue-600" });
+  if (furnitureCount > 0) summary.push({ icon: "🪑", label: `${furnitureCount} шт`, color: "bg-violet-50 text-violet-600" });
   for (const type of ["curtain", "subcurtain", "track", "lightline"] as ElementType[]) {
     const items = elements.filter(e => e.type === type);
     if (items.length > 0) {
       const totalLen = items.reduce((s, e) => s + (e.length || 0), 0);
-      const cfg = ELEMENTS.find(c => c.type === type)!;
+      const cfg = ALL_ELEMENTS.find(c => c.type === type)!;
       summary.push({ icon: cfg.icon, label: `${totalLen} см`, color: "bg-gray-50 text-gray-700" });
     }
   }
@@ -469,36 +766,25 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   function calcLiveCost(): number {
     const p = DEFAULT_PRICES;
     let cost = 0;
-    // Canvas (area × price)
     cost += room.area * (p.canvas_320 || 2000);
-    // Profile (perimeter × price)
     cost += room.perimeter * (p.profile_plastic || 500);
-    // Insert (perimeter)
     cost += room.perimeter * (p.insert || 1000);
-    // Corners
     cost += room.walls.length * (p.corner_plastic || 1000);
-    // Spots — client's = installation only, ours = with material
     const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
     const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
     cost += spotsOurs * (p.spot_ours || 5000);
     cost += spotsClient * (p.spot_client || 2500);
-    // Chandeliers
     cost += chands * ((p.chandelier || 2000) + (p.chandelier_install || 5000));
-    // Tracks — client's = installation only (half price), ours = full
     const trackOursM = elements.filter(e => e.type === "track" && e.variant !== "client").reduce((s, e) => s + (e.length || 0), 0) / 100;
     const trackClientM = elements.filter(e => e.type === "track" && e.variant === "client").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += trackOursM * (p.track_magnetic || 27000);
-    cost += trackClientM * Math.round((p.track_magnetic || 27000) * 0.4); // only installation
-    // Light lines (cm → m)
+    cost += trackClientM * Math.round((p.track_magnetic || 27000) * 0.4);
     const lightM = elements.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += lightM * (p.light_line || 15000);
-    // Curtain/gardina (cm → m)
     const gardinaM = elements.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += gardinaM * (p.gardina_plastic || 5000);
-    // Subcurtain/podshtornik (cm → m)
     const podM = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += podM * (p.podshtornik_plastic || 2500);
-    // Floating profile (cm → m)
     const floatingM = floatingLenCm / 100;
     cost += floatingM * (p.profile_floating || 14000);
     return Math.round(cost);
@@ -517,6 +803,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     lines.push(`Стены: ${room.walls.join(" · ")} см`);
     if (spots > 0) lines.push(`💡 Софиты: ${spots} шт`);
     if (chands > 0) lines.push(`🔆 Люстры: ${chands} шт`);
+    if (doors > 0) lines.push(`🚪 Двери: ${doors} шт`);
+    if (windows > 0) lines.push(`🪟 Окна: ${windows} шт`);
+    if (furnitureCount > 0) lines.push(`🪑 Мебель: ${furnitureCount} шт`);
     const trackCm = elements.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0);
     if (trackCm > 0) lines.push(`🔲 Магнитный трек: ${trackCm} см`);
     const lightCm = elements.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0);
@@ -530,7 +819,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
   }
 
-  const activeConfig = activeType ? ELEMENTS.find(e => e.type === activeType) : null;
+  // ── Hint ──
+  let hintText = "Выберите элемент из панели внизу ↓";
+  if (selectedId) {
+    const sel = elements.find(e => e.id === selectedId);
+    hintText = sel?.type === "furniture" ? "Перетащите мебель или нажмите 🔄/🗑️" : "Перетащите элемент или нажмите 🗑️";
+  } else if (activeType) {
+    const furnType = isFurnitureActive();
+    if (furnType) {
+      hintText = HINTS.furniture;
+    } else if (activeType === "door" || activeType === "window") {
+      hintText = HINTS[activeType];
+    } else {
+      const config = ALL_ELEMENTS.find(e => e.type === activeType);
+      if (config) hintText = `${config.icon} ${config.label}: ${HINTS[config.category]}`;
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white"
@@ -548,13 +852,23 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </button>
       </div>
 
-      {/* Hint */}
-      <div className="shrink-0 px-4 py-1.5 text-center border-b bg-gray-50">
-        <p className="text-xs text-muted-foreground">
-          {activeConfig
-            ? `${activeConfig.icon} ${activeConfig.label}: ${HINTS[activeConfig.category]}`
-            : "Выберите элемент из панели внизу ↓"}
-        </p>
+      {/* Hint + selected actions */}
+      <div className="shrink-0 px-4 py-1.5 text-center border-b bg-gray-50 flex items-center justify-center gap-2">
+        <p className="text-xs text-muted-foreground">{hintText}</p>
+        {selectedId && (
+          <div className="flex gap-1">
+            {elements.find(e => e.id === selectedId)?.type === "furniture" && (
+              <button onClick={rotateSelected}
+                className="p-1 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95">
+                <RotateCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button onClick={removeSelected}
+              className="px-2 py-0.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-200 active:scale-95">
+              🗑️
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Interactive SVG */}
@@ -580,7 +894,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             const wLen = Math.sqrt(dx * dx + dy * dy);
             if (wLen === 0) return null;
             const nx = dx / wLen, ny = dy / wLen;
-            // Outward normal (opposite to inward)
             const outX = ny, outY = -nx;
             const mx = (a.x + b.x) / 2 + outX * labelSize * 1.8;
             const my = (a.y + b.y) / 2 + outY * labelSize * 1.8;
@@ -592,11 +905,17 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             );
           })}
 
-          {/* Floating elements (rendered first, behind others) */}
+          {/* Floating elements */}
           {elements.filter(e => e.type === "floating").map(floatingGlow)}
 
+          {/* Furniture (behind light elements) */}
+          {furnitureElements.map(furnitureRender)}
+
+          {/* Doors/Windows */}
+          {fixtureElements.map(fixtureRender)}
+
           {/* Wall elements */}
-          {elements.filter(e => e.wallIndex !== undefined && e.type !== "floating").map(wallLine)}
+          {elements.filter(e => e.wallIndex !== undefined && e.type !== "floating" && e.type !== "door" && e.type !== "window").map(wallLine)}
 
           {/* Spots */}
           {elements.filter(e => e.type === "spot").map(spotCircle)}
@@ -604,10 +923,20 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           {/* Chandeliers */}
           {elements.filter(e => e.type === "chandelier").map(chandelierIcon)}
 
+          {/* Dimension lines */}
+          {dimLines.map((d, i) => (
+            <DimLine key={`dl-${i}`} x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} label={d.label} color={d.color} />
+          ))}
+
           {/* Active type indicator */}
           {activeType && (
             <rect x={vbX} y={vbY} width={vbW} height={vbH}
-              fill="none" stroke={activeConfig?.color || "#999"}
+              fill="none" stroke={
+                ALL_ELEMENTS.find(e => e.type === activeType)?.color
+                || WALL_ELEMENTS.find(e => e.type === activeType)?.color
+                || FURNITURE.find(f => f.furnitureType === activeType)?.color
+                || "#999"
+              }
               strokeWidth={strokeW * 0.4} strokeDasharray={`${strokeW * 2} ${strokeW}`}
               opacity={0.3} rx={roomSize * 0.02}
             />
@@ -618,7 +947,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       {/* Summary + Cost + Actions */}
       {elements.length > 0 && (
         <div className="shrink-0 border-t bg-white">
-          {/* Badges row */}
           <div className="px-3 py-1.5 flex items-center justify-between">
             <div className="flex gap-1.5 flex-wrap overflow-x-auto">
               {summary.map((s, i) => (
@@ -631,7 +959,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               <Undo2 className="h-4 w-4" />
             </button>
           </div>
-          {/* Live cost + WhatsApp */}
           <div className="px-3 pb-1.5 flex items-center justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-muted-foreground">~</span>
@@ -646,7 +973,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
-      {/* Variant toggle — shows when spot or track is selected */}
+      {/* Variant toggle */}
       {(activeType === "spot" || activeType === "track") && (
         <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex items-center justify-center gap-2">
           <span className="text-xs text-amber-800 font-medium">
@@ -675,26 +1002,78 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
-      {/* Element toolbar */}
-      <div className="shrink-0 border-t bg-gray-50 px-2 py-2">
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-          {ELEMENTS.map(el => (
-            <button
-              key={el.type}
-              onClick={() => {
-                if (activeType === el.type) { setActiveType(null); }
-                else { setActiveType(el.type); setActiveVariant("ours"); }
-              }}
-              className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
-                activeType === el.type
-                  ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
-                  : "bg-white border border-gray-200 text-gray-600 active:scale-95"
+      {/* Toolbar with tabs */}
+      <div className="shrink-0 border-t bg-gray-50">
+        {/* Tab headers */}
+        <div className="flex border-b">
+          {([["light", "Свет"], ["walls", "Стены"], ["furniture", "Мебель"]] as const).map(([key, label]) => (
+            <button key={key}
+              onClick={() => { setToolbarTab(key); setActiveType(null); setSelectedId(null); }}
+              className={`flex-1 py-2 text-xs font-semibold transition-all ${
+                toolbarTab === key
+                  ? "text-[#1e3a5f] border-b-2 border-[#1e3a5f]"
+                  : "text-gray-400"
               }`}
             >
-              <span className="text-lg leading-none">{el.icon}</span>
-              <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{el.label}</span>
+              {label}
             </button>
           ))}
+        </div>
+        {/* Tab content */}
+        <div className="px-2 py-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            {toolbarTab === "light" && LIGHT_ELEMENTS.map(el => (
+              <button
+                key={el.type}
+                onClick={() => {
+                  if (activeType === el.type) { setActiveType(null); }
+                  else { setActiveType(el.type); setActiveVariant("ours"); }
+                }}
+                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                  activeType === el.type
+                    ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
+                    : "bg-white border border-gray-200 text-gray-600 active:scale-95"
+                }`}
+              >
+                <span className="text-lg leading-none">{el.icon}</span>
+                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{el.label}</span>
+              </button>
+            ))}
+            {toolbarTab === "walls" && WALL_ELEMENTS.map(el => (
+              <button
+                key={el.type}
+                onClick={() => {
+                  if (activeType === el.type) { setActiveType(null); }
+                  else { setActiveType(el.type); }
+                }}
+                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                  activeType === el.type
+                    ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
+                    : "bg-white border border-gray-200 text-gray-600 active:scale-95"
+                }`}
+              >
+                <span className="text-lg leading-none">{el.icon}</span>
+                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{el.label}</span>
+              </button>
+            ))}
+            {toolbarTab === "furniture" && FURNITURE.map(f => (
+              <button
+                key={f.furnitureType}
+                onClick={() => {
+                  if (activeType === f.furnitureType) { setActiveType(null); }
+                  else { setActiveType(f.furnitureType); }
+                }}
+                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                  activeType === f.furnitureType
+                    ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
+                    : "bg-white border border-gray-200 text-gray-600 active:scale-95"
+                }`}
+              >
+                <span className="text-lg leading-none">{f.icon}</span>
+                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{f.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -704,7 +1083,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           onClick={() => setLengthInput(null)}>
           <div className="bg-white rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold text-center mb-1">
-              {activeConfig?.icon} {activeConfig?.label}
+              {ALL_ELEMENTS.find(e => e.type === activeType)?.icon} {ALL_ELEMENTS.find(e => e.type === activeType)?.label}
             </p>
             <p className="text-xs text-muted-foreground text-center mb-4">
               Стена {(lengthInput.wallIndex + 1)}: {room.walls[lengthInput.wallIndex]} см
@@ -728,6 +1107,53 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               <button onClick={confirmLength}
                 className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
                 Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Furniture size modal */}
+      {furnitureMenu && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
+          onClick={() => setFurnitureMenu(null)}>
+          <div className="bg-white rounded-2xl p-5 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-center mb-1">
+              {FURNITURE.find(f => f.furnitureType === furnitureMenu.furnitureType)?.icon}{" "}
+              {FURNITURE.find(f => f.furnitureType === furnitureMenu.furnitureType)?.label}
+            </p>
+            <p className="text-xs text-muted-foreground text-center mb-4">Укажите размеры (см)</p>
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Ширина</label>
+                <input
+                  type="number"
+                  value={furnW}
+                  onChange={e => setFurnW(e.target.value)}
+                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                  autoFocus
+                  inputMode="numeric"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Глубина</label>
+                <input
+                  type="number"
+                  value={furnH}
+                  onChange={e => setFurnH(e.target.value)}
+                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setFurnitureMenu(null)}
+                className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">
+                Отмена
+              </button>
+              <button onClick={confirmFurniture}
+                className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
+                Поставить
               </button>
             </div>
           </div>
