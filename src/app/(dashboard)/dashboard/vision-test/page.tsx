@@ -81,7 +81,7 @@ function calcWithTurns(
       y += DY[dir] * lengths[i];
       dir = angles[i] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
     }
-    if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return { area: 0, perimeter };
+    // Shoelace handles small gaps fine — always compute area
   } else {
     // Trig path: arbitrary angles
     let x = 0, y = 0, dirRad = 0;
@@ -91,7 +91,6 @@ function calcWithTurns(
       y += Math.sin(dirRad) * lengths[i];
       dirRad += angles[i] * Math.PI / 180;
     }
-    if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return { area: 0, perimeter };
   }
 
   // Base polygon area (Shoelace)
@@ -636,7 +635,7 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   function handleAdd() {
-    const result = doneResult ?? approxResult;
+    const result = isValid ? doneResult! : approxResult;
     if (!result) return;
     onDone(buildRoom(result.area, result.perimeter));
   }
@@ -709,11 +708,11 @@ function WallWizard({ onDone, onCancel }: {
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-blue-50 p-4 text-center">
-                <div className="text-4xl font-bold text-blue-600">{(doneResult ?? approxResult)!.area}</div>
+                <div className="text-4xl font-bold text-blue-600">{(isValid ? doneResult! : approxResult!).area}</div>
                 <div className="text-xs text-muted-foreground mt-1">м² площадь</div>
               </div>
               <div className="rounded-xl bg-purple-50 p-4 text-center">
-                <div className="text-4xl font-bold text-purple-600">{(doneResult ?? approxResult)!.perimeter}</div>
+                <div className="text-4xl font-bold text-purple-600">{(isValid ? doneResult! : approxResult!).perimeter}</div>
                 <div className="text-xs text-muted-foreground mt-1">м периметр</div>
               </div>
             </div>
