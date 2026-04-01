@@ -19,8 +19,9 @@ export async function generateMetadata({
   if (!estimate) return { title: "КП не найдено" };
 
   const company = estimate.master.companyName || estimate.master.firstName;
+  const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
   return {
-    title: `КП от ${company} | ${formatArea(estimate.totalArea)}`,
+    title: `КП от ${company}${areaStr}`,
     description: `Коммерческое предложение на натяжные потолки от ${company}`,
   };
 }
@@ -58,10 +59,11 @@ export default async function PublicKpPage({
       .catch(() => {});
   }
 
-  const calc = estimate.calculationData as unknown as CalculationResult;
+  const calc = estimate.calculationData as unknown as CalculationResult & { quickEstimate?: boolean };
   const master = estimate.master;
   const company = master.companyName || master.firstName;
   const brandColor = master.brandColor || "#1e3a5f";
+  const isQuick = !!(calc as { quickEstimate?: boolean }).quickEstimate;
 
   const isExpired =
     estimate.validUntil ? new Date(estimate.validUntil) < new Date() : false;
@@ -125,9 +127,11 @@ export default async function PublicKpPage({
                 👤 {estimate.clientName}
               </span>
             )}
-            <span className="bg-white/10 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full border border-white/20">
-              📐 {formatArea(estimate.totalArea)}
-            </span>
+            {!isQuick && estimate.totalArea > 0 && (
+              <span className="bg-white/10 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full border border-white/20">
+                📐 {formatArea(estimate.totalArea)}
+              </span>
+            )}
             <span className="bg-white/10 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full border border-white/20">
               📅 {formatDate(estimate.createdAt)}
             </span>

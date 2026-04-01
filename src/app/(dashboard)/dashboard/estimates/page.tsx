@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Bot, Calculator } from "lucide-react";
+import { Plus, FileText, Bot, Calculator, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import { EstimatesList } from "./estimates-list";
 
@@ -39,12 +39,20 @@ export default async function EstimatesPage() {
             Всего: {estimates.length}
           </p>
         </div>
-        <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
-          <Link href="/dashboard/calculator">
-            <Plus className="h-4 w-4 mr-2" />
-            Новый расчёт
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/quick-estimate">
+              <Zap className="h-4 w-4 mr-2" />
+              Быстрое КП
+            </Link>
+          </Button>
+          <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+            <Link href="/dashboard/calculator">
+              <Plus className="h-4 w-4 mr-2" />
+              Новый расчёт
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {estimates.length === 0 ? (
@@ -70,6 +78,12 @@ export default async function EstimatesPage() {
                 <Link href="/dashboard/calculator">
                   <Calculator className="h-4 w-4 mr-2" />
                   Калькулятор
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard/quick-estimate">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Быстрое КП
                 </Link>
               </Button>
             </div>

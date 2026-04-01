@@ -124,8 +124,8 @@ export function ConfirmSection({
                         {rr.roomName}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {rr.area.toFixed(1)} м²
-                        {rr.items.length > 0 && ` · ${rr.items.length} позиций`}
+                        {rr.area > 0 && `${rr.area.toFixed(1)} м²`}
+                        {rr.items.length > 0 && `${rr.area > 0 ? " · " : ""}${rr.items.length} позиций`}
                         {rr.heightMultiplied && (
                           <span className="text-orange-500 ml-1">· высота &gt;3м</span>
                         )}
@@ -178,7 +178,7 @@ export function ConfirmSection({
         {/* Hint to expand */}
         {roomResults.length > 0 && expandedRooms.size === 0 && (
           <p className="text-[11px] text-gray-400 text-center pb-3">
-            Нажмите на комнату, чтобы увидеть детальный состав
+            Нажмите на раздел, чтобы увидеть детальный состав
           </p>
         )}
 

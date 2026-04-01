@@ -69,12 +69,13 @@ export async function GET(
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     }
 
-    const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult;
+    const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult & { quickEstimate?: boolean };
     const company = estimate.master.companyName || estimate.master.firstName || "";
     const total = estimate.total || estimate.standardTotal || 0;
     const contactPhone = estimate.master.whatsappPhone || estimate.master.phone || "";
     const discount = estimate.discountPercent || 0;
     const subtotal = calc?.subtotal || total;
+    const isQuick = !!(calc as { quickEstimate?: boolean }).quickEstimate;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const roomResults: RoomResult[] = calc?.roomResults
@@ -141,12 +142,17 @@ export async function GET(
     const cardCount = 4;
     const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
-    const summaryCards = [
-      { label: "Площадь", value: `${(calc.totalArea ?? 0).toFixed(1)} м²`, color: C.primary },
-      { label: "Комнат", value: `${roomResults.length}`, color: C.primary },
-      { label: "Цена/м²", value: fmtPrice(calc.pricePerM2 ?? 0), color: C.primary },
-      { label: "ИТОГО", value: fmtPrice(total), color: C.accent },
-    ];
+    const summaryCards = isQuick
+      ? [
+          { label: "Позиций", value: `${roomResults[0]?.items?.length ?? 0}`, color: C.primary },
+          { label: "ИТОГО", value: fmtPrice(total), color: C.accent },
+        ]
+      : [
+          { label: "Площадь", value: `${(calc.totalArea ?? 0).toFixed(1)} м²`, color: C.primary },
+          { label: "Комнат", value: `${roomResults.length}`, color: C.primary },
+          { label: "Цена/м²", value: fmtPrice(calc.pricePerM2 ?? 0), color: C.primary },
+          { label: "ИТОГО", value: fmtPrice(total), color: C.accent },
+        ];
 
     for (let i = 0; i < summaryCards.length; i++) {
       const cx = ML + i * (cardW + cardGap);
@@ -243,9 +249,11 @@ export async function GET(
       doc.restore();
 
       doc.font("Sans-Bold").fontSize(13).fillColor(C.primary)
-        .text(rr.roomName ?? "Комната", ML + 12, y + 3, { continued: true });
-      doc.font("Sans").fontSize(11).fillColor(C.textLight)
-        .text(`  ${(rr.area ?? 0).toFixed(1)} м²`);
+        .text(rr.roomName ?? "Комната", ML + 12, y + 3, { continued: (rr.area ?? 0) > 0 });
+      if ((rr.area ?? 0) > 0) {
+        doc.font("Sans").fontSize(11).fillColor(C.textLight)
+          .text(`  ${rr.area.toFixed(1)} м²`);
+      }
       y += 30;
 
       // Table header
@@ -341,7 +349,7 @@ export async function GET(
     y += 72;
 
     // Stats row below total
-    if ((calc.totalArea ?? 0) > 0) {
+    if (!isQuick && (calc.totalArea ?? 0) > 0) {
       const statsText = [
         `${(calc.totalArea ?? 0).toFixed(1)} м²`,
         `${fmtPrice(calc.pricePerM2 ?? 0)}/м²`,

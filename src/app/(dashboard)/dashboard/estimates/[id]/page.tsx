@@ -55,7 +55,7 @@ export default async function EstimateDetailPage({
             {estimate.clientName || "Расчёт"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {formatDate(estimate.createdAt)} | {formatArea(estimate.totalArea)}
+            {formatDate(estimate.createdAt)}{estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : ""}
           </p>
         </div>
         <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
@@ -125,9 +125,11 @@ export default async function EstimateDetailPage({
         <CardContent className="pt-4 pb-4 bg-blue-50">
           <span className="font-semibold text-[#1e3a5f]">Итого</span>
           <p className="text-2xl font-bold">{formatPrice(estimate.total || estimate.standardTotal || 0)}</p>
-          <p className="text-xs text-muted-foreground">
-            {formatPrice(Math.round((estimate.total || estimate.standardTotal || 0) / estimate.totalArea))}/м²
-          </p>
+          {estimate.totalArea > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {formatPrice(Math.round((estimate.total || estimate.standardTotal || 0) / estimate.totalArea))}/м²
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -141,7 +143,9 @@ export default async function EstimateDetailPage({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Детализация ({calc.rooms?.length ?? roomResults.length} помещений)
+                {estimate.totalArea > 0
+                  ? `Детализация (${calc.rooms?.length ?? roomResults.length} помещений)`
+                  : "Детализация работ"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -150,7 +154,7 @@ export default async function EstimateDetailPage({
                   <div className="flex justify-between items-baseline">
                     <p className="text-sm font-semibold">
                       {rr.roomName}
-                      <span className="text-muted-foreground font-normal ml-1">({rr.area.toFixed(1)} м²)</span>
+                      {rr.area > 0 && <span className="text-muted-foreground font-normal ml-1">({rr.area.toFixed(1)} м²)</span>}
                     </p>
                     <p className="text-sm font-bold">{formatPrice(rr.subtotalAfterHeight)}</p>
                   </div>
