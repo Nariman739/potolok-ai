@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight } from "lucide-react";
+import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
@@ -470,6 +470,7 @@ interface Room {
   area: number;
   perimeter: number;
   elements?: RoomElement[];
+  photoUrls?: string[];     // Фото потолка комнаты
 }
 
 interface SavedObject {
@@ -1041,14 +1042,61 @@ function WallWizard({ onDone, onCancel }: {
 // Room Card
 // ─────────────────────────────────────────────────────
 
-function RoomCard({ room, index, onRemove, onView, onDesign }: {
+function RoomCard({ room, index, onRemove, onView, onDesign, activeObjectId, onPhotosChange }: {
   room: Room;
   index: number;
   onRemove: () => void;
   onView: () => void;
   onDesign: () => void;
+  activeObjectId: string | null;
+  onPhotosChange: (roomId: string, photoUrls: string[]) => void;
 }) {
   const elCount = room.elements?.length || 0;
+  const photoCount = room.photoUrls?.length || 0;
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files?.length || !activeObjectId) return;
+    setUploading(true);
+    try {
+      let currentUrls = [...(room.photoUrls || [])];
+      for (const file of Array.from(files)) {
+        if (currentUrls.length >= 10) break;
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${room.id}/photos`, {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          currentUrls = data.photoUrls;
+        }
+      }
+      onPhotosChange(room.id, currentUrls);
+    } catch { /* ignore */ }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleDeletePhoto(url: string) {
+    if (!activeObjectId || !confirm("Удалить фото?")) return;
+    try {
+      const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${room.id}/photos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onPhotosChange(room.id, data.photoUrls);
+      }
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="rounded-lg border p-4 cursor-pointer active:bg-gray-50" onClick={onView}>
       <div className="flex items-start justify-between gap-2">
@@ -1059,6 +1107,11 @@ function RoomCard({ room, index, onRemove, onView, onDesign }: {
             <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
               {room.walls.length} стен
             </span>
+            {photoCount > 0 && (
+              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" /> {photoCount}
+              </span>
+            )}
           </div>
           <div className="mt-2 flex items-baseline gap-4">
             <span className="text-2xl font-bold text-blue-600">{room.area} м²</span>
@@ -1080,12 +1133,63 @@ function RoomCard({ room, index, onRemove, onView, onDesign }: {
             {elCount > 0 ? "Дизайн ✎" : "Дизайн +"}
           </button>
           <button
+            onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}
+            className="rounded-lg px-2.5 py-1.5 text-xs font-medium border border-blue-200 text-blue-600 active:bg-blue-50 flex items-center gap-1"
+            disabled={uploading || !activeObjectId}>
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+            Фото
+          </button>
+          <button
             onClick={e => { e.stopPropagation(); onRemove(); }}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors self-center">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
+
+      {/* Photo gallery */}
+      {photoCount > 0 && (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" onClick={e => e.stopPropagation()}>
+          {room.photoUrls!.map((url, i) => (
+            <div key={i} className="relative shrink-0 group">
+              <img
+                src={url}
+                alt={`Фото ${i + 1}`}
+                className="w-16 h-16 rounded-lg object-cover cursor-pointer border"
+                onClick={() => setPreviewUrl(url)}
+              />
+              <button
+                onClick={() => handleDeletePhoto(url)}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
+      {/* Full-screen preview */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center"
+          onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); }}>
+          <button
+            onClick={() => setPreviewUrl(null)}
+            className="absolute top-4 right-4 p-2 text-white z-10">
+            <X className="h-7 w-7" />
+          </button>
+          <img src={previewUrl} alt="Preview" className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg" />
+        </div>
+      )}
     </div>
   );
 }
@@ -1227,6 +1331,9 @@ function HistoryDrawer({ saved, onResume, onDelete, onClose }: {
   onDelete: (id: string) => void;
   onClose: () => void;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
@@ -1245,23 +1352,83 @@ function HistoryDrawer({ saved, onResume, onDelete, onClose }: {
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {saved.slice().reverse().map(obj => {
             const date = new Date(obj.savedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+            const isExpanded = expandedId === obj.id;
+            const totalPhotos = obj.rooms.reduce((s, r) => s + (r.photoUrls?.length || 0), 0);
             return (
-              <div key={obj.id} className="rounded-xl border p-4 flex items-center gap-3">
-                <button className="flex-1 min-w-0 text-left" onClick={() => onResume(obj)}>
-                  <div className="font-medium truncate">{obj.address || "Без адреса"}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">
-                    {obj.rooms.length} помещ. · <span className="font-semibold text-blue-600">{obj.totalArea} м²</span> · {date}
+              <div key={obj.id} className="rounded-xl border overflow-hidden">
+                <div className="p-4 flex items-center gap-3">
+                  <button className="flex-1 min-w-0 text-left" onClick={() => onResume(obj)}>
+                    <div className="font-medium truncate">{obj.address || "Без адреса"}</div>
+                    <div className="text-sm text-muted-foreground mt-0.5">
+                      {obj.rooms.length} помещ. · <span className="font-semibold text-blue-600">{obj.totalArea} м²</span> · {date}
+                      {totalPhotos > 0 && (
+                        <span className="ml-1.5 text-blue-500">
+                          · <ImageIcon className="h-3 w-3 inline" /> {totalPhotos}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  {totalPhotos > 0 && (
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : obj.id)}
+                      className="shrink-0 p-1.5 rounded-lg text-blue-500 hover:bg-blue-50">
+                      <Camera className="h-4 w-4" />
+                    </button>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 cursor-pointer" onClick={() => onResume(obj)} />
+                  <button
+                    onClick={() => onDelete(obj.id)}
+                    className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Expanded: rooms with photos */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 space-y-3 border-t pt-3 bg-gray-50/50">
+                    {obj.rooms.map((r) => {
+                      const photos = r.photoUrls || [];
+                      return (
+                        <div key={r.id}>
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-sm font-medium">{r.name}</span>
+                            <span className="text-xs text-muted-foreground">{r.area} м²</span>
+                          </div>
+                          {photos.length > 0 ? (
+                            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                              {photos.map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={url}
+                                  alt={`${r.name} фото ${i + 1}`}
+                                  className="w-20 h-20 rounded-lg object-cover cursor-pointer border shrink-0"
+                                  onClick={() => setPreviewUrl(url)}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground mt-1">Нет фото</div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </button>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" onClick={() => onResume(obj)} />
-                <button
-                  onClick={() => onDelete(obj.id)}
-                  className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Full-screen preview */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center"
+          onClick={() => setPreviewUrl(null)}>
+          <button onClick={() => setPreviewUrl(null)} className="absolute top-4 right-4 p-2 text-white z-10">
+            <X className="h-7 w-7" />
+          </button>
+          <img src={previewUrl} alt="Preview" className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg" />
         </div>
       )}
     </div>
@@ -1380,6 +1547,7 @@ export default function ZameryPage() {
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
+              photoUrls: (r.photoUrls as string[]) || [],
             })));
           }
         }
@@ -1398,6 +1566,7 @@ export default function ZameryPage() {
               angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
               area: r.area,
               perimeter: r.perimeter,
+              photoUrls: (r.photoUrls as string[]) || [],
             })),
           })));
         }
@@ -1747,6 +1916,10 @@ export default function ZameryPage() {
                 onRemove={() => removeRoom(room.id)}
                 onView={() => setViewingRoom(room)}
                 onDesign={() => setDesigningRoom(room)}
+                activeObjectId={activeObjectId}
+                onPhotosChange={(roomId, photoUrls) => {
+                  setRooms(prev => prev.map(r => r.id === roomId ? { ...r, photoUrls } : r));
+                }}
               />
             ))}
             {/* Summary + actions */}

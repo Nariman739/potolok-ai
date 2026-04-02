@@ -1262,6 +1262,7 @@ export const MeasurementRoomScalarFieldEnum = {
   area: 'area',
   perimeter: 'perimeter',
   elements: 'elements',
+  photoUrls: 'photoUrls',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

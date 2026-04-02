@@ -241,6 +241,7 @@ model MeasurementRoom {
   area           Float
   perimeter      Float
   elements       Json     @default("[]")  // RoomElement[] — софиты, люстры, гардины и т.д.
+  photoUrls      String[] @default([])    // Фото потолка комнаты (Vercel Blob URLs)
   sortOrder      Int      @default(0)
 
   createdAt      DateTime @default(now())
