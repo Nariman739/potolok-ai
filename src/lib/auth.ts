@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -102,23 +102,13 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
   };
 }
 
-export async function requireAuth(request?: Request): Promise<MasterProfile> {
+export async function requireAuth(): Promise<MasterProfile> {
   // Try cookie first (web)
   let master = await getCurrentMaster();
   if (master) return master;
 
   // Try Bearer token from Authorization header (mobile app)
-  if (request) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      master = await getCurrentMaster(authHeader.slice(7));
-      if (master) return master;
-    }
-  }
-
-  // Try from headers() — for Next.js API routes that don't pass request
   try {
-    const { headers } = await import("next/headers");
     const headerStore = await headers();
     const authHeader = headerStore.get("authorization");
     if (authHeader?.startsWith("Bearer ")) {
