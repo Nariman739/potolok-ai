@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const { address, status, rooms } = body as {
       address?: string;
       status?: string;
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; area: number; perimeter: number }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; area: number; perimeter: number; elements?: any[] }[];
     };
 
     const totalArea = rooms
@@ -51,9 +51,10 @@ export async function POST(request: Request) {
               create: rooms.map((r, i) => ({
                 name: r.name,
                 walls: r.walls,
-                normalCorners: r.normalCorners,
+                normalCorners: r.normalCorners || r.walls.map(() => true),
                 area: r.area,
                 perimeter: r.perimeter,
+                elements: r.elements || [],
                 sortOrder: i,
               })),
             }
