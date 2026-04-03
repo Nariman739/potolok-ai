@@ -276,7 +276,7 @@ function calculatePerimeter(walls_cm: number[]): number {
 // ─────────────────────────────────────────────────────
 export async function runVisionAgents(imageBase64Url: string): Promise<MultiAgentResult> {
   const raw = await callVisionAgent(imageBase64Url);
-  console.log("[Vision Agent] Full response:", raw);
+  console.log("[Vision Agent] Response received, length:", raw.length);
 
   const data = extractJson(raw) as AIReadingResult;
   const merged: MergedRoom[] = [];

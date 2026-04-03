@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       companyName: master.companyName,
     });
   } catch (error) {
-    console.error("Register error:", error);
+    console.error("Register error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
       { error: "Ошибка регистрации" },
       { status: 500 }

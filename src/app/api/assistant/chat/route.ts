@@ -355,9 +355,9 @@ export async function POST(request: Request) {
       });
     }
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("Chat error:", errMsg, error);
+    console.error("Chat error:", errMsg);
     return new Response(
-      JSON.stringify({ error: "Ошибка чата", detail: errMsg }),
+      JSON.stringify({ error: "Ошибка чата" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

@@ -110,8 +110,8 @@ export async function handleTelegramBotMessage(
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("Telegram bot AI error:", errMsg, error);
-    await sendTelegramMessage(chatId, `⚠️ Ошибка AI: ${errMsg.slice(0, 200)}\n\nПопробуйте /new и отправьте фото ещё раз.`);
+    console.error("Telegram bot AI error:", errMsg);
+    await sendTelegramMessage(chatId, `⚠️ Произошла ошибка. Попробуйте /new и отправьте фото ещё раз.`);
   }
 }
 
@@ -351,14 +351,14 @@ async function transcribeVoice(fileId: string): Promise<string | null> {
     });
 
     if (!res.ok) {
-      console.error("Groq STT error:", res.status, await res.text());
+      console.error("Groq STT error:", res.status);
       return null;
     }
 
     const data = await res.json();
     return data.text || null;
   } catch (e) {
-    console.error("Voice transcription failed:", e);
+    console.error("Voice transcription failed:", e instanceof Error ? e.message : e);
     return null;
   }
 }

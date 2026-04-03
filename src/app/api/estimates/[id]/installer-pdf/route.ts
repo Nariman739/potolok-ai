@@ -288,7 +288,7 @@ export async function GET(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
     const msg = error instanceof Error ? error.message : String(error);
-    console.error("Installer PDF error:", msg, error);
-    return NextResponse.json({ error: "Ошибка генерации", details: msg }, { status: 500 });
+    console.error("Installer PDF error:", msg);
+    return NextResponse.json({ error: "Ошибка генерации" }, { status: 500 });
   }
 }
