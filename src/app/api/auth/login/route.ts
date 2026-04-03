@@ -57,13 +57,14 @@ export async function POST(request: Request) {
       );
     }
 
-    await createSession(master.id);
+    const token = await createSession(master.id);
 
     return NextResponse.json({
       id: master.id,
       phone: master.phone,
       firstName: master.firstName,
       companyName: master.companyName,
+      token,
     });
   } catch (error) {
     console.error("Login error:", error);

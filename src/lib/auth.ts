@@ -47,9 +47,9 @@ export async function deleteSession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentMaster(): Promise<MasterProfile | null> {
+export async function getCurrentMaster(bearerToken?: string): Promise<MasterProfile | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = bearerToken || cookieStore.get(SESSION_COOKIE)?.value;
 
   if (!token) return null;
 
@@ -102,10 +102,32 @@ export async function getCurrentMaster(): Promise<MasterProfile | null> {
   };
 }
 
-export async function requireAuth(): Promise<MasterProfile> {
-  const master = await getCurrentMaster();
-  if (!master) {
-    throw new Error("Unauthorized");
+export async function requireAuth(request?: Request): Promise<MasterProfile> {
+  // Try cookie first (web)
+  let master = await getCurrentMaster();
+  if (master) return master;
+
+  // Try Bearer token from Authorization header (mobile app)
+  if (request) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      master = await getCurrentMaster(authHeader.slice(7));
+      if (master) return master;
+    }
   }
-  return master;
+
+  // Try from headers() — for Next.js API routes that don't pass request
+  try {
+    const { headers } = await import("next/headers");
+    const headerStore = await headers();
+    const authHeader = headerStore.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      master = await getCurrentMaster(authHeader.slice(7));
+      if (master) return master;
+    }
+  } catch {
+    // headers() not available outside request context
+  }
+
+  throw new Error("Unauthorized");
 }
