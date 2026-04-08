@@ -30,6 +30,9 @@ export async function POST(
         name: string;
         walls: number[];
         normalCorners: boolean[];
+        angles?: number[];
+        arcBulges?: number[];
+        columns?: unknown[];
         area: number;
         perimeter: number;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,6 +45,9 @@ export async function POST(
           name: r.name || "",
           walls: r.walls,
           normalCorners: r.normalCorners,
+          angles: r.angles ?? undefined,
+          arcBulges: r.arcBulges ?? undefined,
+          columns: r.columns as any ?? undefined,
           area: r.area,
           perimeter: r.perimeter,
           elements: r.elements ?? [],

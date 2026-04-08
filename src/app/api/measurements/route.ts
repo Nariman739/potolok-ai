@@ -33,7 +33,8 @@ export async function POST(request: Request) {
     const { address, status, rooms } = body as {
       address?: string;
       status?: string;
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; area: number; perimeter: number; elements?: any[] }[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
     };
 
     const totalArea = rooms
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
                 name: r.name,
                 walls: r.walls,
                 normalCorners: r.normalCorners || r.walls.map(() => true),
+                angles: r.angles ?? undefined,
+                arcBulges: r.arcBulges ?? undefined,
+                columns: r.columns ?? undefined,
                 area: r.area,
                 perimeter: r.perimeter,
                 elements: r.elements || [],

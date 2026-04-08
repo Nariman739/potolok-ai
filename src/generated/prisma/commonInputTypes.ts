@@ -382,6 +382,23 @@ export type EnumChatStatusWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumChatStatusFilter<$PrismaModel>
 }
 
+export type EnumInstagramPostStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.InstagramPostStatus | Prisma.EnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel> | $Enums.InstagramPostStatus
+}
+
+export type EnumInstagramPostStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InstagramPostStatus | Prisma.EnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInstagramPostStatusWithAggregatesFilter<$PrismaModel> | $Enums.InstagramPostStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -696,6 +713,23 @@ export type NestedEnumChatStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumChatStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumChatStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumInstagramPostStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.InstagramPostStatus | Prisma.EnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel> | $Enums.InstagramPostStatus
+}
+
+export type NestedEnumInstagramPostStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InstagramPostStatus | Prisma.EnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InstagramPostStatus[] | Prisma.ListEnumInstagramPostStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInstagramPostStatusWithAggregatesFilter<$PrismaModel> | $Enums.InstagramPostStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInstagramPostStatusFilter<$PrismaModel>
 }
 
 

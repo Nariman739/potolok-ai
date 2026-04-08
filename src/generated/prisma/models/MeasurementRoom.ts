@@ -66,6 +66,9 @@ export type MeasurementRoomCountAggregateOutputType = {
   name: number
   walls: number
   normalCorners: number
+  angles: number
+  arcBulges: number
+  columns: number
   area: number
   perimeter: number
   elements: number
@@ -117,6 +120,9 @@ export type MeasurementRoomCountAggregateInputType = {
   name?: true
   walls?: true
   normalCorners?: true
+  angles?: true
+  arcBulges?: true
+  columns?: true
   area?: true
   perimeter?: true
   elements?: true
@@ -219,6 +225,9 @@ export type MeasurementRoomGroupByOutputType = {
   name: string
   walls: runtime.JsonValue
   normalCorners: runtime.JsonValue
+  angles: runtime.JsonValue | null
+  arcBulges: runtime.JsonValue | null
+  columns: runtime.JsonValue | null
   area: number
   perimeter: number
   elements: runtime.JsonValue
@@ -257,6 +266,9 @@ export type MeasurementRoomWhereInput = {
   name?: Prisma.StringFilter<"MeasurementRoom"> | string
   walls?: Prisma.JsonFilter<"MeasurementRoom">
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
+  angles?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  arcBulges?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  columns?: Prisma.JsonNullableFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
@@ -273,6 +285,9 @@ export type MeasurementRoomOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   walls?: Prisma.SortOrder
   normalCorners?: Prisma.SortOrder
+  angles?: Prisma.SortOrderInput | Prisma.SortOrder
+  arcBulges?: Prisma.SortOrderInput | Prisma.SortOrder
+  columns?: Prisma.SortOrderInput | Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
@@ -292,6 +307,9 @@ export type MeasurementRoomWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"MeasurementRoom"> | string
   walls?: Prisma.JsonFilter<"MeasurementRoom">
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
+  angles?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  arcBulges?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  columns?: Prisma.JsonNullableFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
@@ -308,6 +326,9 @@ export type MeasurementRoomOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   walls?: Prisma.SortOrder
   normalCorners?: Prisma.SortOrder
+  angles?: Prisma.SortOrderInput | Prisma.SortOrder
+  arcBulges?: Prisma.SortOrderInput | Prisma.SortOrder
+  columns?: Prisma.SortOrderInput | Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
@@ -331,6 +352,9 @@ export type MeasurementRoomScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"MeasurementRoom"> | string
   walls?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
   normalCorners?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
+  angles?: Prisma.JsonNullableWithAggregatesFilter<"MeasurementRoom">
+  arcBulges?: Prisma.JsonNullableWithAggregatesFilter<"MeasurementRoom">
+  columns?: Prisma.JsonNullableWithAggregatesFilter<"MeasurementRoom">
   area?: Prisma.FloatWithAggregatesFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatWithAggregatesFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
@@ -345,6 +369,9 @@ export type MeasurementRoomCreateInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -361,6 +388,9 @@ export type MeasurementRoomUncheckedCreateInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -375,6 +405,9 @@ export type MeasurementRoomUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -391,6 +424,9 @@ export type MeasurementRoomUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -406,6 +442,9 @@ export type MeasurementRoomCreateManyInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -420,6 +459,9 @@ export type MeasurementRoomUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -435,6 +477,9 @@ export type MeasurementRoomUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -460,6 +505,9 @@ export type MeasurementRoomCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   walls?: Prisma.SortOrder
   normalCorners?: Prisma.SortOrder
+  angles?: Prisma.SortOrder
+  arcBulges?: Prisma.SortOrder
+  columns?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
@@ -559,6 +607,9 @@ export type MeasurementRoomCreateWithoutObjectInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -573,6 +624,9 @@ export type MeasurementRoomUncheckedCreateWithoutObjectInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -617,6 +671,9 @@ export type MeasurementRoomScalarWhereInput = {
   name?: Prisma.StringFilter<"MeasurementRoom"> | string
   walls?: Prisma.JsonFilter<"MeasurementRoom">
   normalCorners?: Prisma.JsonFilter<"MeasurementRoom">
+  angles?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  arcBulges?: Prisma.JsonNullableFilter<"MeasurementRoom">
+  columns?: Prisma.JsonNullableFilter<"MeasurementRoom">
   area?: Prisma.FloatFilter<"MeasurementRoom"> | number
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
@@ -631,6 +688,9 @@ export type MeasurementRoomCreateManyObjectInput = {
   name?: string
   walls: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area: number
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -645,6 +705,9 @@ export type MeasurementRoomUpdateWithoutObjectInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -659,6 +722,9 @@ export type MeasurementRoomUncheckedUpdateWithoutObjectInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -673,6 +739,9 @@ export type MeasurementRoomUncheckedUpdateManyWithoutObjectInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   walls?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   normalCorners?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  angles?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  arcBulges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  columns?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   area?: Prisma.FloatFieldUpdateOperationsInput | number
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -690,6 +759,9 @@ export type MeasurementRoomSelect<ExtArgs extends runtime.Types.Extensions.Inter
   name?: boolean
   walls?: boolean
   normalCorners?: boolean
+  angles?: boolean
+  arcBulges?: boolean
+  columns?: boolean
   area?: boolean
   perimeter?: boolean
   elements?: boolean
@@ -706,6 +778,9 @@ export type MeasurementRoomSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   name?: boolean
   walls?: boolean
   normalCorners?: boolean
+  angles?: boolean
+  arcBulges?: boolean
+  columns?: boolean
   area?: boolean
   perimeter?: boolean
   elements?: boolean
@@ -722,6 +797,9 @@ export type MeasurementRoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   name?: boolean
   walls?: boolean
   normalCorners?: boolean
+  angles?: boolean
+  arcBulges?: boolean
+  columns?: boolean
   area?: boolean
   perimeter?: boolean
   elements?: boolean
@@ -738,6 +816,9 @@ export type MeasurementRoomSelectScalar = {
   name?: boolean
   walls?: boolean
   normalCorners?: boolean
+  angles?: boolean
+  arcBulges?: boolean
+  columns?: boolean
   area?: boolean
   perimeter?: boolean
   elements?: boolean
@@ -747,7 +828,7 @@ export type MeasurementRoomSelectScalar = {
   updatedAt?: boolean
 }
 
-export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "area" | "perimeter" | "elements" | "photoUrls" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
+export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "angles" | "arcBulges" | "columns" | "area" | "perimeter" | "elements" | "photoUrls" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
 export type MeasurementRoomInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   object?: boolean | Prisma.MeasurementObjectDefaultArgs<ExtArgs>
 }
@@ -769,6 +850,9 @@ export type $MeasurementRoomPayload<ExtArgs extends runtime.Types.Extensions.Int
     name: string
     walls: runtime.JsonValue
     normalCorners: runtime.JsonValue
+    angles: runtime.JsonValue | null
+    arcBulges: runtime.JsonValue | null
+    columns: runtime.JsonValue | null
     area: number
     perimeter: number
     elements: runtime.JsonValue
@@ -1205,6 +1289,9 @@ export interface MeasurementRoomFieldRefs {
   readonly name: Prisma.FieldRef<"MeasurementRoom", 'String'>
   readonly walls: Prisma.FieldRef<"MeasurementRoom", 'Json'>
   readonly normalCorners: Prisma.FieldRef<"MeasurementRoom", 'Json'>
+  readonly angles: Prisma.FieldRef<"MeasurementRoom", 'Json'>
+  readonly arcBulges: Prisma.FieldRef<"MeasurementRoom", 'Json'>
+  readonly columns: Prisma.FieldRef<"MeasurementRoom", 'Json'>
   readonly area: Prisma.FieldRef<"MeasurementRoom", 'Float'>
   readonly perimeter: Prisma.FieldRef<"MeasurementRoom", 'Float'>
   readonly elements: Prisma.FieldRef<"MeasurementRoom", 'Json'>

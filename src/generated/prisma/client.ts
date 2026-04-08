@@ -84,3 +84,13 @@ export type MeasurementRoom = Prisma.MeasurementRoomModel
  * 
  */
 export type PortfolioWork = Prisma.PortfolioWorkModel
+/**
+ * Model InstagramAccount
+ * 
+ */
+export type InstagramAccount = Prisma.InstagramAccountModel
+/**
+ * Model InstagramPost
+ * 
+ */
+export type InstagramPost = Prisma.InstagramPostModel

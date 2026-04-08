@@ -59,7 +59,9 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
-  PortfolioWork: 'PortfolioWork'
+  PortfolioWork: 'PortfolioWork',
+  InstagramAccount: 'InstagramAccount',
+  InstagramPost: 'InstagramPost'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -220,6 +222,9 @@ export const MeasurementRoomScalarFieldEnum = {
   name: 'name',
   walls: 'walls',
   normalCorners: 'normalCorners',
+  angles: 'angles',
+  arcBulges: 'arcBulges',
+  columns: 'columns',
   area: 'area',
   perimeter: 'perimeter',
   elements: 'elements',
@@ -248,6 +253,44 @@ export const PortfolioWorkScalarFieldEnum = {
 } as const
 
 export type PortfolioWorkScalarFieldEnum = (typeof PortfolioWorkScalarFieldEnum)[keyof typeof PortfolioWorkScalarFieldEnum]
+
+
+export const InstagramAccountScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  instagramUserId: 'instagramUserId',
+  accessToken: 'accessToken',
+  tokenExpiresAt: 'tokenExpiresAt',
+  username: 'username',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramAccountScalarFieldEnum = (typeof InstagramAccountScalarFieldEnum)[keyof typeof InstagramAccountScalarFieldEnum]
+
+
+export const InstagramPostScalarFieldEnum = {
+  id: 'id',
+  instagramAccountId: 'instagramAccountId',
+  caption: 'caption',
+  hashtags: 'hashtags',
+  mediaUrls: 'mediaUrls',
+  mediaType: 'mediaType',
+  coverIndex: 'coverIndex',
+  agentAnalysis: 'agentAnalysis',
+  postType: 'postType',
+  scheduledAt: 'scheduledAt',
+  publishedAt: 'publishedAt',
+  instagramMediaId: 'instagramMediaId',
+  status: 'status',
+  errorMessage: 'errorMessage',
+  telegramChatId: 'telegramChatId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramPostScalarFieldEnum = (typeof InstagramPostScalarFieldEnum)[keyof typeof InstagramPostScalarFieldEnum]
 
 
 export const SortOrder = {

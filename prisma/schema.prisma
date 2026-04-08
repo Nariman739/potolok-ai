@@ -69,6 +69,7 @@ model Master {
   customItems     CustomItem[]
   portfolioWorks  PortfolioWork[]
   measurements    MeasurementObject[]
+  instagramAccount InstagramAccount?
 
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
@@ -238,6 +239,9 @@ model MeasurementRoom {
   name           String   @default("")
   walls          Json     // number[] — длины стен в см
   normalCorners  Json     // boolean[] — тип углов
+  angles         Json?    // number[] — углы поворота (90, -90, custom)
+  arcBulges      Json?    // number[] — дуги стен (bulge factor)
+  columns        Json?    // RoomColumn[] — колонны в комнате
   area           Float
   perimeter      Float
   elements       Json     @default("[]")  // RoomElement[] — софиты, люстры, гардины и т.д.
@@ -274,4 +278,70 @@ model PortfolioWork {
   updatedAt     DateTime @updatedAt
 
   master        Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// INSTAGRAM AUTO-POSTING
+// ============================================
+
+model InstagramAccount {
+  id                String   @id @default(uuid())
+  masterId          String   @unique
+  instagramUserId   String   // Instagram Business Account ID
+  accessToken       String   // Long-lived token (60 days)
+  tokenExpiresAt    DateTime // Token expiry date
+  username          String?  // @handle for display
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  master            Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  posts             InstagramPost[]
+}
+
+model InstagramPost {
+  id                  String              @id @default(uuid())
+  instagramAccountId  String
+
+  // Content
+  caption             String              // Generated caption
+  hashtags            String              // Hashtags string
+  mediaUrls           String[]  @default([])  // Vercel Blob public URLs
+  mediaType           String    @default("CAROUSEL") // IMAGE | CAROUSEL | VIDEO
+  coverIndex          Int       @default(0)   // Which photo is cover
+
+  // AI Analysis
+  agentAnalysis       Json?               // Full pipeline output from all 5 agents
+  postType            String?             // "before_after" | "showcase" | "tips" | "process"
+
+  // Scheduling
+  scheduledAt         DateTime?           // When to publish
+  publishedAt         DateTime?           // When actually published
+  instagramMediaId    String?             // Returned by Instagram API after publish
+
+  // Status
+  status              InstagramPostStatus @default(DRAFT)
+  errorMessage        String?
+
+  // Source
+  telegramChatId      String?             // Which Telegram chat initiated this
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  account             InstagramAccount    @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, status])
+  @@index([status, scheduledAt])
+}
+
+enum InstagramPostStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  REJECTED
 }

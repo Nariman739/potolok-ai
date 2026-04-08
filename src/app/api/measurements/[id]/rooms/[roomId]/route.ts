@@ -10,10 +10,13 @@ export async function PATCH(
     const master = await requireAuth();
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, area, perimeter, elements } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, columns, area, perimeter, elements } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
+      angles?: number[];
+      arcBulges?: number[];
+      columns?: unknown[];
       area?: number;
       perimeter?: number;
       elements?: unknown;
@@ -33,6 +36,9 @@ export async function PATCH(
     if (name !== undefined) data.name = name;
     if (walls !== undefined) data.walls = walls;
     if (normalCorners !== undefined) data.normalCorners = normalCorners;
+    if (angles !== undefined) data.angles = angles;
+    if (arcBulges !== undefined) data.arcBulges = arcBulges;
+    if (columns !== undefined) data.columns = columns;
     if (area !== undefined) data.area = area;
     if (perimeter !== undefined) data.perimeter = perimeter;
     if (elements !== undefined) data.elements = elements;

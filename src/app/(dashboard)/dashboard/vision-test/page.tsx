@@ -1538,12 +1538,14 @@ export default function ZameryPage() {
             const obj = activeList[0];
             setActiveObjectId(obj.id);
             setObjectName(obj.address || "");
-            setRooms(obj.rooms.map((r: Room & { objectId?: string }) => ({
+            setRooms(obj.rooms.map((r: Room & { objectId?: string; arcBulges?: number[]; columns?: RoomColumn[] }) => ({
               id: r.id,
               name: r.name,
               walls: r.walls as number[],
               normalCorners: r.normalCorners as boolean[],
               angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
+              arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
+              columns: (r.columns as RoomColumn[]) ?? [],
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
@@ -1558,12 +1560,14 @@ export default function ZameryPage() {
             address: o.address,
             totalArea: o.totalArea,
             savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
-            rooms: (o.rooms || []).map((r: Room) => ({
+            rooms: (o.rooms || []).map((r: Room & { arcBulges?: number[]; columns?: RoomColumn[] }) => ({
               id: r.id,
               name: r.name,
               walls: r.walls as number[],
               normalCorners: r.normalCorners as boolean[],
               angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
+              arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
+              columns: (r.columns as RoomColumn[]) ?? [],
               area: r.area,
               perimeter: r.perimeter,
               photoUrls: (r.photoUrls as string[]) || [],
@@ -1686,37 +1690,51 @@ export default function ZameryPage() {
     if (rooms.length === 0) return;
     const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
 
-    const savedObj: SavedObject = {
-      id: activeObjectId || crypto.randomUUID(),
-      address: objectName,
-      rooms: [...rooms],
-      totalArea,
-      savedAt: Date.now(),
-    };
-    setSavedObjects(prev => [...prev, savedObj]);
-    setRooms([]);
-    setObjectName("");
+    // Save to server FIRST, then clear local state
+    const currentRooms = [...rooms];
+    const currentName = objectName;
+    const currentId = activeObjectId;
 
-    if (activeObjectId) {
-      // Mark current as saved, clear active
-      await fetch(`/api/measurements/${activeObjectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "saved", totalArea }),
-      }).catch(() => {});
-    } else {
-      // Never saved to server yet, create as saved
-      await fetch("/api/measurements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: objectName,
-          status: "saved",
-          rooms: rooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
-        }),
-      }).catch(() => {});
+    try {
+      let savedId = currentId;
+
+      if (currentId) {
+        const res = await fetch(`/api/measurements/${currentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "saved", totalArea }),
+        });
+        if (!res.ok) throw new Error("Ошибка сохранения");
+      } else {
+        const res = await fetch("/api/measurements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: currentName,
+            status: "saved",
+            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
+          }),
+        });
+        if (!res.ok) throw new Error("Ошибка сохранения");
+        const obj = await res.json();
+        savedId = obj.id;
+      }
+
+      // Server save succeeded — now clear local state
+      const savedObj: SavedObject = {
+        id: savedId || crypto.randomUUID(),
+        address: currentName,
+        rooms: currentRooms,
+        totalArea,
+        savedAt: Date.now(),
+      };
+      setSavedObjects(prev => [...prev, savedObj]);
+      setRooms([]);
+      setObjectName("");
+      setActiveObjectId(null);
+    } catch {
+      alert("Не удалось сохранить замеры. Проверьте интернет и попробуйте ещё раз.");
     }
-    setActiveObjectId(null);
   }
 
   // ── Resume from history ──

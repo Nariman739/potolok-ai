@@ -392,7 +392,9 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
-  PortfolioWork: 'PortfolioWork'
+  PortfolioWork: 'PortfolioWork',
+  InstagramAccount: 'InstagramAccount',
+  InstagramPost: 'InstagramPost'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -408,7 +410,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "portfolioWork"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "portfolioWork" | "instagramAccount" | "instagramPost"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1078,6 +1080,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    InstagramAccount: {
+      payload: Prisma.$InstagramAccountPayload<ExtArgs>
+      fields: Prisma.InstagramAccountFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InstagramAccountFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InstagramAccountFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        findFirst: {
+          args: Prisma.InstagramAccountFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InstagramAccountFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        findMany: {
+          args: Prisma.InstagramAccountFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>[]
+        }
+        create: {
+          args: Prisma.InstagramAccountCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        createMany: {
+          args: Prisma.InstagramAccountCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InstagramAccountCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>[]
+        }
+        delete: {
+          args: Prisma.InstagramAccountDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        update: {
+          args: Prisma.InstagramAccountUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        deleteMany: {
+          args: Prisma.InstagramAccountDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InstagramAccountUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InstagramAccountUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>[]
+        }
+        upsert: {
+          args: Prisma.InstagramAccountUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramAccountPayload>
+        }
+        aggregate: {
+          args: Prisma.InstagramAccountAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInstagramAccount>
+        }
+        groupBy: {
+          args: Prisma.InstagramAccountGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramAccountGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InstagramAccountCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramAccountCountAggregateOutputType> | number
+        }
+      }
+    }
+    InstagramPost: {
+      payload: Prisma.$InstagramPostPayload<ExtArgs>
+      fields: Prisma.InstagramPostFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InstagramPostFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InstagramPostFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        findFirst: {
+          args: Prisma.InstagramPostFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InstagramPostFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        findMany: {
+          args: Prisma.InstagramPostFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>[]
+        }
+        create: {
+          args: Prisma.InstagramPostCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        createMany: {
+          args: Prisma.InstagramPostCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InstagramPostCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>[]
+        }
+        delete: {
+          args: Prisma.InstagramPostDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        update: {
+          args: Prisma.InstagramPostUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        deleteMany: {
+          args: Prisma.InstagramPostDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InstagramPostUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InstagramPostUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>[]
+        }
+        upsert: {
+          args: Prisma.InstagramPostUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramPostPayload>
+        }
+        aggregate: {
+          args: Prisma.InstagramPostAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInstagramPost>
+        }
+        groupBy: {
+          args: Prisma.InstagramPostGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramPostGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InstagramPostCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramPostCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1259,6 +1409,9 @@ export const MeasurementRoomScalarFieldEnum = {
   name: 'name',
   walls: 'walls',
   normalCorners: 'normalCorners',
+  angles: 'angles',
+  arcBulges: 'arcBulges',
+  columns: 'columns',
   area: 'area',
   perimeter: 'perimeter',
   elements: 'elements',
@@ -1287,6 +1440,44 @@ export const PortfolioWorkScalarFieldEnum = {
 } as const
 
 export type PortfolioWorkScalarFieldEnum = (typeof PortfolioWorkScalarFieldEnum)[keyof typeof PortfolioWorkScalarFieldEnum]
+
+
+export const InstagramAccountScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  instagramUserId: 'instagramUserId',
+  accessToken: 'accessToken',
+  tokenExpiresAt: 'tokenExpiresAt',
+  username: 'username',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramAccountScalarFieldEnum = (typeof InstagramAccountScalarFieldEnum)[keyof typeof InstagramAccountScalarFieldEnum]
+
+
+export const InstagramPostScalarFieldEnum = {
+  id: 'id',
+  instagramAccountId: 'instagramAccountId',
+  caption: 'caption',
+  hashtags: 'hashtags',
+  mediaUrls: 'mediaUrls',
+  mediaType: 'mediaType',
+  coverIndex: 'coverIndex',
+  agentAnalysis: 'agentAnalysis',
+  postType: 'postType',
+  scheduledAt: 'scheduledAt',
+  publishedAt: 'publishedAt',
+  instagramMediaId: 'instagramMediaId',
+  status: 'status',
+  errorMessage: 'errorMessage',
+  telegramChatId: 'telegramChatId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramPostScalarFieldEnum = (typeof InstagramPostScalarFieldEnum)[keyof typeof InstagramPostScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1461,6 +1652,20 @@ export type EnumChatStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Prism
 export type ListEnumChatStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ChatStatus[]'>
     
 
+
+/**
+ * Reference to a field of type 'InstagramPostStatus'
+ */
+export type EnumInstagramPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InstagramPostStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'InstagramPostStatus[]'
+ */
+export type ListEnumInstagramPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InstagramPostStatus[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -1565,6 +1770,8 @@ export type GlobalOmitConfig = {
   measurementObject?: Prisma.MeasurementObjectOmit
   measurementRoom?: Prisma.MeasurementRoomOmit
   portfolioWork?: Prisma.PortfolioWorkOmit
+  instagramAccount?: Prisma.InstagramAccountOmit
+  instagramPost?: Prisma.InstagramPostOmit
 }
 
 /* Types for Logging */

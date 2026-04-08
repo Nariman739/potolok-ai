@@ -36,3 +36,17 @@ export const ChatStatus = {
 } as const
 
 export type ChatStatus = (typeof ChatStatus)[keyof typeof ChatStatus]
+
+
+export const InstagramPostStatus = {
+  DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED: 'APPROVED',
+  SCHEDULED: 'SCHEDULED',
+  PUBLISHING: 'PUBLISHING',
+  PUBLISHED: 'PUBLISHED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED'
+} as const
+
+export type InstagramPostStatus = (typeof InstagramPostStatus)[keyof typeof InstagramPostStatus]
