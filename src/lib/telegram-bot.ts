@@ -8,10 +8,15 @@ import { calculate } from "@/lib/calculate";
 import { DEFAULT_PRICES, KP_LIMITS } from "@/lib/constants";
 import {
   sendTelegramMessage,
+  sendTelegramMessageWithButtons,
   sendTypingAction,
   downloadTelegramFile,
 } from "@/lib/telegram";
 import { runVisionAgents, formatVisionResults } from "@/lib/vision-agents";
+import {
+  processInstagramPhotos,
+  handleInstagramCallback,
+} from "@/lib/instagram-publisher";
 import type { ChatMessage, RoomInput, CalculationResult } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
@@ -485,6 +490,305 @@ async function createEstimateFromBot(
 }
 
 // ─────────────────────────────────────────────────────
+// Instagram /post — Photo collection state
+// ─────────────────────────────────────────────────────
+
+// Media item: photo or video
+interface PendingMedia {
+  buffer: Buffer;
+  type: "photo" | "video";
+  base64Url?: string; // only for photos (vision analysis)
+}
+
+// In-memory store for collecting media per chat
+const pendingInstagramMedia = new Map<
+  string,
+  {
+    media: PendingMedia[];
+    masterId: string;
+    userContext: string;
+    timer: ReturnType<typeof setTimeout> | null;
+  }
+>();
+
+// Track which chats are in "waiting for photos" mode
+const instagramPostMode = new Set<string>();
+
+// No debounce — user presses "Готово" button when done
+
+/** Handle /post command — enter photo collection mode */
+export async function handleInstagramPostCommand(
+  chatId: string,
+  masterId: string
+): Promise<void> {
+  const account = await prisma.instagramAccount.findUnique({
+    where: { masterId },
+  });
+
+  if (!account) {
+    await sendTelegramMessage(
+      chatId,
+      "❌ Instagram аккаунт не подключён.\n\nОбратитесь к администратору для настройки."
+    );
+    return;
+  }
+
+  instagramPostMode.add(chatId);
+  pendingInstagramMedia.delete(chatId);
+
+  await sendTelegramMessageWithButtons(
+    chatId,
+    `📸 <b>Режим Instagram-поста</b>\n\n` +
+    `Отправьте <b>фото и/или видео</b> натяжного потолка (1-10 шт).\n` +
+    `Можно по одному или группой.\n\n` +
+    `💡 <b>Совет для качества:</b> Отправляйте фото как <b>файл</b> (📎 скрепка → Файл), а не как фото — так качество не теряется!\n` +
+    `📹 Видео — до 20 МБ.\n\n` +
+    `🎤 Можете <b>наговорить голосом</b> или <b>написать текстом</b> описание работы — AI использует это для поста.\n\n` +
+    `Когда всё отправите — нажмите <b>Готово</b> 👇`,
+    [[{ text: "✅ Готово — запустить AI", callback_data: "ig_ready" }],
+     [{ text: "❌ Отмена", callback_data: "ig_cancel" }]]
+  );
+}
+
+/** Handle incoming photo when in Instagram post mode */
+export async function handleInstagramPhoto(
+  chatId: string,
+  masterId: string,
+  photoFileId: string
+): Promise<boolean> {
+  if (!instagramPostMode.has(chatId)) return false;
+
+  const photoBuffer = await downloadTelegramFile(photoFileId);
+  if (!photoBuffer) {
+    await sendTelegramMessage(chatId, "⚠️ Не удалось загрузить фото. Попробуйте ещё раз.");
+    return true;
+  }
+
+  const base64 = Buffer.from(photoBuffer).toString("base64");
+  const base64Url = `data:image/jpeg;base64,${base64}`;
+
+  const pending = getOrCreatePending(chatId, masterId);
+  pending.media.push({ buffer: photoBuffer, type: "photo", base64Url });
+
+  const n = pending.media.length;
+  if (n === 1 || n % 3 === 0) {
+    await sendTelegramMessage(chatId, `📷 ${n} медиа принято.`);
+  }
+
+  return true;
+}
+
+/** Handle incoming video when in Instagram post mode */
+export async function handleInstagramVideo(
+  chatId: string,
+  masterId: string,
+  videoFileId: string
+): Promise<boolean> {
+  if (!instagramPostMode.has(chatId)) return false;
+
+  await sendTelegramMessage(chatId, `🎬 Загружаю видео...`);
+
+  const videoBuffer = await downloadTelegramFile(videoFileId);
+  if (!videoBuffer) {
+    console.error(`[Instagram Video] Failed to download video file_id=${videoFileId} — likely exceeds 20MB Telegram Bot API limit`);
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Не удалось загрузить видео.\n\n" +
+      "Telegram ограничивает размер файла для ботов (до 20 МБ).\n" +
+      "💡 <b>Совет:</b> Отправьте видео покороче или сожмите перед отправкой."
+    );
+    return true;
+  }
+
+  const sizeMb = (videoBuffer.length / 1024 / 1024).toFixed(1);
+  console.log(`[Instagram Video] Downloaded video: ${sizeMb} MB`);
+
+  const pending = getOrCreatePending(chatId, masterId);
+  pending.media.push({ buffer: videoBuffer, type: "video" });
+
+  const n = pending.media.length;
+  await sendTelegramMessage(chatId, `🎬 Видео принято (${sizeMb} МБ, ${n} медиа всего).`);
+
+  return true;
+}
+
+/** Handle text message in Instagram post mode (user description) */
+export async function handleInstagramText(
+  chatId: string,
+  masterId: string,
+  text: string
+): Promise<boolean> {
+  if (!instagramPostMode.has(chatId)) return false;
+
+  const pending = getOrCreatePending(chatId, masterId);
+  pending.userContext += (pending.userContext ? "\n" : "") + text;
+
+  await sendTelegramMessage(chatId, `✏️ Описание принято.`);
+
+  return true;
+}
+
+/** Handle voice message in Instagram post mode */
+export async function handleInstagramVoice(
+  chatId: string,
+  masterId: string,
+  voiceFileId: string
+): Promise<boolean> {
+  if (!instagramPostMode.has(chatId)) return false;
+
+  await sendTelegramMessage(chatId, `🎤 Распознаю голос...`);
+
+  const transcribed = await transcribeVoice(voiceFileId);
+  if (!transcribed) {
+    await sendTelegramMessage(chatId, "⚠️ Не удалось распознать. Попробуйте текстом.");
+    return true;
+  }
+
+  const pending = getOrCreatePending(chatId, masterId);
+  pending.userContext += (pending.userContext ? "\n" : "") + transcribed;
+
+  await sendTelegramMessage(chatId, `🎤 Распознано: "${transcribed.substring(0, 100)}${transcribed.length > 100 ? "..." : ""}"`);
+
+  return true;
+}
+
+/** Get or create pending state */
+function getOrCreatePending(chatId: string, masterId: string) {
+  let pending = pendingInstagramMedia.get(chatId);
+  if (!pending) {
+    pending = { media: [], masterId, userContext: "", timer: null };
+    pendingInstagramMedia.set(chatId, pending);
+  }
+  return pending;
+}
+
+/** Process all collected media through the Instagram pipeline */
+async function processCollectedPhotos(chatId: string): Promise<void> {
+  const pending = pendingInstagramMedia.get(chatId);
+  if (!pending || pending.media.length === 0) {
+    if (pending?.userContext) {
+      instagramPostMode.delete(chatId);
+      pendingInstagramMedia.delete(chatId);
+      await sendTelegramMessage(chatId, "⚠️ Нужно хотя бы 1 фото или видео. Попробуйте /post ещё раз.");
+    }
+    return;
+  }
+
+  // Clean up state
+  instagramPostMode.delete(chatId);
+  pendingInstagramMedia.delete(chatId);
+
+  const photoCount = pending.media.filter(m => m.type === "photo").length;
+  const videoCount = pending.media.filter(m => m.type === "video").length;
+  const contextMsg = pending.userContext ? `\n📝 Ваше описание учтено!` : "";
+
+  const mediaSummary = [
+    photoCount > 0 ? `${photoCount} фото` : "",
+    videoCount > 0 ? `${videoCount} видео` : "",
+  ].filter(Boolean).join(" + ");
+
+  await sendTelegramMessage(
+    chatId,
+    `🤖 Обрабатываю ${mediaSummary}...${contextMsg}\n\n` +
+    `5 AI-агентов работают:\n` +
+    `1️⃣ Анализатор фото\n` +
+    `2️⃣ SMM-стратег\n` +
+    `3️⃣ Копирайтер\n` +
+    `4️⃣ Визуальный редактор\n` +
+    `5️⃣ Планировщик\n\n` +
+    `Это займёт ~20 секунд...`
+  );
+
+  await sendTypingAction(chatId);
+
+  try {
+    // Separate photos and videos, upload all to Blob
+    const photoBase64Urls: string[] = [];
+    const blobUrls: string[] = [];
+    const mediaTypes: ("photo" | "video")[] = [];
+
+    for (const item of pending.media) {
+      const timestamp = Date.now();
+      const ext = item.type === "video" ? "mp4" : "jpg";
+      const contentType = item.type === "video" ? "video/mp4" : "image/jpeg";
+      const path = `instagram/${pending.masterId}/${timestamp}-${blobUrls.length}.${ext}`;
+
+      const { put } = await import("@vercel/blob");
+      const blob = await put(path, item.buffer, { access: "public", contentType });
+      blobUrls.push(blob.url);
+      mediaTypes.push(item.type);
+
+      if (item.type === "photo" && item.base64Url) {
+        photoBase64Urls.push(item.base64Url);
+      }
+    }
+
+    await processInstagramPhotos(
+      pending.masterId,
+      chatId,
+      photoBase64Urls,
+      blobUrls,
+      pending.userContext || undefined,
+      mediaTypes
+    );
+  } catch (error) {
+    console.error("[Instagram /post] Error:", error);
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Произошла ошибка при обработке. Попробуйте /post ещё раз."
+    );
+  }
+}
+
+/** Handle callback query from Instagram inline buttons */
+export async function handleInstagramCallbackQuery(
+  chatId: string,
+  callbackData: string
+): Promise<boolean> {
+  if (!callbackData.startsWith("ig_")) return false;
+
+  // Handle "Готово" button — start processing
+  if (callbackData === "ig_ready") {
+    if (isInInstagramPostMode(chatId)) {
+      await processCollectedPhotos(chatId);
+    } else {
+      await sendTelegramMessage(chatId, "Нет активного сбора фото. Используйте /post");
+    }
+    return true;
+  }
+
+  // Handle "Отмена" button during collection
+  if (callbackData === "ig_cancel") {
+    cancelInstagramPostMode(chatId);
+    await sendTelegramMessage(chatId, "❌ Instagram-пост отменён.");
+    return true;
+  }
+
+  // Format: ig_action:postId
+  const colonIdx = callbackData.indexOf(":");
+  if (colonIdx === -1) return false;
+
+  const action = callbackData.substring(0, colonIdx);
+  const postId = callbackData.substring(colonIdx + 1);
+
+  await handleInstagramCallback(chatId, action, postId);
+  return true;
+}
+
+/** Check if chat is in Instagram post mode */
+export function isInInstagramPostMode(chatId: string): boolean {
+  return instagramPostMode.has(chatId);
+}
+
+/** Cancel Instagram post mode */
+export function cancelInstagramPostMode(chatId: string): void {
+  const pending = pendingInstagramMedia.get(chatId);
+  if (pending?.timer) clearTimeout(pending.timer);
+  instagramPostMode.delete(chatId);
+  pendingInstagramMedia.delete(chatId);
+}
+
+// ─────────────────────────────────────────────────────
 // Bot commands
 // ─────────────────────────────────────────────────────
 export async function handleBotCommand(
@@ -549,6 +853,21 @@ export async function handleBotCommand(
       break;
     }
 
+    case "/post": {
+      await handleInstagramPostCommand(chatId, masterId);
+      break;
+    }
+
+    case "/cancel": {
+      if (isInInstagramPostMode(chatId)) {
+        cancelInstagramPostMode(chatId);
+        await sendTelegramMessage(chatId, "❌ Instagram-пост отменён.");
+      } else {
+        await sendTelegramMessage(chatId, "Нечего отменять.");
+      }
+      break;
+    }
+
     case "/help": {
       await sendTelegramMessage(
         chatId,
@@ -559,6 +878,7 @@ export async function handleBotCommand(
         `<b>Команды:</b>\n` +
         `/new — начать новый расчёт\n` +
         `/kp — последние КП\n` +
+        `/post — создать Instagram пост из фото\n` +
         `/help — эта справка`
       );
       break;

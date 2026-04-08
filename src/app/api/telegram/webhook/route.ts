@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { handleTelegramBotMessage, handleBotCommand } from "@/lib/telegram-bot";
+import { answerCallbackQuery } from "@/lib/telegram";
+import {
+  handleTelegramBotMessage,
+  handleBotCommand,
+  handleInstagramPhoto,
+  handleInstagramVideo,
+  handleInstagramText,
+  handleInstagramVoice,
+  handleInstagramCallbackQuery,
+  isInInstagramPostMode,
+} from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
 
 // Allow up to 60s for AI processing (vision + conversation)
@@ -19,6 +29,29 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    // ── Handle callback queries (inline keyboard button presses) ──
+    const callbackQuery = body?.callback_query;
+    if (callbackQuery) {
+      const cbChatId = String(callbackQuery.message?.chat?.id ?? "");
+      const cbData = callbackQuery.data || "";
+      const cbId = callbackQuery.id;
+
+      // Acknowledge the button press immediately
+      await answerCallbackQuery(cbId);
+
+      // Handle Instagram callbacks
+      if (cbData.startsWith("ig_")) {
+        try {
+          await handleInstagramCallbackQuery(cbChatId, cbData);
+        } catch (err) {
+          console.error("Instagram callback error:", err);
+        }
+      }
+
+      return NextResponse.json({ ok: true });
+    }
+
     const message = body?.message;
     if (!message) return NextResponse.json({ ok: true });
 
@@ -157,6 +190,53 @@ export async function POST(request: Request) {
 
     // ── Voice message ──
     const voiceFileId = message.voice?.file_id || message.audio?.file_id || null;
+
+    // ── Video file ID (regular video or video_note) ──
+    const videoFileId = message.video?.file_id || message.video_note?.file_id || null;
+
+    // ── Document (file) — for full-quality photos/videos sent as files ──
+    const doc = message.document;
+    const docMime = doc?.mime_type || "";
+    const docFileId = doc?.file_id || null;
+    const isDocPhoto = docFileId && docMime.startsWith("image/");
+    const isDocVideo = docFileId && docMime.startsWith("video/");
+
+    // ── Instagram post mode: intercept photos, videos, documents, text, and voice ──
+    if (isInInstagramPostMode(chatId)) {
+      try {
+        // Photos sent as regular photo
+        if (photoFileId) {
+          await handleInstagramPhoto(chatId, linkedMaster.id, photoFileId);
+          return NextResponse.json({ ok: true });
+        }
+        // Photos sent as document (file) — full quality, no Telegram compression
+        if (isDocPhoto && docFileId) {
+          await handleInstagramPhoto(chatId, linkedMaster.id, docFileId);
+          return NextResponse.json({ ok: true });
+        }
+        // Videos sent as regular video
+        if (videoFileId) {
+          await handleInstagramVideo(chatId, linkedMaster.id, videoFileId);
+          return NextResponse.json({ ok: true });
+        }
+        // Videos sent as document (file) — full quality
+        if (isDocVideo && docFileId) {
+          await handleInstagramVideo(chatId, linkedMaster.id, docFileId);
+          return NextResponse.json({ ok: true });
+        }
+        if (voiceFileId) {
+          await handleInstagramVoice(chatId, linkedMaster.id, voiceFileId);
+          return NextResponse.json({ ok: true });
+        }
+        const textContent = text || message.caption || null;
+        if (textContent && !textContent.startsWith("/")) {
+          await handleInstagramText(chatId, linkedMaster.id, textContent);
+          return NextResponse.json({ ok: true });
+        }
+      } catch (err) {
+        console.error("Instagram collection error:", err);
+      }
+    }
 
     // ── Process message (text / photo / voice) ──
     // MUST await — Vercel kills serverless function after return

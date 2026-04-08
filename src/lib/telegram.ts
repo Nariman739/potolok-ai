@@ -148,6 +148,56 @@ export async function sendTelegramPhoto(
 }
 
 // ─────────────────────────────────────────────────────
+// Send message with inline keyboard buttons
+// ─────────────────────────────────────────────────────
+export async function sendTelegramMessageWithButtons(
+  chatId: string,
+  text: string,
+  buttons: Array<Array<{ text: string; callback_data: string }>>
+): Promise<void> {
+  try {
+    // Telegram limit: 4096 chars per message
+    const truncated = text.length > 4096 ? text.substring(0, 4090) + "..." : text;
+
+    await fetch(apiUrl("sendMessage"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: truncated,
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      }),
+    });
+  } catch {
+    console.error("Telegram sendMessageWithButtons failed");
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Answer callback query (acknowledge button press)
+// ─────────────────────────────────────────────────────
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string
+): Promise<void> {
+  try {
+    await fetch(apiUrl("answerCallbackQuery"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text || "",
+      }),
+    });
+  } catch {
+    // non-critical
+  }
+}
+
+// ─────────────────────────────────────────────────────
 // Helper: split long text
 // ─────────────────────────────────────────────────────
 function splitText(text: string, maxLen: number): string[] {
