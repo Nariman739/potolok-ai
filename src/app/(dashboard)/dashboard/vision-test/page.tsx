@@ -1636,7 +1636,9 @@ export default function ZameryPage() {
           return updated;
         });
       }
-    } catch { /* optimistic — local state already updated */ }
+    } catch {
+      alert("Не удалось сохранить комнату на сервер. Данные сохранены локально.");
+    }
   }
 
   // ── Remove room ──
@@ -1647,26 +1649,33 @@ export default function ZameryPage() {
     }
   }
 
-  // ── Update room (from RoomDetail editor) ──
+  // ── Update room (from RoomDetail editor or RoomDesigner) ──
   async function updateRoom(updated: Room) {
     setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
     setViewingRoom(null);
     if (activeObjectId) {
-      fetch(`/api/measurements/${activeObjectId}/rooms/${updated.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: updated.name,
-          walls: updated.walls,
-          normalCorners: updated.normalCorners,
-          angles: updated.angles,
-          arcBulges: updated.arcBulges,
-          columns: updated.columns,
-          area: updated.area,
-          perimeter: updated.perimeter,
-          elements: updated.elements || [],
-        }),
-      }).catch(() => {});
+      try {
+        const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${updated.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: updated.name,
+            walls: updated.walls,
+            normalCorners: updated.normalCorners,
+            angles: updated.angles,
+            arcBulges: updated.arcBulges,
+            columns: updated.columns,
+            area: updated.area,
+            perimeter: updated.perimeter,
+            elements: updated.elements || [],
+          }),
+        });
+        if (!res.ok) {
+          alert("Не удалось сохранить изменения комнаты. Попробуйте ещё раз.");
+        }
+      } catch {
+        alert("Ошибка сохранения. Проверьте интернет.");
+      }
     }
   }
 

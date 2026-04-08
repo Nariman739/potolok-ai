@@ -395,9 +395,20 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   function computeDimLines() {
     const dims: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }[] = [];
-    const sel = elements.find(e => e.id === selectedId);
-    if (sel && (sel.type === "spot" || sel.type === "chandelier" || sel.type === "furniture") && sel.x !== undefined && sel.y !== undefined) {
-      addWallDims(sel, dims);
+
+    // Show dims for element being dragged (using live drag position)
+    if (dragId && dragPos && dragStartRef.current?.moved) {
+      const dragEl = elements.find(e => e.id === dragId);
+      if (dragEl) {
+        addWallDims({ ...dragEl, x: dragPos.x, y: dragPos.y }, dims);
+      }
+    }
+    // Show dims for selected element (when not dragging)
+    else if (selectedId) {
+      const sel = elements.find(e => e.id === selectedId);
+      if (sel && sel.x !== undefined && sel.y !== undefined) {
+        addWallDims(sel, dims);
+      }
     }
     return dims;
   }
