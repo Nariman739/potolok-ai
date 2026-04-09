@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X, Undo2, Check, Share2, RotateCw } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
 
 // ── Types ──
@@ -156,6 +156,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  // Zoom & Pan
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  // Align
+  const [alignMode, setAlignMode] = useState(false);
+  // Position editor
+  const [posEditor, setPosEditor] = useState<{ elId: string; wall1Dist: string; wall2Dist: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const pointerHandled = useRef(false);
   const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
@@ -169,8 +178,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const roomW = maxX - minX, roomH = maxY - minY;
   const roomSize = Math.max(roomW, roomH);
   const pad = roomSize * 0.12;
-  const vbX = minX - pad, vbY = minY - pad;
-  const vbW = roomW + pad * 2, vbH = roomH + pad * 2;
+  const baseVbX = minX - pad, baseVbY = minY - pad;
+  const baseVbW = roomW + pad * 2, baseVbH = roomH + pad * 2;
+  // Apply zoom and pan
+  const vbW = baseVbW / zoom, vbH = baseVbH / zoom;
+  const centerX = baseVbX + baseVbW / 2, centerY = baseVbY + baseVbH / 2;
+  const vbX = centerX - vbW / 2 + pan.x, vbY = centerY - vbH / 2 + pan.y;
 
   // Scale factors
   const spotR = roomSize * 0.022;
@@ -390,6 +403,114 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   function undo() { setElements(prev => prev.slice(0, -1)); }
+
+  // ── Zoom & Pan ──
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(z => Math.max(0.3, Math.min(5, z * delta)));
+  }, []);
+
+  function handlePanStart(e: React.PointerEvent) {
+    // Middle button or Ctrl+Left button
+    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+      e.preventDefault();
+      setIsPanning(true);
+      panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+    }
+  }
+
+  function handlePanMove(e: React.PointerEvent) {
+    if (!isPanning || !panStart.current) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const scaleX = vbW / rect.width, scaleY = vbH / rect.height;
+    const dx = (e.clientX - panStart.current.x) * scaleX;
+    const dy = (e.clientY - panStart.current.y) * scaleY;
+    setPan({ x: panStart.current.panX - dx, y: panStart.current.panY - dy });
+  }
+
+  function handlePanEnd() {
+    if (isPanning) {
+      setIsPanning(false);
+      panStart.current = null;
+    }
+  }
+
+  // ── Align/Distribute spots ──
+  function alignSpots(axis: "row" | "col") {
+    const spotEls = elements.filter(e => e.type === "spot" && e.x !== undefined && e.y !== undefined);
+    if (spotEls.length < 2) return;
+    if (axis === "row") {
+      const avgY = spotEls.reduce((s, e) => s + (e.y || 0), 0) / spotEls.length;
+      const sorted = [...spotEls].sort((a, b) => (a.x || 0) - (b.x || 0));
+      const minX = sorted[0].x!, maxX = sorted[sorted.length - 1].x!;
+      const step = spotEls.length > 1 ? (maxX - minX) / (spotEls.length - 1) : 0;
+      setElements(prev => prev.map(el => {
+        const idx = sorted.findIndex(s => s.id === el.id);
+        if (idx === -1) return el;
+        return { ...el, x: minX + step * idx, y: avgY };
+      }));
+    } else {
+      const avgX = spotEls.reduce((s, e) => s + (e.x || 0), 0) / spotEls.length;
+      const sorted = [...spotEls].sort((a, b) => (a.y || 0) - (b.y || 0));
+      const minY = sorted[0].y!, maxY = sorted[sorted.length - 1].y!;
+      const step = spotEls.length > 1 ? (maxY - minY) / (spotEls.length - 1) : 0;
+      setElements(prev => prev.map(el => {
+        const idx = sorted.findIndex(s => s.id === el.id);
+        if (idx === -1) return el;
+        return { ...el, y: minY + step * idx, x: avgX };
+      }));
+    }
+    setAlignMode(false);
+  }
+
+  // ── Position editor ──
+  function openPosEditor() {
+    if (!selectedId) return;
+    const el = elements.find(e => e.id === selectedId);
+    if (!el || el.x === undefined || el.y === undefined) return;
+    // Find 2 nearest walls
+    const wallDists: { dist: number; wallIdx: number }[] = [];
+    for (let i = 0; i < vertices.length - 1; i++) {
+      const a = vertices[i], b = vertices[i + 1];
+      const proj = projectOnWall(el.x, el.y, a, b);
+      const dist = Math.hypot(el.x - proj.x, el.y - proj.y);
+      wallDists.push({ dist, wallIdx: i });
+    }
+    wallDists.sort((a, b) => a.dist - b.dist);
+    const d1 = Math.round(wallDists[0]?.dist || 0);
+    const d2 = Math.round(wallDists[1]?.dist || 0);
+    setPosEditor({ elId: selectedId, wall1Dist: String(d1), wall2Dist: String(d2) });
+  }
+
+  function applyPosEditor() {
+    if (!posEditor) return;
+    const el = elements.find(e => e.id === posEditor.elId);
+    if (!el || el.x === undefined || el.y === undefined) return;
+    const d1 = parseFloat(posEditor.wall1Dist), d2 = parseFloat(posEditor.wall2Dist);
+    if (isNaN(d1) || isNaN(d2)) { setPosEditor(null); return; }
+    // Find 2 nearest walls and compute new position
+    const wallDists: { dist: number; wallIdx: number; proj: Vertex; normal: Vertex }[] = [];
+    for (let i = 0; i < vertices.length - 1; i++) {
+      const a = vertices[i], b = vertices[i + 1];
+      const proj = projectOnWall(el.x, el.y, a, b);
+      const dist = Math.hypot(el.x - proj.x, el.y - proj.y);
+      const nx = dist > 0 ? (el.x - proj.x) / dist : 0;
+      const ny = dist > 0 ? (el.y - proj.y) / dist : 0;
+      wallDists.push({ dist, wallIdx: i, proj, normal: { x: nx, y: ny } });
+    }
+    wallDists.sort((a, b) => a.dist - b.dist);
+    const w1 = wallDists[0], w2 = wallDists[1];
+    if (!w1 || !w2) { setPosEditor(null); return; }
+    // Move along each wall's normal from projection
+    const newX = w1.proj.x + w1.normal.x * d1;
+    const newY = w1.proj.y + w1.normal.y * d1;
+    setElements(prev => prev.map(e => e.id === posEditor.elId ? { ...e, x: newX, y: newY } : e));
+    setPosEditor(null);
+  }
 
   // ── Dimension lines (from edge for furniture) ──
 
@@ -831,10 +952,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   // ── Hint ──
+  const spotsCount = elements.filter(e => e.type === "spot").length;
   let hintText = "Выберите элемент из панели внизу ↓";
-  if (selectedId) {
+  if (alignMode) {
+    hintText = "Выберите направление выравнивания ↔ или ↕";
+  } else if (selectedId) {
     const sel = elements.find(e => e.id === selectedId);
-    hintText = sel?.type === "furniture" ? "Перетащите мебель или нажмите 🔄/🗑️" : "Перетащите элемент или нажмите 🗑️";
+    hintText = sel?.type === "furniture" ? "Перетащите · 🔄 Повернуть · 📏 Позиция · 🗑️" : "Перетащите · 📏 Позиция · 🗑️";
   } else if (activeType) {
     const furnType = isFurnitureActive();
     if (furnType) {
@@ -868,10 +992,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         <p className="text-xs text-muted-foreground">{hintText}</p>
         {selectedId && (
           <div className="flex gap-1">
-            {elements.find(e => e.id === selectedId)?.type === "furniture" && (
+            {/* Rotate */}
+            {(elements.find(e => e.id === selectedId)?.type === "furniture"
+              || elements.find(e => e.id === selectedId)?.type === "spot"
+              || elements.find(e => e.id === selectedId)?.type === "chandelier") && (
               <button onClick={rotateSelected}
-                className="p-1 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95">
+                className="p-1 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95"
+                title="Повернуть">
                 <RotateCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {/* Position editor */}
+            {(elements.find(e => e.id === selectedId)?.x !== undefined) && (
+              <button onClick={openPosEditor}
+                className="p-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 active:scale-95"
+                title="Точная позиция">
+                <Move className="h-3.5 w-3.5" />
               </button>
             )}
             <button onClick={removeSelected}
@@ -880,17 +1016,64 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             </button>
           </div>
         )}
+        {/* Align spots */}
+        {!selectedId && elements.filter(e => e.type === "spot").length >= 2 && (
+          <div className="flex gap-1">
+            {!alignMode ? (
+              <button onClick={() => setAlignMode(true)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-700 text-xs font-medium hover:bg-amber-200 active:scale-95"
+                title="Выровнять софиты">
+                <AlignHorizontalSpaceBetween className="h-3.5 w-3.5" />
+                Выровнять
+              </button>
+            ) : (
+              <div className="flex gap-1">
+                <button onClick={() => alignSpots("row")}
+                  className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-medium active:scale-95">
+                  ↔ В ряд
+                </button>
+                <button onClick={() => alignSpots("col")}
+                  className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-medium active:scale-95">
+                  ↕ В колонку
+                </button>
+                <button onClick={() => setAlignMode(false)}
+                  className="px-2 py-0.5 rounded-lg bg-gray-200 text-gray-600 text-xs font-medium active:scale-95">
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Interactive SVG */}
-      <div className="flex-1 min-h-0 px-2 py-1">
+      <div className="flex-1 min-h-0 px-2 py-1 relative">
+        {/* Zoom controls */}
+        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+          <button onClick={() => setZoom(z => Math.min(5, z * 1.3))}
+            className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))}
+            className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+            <ZoomOut className="h-4 w-4" />
+          </button>
+          {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
+            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+              className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-xs font-bold">
+              1:1
+            </button>
+          )}
+        </div>
         <svg
           ref={svgRef}
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           className="w-full h-full"
-          onPointerMove={handleSVGPointerMove}
-          onPointerUp={handleSVGPointerUp}
-          style={{ touchAction: "none" }}
+          onWheel={handleWheel}
+          onPointerDown={handlePanStart}
+          onPointerMove={(e) => { handlePanMove(e); if (!isPanning) handleSVGPointerMove(e); }}
+          onPointerUp={(e) => { handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
+          style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined }}
         >
           {/* Room fill */}
           <polygon
@@ -1118,6 +1301,47 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               <button onClick={confirmLength}
                 className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
                 Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Position editor modal */}
+      {posEditor && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
+          onClick={() => setPosEditor(null)}>
+          <div className="bg-white rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-center mb-1">📏 Точная позиция</p>
+            <p className="text-xs text-muted-foreground text-center mb-4">Расстояние от ближайших стен (см)</p>
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Стена 1</label>
+                <input
+                  type="number" value={posEditor.wall1Dist}
+                  onChange={e => setPosEditor(prev => prev ? { ...prev, wall1Dist: e.target.value } : null)}
+                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                  autoFocus inputMode="numeric"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Стена 2</label>
+                <input
+                  type="number" value={posEditor.wall2Dist}
+                  onChange={e => setPosEditor(prev => prev ? { ...prev, wall2Dist: e.target.value } : null)}
+                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setPosEditor(null)}
+                className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">
+                Отмена
+              </button>
+              <button onClick={applyPosEditor}
+                className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
+                Применить
               </button>
             </div>
           </div>
