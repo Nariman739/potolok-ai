@@ -70,6 +70,7 @@ model Master {
   portfolioWorks  PortfolioWork[]
   measurements    MeasurementObject[]
   instagramAccount InstagramAccount?
+  instagramSession InstagramSession?
 
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
@@ -344,4 +345,20 @@ enum InstagramPostStatus {
   PUBLISHED
   FAILED
   REJECTED
+}
+
+// ============================================
+// INSTAGRAM SESSION (media collection state — DB-backed for serverless)
+// ============================================
+
+model InstagramSession {
+  id          String   @id @default(uuid())
+  chatId      String   @unique  // Telegram chat ID — one active session per chat
+  masterId    String   @unique
+  mediaItems  Json     @default("[]")  // [{blobUrl: string, type: "photo"|"video"}]
+  userContext String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }

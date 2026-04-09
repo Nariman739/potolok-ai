@@ -11,6 +11,7 @@ import {
   handleInstagramVoice,
   handleInstagramCallbackQuery,
   isInInstagramPostMode,
+  startInstagramPostModeSilent,
 } from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
 
@@ -203,40 +204,50 @@ export async function POST(request: Request) {
     // ── Auto-enter Instagram mode when media is received ──
     // (Bot is currently Instagram-only — no measurement mode)
     const hasMedia = photoFileId || videoFileId || isDocPhoto || isDocVideo;
-    if (hasMedia && !isInInstagramPostMode(chatId)) {
+    const alreadyInIgMode = await isInInstagramPostMode(chatId);
+    if (hasMedia && !alreadyInIgMode) {
       // Silently start Instagram post mode — first media will be collected below
-      const { startInstagramPostModeSilent } = await import("@/lib/telegram-bot");
-      startInstagramPostModeSilent(chatId);
+      await startInstagramPostModeSilent(chatId, linkedMaster.id);
     }
 
     // ── Instagram post mode: intercept photos, videos, documents, text, and voice ──
-    if (isInInstagramPostMode(chatId)) {
+    const inIgMode = hasMedia ? true : alreadyInIgMode; // if we just entered, we're in mode
+    if (inIgMode) {
       try {
+        // Extract caption from media messages (Telegram puts text in caption, not text)
+        const caption = message.caption?.trim() || null;
+
         // Photos sent as regular photo
         if (photoFileId) {
           await handleInstagramPhoto(chatId, linkedMaster.id, photoFileId);
+          // Also capture caption if present (e.g. "Вот софиты ВН 53")
+          if (caption) await handleInstagramText(chatId, linkedMaster.id, caption);
           return NextResponse.json({ ok: true });
         }
         // Photos sent as document (file) — full quality, no Telegram compression
         if (isDocPhoto && docFileId) {
           await handleInstagramPhoto(chatId, linkedMaster.id, docFileId);
+          if (caption) await handleInstagramText(chatId, linkedMaster.id, caption);
           return NextResponse.json({ ok: true });
         }
         // Videos sent as regular video
         if (videoFileId) {
           await handleInstagramVideo(chatId, linkedMaster.id, videoFileId);
+          if (caption) await handleInstagramText(chatId, linkedMaster.id, caption);
           return NextResponse.json({ ok: true });
         }
         // Videos sent as document (file) — full quality
         if (isDocVideo && docFileId) {
           await handleInstagramVideo(chatId, linkedMaster.id, docFileId);
+          if (caption) await handleInstagramText(chatId, linkedMaster.id, caption);
           return NextResponse.json({ ok: true });
         }
         if (voiceFileId) {
           await handleInstagramVoice(chatId, linkedMaster.id, voiceFileId);
           return NextResponse.json({ ok: true });
         }
-        const textContent = text || message.caption || null;
+        // Text-only message (no media) — user description
+        const textContent = text || null;
         if (textContent && !textContent.startsWith("/")) {
           await handleInstagramText(chatId, linkedMaster.id, textContent);
           return NextResponse.json({ ok: true });

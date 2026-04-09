@@ -72,3 +72,8 @@ export type InstagramAccount = Prisma.InstagramAccountModel
  * 
  */
 export type InstagramPost = Prisma.InstagramPostModel
+/**
+ * Model InstagramSession
+ * 
+ */
+export type InstagramSession = Prisma.InstagramSessionModel

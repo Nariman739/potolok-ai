@@ -61,7 +61,8 @@ export const ModelName = {
   MeasurementRoom: 'MeasurementRoom',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
-  InstagramPost: 'InstagramPost'
+  InstagramPost: 'InstagramPost',
+  InstagramSession: 'InstagramSession'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -291,6 +292,19 @@ export const InstagramPostScalarFieldEnum = {
 } as const
 
 export type InstagramPostScalarFieldEnum = (typeof InstagramPostScalarFieldEnum)[keyof typeof InstagramPostScalarFieldEnum]
+
+
+export const InstagramSessionScalarFieldEnum = {
+  id: 'id',
+  chatId: 'chatId',
+  masterId: 'masterId',
+  mediaItems: 'mediaItems',
+  userContext: 'userContext',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramSessionScalarFieldEnum = (typeof InstagramSessionScalarFieldEnum)[keyof typeof InstagramSessionScalarFieldEnum]
 
 
 export const SortOrder = {

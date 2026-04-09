@@ -394,7 +394,8 @@ export const ModelName = {
   MeasurementRoom: 'MeasurementRoom',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
-  InstagramPost: 'InstagramPost'
+  InstagramPost: 'InstagramPost',
+  InstagramSession: 'InstagramSession'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -410,7 +411,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "portfolioWork" | "instagramAccount" | "instagramPost"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1228,6 +1229,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    InstagramSession: {
+      payload: Prisma.$InstagramSessionPayload<ExtArgs>
+      fields: Prisma.InstagramSessionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InstagramSessionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InstagramSessionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        findFirst: {
+          args: Prisma.InstagramSessionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InstagramSessionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        findMany: {
+          args: Prisma.InstagramSessionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>[]
+        }
+        create: {
+          args: Prisma.InstagramSessionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        createMany: {
+          args: Prisma.InstagramSessionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InstagramSessionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>[]
+        }
+        delete: {
+          args: Prisma.InstagramSessionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        update: {
+          args: Prisma.InstagramSessionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        deleteMany: {
+          args: Prisma.InstagramSessionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InstagramSessionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InstagramSessionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>[]
+        }
+        upsert: {
+          args: Prisma.InstagramSessionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InstagramSessionPayload>
+        }
+        aggregate: {
+          args: Prisma.InstagramSessionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInstagramSession>
+        }
+        groupBy: {
+          args: Prisma.InstagramSessionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramSessionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InstagramSessionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InstagramSessionCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1478,6 +1553,19 @@ export const InstagramPostScalarFieldEnum = {
 } as const
 
 export type InstagramPostScalarFieldEnum = (typeof InstagramPostScalarFieldEnum)[keyof typeof InstagramPostScalarFieldEnum]
+
+
+export const InstagramSessionScalarFieldEnum = {
+  id: 'id',
+  chatId: 'chatId',
+  masterId: 'masterId',
+  mediaItems: 'mediaItems',
+  userContext: 'userContext',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InstagramSessionScalarFieldEnum = (typeof InstagramSessionScalarFieldEnum)[keyof typeof InstagramSessionScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1772,6 +1860,7 @@ export type GlobalOmitConfig = {
   portfolioWork?: Prisma.PortfolioWorkOmit
   instagramAccount?: Prisma.InstagramAccountOmit
   instagramPost?: Prisma.InstagramPostOmit
+  instagramSession?: Prisma.InstagramSessionOmit
 }
 
 /* Types for Logging */

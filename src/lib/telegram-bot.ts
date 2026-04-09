@@ -490,36 +490,31 @@ async function createEstimateFromBot(
 }
 
 // ─────────────────────────────────────────────────────
-// Instagram /post — Photo collection state
+// Instagram /post — DB-backed session state (serverless-safe)
 // ─────────────────────────────────────────────────────
 
-// Media item: photo or video
-interface PendingMedia {
-  buffer: Buffer;
+// Media item stored in DB JSON
+interface SessionMediaItem {
+  blobUrl: string;
   type: "photo" | "video";
-  base64Url?: string; // only for photos (vision analysis)
 }
 
-// In-memory store for collecting media per chat
-const pendingInstagramMedia = new Map<
-  string,
-  {
-    media: PendingMedia[];
-    masterId: string;
-    userContext: string;
-    timer: ReturnType<typeof setTimeout> | null;
-  }
->();
+/** Check if chat has an active Instagram collection session (DB) */
+export async function isInInstagramPostMode(chatId: string): Promise<boolean> {
+  const session = await prisma.instagramSession.findUnique({
+    where: { chatId },
+    select: { id: true },
+  });
+  return !!session;
+}
 
-// Track which chats are in "waiting for photos" mode
-const instagramPostMode = new Set<string>();
-
-// No debounce — user presses "Готово" button when done
-
-/** Silently enter Instagram post mode (no message, used for auto-enter) */
-export function startInstagramPostModeSilent(chatId: string): void {
-  instagramPostMode.add(chatId);
-  pendingInstagramMedia.delete(chatId);
+/** Silently enter Instagram post mode — create DB session */
+export async function startInstagramPostModeSilent(chatId: string, masterId: string): Promise<void> {
+  await prisma.instagramSession.upsert({
+    where: { chatId },
+    update: { mediaItems: [], userContext: "", updatedAt: new Date() },
+    create: { chatId, masterId, mediaItems: [], userContext: "" },
+  });
 }
 
 /** Handle /post command — enter photo collection mode */
@@ -539,8 +534,12 @@ export async function handleInstagramPostCommand(
     return;
   }
 
-  instagramPostMode.add(chatId);
-  pendingInstagramMedia.delete(chatId);
+  // Create or reset session in DB
+  await prisma.instagramSession.upsert({
+    where: { chatId },
+    update: { masterId, mediaItems: [], userContext: "", updatedAt: new Date() },
+    create: { chatId, masterId, mediaItems: [], userContext: "" },
+  });
 
   await sendTelegramMessageWithButtons(
     chatId,
@@ -556,13 +555,14 @@ export async function handleInstagramPostCommand(
   );
 }
 
-/** Handle incoming photo when in Instagram post mode */
+/** Handle incoming photo when in Instagram post mode — upload to Blob immediately */
 export async function handleInstagramPhoto(
   chatId: string,
   masterId: string,
   photoFileId: string
 ): Promise<boolean> {
-  if (!instagramPostMode.has(chatId)) return false;
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session) return false;
 
   const photoBuffer = await downloadTelegramFile(photoFileId);
   if (!photoBuffer) {
@@ -570,13 +570,21 @@ export async function handleInstagramPhoto(
     return true;
   }
 
-  const base64 = Buffer.from(photoBuffer).toString("base64");
-  const base64Url = `data:image/jpeg;base64,${base64}`;
+  // Upload to Blob immediately (no buffer in memory)
+  const { put } = await import("@vercel/blob");
+  const timestamp = Date.now();
+  const path = `instagram/${masterId}/${timestamp}.jpg`;
+  const blob = await put(path, photoBuffer, { access: "public", contentType: "image/jpeg" });
 
-  const pending = getOrCreatePending(chatId, masterId);
-  pending.media.push({ buffer: photoBuffer, type: "photo", base64Url });
+  const items = ((session.mediaItems as unknown as SessionMediaItem[])) || [];
+  items.push({ blobUrl: blob.url, type: "photo" });
 
-  const n = pending.media.length;
+  await prisma.instagramSession.update({
+    where: { chatId },
+    data: { mediaItems: JSON.parse(JSON.stringify(items)) },
+  });
+
+  const n = items.length;
   await sendTelegramMessageWithButtons(
     chatId,
     `📷 ${n} медиа принято. Можете добавить ещё или нажмите 👇`,
@@ -586,13 +594,14 @@ export async function handleInstagramPhoto(
   return true;
 }
 
-/** Handle incoming video when in Instagram post mode */
+/** Handle incoming video when in Instagram post mode — upload to Blob immediately */
 export async function handleInstagramVideo(
   chatId: string,
   masterId: string,
   videoFileId: string
 ): Promise<boolean> {
-  if (!instagramPostMode.has(chatId)) return false;
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session) return false;
 
   await sendTelegramMessage(chatId, `🎬 Загружаю видео...`);
 
@@ -611,10 +620,21 @@ export async function handleInstagramVideo(
   const sizeMb = (videoBuffer.length / 1024 / 1024).toFixed(1);
   console.log(`[Instagram Video] Downloaded video: ${sizeMb} MB`);
 
-  const pending = getOrCreatePending(chatId, masterId);
-  pending.media.push({ buffer: videoBuffer, type: "video" });
+  // Upload to Blob immediately
+  const { put } = await import("@vercel/blob");
+  const timestamp = Date.now();
+  const path = `instagram/${masterId}/${timestamp}.mp4`;
+  const blob = await put(path, videoBuffer, { access: "public", contentType: "video/mp4" });
 
-  const n = pending.media.length;
+  const items = ((session.mediaItems as unknown as SessionMediaItem[])) || [];
+  items.push({ blobUrl: blob.url, type: "video" });
+
+  await prisma.instagramSession.update({
+    where: { chatId },
+    data: { mediaItems: JSON.parse(JSON.stringify(items)) },
+  });
+
+  const n = items.length;
   await sendTelegramMessageWithButtons(
     chatId,
     `🎬 Видео принято (${sizeMb} МБ, ${n} медиа всего). Можете добавить ещё или нажмите 👇`,
@@ -627,13 +647,18 @@ export async function handleInstagramVideo(
 /** Handle text message in Instagram post mode (user description) */
 export async function handleInstagramText(
   chatId: string,
-  masterId: string,
+  _masterId: string,
   text: string
 ): Promise<boolean> {
-  if (!instagramPostMode.has(chatId)) return false;
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session) return false;
 
-  const pending = getOrCreatePending(chatId, masterId);
-  pending.userContext += (pending.userContext ? "\n" : "") + text;
+  const newContext = session.userContext ? session.userContext + "\n" + text : text;
+
+  await prisma.instagramSession.update({
+    where: { chatId },
+    data: { userContext: newContext },
+  });
 
   await sendTelegramMessageWithButtons(
     chatId,
@@ -647,10 +672,11 @@ export async function handleInstagramText(
 /** Handle voice message in Instagram post mode */
 export async function handleInstagramVoice(
   chatId: string,
-  masterId: string,
+  _masterId: string,
   voiceFileId: string
 ): Promise<boolean> {
-  if (!instagramPostMode.has(chatId)) return false;
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session) return false;
 
   await sendTelegramMessage(chatId, `🎤 Распознаю голос...`);
 
@@ -660,43 +686,43 @@ export async function handleInstagramVoice(
     return true;
   }
 
-  const pending = getOrCreatePending(chatId, masterId);
-  pending.userContext += (pending.userContext ? "\n" : "") + transcribed;
+  const newContext = session.userContext ? session.userContext + "\n" + transcribed : transcribed;
+
+  await prisma.instagramSession.update({
+    where: { chatId },
+    data: { userContext: newContext },
+  });
 
   await sendTelegramMessage(chatId, `🎤 Распознано: "${transcribed.substring(0, 100)}${transcribed.length > 100 ? "..." : ""}"`);
 
   return true;
 }
 
-/** Get or create pending state */
-function getOrCreatePending(chatId: string, masterId: string) {
-  let pending = pendingInstagramMedia.get(chatId);
-  if (!pending) {
-    pending = { media: [], masterId, userContext: "", timer: null };
-    pendingInstagramMedia.set(chatId, pending);
-  }
-  return pending;
-}
-
 /** Process all collected media through the Instagram pipeline */
 async function processCollectedPhotos(chatId: string): Promise<void> {
-  const pending = pendingInstagramMedia.get(chatId);
-  if (!pending || pending.media.length === 0) {
-    if (pending?.userContext) {
-      instagramPostMode.delete(chatId);
-      pendingInstagramMedia.delete(chatId);
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session) {
+    await sendTelegramMessage(chatId, "Нет активного сбора фото. Отправьте фото или используйте /post");
+    return;
+  }
+
+  const items = ((session.mediaItems as unknown as SessionMediaItem[])) || [];
+  if (items.length === 0) {
+    if (session.userContext) {
+      await prisma.instagramSession.delete({ where: { chatId } });
       await sendTelegramMessage(chatId, "⚠️ Нужно хотя бы 1 фото или видео. Попробуйте /post ещё раз.");
     }
     return;
   }
 
-  // Clean up state
-  instagramPostMode.delete(chatId);
-  pendingInstagramMedia.delete(chatId);
+  // Delete session from DB (collection done)
+  const userContext = session.userContext;
+  const masterId = session.masterId;
+  await prisma.instagramSession.delete({ where: { chatId } });
 
-  const photoCount = pending.media.filter(m => m.type === "photo").length;
-  const videoCount = pending.media.filter(m => m.type === "video").length;
-  const contextMsg = pending.userContext ? `\n📝 Ваше описание учтено!` : "";
+  const photoCount = items.filter(m => m.type === "photo").length;
+  const videoCount = items.filter(m => m.type === "video").length;
+  const contextMsg = userContext ? `\n📝 Ваше описание учтено!` : "";
 
   const mediaSummary = [
     photoCount > 0 ? `${photoCount} фото` : "",
@@ -718,33 +744,34 @@ async function processCollectedPhotos(chatId: string): Promise<void> {
   await sendTypingAction(chatId);
 
   try {
-    // Separate photos and videos, upload all to Blob
+    // Download photos from Blob → base64 for vision analysis
     const photoBase64Urls: string[] = [];
     const blobUrls: string[] = [];
     const mediaTypes: ("photo" | "video")[] = [];
 
-    for (const item of pending.media) {
-      const timestamp = Date.now();
-      const ext = item.type === "video" ? "mp4" : "jpg";
-      const contentType = item.type === "video" ? "video/mp4" : "image/jpeg";
-      const path = `instagram/${pending.masterId}/${timestamp}-${blobUrls.length}.${ext}`;
-
-      const { put } = await import("@vercel/blob");
-      const blob = await put(path, item.buffer, { access: "public", contentType });
-      blobUrls.push(blob.url);
+    for (const item of items) {
+      blobUrls.push(item.blobUrl);
       mediaTypes.push(item.type);
 
-      if (item.type === "photo" && item.base64Url) {
-        photoBase64Urls.push(item.base64Url);
+      if (item.type === "photo") {
+        // Download from Blob and convert to base64 for vision
+        try {
+          const resp = await fetch(item.blobUrl);
+          const arrayBuf = await resp.arrayBuffer();
+          const base64 = Buffer.from(arrayBuf).toString("base64");
+          photoBase64Urls.push(`data:image/jpeg;base64,${base64}`);
+        } catch (err) {
+          console.error("[Instagram] Failed to download blob for vision:", err);
+        }
       }
     }
 
     await processInstagramPhotos(
-      pending.masterId,
+      masterId,
       chatId,
       photoBase64Urls,
       blobUrls,
-      pending.userContext || undefined,
+      userContext || undefined,
       mediaTypes
     );
   } catch (error) {
@@ -765,17 +792,18 @@ export async function handleInstagramCallbackQuery(
 
   // Handle "Готово" button — start processing
   if (callbackData === "ig_ready") {
-    if (isInInstagramPostMode(chatId)) {
+    const hasSession = await isInInstagramPostMode(chatId);
+    if (hasSession) {
       await processCollectedPhotos(chatId);
     } else {
-      await sendTelegramMessage(chatId, "Нет активного сбора фото. Используйте /post");
+      await sendTelegramMessage(chatId, "Нет активного сбора фото. Отправьте фото или используйте /post");
     }
     return true;
   }
 
   // Handle "Отмена" button during collection
   if (callbackData === "ig_cancel") {
-    cancelInstagramPostMode(chatId);
+    await cancelInstagramPostMode(chatId);
     await sendTelegramMessage(chatId, "❌ Instagram-пост отменён.");
     return true;
   }
@@ -791,17 +819,9 @@ export async function handleInstagramCallbackQuery(
   return true;
 }
 
-/** Check if chat is in Instagram post mode */
-export function isInInstagramPostMode(chatId: string): boolean {
-  return instagramPostMode.has(chatId);
-}
-
-/** Cancel Instagram post mode */
-export function cancelInstagramPostMode(chatId: string): void {
-  const pending = pendingInstagramMedia.get(chatId);
-  if (pending?.timer) clearTimeout(pending.timer);
-  instagramPostMode.delete(chatId);
-  pendingInstagramMedia.delete(chatId);
+/** Cancel Instagram post mode — delete session from DB */
+export async function cancelInstagramPostMode(chatId: string): Promise<void> {
+  await prisma.instagramSession.deleteMany({ where: { chatId } });
 }
 
 // ─────────────────────────────────────────────────────
@@ -875,8 +895,9 @@ export async function handleBotCommand(
     }
 
     case "/cancel": {
-      if (isInInstagramPostMode(chatId)) {
-        cancelInstagramPostMode(chatId);
+      const hasSession = await isInInstagramPostMode(chatId);
+      if (hasSession) {
+        await cancelInstagramPostMode(chatId);
         await sendTelegramMessage(chatId, "❌ Instagram-пост отменён.");
       } else {
         await sendTelegramMessage(chatId, "Нечего отменять.");
