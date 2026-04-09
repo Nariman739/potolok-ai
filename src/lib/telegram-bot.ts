@@ -516,6 +516,12 @@ const instagramPostMode = new Set<string>();
 
 // No debounce — user presses "Готово" button when done
 
+/** Silently enter Instagram post mode (no message, used for auto-enter) */
+export function startInstagramPostModeSilent(chatId: string): void {
+  instagramPostMode.add(chatId);
+  pendingInstagramMedia.delete(chatId);
+}
+
 /** Handle /post command — enter photo collection mode */
 export async function handleInstagramPostCommand(
   chatId: string,
@@ -571,9 +577,11 @@ export async function handleInstagramPhoto(
   pending.media.push({ buffer: photoBuffer, type: "photo", base64Url });
 
   const n = pending.media.length;
-  if (n === 1 || n % 3 === 0) {
-    await sendTelegramMessage(chatId, `📷 ${n} медиа принято.`);
-  }
+  await sendTelegramMessageWithButtons(
+    chatId,
+    `📷 ${n} медиа принято. Можете добавить ещё или нажмите 👇`,
+    [[{ text: "✅ Готово — запустить AI", callback_data: "ig_ready" }]]
+  );
 
   return true;
 }
@@ -607,18 +615,16 @@ export async function handleInstagramVideo(
   pending.media.push({ buffer: videoBuffer, type: "video" });
 
   const n = pending.media.length;
-  await sendTelegramMessage(chatId, `🎬 Видео принято (${sizeMb} МБ, ${n} медиа всего).`);
+  await sendTelegramMessageWithButtons(
+    chatId,
+    `🎬 Видео принято (${sizeMb} МБ, ${n} медиа всего). Можете добавить ещё или нажмите 👇`,
+    [[{ text: "✅ Готово — запустить AI", callback_data: "ig_ready" }]]
+  );
 
   return true;
 }
 
-// Words that trigger "Готово" (start processing)
-const READY_WORDS = new Set([
-  "ок", "ok", "го", "go", "готово", "давай", "да", "поехали",
-  "запускай", "старт", "start", "жми", "делай", "вперёд", "вперед",
-]);
-
-/** Handle text message in Instagram post mode (user description or "ready" trigger) */
+/** Handle text message in Instagram post mode (user description) */
 export async function handleInstagramText(
   chatId: string,
   masterId: string,
@@ -626,23 +632,14 @@ export async function handleInstagramText(
 ): Promise<boolean> {
   if (!instagramPostMode.has(chatId)) return false;
 
-  // Check if text is a "ready" trigger — start processing
-  const normalized = text.toLowerCase().trim().replace(/[!.,?]+$/, "");
-  if (READY_WORDS.has(normalized)) {
-    const pending = pendingInstagramMedia.get(chatId);
-    if (pending && pending.media.length > 0) {
-      await processCollectedPhotos(chatId);
-      return true;
-    }
-    // No media yet — tell user to send photos first
-    await sendTelegramMessage(chatId, "📸 Сначала отправьте фото или видео, потом нажмите <b>Готово</b>.");
-    return true;
-  }
-
   const pending = getOrCreatePending(chatId, masterId);
   pending.userContext += (pending.userContext ? "\n" : "") + text;
 
-  await sendTelegramMessage(chatId, `✏️ Описание принято. Когда всё — нажмите <b>Готово</b> или напишите "ок".`);
+  await sendTelegramMessageWithButtons(
+    chatId,
+    `✏️ Описание принято!\n\nКогда всё готово — жмите 👇`,
+    [[{ text: "✅ Готово — запустить AI", callback_data: "ig_ready" }]]
+  );
 
   return true;
 }

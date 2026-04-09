@@ -204,9 +204,9 @@ export async function POST(request: Request) {
     // (Bot is currently Instagram-only — no measurement mode)
     const hasMedia = photoFileId || videoFileId || isDocPhoto || isDocVideo;
     if (hasMedia && !isInInstagramPostMode(chatId)) {
-      // Auto-start Instagram post mode
-      const { handleInstagramPostCommand } = await import("@/lib/telegram-bot");
-      await handleInstagramPostCommand(chatId, linkedMaster.id);
+      // Silently start Instagram post mode — first media will be collected below
+      const { startInstagramPostModeSilent } = await import("@/lib/telegram-bot");
+      startInstagramPostModeSilent(chatId);
     }
 
     // ── Instagram post mode: intercept photos, videos, documents, text, and voice ──
