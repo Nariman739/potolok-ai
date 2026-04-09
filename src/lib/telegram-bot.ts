@@ -612,7 +612,13 @@ export async function handleInstagramVideo(
   return true;
 }
 
-/** Handle text message in Instagram post mode (user description) */
+// Words that trigger "Готово" (start processing)
+const READY_WORDS = new Set([
+  "ок", "ok", "го", "go", "готово", "давай", "да", "поехали",
+  "запускай", "старт", "start", "жми", "делай", "вперёд", "вперед",
+]);
+
+/** Handle text message in Instagram post mode (user description or "ready" trigger) */
 export async function handleInstagramText(
   chatId: string,
   masterId: string,
@@ -620,10 +626,23 @@ export async function handleInstagramText(
 ): Promise<boolean> {
   if (!instagramPostMode.has(chatId)) return false;
 
+  // Check if text is a "ready" trigger — start processing
+  const normalized = text.toLowerCase().trim().replace(/[!.,?]+$/, "");
+  if (READY_WORDS.has(normalized)) {
+    const pending = pendingInstagramMedia.get(chatId);
+    if (pending && pending.media.length > 0) {
+      await processCollectedPhotos(chatId);
+      return true;
+    }
+    // No media yet — tell user to send photos first
+    await sendTelegramMessage(chatId, "📸 Сначала отправьте фото или видео, потом нажмите <b>Готово</b>.");
+    return true;
+  }
+
   const pending = getOrCreatePending(chatId, masterId);
   pending.userContext += (pending.userContext ? "\n" : "") + text;
 
-  await sendTelegramMessage(chatId, `✏️ Описание принято.`);
+  await sendTelegramMessage(chatId, `✏️ Описание принято. Когда всё — нажмите <b>Готово</b> или напишите "ок".`);
 
   return true;
 }
