@@ -98,11 +98,10 @@ export async function POST(request: Request) {
         await sendTelegramMessage(
           chatId,
           `👋 <b>${linkedMaster.firstName}, с возвращением!</b>\n\n` +
-          `📸 Отправьте фото замеров — посчитаю стоимость\n` +
-          `🎤 Или наговорите голосом\n` +
-          `✏️ Или напишите размеры текстом\n\n` +
-          `/new — новый расчёт\n` +
-          `/kp — ваши КП\n` +
+          `📸 Отправьте <b>фото или видео</b> потолка — я подготовлю пост для Instagram!\n\n` +
+          `💡 Для лучшего качества отправляйте как <b>файл</b> (📎 → Файл)\n` +
+          `📹 Видео до 20 МБ\n\n` +
+          `/post — начать сбор медиа\n` +
           `/help — все команды`
         );
       } else {
@@ -201,6 +200,15 @@ export async function POST(request: Request) {
     const isDocPhoto = docFileId && docMime.startsWith("image/");
     const isDocVideo = docFileId && docMime.startsWith("video/");
 
+    // ── Auto-enter Instagram mode when media is received ──
+    // (Bot is currently Instagram-only — no measurement mode)
+    const hasMedia = photoFileId || videoFileId || isDocPhoto || isDocVideo;
+    if (hasMedia && !isInInstagramPostMode(chatId)) {
+      // Auto-start Instagram post mode
+      const { handleInstagramPostCommand } = await import("@/lib/telegram-bot");
+      await handleInstagramPostCommand(chatId, linkedMaster.id);
+    }
+
     // ── Instagram post mode: intercept photos, videos, documents, text, and voice ──
     if (isInInstagramPostMode(chatId)) {
       try {
@@ -238,14 +246,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Process message (text / photo / voice) ──
-    // MUST await — Vercel kills serverless function after return
+    // ── Text without media — show help (Instagram-only mode) ──
     const textContent = text || message.caption || null;
-
-    try {
-      await handleTelegramBotMessage(chatId, textContent, photoFileId, voiceFileId);
-    } catch (err) {
-      console.error("Telegram bot processing error:", err);
+    if (textContent && !textContent.startsWith("/")) {
+      await sendTelegramMessage(
+        chatId,
+        `📸 Отправьте <b>фото или видео</b> потолка — я подготовлю пост для Instagram!\n\n` +
+        `💡 Для лучшего качества отправляйте как <b>файл</b> (📎 скрепка → Файл)\n\n` +
+        `/post — начать сбор медиа\n` +
+        `/help — все команды`
+      );
     }
 
     return NextResponse.json({ ok: true });
@@ -261,9 +271,9 @@ async function sendLinkedMessage(chatId: string, firstName: string) {
     chatId,
     `✅ <b>${firstName}, аккаунт привязан!</b>\n\n` +
     `Теперь можете:\n` +
-    `📸 Отправить фото замеров — AI посчитает\n` +
-    `🎤 Наговорить размеры голосом\n` +
-    `✏️ Написать размеры текстом\n\n` +
-    `Попробуйте прямо сейчас — отправьте фото! 👆`
+    `📸 Отправить фото/видео потолка — AI сделает пост для Instagram\n` +
+    `🎤 Наговорить описание голосом\n` +
+    `✏️ Написать описание текстом\n\n` +
+    `Попробуйте — отправьте фото! 👆`
   );
 }
