@@ -63,6 +63,7 @@ model Master {
   smmMonthReset      DateTime @default(now())
   smmProfile         Json?    // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
+  onboardingCompleted Boolean @default(false)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

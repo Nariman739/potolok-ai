@@ -16,10 +16,14 @@ import {
   Plus,
   ArrowRight,
   BarChart3,
+  TrendingUp,
+  CheckCircle2,
+  Ruler,
 } from "lucide-react";
 import { formatPrice, formatDateShort } from "@/lib/format";
 import { KP_LIMITS } from "@/lib/constants";
 import { FeedbackButton } from "@/components/feedback-button";
+import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export const metadata = {
   title: "Дашборд",
@@ -37,7 +41,19 @@ export default async function DashboardPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
 
-  const [estimatesCount, aggregates, recentEstimates] = await Promise.all([
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [
+    estimatesCount,
+    aggregates,
+    recentEstimates,
+    monthEstimates,
+    confirmedCount,
+    confirmedSum,
+    measurementsCount,
+  ] = await Promise.all([
     prisma.estimate.count({ where: { masterId: master.id } }),
     prisma.estimate.aggregate({
       where: { masterId: master.id },
@@ -59,6 +75,19 @@ export default async function DashboardPage() {
         status: true,
       },
     }),
+    prisma.estimate.count({
+      where: { masterId: master.id, createdAt: { gte: monthStart } },
+    }),
+    prisma.estimate.count({
+      where: { masterId: master.id, status: "CONFIRMED" },
+    }),
+    prisma.estimate.aggregate({
+      where: { masterId: master.id, status: "CONFIRMED" },
+      _sum: { total: true },
+    }),
+    prisma.measurementObject.count({
+      where: { masterId: master.id },
+    }),
   ]);
 
   const isPro = master.subscriptionTier === "PRO";
@@ -67,6 +96,11 @@ export default async function DashboardPage() {
   const kpLeft = isPro ? null : (kpLimit as number) - kpUsed;
 
   const avgCheck = aggregates._avg.total ?? 0;
+
+  // Show onboarding wizard for new users
+  if (!master.onboardingCompleted) {
+    return <OnboardingWizard firstName={master.firstName} phone={master.phone} />;
+  }
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
@@ -172,42 +206,71 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <Card>
-              <CardContent className="p-3 text-center">
-                <SquareStack className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                <p className="text-xl font-bold">{estimatesCount}</p>
-                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                  Расчётов
-                </p>
-              </CardContent>
-            </Card>
+          {/* Monthly Stats */}
+          <Card>
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[#1e3a5f]" />
+                Статистика
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <SquareStack className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] text-muted-foreground">За месяц</span>
+                  </div>
+                  <p className="text-xl font-bold">{monthEstimates}</p>
+                  <p className="text-[11px] text-muted-foreground">расчётов (всего {estimatesCount})</p>
+                </div>
 
-            <Card>
-              <CardContent className="p-3 text-center">
-                <BarChart3 className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                <p className="text-xl font-bold">
-                  {avgCheck > 0 ? formatPrice(avgCheck) : "—"}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                  Средний чек
-                </p>
-              </CardContent>
-            </Card>
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] text-muted-foreground">Средний чек</span>
+                  </div>
+                  <p className="text-xl font-bold">
+                    {avgCheck > 0 ? formatPrice(avgCheck) : "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">за расчёт</p>
+                </div>
 
-            <Card>
-              <CardContent className="p-3 text-center">
-                <FileText className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                <p className="text-xl font-bold">
-                  {isPro ? "∞" : `${kpUsed}`}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                  {isPro ? "PRO" : `КП / ${kpLeft != null && kpLeft <= 0 ? "лимит" : `ост. ${kpLeft}`}`}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                    <span className="text-[11px] text-muted-foreground">Подтверждено</span>
+                  </div>
+                  <p className="text-xl font-bold text-green-600">{confirmedCount}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {confirmedSum._sum.total
+                      ? `на ${formatPrice(confirmedSum._sum.total)}`
+                      : "—"
+                    }
+                  </p>
+                </div>
+
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] text-muted-foreground">Замеры</span>
+                  </div>
+                  <p className="text-xl font-bold">{measurementsCount}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isPro ? "PRO" : `КП: ${kpUsed}/${kpLeft != null && kpLeft <= 0 ? "лимит" : kpLimit}`}
+                  </p>
+                </div>
+              </div>
+              {estimatesCount > 0 && confirmedCount > 0 && (
+                <div className="mt-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-center">
+                  <p className="text-sm text-green-800">
+                    Конверсия: <span className="font-bold">{Math.round((confirmedCount / estimatesCount) * 100)}%</span>
+                    {" "}расчётов подтверждены
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
 

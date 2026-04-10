@@ -99,6 +99,7 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     warrantyMaterials: m.warrantyMaterials,
     warrantyInstall: m.warrantyInstall,
     contractCity: m.contractCity,
+    onboardingCompleted: m.onboardingCompleted,
   };
 }
 

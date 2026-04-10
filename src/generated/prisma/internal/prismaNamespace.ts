@@ -1379,6 +1379,7 @@ export const MasterScalarFieldEnum = {
   smmPostsThisMonth: 'smmPostsThisMonth',
   smmMonthReset: 'smmMonthReset',
   smmProfile: 'smmProfile',
+  onboardingCompleted: 'onboardingCompleted',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',

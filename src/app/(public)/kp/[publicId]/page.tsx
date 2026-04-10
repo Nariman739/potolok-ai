@@ -4,6 +4,7 @@ import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export async function generateMetadata({
   params,
@@ -45,6 +46,7 @@ export default async function PublicKpPage({
           instagramUrl: true,
           whatsappPhone: true,
           phone: true,
+          telegramChatId: true,
         },
       },
     },
@@ -52,10 +54,21 @@ export default async function PublicKpPage({
 
   if (!estimate) notFound();
 
-  // Mark as viewed (best-effort, non-blocking)
+  // Mark as viewed + notify master (best-effort, non-blocking)
   if (estimate.status === "DRAFT" || estimate.status === "SENT") {
     prisma.estimate
       .update({ where: { id: estimate.id }, data: { status: "VIEWED" } })
+      .then(() => {
+        if (estimate.master.telegramChatId) {
+          const clientStr = estimate.clientName || "Клиент";
+          const price = estimate.total || estimate.standardTotal || 0;
+          const text =
+            `👀 <b>${clientStr} открыл ваше КП!</b>\n\n` +
+            (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
+            `\n<i>Ожидаем подтверждение от клиента.</i>`;
+          sendTelegramMessage(estimate.master.telegramChatId, text);
+        }
+      })
       .catch(() => {});
   }
 

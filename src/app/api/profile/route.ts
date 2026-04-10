@@ -43,19 +43,26 @@ export async function PUT(request: Request) {
       "bik",
       "passportData",
       "contractCity",
+      "onboardingCompleted",
     ];
 
     const intFields = ["prepaymentPercent", "warrantyMaterials", "warrantyInstall"];
+    const boolFields = ["onboardingCompleted"];
 
-    const updateData: Record<string, string | number> = {};
+    const updateData: Record<string, string | number | boolean> = {};
     for (const field of allowedFields) {
-      if (field in body) {
+      if (field in body && !boolFields.includes(field)) {
         updateData[field] = body[field];
       }
     }
     for (const field of intFields) {
       if (field in body) {
         updateData[field] = parseInt(body[field], 10) || 0;
+      }
+    }
+    for (const field of boolFields) {
+      if (field in body) {
+        updateData[field] = Boolean(body[field]);
       }
     }
 

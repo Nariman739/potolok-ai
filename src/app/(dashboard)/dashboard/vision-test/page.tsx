@@ -1077,7 +1077,9 @@ function RoomCard({ room, index, onRemove, onView, onDesign, activeObjectId, onP
         }
       }
       onPhotosChange(room.id, currentUrls);
-    } catch { /* ignore */ }
+    } catch {
+      alert("Не удалось загрузить фото. Проверьте интернет.");
+    }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -1599,6 +1601,7 @@ export default function ZameryPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: objectName, status: "active" }),
     });
+    if (!res.ok) throw new Error("Не удалось создать объект замера");
     const obj = await res.json();
     setActiveObjectId(obj.id);
     return obj.id;
@@ -1645,7 +1648,12 @@ export default function ZameryPage() {
   async function removeRoom(roomId: string) {
     setRooms(prev => prev.filter(r => r.id !== roomId));
     if (activeObjectId) {
-      fetch(`/api/measurements/${activeObjectId}/rooms/${roomId}`, { method: "DELETE" }).catch(() => {});
+      try {
+        const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${roomId}`, { method: "DELETE" });
+        if (!res.ok) alert("Не удалось удалить комнату с сервера.");
+      } catch {
+        alert("Ошибка при удалении комнаты. Проверьте интернет.");
+      }
     }
   }
 
@@ -1689,7 +1697,9 @@ export default function ZameryPage() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ address: value }),
-        }).catch(() => {});
+        }).catch(() => {
+          console.error("Не удалось обновить адрес объекта");
+        });
       }
     }, 500);
   }
@@ -1754,7 +1764,9 @@ export default function ZameryPage() {
 
     // Delete current active on server
     if (activeObjectId) {
-      fetch(`/api/measurements/${activeObjectId}`, { method: "DELETE" }).catch(() => {});
+      try {
+        await fetch(`/api/measurements/${activeObjectId}`, { method: "DELETE" });
+      } catch { /* non-critical */ }
     }
 
     setRooms(obj.rooms);
@@ -1763,17 +1775,28 @@ export default function ZameryPage() {
     setShowHistory(false);
 
     // Change resumed object status to active
-    fetch(`/api/measurements/${obj.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "active" }),
-    }).then(() => setActiveObjectId(obj.id)).catch(() => {});
+    try {
+      const res = await fetch(`/api/measurements/${obj.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "active" }),
+      });
+      if (res.ok) setActiveObjectId(obj.id);
+      else alert("Не удалось возобновить объект. Попробуйте ещё раз.");
+    } catch {
+      alert("Ошибка сети при возобновлении замера.");
+    }
   }
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {
     setSavedObjects(prev => prev.filter(o => o.id !== id));
-    fetch(`/api/measurements/${id}`, { method: "DELETE" }).catch(() => {});
+    try {
+      const res = await fetch(`/api/measurements/${id}`, { method: "DELETE" });
+      if (!res.ok) console.error("Не удалось удалить замер с сервера");
+    } catch {
+      console.error("Ошибка при удалении замера");
+    }
   }
 
   const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;

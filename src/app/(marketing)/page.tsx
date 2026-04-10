@@ -12,6 +12,10 @@ import {
   Bot,
   Bell,
   Layers,
+  Ruler,
+  Smartphone,
+  Camera,
+  Star,
 } from "lucide-react";
 import { FaqList } from "./faq-list";
 
@@ -230,6 +234,107 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Measurements Feature Highlight */}
+      <section className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        <div className="orb-3 absolute left-1/3 top-0 w-96 h-96 rounded-full bg-emerald-500/8 blur-[120px] pointer-events-none" />
+
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
+            {/* Left: Phone mockup */}
+            <div className="relative mx-auto max-w-[280px] md:max-w-none">
+              <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-3xl scale-110" />
+              <div className="relative rounded-[2rem] border-2 border-[#334155] bg-[#1A2332] p-3 shadow-2xl">
+                <div className="rounded-[1.5rem] bg-[#0F1724] overflow-hidden">
+                  {/* Status bar */}
+                  <div className="flex justify-between items-center px-4 py-2 text-[9px] text-[#64748B]">
+                    <span>9:41</span>
+                    <div className="w-20 h-5 bg-[#1A2332] rounded-full" />
+                    <span>100%</span>
+                  </div>
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-[#334155]/50">
+                    <div className="flex items-center gap-2">
+                      <Ruler className="h-4 w-4 text-[#10B981]" />
+                      <span className="text-sm font-semibold text-[#F1F5F9]">Замеры</span>
+                    </div>
+                    <p className="text-[10px] text-[#64748B] mt-0.5">ул. Абая 45, кв. 12</p>
+                  </div>
+                  {/* Rooms list */}
+                  <div className="p-3 space-y-2">
+                    {[
+                      { name: "Гостиная", area: "22.4 м²", walls: "5.2 · 4.3 · 5.2 · 4.3", photos: 3 },
+                      { name: "Спальня", area: "15.1 м²", walls: "4.1 · 3.7 · 4.1 · 3.7", photos: 2 },
+                      { name: "Кухня", area: "11.8 м²", walls: "3.5 · 3.4 · 3.5 · 3.4", photos: 1 },
+                    ].map((room) => (
+                      <div key={room.name} className="rounded-lg bg-[#1A2332] p-2.5">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-[#F1F5F9] font-medium">{room.name}</span>
+                          <span className="text-[#10B981] font-semibold">{room.area}</span>
+                        </div>
+                        <p className="text-[9px] text-[#64748B]">Стены: {room.walls} м</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Camera className="h-2.5 w-2.5 text-[#64748B]" />
+                          <span className="text-[9px] text-[#64748B]">{room.photos} фото</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Bottom action */}
+                  <div className="px-3 pb-4">
+                    <div className="rounded-lg bg-gradient-to-r from-[#10B981] to-[#059669] py-2 text-center text-[10px] text-white font-medium">
+                      Создать КП из замеров
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -top-3 -right-3 rounded-full bg-[#10B981] text-white text-[10px] font-bold px-3 py-1.5 shadow-lg shadow-emerald-500/30">
+                + фото
+              </div>
+            </div>
+
+            {/* Right: text */}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm text-[#10B981] mb-6">
+                <Smartphone className="h-3.5 w-3.5" />
+                Работает на телефоне
+              </div>
+
+              <h2 className="text-2xl md:text-4xl font-bold mb-5 leading-tight">
+                Замеряйте{" "}
+                <span className="bg-gradient-to-r from-[#10B981] to-[#059669] bg-clip-text text-transparent">
+                  на объекте
+                </span>
+                <br />
+                — КП создаётся само
+              </h2>
+
+              <div className="space-y-4 text-[#94A3B8]">
+                {[
+                  { icon: Ruler, text: "Вводите размеры стен прямо на объекте — любые формы и углы" },
+                  { icon: Camera, text: "Фотографируйте каждую комнату — фото прикрепляются к замеру" },
+                  { icon: Calculator, text: "Одна кнопка — и замеры превращаются в готовое КП с ценами" },
+                  { icon: Bell, text: "Клиент откроет КП — вам придёт уведомление в Telegram" },
+                ].map((item) => (
+                  <div key={item.text} className="flex items-start gap-3">
+                    <div className="rounded-lg bg-emerald-500/10 p-2 shrink-0">
+                      <item.icon className="h-4 w-4 text-[#10B981]" />
+                    </div>
+                    <p className="text-sm leading-relaxed">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <a
+                href="/auth/register"
+                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] px-7 py-3.5 text-base font-semibold text-white hover:shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 transition-all mt-8"
+              >
+                Попробовать замеры
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
         {/* Orb right side */}
@@ -279,14 +384,24 @@ export default function HomePage() {
                 desc: "Клиент видит КП онлайн, подтверждает — вы получаете уведомление",
               },
               {
+                icon: Ruler,
+                title: "Замеры на объекте",
+                desc: "Замеряйте прямо с телефона — стены, углы, фото комнат. Одна кнопка → КП",
+              },
+              {
                 icon: Bell,
                 title: "Telegram уведомления",
-                desc: "Мгновенное оповещение когда клиент принимает ваше КП",
+                desc: "Клиент открыл КП или подтвердил — мгновенное оповещение",
               },
               {
                 icon: Layers,
                 title: "Сложные формы",
                 desc: "Г-образные и Т-образные потолки с точным расчётом площади",
+              },
+              {
+                icon: Smartphone,
+                title: "Мобильное приложение",
+                desc: "Работает на iPhone и Android. Все функции — прямо в кармане",
               },
               {
                 icon: Shield,
@@ -412,6 +527,66 @@ export default function HomePage() {
                 Попробовать бесплатно
               </a>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        <div className="orb-2 absolute right-0 top-1/3 w-72 h-72 rounded-full bg-blue-500/8 blur-[100px] pointer-events-none" />
+
+        <div className="container mx-auto max-w-4xl relative z-10">
+          <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
+            Мастера уже используют
+          </h2>
+          <p className="text-center text-[#94A3B8] mb-14">
+            Отзывы от мастеров натяжных потолков Казахстана
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              {
+                name: "Арман",
+                city: "Астана",
+                text: "Раньше считал в Excel — терял по часу на каждого клиента. Теперь отправляю КП прямо с объекта за 2 минуты. Клиенты удивляются скорости.",
+                rating: 5,
+              },
+              {
+                name: "Бауыржан",
+                city: "Алматы",
+                text: "AI ассистент — это огонь. Скинул фото чертежа — он сам всё посчитал. Договор генерируется автоматом. Экономлю кучу времени.",
+                rating: 5,
+              },
+              {
+                name: "Дмитрий",
+                city: "Караганда",
+                text: "Замеры на телефоне — то что не хватало. Приехал на объект, замерил все комнаты, сфоткал, нажал кнопку — КП готово. Клиент подтвердил по ссылке.",
+                rating: 5,
+              },
+            ].map((review) => (
+              <div
+                key={review.name}
+                className="rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-blue-500/40 transition-all"
+              >
+                <div className="flex items-center gap-1 mb-3">
+                  {Array.from({ length: review.rating }).map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-[#F97316] text-[#F97316]" />
+                  ))}
+                </div>
+                <p className="text-sm text-[#94A3B8] leading-relaxed mb-4">
+                  &ldquo;{review.text}&rdquo;
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#1e3a5f] flex items-center justify-center text-white text-xs font-bold">
+                    {review.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#F1F5F9]">{review.name}</p>
+                    <p className="text-[10px] text-[#64748B]">{review.city}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

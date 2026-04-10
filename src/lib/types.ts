@@ -174,4 +174,5 @@ export interface MasterProfile {
   warrantyMaterials: number;
   warrantyInstall: number;
   contractCity?: string | null;
+  onboardingCompleted: boolean;
 }
