@@ -156,7 +156,7 @@ export interface MasterProfile {
   instagramUrl?: string | null;
   whatsappPhone?: string | null;
   address?: string | null;
-  subscriptionTier: "FREE" | "PRO";
+  subscriptionTier: "FREE" | "PRO" | "PROPLUS";
   kpGeneratedThisMonth: number;
   telegramChatId?: string | null;
   // Contract settings

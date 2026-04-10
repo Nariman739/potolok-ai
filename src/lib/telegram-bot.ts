@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { buildSystemPrompt } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
-import { DEFAULT_PRICES, KP_LIMITS } from "@/lib/constants";
+import { DEFAULT_PRICES, KP_LIMITS, SMM_LIMITS } from "@/lib/constants";
 import {
   sendTelegramMessage,
   sendTelegramMessageWithButtons,
@@ -499,6 +499,55 @@ interface SessionMediaItem {
   type: "photo" | "video";
 }
 
+// SMM upsell message for non-PROPLUS users
+const SMM_UPSELL_MESSAGE =
+  `📸 <b>SMM-бот доступен в тарифе PRO+</b>\n\n` +
+  `Что вы получите:\n` +
+  `— 15 AI-постов в месяц\n` +
+  `— 5 AI-агентов пишут текст и подбирают время\n` +
+  `— Автопланирование публикаций\n\n` +
+  `Это как личный SMM-щик за 14 990 тг вместо 100 000 тг/мес\n\n` +
+  `Подробнее: potolok.ai/dashboard/profile`;
+
+/** Check SMM access: subscription tier + monthly limit. Returns error message or null if OK. */
+async function checkSmmAccess(masterId: string): Promise<string | null> {
+  const master = await prisma.master.findUnique({
+    where: { id: masterId },
+    select: { subscriptionTier: true, smmPostsThisMonth: true, smmMonthReset: true },
+  });
+  if (!master) return "Аккаунт не найден.";
+
+  const tier = master.subscriptionTier as keyof typeof SMM_LIMITS;
+  const limit = SMM_LIMITS[tier] ?? 0;
+
+  if (limit === 0) return SMM_UPSELL_MESSAGE;
+
+  // Auto-reset monthly counter
+  const now = new Date();
+  const resetDate = new Date(master.smmMonthReset);
+  if (now.getMonth() !== resetDate.getMonth() || now.getFullYear() !== resetDate.getFullYear()) {
+    await prisma.master.update({
+      where: { id: masterId },
+      data: { smmPostsThisMonth: 0, smmMonthReset: now },
+    });
+    return null; // reset happened, counter is 0
+  }
+
+  if (master.smmPostsThisMonth >= limit) {
+    return `⚠️ Лимит SMM-постов исчерпан (${limit}/мес).\n\nДождитесь следующего месяца или свяжитесь с нами для расширения.`;
+  }
+
+  return null;
+}
+
+/** Increment SMM post counter after successful post */
+export async function incrementSmmCounter(masterId: string): Promise<void> {
+  await prisma.master.update({
+    where: { id: masterId },
+    data: { smmPostsThisMonth: { increment: 1 } },
+  });
+}
+
 /** Check if chat has an active Instagram collection session (DB) */
 export async function isInInstagramPostMode(chatId: string): Promise<boolean> {
   const session = await prisma.instagramSession.findUnique({
@@ -508,13 +557,20 @@ export async function isInInstagramPostMode(chatId: string): Promise<boolean> {
   return !!session;
 }
 
-/** Silently enter Instagram post mode — create DB session */
-export async function startInstagramPostModeSilent(chatId: string, masterId: string): Promise<void> {
+/** Silently enter Instagram post mode — create DB session (checks subscription) */
+export async function startInstagramPostModeSilent(chatId: string, masterId: string): Promise<boolean> {
+  const error = await checkSmmAccess(masterId);
+  if (error) {
+    await sendTelegramMessage(chatId, error);
+    return false;
+  }
+
   await prisma.instagramSession.upsert({
     where: { chatId },
     update: { mediaItems: [], userContext: "", updatedAt: new Date() },
     create: { chatId, masterId, mediaItems: [], userContext: "" },
   });
+  return true;
 }
 
 /** Handle /post command — enter photo collection mode */
@@ -522,6 +578,13 @@ export async function handleInstagramPostCommand(
   chatId: string,
   masterId: string
 ): Promise<void> {
+  // Check subscription first
+  const smmError = await checkSmmAccess(masterId);
+  if (smmError) {
+    await sendTelegramMessage(chatId, smmError);
+    return;
+  }
+
   const account = await prisma.instagramAccount.findUnique({
     where: { masterId },
   });
@@ -529,7 +592,7 @@ export async function handleInstagramPostCommand(
   if (!account) {
     await sendTelegramMessage(
       chatId,
-      "❌ Instagram аккаунт не подключён.\n\nОбратитесь к администратору для настройки."
+      "❌ Instagram аккаунт не подключён.\n\nНапишите нам — подключим ваш аккаунт."
     );
     return;
   }
@@ -774,6 +837,9 @@ async function processCollectedPhotos(chatId: string): Promise<void> {
       userContext || undefined,
       mediaTypes
     );
+
+    // Increment SMM post counter
+    await incrementSmmCounter(masterId);
   } catch (error) {
     console.error("[Instagram /post] Error:", error);
     await sendTelegramMessage(

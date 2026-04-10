@@ -171,4 +171,11 @@ export const ROOM_PRESETS = [
 export const KP_LIMITS = {
   FREE: 5,
   PRO: Infinity,
+  PROPLUS: Infinity,
+} as const;
+
+export const SMM_LIMITS = {
+  FREE: 0,
+  PRO: 0,
+  PROPLUS: 15,
 } as const;

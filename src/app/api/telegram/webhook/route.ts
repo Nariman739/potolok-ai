@@ -205,13 +205,18 @@ export async function POST(request: Request) {
     // (Bot is currently Instagram-only — no measurement mode)
     const hasMedia = photoFileId || videoFileId || isDocPhoto || isDocVideo;
     const alreadyInIgMode = await isInInstagramPostMode(chatId);
+    let justEnteredIgMode = false;
     if (hasMedia && !alreadyInIgMode) {
-      // Silently start Instagram post mode — first media will be collected below
-      await startInstagramPostModeSilent(chatId, linkedMaster.id);
+      // Silently start Instagram post mode (checks subscription — shows upsell if needed)
+      justEnteredIgMode = await startInstagramPostModeSilent(chatId, linkedMaster.id);
+      if (!justEnteredIgMode) {
+        // Subscription check failed — upsell message already sent
+        return NextResponse.json({ ok: true });
+      }
     }
 
     // ── Instagram post mode: intercept photos, videos, documents, text, and voice ──
-    const inIgMode = hasMedia ? true : alreadyInIgMode; // if we just entered, we're in mode
+    const inIgMode = justEnteredIgMode || alreadyInIgMode;
     if (inIgMode) {
       try {
         // Extract caption from media messages (Telegram puts text in caption, not text)

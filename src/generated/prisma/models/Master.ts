@@ -31,6 +31,7 @@ export type MasterAvgAggregateOutputType = {
   warrantyMaterials: number | null
   warrantyInstall: number | null
   kpGeneratedThisMonth: number | null
+  smmPostsThisMonth: number | null
 }
 
 export type MasterSumAggregateOutputType = {
@@ -38,6 +39,7 @@ export type MasterSumAggregateOutputType = {
   warrantyMaterials: number | null
   warrantyInstall: number | null
   kpGeneratedThisMonth: number | null
+  smmPostsThisMonth: number | null
 }
 
 export type MasterMinAggregateOutputType = {
@@ -74,6 +76,8 @@ export type MasterMinAggregateOutputType = {
   subscriptionTier: $Enums.SubscriptionTier | null
   kpGeneratedThisMonth: number | null
   kpMonthReset: Date | null
+  smmPostsThisMonth: number | null
+  smmMonthReset: Date | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -115,6 +119,8 @@ export type MasterMaxAggregateOutputType = {
   subscriptionTier: $Enums.SubscriptionTier | null
   kpGeneratedThisMonth: number | null
   kpMonthReset: Date | null
+  smmPostsThisMonth: number | null
+  smmMonthReset: Date | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -156,6 +162,8 @@ export type MasterCountAggregateOutputType = {
   subscriptionTier: number
   kpGeneratedThisMonth: number
   kpMonthReset: number
+  smmPostsThisMonth: number
+  smmMonthReset: number
   isActive: number
   createdAt: number
   updatedAt: number
@@ -170,6 +178,7 @@ export type MasterAvgAggregateInputType = {
   warrantyMaterials?: true
   warrantyInstall?: true
   kpGeneratedThisMonth?: true
+  smmPostsThisMonth?: true
 }
 
 export type MasterSumAggregateInputType = {
@@ -177,6 +186,7 @@ export type MasterSumAggregateInputType = {
   warrantyMaterials?: true
   warrantyInstall?: true
   kpGeneratedThisMonth?: true
+  smmPostsThisMonth?: true
 }
 
 export type MasterMinAggregateInputType = {
@@ -213,6 +223,8 @@ export type MasterMinAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  smmPostsThisMonth?: true
+  smmMonthReset?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -254,6 +266,8 @@ export type MasterMaxAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  smmPostsThisMonth?: true
+  smmMonthReset?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -295,6 +309,8 @@ export type MasterCountAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  smmPostsThisMonth?: true
+  smmMonthReset?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -423,6 +439,8 @@ export type MasterGroupByOutputType = {
   subscriptionTier: $Enums.SubscriptionTier
   kpGeneratedThisMonth: number
   kpMonthReset: Date
+  smmPostsThisMonth: number
+  smmMonthReset: Date
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -487,6 +505,8 @@ export type MasterWhereInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
+  smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
@@ -537,6 +557,8 @@ export type MasterOrderByWithRelationInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
+  smmMonthReset?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -591,6 +613,8 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   subscriptionTier?: Prisma.EnumSubscriptionTierFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
+  smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
@@ -640,6 +664,8 @@ export type MasterOrderByWithAggregationInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
+  smmMonthReset?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -689,6 +715,8 @@ export type MasterScalarWhereWithAggregatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierWithAggregatesFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
+  smmPostsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
+  smmMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   isActive?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
@@ -730,6 +758,8 @@ export type MasterCreateInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -780,6 +810,8 @@ export type MasterUncheckedCreateInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -830,6 +862,8 @@ export type MasterUpdateInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -880,6 +914,8 @@ export type MasterUncheckedUpdateInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -930,6 +966,8 @@ export type MasterCreateManyInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -971,6 +1009,8 @@ export type MasterUpdateManyMutationInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1012,6 +1052,8 @@ export type MasterUncheckedUpdateManyInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1053,6 +1095,8 @@ export type MasterCountOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
+  smmMonthReset?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1065,6 +1109,7 @@ export type MasterAvgOrderByAggregateInput = {
   warrantyMaterials?: Prisma.SortOrder
   warrantyInstall?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
 }
 
 export type MasterMaxOrderByAggregateInput = {
@@ -1101,6 +1146,8 @@ export type MasterMaxOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
+  smmMonthReset?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1142,6 +1189,8 @@ export type MasterMinOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
+  smmMonthReset?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1154,6 +1203,7 @@ export type MasterSumOrderByAggregateInput = {
   warrantyMaterials?: Prisma.SortOrder
   warrantyInstall?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
+  smmPostsThisMonth?: Prisma.SortOrder
 }
 
 export type MasterScalarRelationFilter = {
@@ -1353,6 +1403,8 @@ export type MasterCreateWithoutSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1402,6 +1454,8 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1467,6 +1521,8 @@ export type MasterUpdateWithoutSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1516,6 +1572,8 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1565,6 +1623,8 @@ export type MasterCreateWithoutPricesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1614,6 +1674,8 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1679,6 +1741,8 @@ export type MasterUpdateWithoutPricesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1728,6 +1792,8 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1777,6 +1843,8 @@ export type MasterCreateWithoutCustomItemsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1826,6 +1894,8 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1891,6 +1961,8 @@ export type MasterUpdateWithoutCustomItemsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1940,6 +2012,8 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1989,6 +2063,8 @@ export type MasterCreateWithoutEstimatesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2038,6 +2114,8 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2103,6 +2181,8 @@ export type MasterUpdateWithoutEstimatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2152,6 +2232,8 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2201,6 +2283,8 @@ export type MasterCreateWithoutChatSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2250,6 +2334,8 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2315,6 +2401,8 @@ export type MasterUpdateWithoutChatSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2364,6 +2452,8 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2413,6 +2503,8 @@ export type MasterCreateWithoutMeasurementsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2462,6 +2554,8 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2527,6 +2621,8 @@ export type MasterUpdateWithoutMeasurementsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2576,6 +2672,8 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2625,6 +2723,8 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2674,6 +2774,8 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2739,6 +2841,8 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2788,6 +2892,8 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2837,6 +2943,8 @@ export type MasterCreateWithoutInstagramAccountInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2886,6 +2994,8 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2951,6 +3061,8 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3000,6 +3112,8 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3049,6 +3163,8 @@ export type MasterCreateWithoutInstagramSessionInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -3098,6 +3214,8 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -3163,6 +3281,8 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3212,6 +3332,8 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3346,6 +3468,8 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  smmPostsThisMonth?: boolean
+  smmMonthReset?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3397,6 +3521,8 @@ export type MasterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  smmPostsThisMonth?: boolean
+  smmMonthReset?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3438,6 +3564,8 @@ export type MasterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  smmPostsThisMonth?: boolean
+  smmMonthReset?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3479,6 +3607,8 @@ export type MasterSelectScalar = {
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  smmPostsThisMonth?: boolean
+  smmMonthReset?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3486,7 +3616,7 @@ export type MasterSelectScalar = {
   portfolioBio?: boolean
 }
 
-export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
+export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "smmPostsThisMonth" | "smmMonthReset" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
 export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   prices?: boolean | Prisma.Master$pricesArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
@@ -3549,6 +3679,8 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     subscriptionTier: $Enums.SubscriptionTier
     kpGeneratedThisMonth: number
     kpMonthReset: Date
+    smmPostsThisMonth: number
+    smmMonthReset: Date
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -4019,6 +4151,8 @@ export interface MasterFieldRefs {
   readonly subscriptionTier: Prisma.FieldRef<"Master", 'SubscriptionTier'>
   readonly kpGeneratedThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly kpMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly smmPostsThisMonth: Prisma.FieldRef<"Master", 'Int'>
+  readonly smmMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
   readonly isActive: Prisma.FieldRef<"Master", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Master", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Master", 'DateTime'>

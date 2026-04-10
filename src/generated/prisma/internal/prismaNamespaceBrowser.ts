@@ -115,6 +115,8 @@ export const MasterScalarFieldEnum = {
   subscriptionTier: 'subscriptionTier',
   kpGeneratedThisMonth: 'kpGeneratedThisMonth',
   kpMonthReset: 'kpMonthReset',
+  smmPostsThisMonth: 'smmPostsThisMonth',
+  smmMonthReset: 'smmMonthReset',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',

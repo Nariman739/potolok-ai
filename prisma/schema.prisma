@@ -58,6 +58,10 @@ model Master {
   kpGeneratedThisMonth Int  @default(0)
   kpMonthReset    DateTime @default(now())
 
+  // SMM usage (Instagram auto-posting)
+  smmPostsThisMonth  Int      @default(0)
+  smmMonthReset      DateTime @default(now())
+
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -90,6 +94,7 @@ model Session {
 enum SubscriptionTier {
   FREE
   PRO
+  PROPLUS
 }
 
 // ============================================
