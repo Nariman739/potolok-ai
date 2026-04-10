@@ -9,6 +9,7 @@
 // Agents 1 & 5 run in parallel, then 2→3→4 sequentially
 
 import { getOpenRouter, VISION_MODEL } from "@/lib/openrouter";
+import type { SmmProfile } from "@/lib/telegram-bot";
 
 // ─────────────────────────────────────────────────────
 // Types
@@ -252,20 +253,57 @@ const COPYWRITER_PROMPT = `Ты — копирайтер с душой. Пише
 }
 \`\`\``;
 
+/** Build dynamic copywriter prompt based on master's SMM profile */
+function buildCopywriterPrompt(profile?: SmmProfile | null): string {
+  if (!profile?.setupComplete) return COPYWRITER_PROMPT;
+
+  const toneMap: Record<string, string> = {
+    warm: "Тёплый и дружелюбный — как мастер, который любит свою работу и с теплотой рассказывает о ней",
+    expert: "Экспертный и солидный — уверенный профессионал, который знает дело, спокойный авторитет",
+    premium: "Премиальный и лаконичный — минимум слов, максимум стиля, акцент на качестве и эстетике",
+    friendly: "Простой и понятный — как сосед-мастер, без пафоса, по-человечески",
+  };
+
+  const audienceMap: Record<string, string> = {
+    homeowners: "Владельцы квартир и домов — люди, которые делают ремонт для себя и семьи",
+    designers: "Дизайнеры интерьеров — профессионалы, ценят детали, техническую точность и эстетику",
+    developers: "Застройщики и прорабы — практичные люди, важны сроки, объёмы и надёжность",
+    mixed: "Разная аудитория — и частные клиенты, и профессионалы, пиши универсально",
+  };
+
+  const tone = toneMap[profile.tone] || toneMap.warm;
+  const audience = audienceMap[profile.audience] || audienceMap.homeowners;
+  const city = profile.city || "Казахстан";
+  const usp = profile.usp ? `\n- Главная фишка мастера: "${profile.usp}" — ОБЯЗАТЕЛЬНО упоминай это как преимущество` : "";
+  const cityTag = city.replace(/\s/g, "");
+
+  // Append personalization block to the base prompt
+  return COPYWRITER_PROMPT + `
+
+## ПЕРСОНАЛИЗАЦИЯ (индивидуальные настройки мастера — ПРИОРИТЕТ над общими правилами):
+- Стиль: ${tone}
+- Целевая аудитория: ${audience}
+- Город: ${city} (упоминай в тексте и хэштегах)${usp}
+- Локальные хэштеги: #${cityTag} #${cityTag.toLowerCase()}ремонт #натяжныепотолки${cityTag} #ремонт${cityTag} #потолки${cityTag}`;
+}
+
 async function runCopywriter(
   analysis: AnalyzerResult,
   strategy: StrategyResult,
-  userContext?: string
+  userContext?: string,
+  smmProfile?: SmmProfile | null
 ): Promise<CopywriterResult> {
   let userMessage = `Анализ фото:\n${JSON.stringify(analysis, null, 2)}\n\nСтратегия:\n${JSON.stringify(strategy, null, 2)}\n\nНапиши тёплый, качественный текст для Instagram.`;
   if (userContext) {
     userMessage += `\n\nДополнительная информация от мастера (ОБЯЗАТЕЛЬНО учти в тексте): "${userContext}"`;
   }
 
+  const prompt = buildCopywriterPrompt(smmProfile);
+
   const result = await getOpenRouter().chat.completions.create({
     model: VISION_MODEL,
     messages: [
-      { role: "system", content: COPYWRITER_PROMPT },
+      { role: "system", content: prompt },
       {
         role: "user",
         content: userMessage,
@@ -417,9 +455,10 @@ function extractJson(text: string): unknown {
 export async function runInstagramPipeline(
   imageBase64Urls: string[],
   recentPostDates: string[] = [],
-  userContext?: string
+  userContext?: string,
+  smmProfile?: SmmProfile | null
 ): Promise<InstagramPipelineResult> {
-  console.log(`[Instagram Pipeline] Starting with ${imageBase64Urls.length} photos${userContext ? `, context: "${userContext.substring(0, 50)}..."` : ""}`);
+  console.log(`[Instagram Pipeline] Starting with ${imageBase64Urls.length} photos${userContext ? `, context: "${userContext.substring(0, 50)}..."` : ""}${smmProfile?.setupComplete ? `, profile: ${smmProfile.city}/${smmProfile.tone}` : ""}`);
 
   // Phase 1: Run Analyzer (vision) and Scheduler in parallel
   const [analysis, schedule] = await Promise.all([
@@ -433,8 +472,8 @@ export async function runInstagramPipeline(
   const strategy = await runStrategist(analysis);
   console.log(`[Instagram Pipeline] Strategy: ${strategy.post_type}, cover=${strategy.cover_index}`);
 
-  // Phase 3: Copywriter (needs analysis + strategy + user context)
-  const copy = await runCopywriter(analysis, strategy, userContext);
+  // Phase 3: Copywriter (needs analysis + strategy + user context + SMM profile)
+  const copy = await runCopywriter(analysis, strategy, userContext, smmProfile);
   console.log(`[Instagram Pipeline] Copy: ${copy.caption.substring(0, 50)}...`);
 
   // Phase 4: Visual Editor (needs analysis + strategy)

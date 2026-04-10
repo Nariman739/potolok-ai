@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { runInstagramPipeline, type InstagramPipelineResult } from "@/lib/instagram-agents";
 import { publishCarouselPost } from "@/lib/instagram";
+import { getSmmProfile } from "@/lib/telegram-bot";
 import {
   sendTelegramMessage,
   sendTelegramMessageWithButtons,
@@ -78,10 +79,13 @@ export async function processInstagramPhotos(
     .filter((p) => p.publishedAt)
     .map((p) => p.publishedAt!.toISOString());
 
+  // Load master's SMM profile for personalized captions
+  const smmProfile = await getSmmProfile(masterId);
+
   // Run 5-agent pipeline
   let pipelineResult: InstagramPipelineResult;
   try {
-    pipelineResult = await runInstagramPipeline(photoBase64Urls, recentPostDates, userContext);
+    pipelineResult = await runInstagramPipeline(photoBase64Urls, recentPostDates, userContext, smmProfile);
   } catch (error) {
     console.error("[Instagram Publisher] Pipeline error:", error);
     await sendTelegramMessage(

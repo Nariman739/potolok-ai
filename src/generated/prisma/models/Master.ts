@@ -164,6 +164,7 @@ export type MasterCountAggregateOutputType = {
   kpMonthReset: number
   smmPostsThisMonth: number
   smmMonthReset: number
+  smmProfile: number
   isActive: number
   createdAt: number
   updatedAt: number
@@ -311,6 +312,7 @@ export type MasterCountAggregateInputType = {
   kpMonthReset?: true
   smmPostsThisMonth?: true
   smmMonthReset?: true
+  smmProfile?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -441,6 +443,7 @@ export type MasterGroupByOutputType = {
   kpMonthReset: Date
   smmPostsThisMonth: number
   smmMonthReset: Date
+  smmProfile: runtime.JsonValue | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -507,6 +510,7 @@ export type MasterWhereInput = {
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  smmProfile?: Prisma.JsonNullableFilter<"Master">
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
@@ -559,6 +563,7 @@ export type MasterOrderByWithRelationInput = {
   kpMonthReset?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
+  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -615,6 +620,7 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  smmProfile?: Prisma.JsonNullableFilter<"Master">
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
@@ -666,6 +672,7 @@ export type MasterOrderByWithAggregationInput = {
   kpMonthReset?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
+  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -717,6 +724,7 @@ export type MasterScalarWhereWithAggregatesInput = {
   kpMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   smmPostsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
+  smmProfile?: Prisma.JsonNullableWithAggregatesFilter<"Master">
   isActive?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
@@ -760,6 +768,7 @@ export type MasterCreateInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -812,6 +821,7 @@ export type MasterUncheckedCreateInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -864,6 +874,7 @@ export type MasterUpdateInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -916,6 +927,7 @@ export type MasterUncheckedUpdateInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -968,6 +980,7 @@ export type MasterCreateManyInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1011,6 +1024,7 @@ export type MasterUpdateManyMutationInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1054,6 +1068,7 @@ export type MasterUncheckedUpdateManyInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1097,6 +1112,7 @@ export type MasterCountOrderByAggregateInput = {
   kpMonthReset?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
+  smmProfile?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1405,6 +1421,7 @@ export type MasterCreateWithoutSessionsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1456,6 +1473,7 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1523,6 +1541,7 @@ export type MasterUpdateWithoutSessionsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1574,6 +1593,7 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1625,6 +1645,7 @@ export type MasterCreateWithoutPricesInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1676,6 +1697,7 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1743,6 +1765,7 @@ export type MasterUpdateWithoutPricesInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1794,6 +1817,7 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1845,6 +1869,7 @@ export type MasterCreateWithoutCustomItemsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1896,6 +1921,7 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1963,6 +1989,7 @@ export type MasterUpdateWithoutCustomItemsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2014,6 +2041,7 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2065,6 +2093,7 @@ export type MasterCreateWithoutEstimatesInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2116,6 +2145,7 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2183,6 +2213,7 @@ export type MasterUpdateWithoutEstimatesInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2234,6 +2265,7 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2285,6 +2317,7 @@ export type MasterCreateWithoutChatSessionsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2336,6 +2369,7 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2403,6 +2437,7 @@ export type MasterUpdateWithoutChatSessionsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2454,6 +2489,7 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2505,6 +2541,7 @@ export type MasterCreateWithoutMeasurementsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2556,6 +2593,7 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2623,6 +2661,7 @@ export type MasterUpdateWithoutMeasurementsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2674,6 +2713,7 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2725,6 +2765,7 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2776,6 +2817,7 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2843,6 +2885,7 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2894,6 +2937,7 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2945,6 +2989,7 @@ export type MasterCreateWithoutInstagramAccountInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2996,6 +3041,7 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -3063,6 +3109,7 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3114,6 +3161,7 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3165,6 +3213,7 @@ export type MasterCreateWithoutInstagramSessionInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -3216,6 +3265,7 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   kpMonthReset?: Date | string
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -3283,6 +3333,7 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3334,6 +3385,7 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3470,6 +3522,7 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   kpMonthReset?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
+  smmProfile?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3523,6 +3576,7 @@ export type MasterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   kpMonthReset?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
+  smmProfile?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3566,6 +3620,7 @@ export type MasterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   kpMonthReset?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
+  smmProfile?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3609,6 +3664,7 @@ export type MasterSelectScalar = {
   kpMonthReset?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
+  smmProfile?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -3616,7 +3672,7 @@ export type MasterSelectScalar = {
   portfolioBio?: boolean
 }
 
-export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "smmPostsThisMonth" | "smmMonthReset" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
+export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "smmPostsThisMonth" | "smmMonthReset" | "smmProfile" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
 export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   prices?: boolean | Prisma.Master$pricesArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
@@ -3681,6 +3737,7 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     kpMonthReset: Date
     smmPostsThisMonth: number
     smmMonthReset: Date
+    smmProfile: runtime.JsonValue | null
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -4153,6 +4210,7 @@ export interface MasterFieldRefs {
   readonly kpMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
   readonly smmPostsThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly smmMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly smmProfile: Prisma.FieldRef<"Master", 'Json'>
   readonly isActive: Prisma.FieldRef<"Master", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Master", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Master", 'DateTime'>

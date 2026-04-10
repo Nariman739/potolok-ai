@@ -61,6 +61,7 @@ model Master {
   // SMM usage (Instagram auto-posting)
   smmPostsThisMonth  Int      @default(0)
   smmMonthReset      DateTime @default(now())
+  smmProfile         Json?    // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())

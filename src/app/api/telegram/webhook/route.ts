@@ -12,6 +12,9 @@ import {
   handleInstagramCallbackQuery,
   isInInstagramPostMode,
   startInstagramPostModeSilent,
+  handleSmmOnboarding,
+  handleSmmOnboardingCallback,
+  handleSmmUspAnswer,
 } from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
 
@@ -40,6 +43,22 @@ export async function POST(request: Request) {
 
       // Acknowledge the button press immediately
       await answerCallbackQuery(cbId);
+
+      // Handle SMM onboarding callbacks (smm_tone:xxx, smm_aud:xxx)
+      if (cbData.startsWith("smm_")) {
+        try {
+          const cbLinked = await prisma.master.findUnique({
+            where: { telegramChatId: cbChatId },
+            select: { id: true },
+          });
+          if (cbLinked) {
+            await handleSmmOnboardingCallback(cbChatId, cbLinked.id, cbData);
+          }
+        } catch (err) {
+          console.error("SMM onboarding callback error:", err);
+        }
+        return NextResponse.json({ ok: true });
+      }
 
       // Handle Instagram callbacks
       if (cbData.startsWith("ig_")) {
@@ -180,6 +199,14 @@ export async function POST(request: Request) {
       const command = text.split(" ")[0].split("@")[0];
       await handleBotCommand(chatId, command, linkedMaster.id);
       return NextResponse.json({ ok: true });
+    }
+
+    // ── SMM onboarding text answers (city, usp) ──
+    if (text && !text.startsWith("/")) {
+      // Check city answer first, then USP answer
+      const handled = await handleSmmOnboarding(chatId, linkedMaster.id, text)
+        || await handleSmmUspAnswer(chatId, linkedMaster.id, text);
+      if (handled) return NextResponse.json({ ok: true });
     }
 
     // ── Photo message ──

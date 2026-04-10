@@ -548,6 +548,210 @@ export async function incrementSmmCounter(masterId: string): Promise<void> {
   });
 }
 
+// ─────────────────────────────────────────────────────
+// SMM Profile Onboarding (first-time setup via Telegram)
+// ─────────────────────────────────────────────────────
+
+export interface SmmProfile {
+  city: string;          // "Астана", "Алматы", etc.
+  tone: string;          // "warm" | "expert" | "premium" | "friendly"
+  audience: string;      // "homeowners" | "designers" | "developers" | "mixed"
+  usp: string;           // Уникальная фишка мастера (свободный текст)
+  setupComplete: boolean;
+}
+
+const TONE_OPTIONS = [
+  { text: "Тёплый и дружелюбный", value: "warm" },
+  { text: "Экспертный и солидный", value: "expert" },
+  { text: "Премиальный и лаконичный", value: "premium" },
+  { text: "Простой и понятный", value: "friendly" },
+];
+
+const AUDIENCE_OPTIONS = [
+  { text: "Владельцы квартир/домов", value: "homeowners" },
+  { text: "Дизайнеры интерьеров", value: "designers" },
+  { text: "Застройщики/прорабы", value: "developers" },
+  { text: "Все понемногу", value: "mixed" },
+];
+
+/** Check if master has completed SMM profile setup */
+async function hasSmmProfile(masterId: string): Promise<boolean> {
+  const master = await prisma.master.findUnique({
+    where: { id: masterId },
+    select: { smmProfile: true },
+  });
+  if (!master?.smmProfile) return false;
+  const profile = master.smmProfile as unknown as SmmProfile;
+  return !!profile.setupComplete;
+}
+
+/** Get master's SMM profile */
+export async function getSmmProfile(masterId: string): Promise<SmmProfile | null> {
+  const master = await prisma.master.findUnique({
+    where: { id: masterId },
+    select: { smmProfile: true },
+  });
+  if (!master?.smmProfile) return null;
+  return master.smmProfile as unknown as SmmProfile;
+}
+
+/** Start SMM onboarding — ask city first */
+async function startSmmOnboarding(chatId: string, masterId: string): Promise<void> {
+  // Init empty profile
+  await prisma.master.update({
+    where: { id: masterId },
+    data: { smmProfile: JSON.parse(JSON.stringify({ city: "", tone: "", audience: "", usp: "", setupComplete: false })) },
+  });
+
+  await sendTelegramMessage(
+    chatId,
+    `🎨 <b>Настроим ваш SMM-профиль</b>\n\n` +
+    `Это нужно один раз — чтобы AI писал тексты в вашем стиле, для вашего города и вашей аудитории.\n\n` +
+    `<b>Вопрос 1 из 4:</b> В каком городе вы работаете?\n\n` +
+    `Напишите название города (например: Астана, Алматы, Караганда)`
+  );
+
+  // Store onboarding state in session
+  await prisma.instagramSession.upsert({
+    where: { chatId },
+    update: { mediaItems: JSON.parse(JSON.stringify([{ type: "onboarding", step: "city" }])), userContext: "onboarding", updatedAt: new Date() },
+    create: { chatId, masterId, mediaItems: JSON.parse(JSON.stringify([{ type: "onboarding", step: "city" }])), userContext: "onboarding" },
+  });
+}
+
+/** Handle onboarding answers */
+export async function handleSmmOnboarding(
+  chatId: string,
+  masterId: string,
+  input: string
+): Promise<boolean> {
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session || session.userContext !== "onboarding") return false;
+
+  const items = session.mediaItems as unknown as Array<{ type: string; step: string }>;
+  if (!items?.length || items[0]?.type !== "onboarding") return false;
+
+  const step = items[0].step;
+
+  if (step === "city") {
+    // Save city, ask tone
+    const master = await prisma.master.findUnique({ where: { id: masterId }, select: { smmProfile: true } });
+    const profile = (master?.smmProfile as unknown as SmmProfile) || { city: "", tone: "", audience: "", usp: "", setupComplete: false };
+    profile.city = input.trim();
+    await prisma.master.update({ where: { id: masterId }, data: { smmProfile: JSON.parse(JSON.stringify(profile)) } });
+
+    await sendTelegramMessageWithButtons(
+      chatId,
+      `<b>Вопрос 2 из 4:</b> Какой тон постов вам ближе?\n\nВыберите стиль, в котором бот будет писать:`,
+      TONE_OPTIONS.map(o => [{ text: o.text, callback_data: `smm_tone:${o.value}` }])
+    );
+
+    await prisma.instagramSession.update({
+      where: { chatId },
+      data: { mediaItems: JSON.parse(JSON.stringify([{ type: "onboarding", step: "tone" }])) },
+    });
+    return true;
+  }
+
+  return false;
+}
+
+/** Handle onboarding callback buttons */
+export async function handleSmmOnboardingCallback(
+  chatId: string,
+  masterId: string,
+  callbackData: string
+): Promise<boolean> {
+  if (!callbackData.startsWith("smm_")) return false;
+
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session || session.userContext !== "onboarding") return false;
+
+  const master = await prisma.master.findUnique({ where: { id: masterId }, select: { smmProfile: true } });
+  const profile = (master?.smmProfile as unknown as SmmProfile) || { city: "", tone: "", audience: "", usp: "", setupComplete: false };
+
+  if (callbackData.startsWith("smm_tone:")) {
+    const tone = callbackData.split(":")[1];
+    profile.tone = tone;
+    await prisma.master.update({ where: { id: masterId }, data: { smmProfile: JSON.parse(JSON.stringify(profile)) } });
+
+    await sendTelegramMessageWithButtons(
+      chatId,
+      `<b>Вопрос 3 из 4:</b> Кто ваша основная аудитория?\n\nДля кого вы делаете потолки чаще всего:`,
+      AUDIENCE_OPTIONS.map(o => [{ text: o.text, callback_data: `smm_aud:${o.value}` }])
+    );
+
+    await prisma.instagramSession.update({
+      where: { chatId },
+      data: { mediaItems: JSON.parse(JSON.stringify([{ type: "onboarding", step: "audience" }])) },
+    });
+    return true;
+  }
+
+  if (callbackData.startsWith("smm_aud:")) {
+    const audience = callbackData.split(":")[1];
+    profile.audience = audience;
+    await prisma.master.update({ where: { id: masterId }, data: { smmProfile: JSON.parse(JSON.stringify(profile)) } });
+
+    await sendTelegramMessage(
+      chatId,
+      `<b>Вопрос 4 из 4:</b> Чем вы отличаетесь от других мастеров?\n\n` +
+      `Напишите свободно — что вас выделяет. Например:\n` +
+      `— <i>Делаю за 1 день, даю гарантию 10 лет</i>\n` +
+      `— <i>Специализируюсь на двухуровневых с подсветкой</i>\n` +
+      `— <i>Работаю аккуратно, убираю за собой</i>\n\n` +
+      `Или напишите <b>пропустить</b> если пока не знаете`
+    );
+
+    await prisma.instagramSession.update({
+      where: { chatId },
+      data: { mediaItems: JSON.parse(JSON.stringify([{ type: "onboarding", step: "usp" }])) },
+    });
+    return true;
+  }
+
+  return false;
+}
+
+/** Handle USP text (last onboarding step) */
+export async function handleSmmUspAnswer(
+  chatId: string,
+  masterId: string,
+  text: string
+): Promise<boolean> {
+  const session = await prisma.instagramSession.findUnique({ where: { chatId } });
+  if (!session || session.userContext !== "onboarding") return false;
+
+  const items = session.mediaItems as unknown as Array<{ type: string; step: string }>;
+  if (!items?.length || items[0]?.step !== "usp") return false;
+
+  const master = await prisma.master.findUnique({ where: { id: masterId }, select: { smmProfile: true, companyName: true, firstName: true } });
+  const profile = (master?.smmProfile as unknown as SmmProfile) || { city: "", tone: "", audience: "", usp: "", setupComplete: false };
+
+  profile.usp = text.toLowerCase() === "пропустить" ? "" : text.trim();
+  profile.setupComplete = true;
+  await prisma.master.update({ where: { id: masterId }, data: { smmProfile: JSON.parse(JSON.stringify(profile)) } });
+
+  // Clean up onboarding session
+  await prisma.instagramSession.delete({ where: { chatId } });
+
+  const toneLabel = TONE_OPTIONS.find(o => o.value === profile.tone)?.text || profile.tone;
+  const audLabel = AUDIENCE_OPTIONS.find(o => o.value === profile.audience)?.text || profile.audience;
+
+  await sendTelegramMessage(
+    chatId,
+    `✅ <b>SMM-профиль настроен!</b>\n\n` +
+    `📍 Город: <b>${profile.city}</b>\n` +
+    `🎨 Тон: <b>${toneLabel}</b>\n` +
+    `👥 Аудитория: <b>${audLabel}</b>\n` +
+    (profile.usp ? `💎 Фишка: <b>${profile.usp}</b>\n` : ``) +
+    `\nТеперь AI будет писать посты именно под вас.\n\n` +
+    `Отправьте фото потолка или напишите /post чтобы начать!`
+  );
+
+  return true;
+}
+
 /** Check if chat has an active Instagram collection session (DB) */
 export async function isInInstagramPostMode(chatId: string): Promise<boolean> {
   const session = await prisma.instagramSession.findUnique({
@@ -557,11 +761,18 @@ export async function isInInstagramPostMode(chatId: string): Promise<boolean> {
   return !!session;
 }
 
-/** Silently enter Instagram post mode — create DB session (checks subscription) */
+/** Silently enter Instagram post mode — create DB session (checks subscription + profile) */
 export async function startInstagramPostModeSilent(chatId: string, masterId: string): Promise<boolean> {
   const error = await checkSmmAccess(masterId);
   if (error) {
     await sendTelegramMessage(chatId, error);
+    return false;
+  }
+
+  // If no SMM profile yet, start onboarding instead
+  const hasProfile = await hasSmmProfile(masterId);
+  if (!hasProfile) {
+    await startSmmOnboarding(chatId, masterId);
     return false;
   }
 
@@ -582,6 +793,13 @@ export async function handleInstagramPostCommand(
   const smmError = await checkSmmAccess(masterId);
   if (smmError) {
     await sendTelegramMessage(chatId, smmError);
+    return;
+  }
+
+  // Check if SMM profile is set up — if not, start onboarding
+  const hasProfile = await hasSmmProfile(masterId);
+  if (!hasProfile) {
+    await startSmmOnboarding(chatId, masterId);
     return;
   }
 
