@@ -518,9 +518,9 @@ async function checkSmmAccess(masterId: string): Promise<string | null> {
   if (!master) return "Аккаунт не найден.";
 
   const tier = master.subscriptionTier as keyof typeof SMM_LIMITS;
-  const limit = SMM_LIMITS[tier] ?? 0;
+  const limit: number = SMM_LIMITS[tier] ?? 0;
 
-  if (limit === 0) return SMM_UPSELL_MESSAGE;
+  if (limit <= 0) return SMM_UPSELL_MESSAGE;
 
   // Auto-reset monthly counter
   const now = new Date();

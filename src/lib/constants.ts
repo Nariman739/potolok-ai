@@ -175,7 +175,7 @@ export const KP_LIMITS = {
 } as const;
 
 export const SMM_LIMITS = {
-  FREE: 0,
-  PRO: 0,
+  FREE: 3,    // Тестовый период — 3 поста бесплатно
+  PRO: 10,
   PROPLUS: 15,
 } as const;
