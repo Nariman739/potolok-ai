@@ -1178,6 +1178,38 @@ export async function handleBotCommand(
       break;
     }
 
+    case "/connect": {
+      // Check if already connected
+      const igAccount = await prisma.instagramAccount.findUnique({
+        where: { masterId },
+        select: { username: true, isActive: true },
+      });
+
+      if (igAccount?.isActive) {
+        await sendTelegramMessage(
+          chatId,
+          `✅ Instagram уже подключён: <b>@${igAccount.username || "аккаунт"}</b>\n\n` +
+          `Отправьте фото или напишите /post чтобы создать пост.`
+        );
+        break;
+      }
+
+      const connectUrl = `https://potolok.ai/api/auth/instagram/connect?chatId=${chatId}`;
+
+      await sendTelegramMessageWithButtons(
+        chatId,
+        `📸 <b>Подключение Instagram</b>\n\n` +
+        `Нажмите кнопку ниже — вы перейдёте на Facebook, залогинитесь и дадите разрешение.\n\n` +
+        `<b>Перед подключением убедитесь:</b>\n` +
+        `1. Instagram переведён в бизнес-аккаунт\n` +
+        `2. Есть страница в Facebook\n` +
+        `3. Instagram привязан к странице Facebook\n\n` +
+        `📖 <a href="https://potolok.ai/instagram-guide">Подробная инструкция</a>`,
+        [[{ text: "🔗 Подключить Instagram", url: connectUrl }]]
+      );
+      break;
+    }
+
     case "/cancel": {
       const hasSession = await isInInstagramPostMode(chatId);
       if (hasSession) {
@@ -1193,13 +1225,13 @@ export async function handleBotCommand(
       await sendTelegramMessage(
         chatId,
         `🤖 <b>PotolokAI Бот</b>\n\n` +
-        `📸 <b>Фото</b> — отправьте фото замеров для расчёта\n` +
-        `🎤 <b>Голос</b> — наговорите размеры голосом\n` +
-        `✏️ <b>Текст</b> — напишите размеры или задайте вопрос\n\n` +
+        `📸 Отправьте <b>фото/видео</b> потолка — AI создаст пост для Instagram\n` +
+        `🎤 Можете наговорить описание голосом\n` +
+        `✏️ Или написать текстом\n\n` +
         `<b>Команды:</b>\n` +
-        `/new — начать новый расчёт\n` +
-        `/kp — последние КП\n` +
-        `/post — создать Instagram пост из фото\n` +
+        `/post — создать Instagram пост\n` +
+        `/connect — подключить Instagram аккаунт\n` +
+        `/cancel — отменить текущий пост\n` +
         `/help — эта справка`
       );
       break;

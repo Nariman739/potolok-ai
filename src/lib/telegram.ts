@@ -153,7 +153,7 @@ export async function sendTelegramPhoto(
 export async function sendTelegramMessageWithButtons(
   chatId: string,
   text: string,
-  buttons: Array<Array<{ text: string; callback_data: string }>>
+  buttons: Array<Array<{ text: string; callback_data?: string; url?: string }>>
 ): Promise<void> {
   try {
     // Telegram limit: 4096 chars per message
