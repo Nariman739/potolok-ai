@@ -7,18 +7,20 @@ import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
 
 // ── Colors ──
 const C = {
-  primary: "#1e3a5f",
-  primaryLight: "#2d5a8e",
-  accent: "#F97316",
-  white: "#ffffff",
-  text: "#1f2937",
-  textLight: "#6b7280",
-  textMuted: "#9ca3af",
-  bg: "#f8fafc",
-  bgRow: "#f1f5f9",
-  border: "#e2e8f0",
-  success: "#10b981",
-  warning: "#d97706",
+  primary: "#0F172A",      // Dark navy
+  primaryMid: "#1E293B",
+  accent: "#F97316",       // Vibrant orange
+  accentSoft: "#FFF7ED",
+  gold: "#D97706",
+  white: "#FFFFFF",
+  text: "#0F172A",
+  textLight: "#64748B",
+  textMuted: "#94A3B8",
+  bg: "#F8FAFC",
+  bgWarm: "#FFFBEB",
+  border: "#E2E8F0",
+  success: "#059669",
+  blue: "#2563EB",
 };
 
 function fmtPrice(n: number | undefined | null): string {
@@ -39,7 +41,6 @@ function collectPdf(doc: PDFKit.PDFDocument): Promise<Buffer> {
   });
 }
 
-/** Draw rounded rectangle (pdfkit doesn't have built-in) */
 function roundedRect(doc: PDFKit.PDFDocument, x: number, y: number, w: number, h: number, r: number) {
   doc.moveTo(x + r, y)
     .lineTo(x + w - r, y)
@@ -70,7 +71,7 @@ export async function GET(
     }
 
     const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult & { quickEstimate?: boolean };
-    const company = estimate.master.companyName || estimate.master.firstName || "";
+    const company = estimate.master.companyName || estimate.master.firstName || "potolok.ai";
     const total = estimate.total || estimate.standardTotal || 0;
     const contactPhone = estimate.master.whatsappPhone || estimate.master.phone || "";
     const discount = estimate.discountPercent || 0;
@@ -88,240 +89,245 @@ export async function GET(
     const promise = collectPdf(doc);
     const pageW = 595.28;
     const pageH = 841.89;
-    const ML = 40; // margin left
+    const ML = 40;
     const MR = 40;
     const contentW = pageW - ML - MR;
-    const RE = pageW - MR; // right edge
+    const RE = pageW - MR;
 
     doc.registerFont("Sans", NOTO_SANS_REGULAR);
     doc.registerFont("Sans-Bold", NOTO_SANS_BOLD);
 
     // ================================================================
-    // PAGE 1: HERO HEADER
+    // PAGE 1: PREMIUM HEADER
     // ================================================================
 
-    // Dark blue header background
-    const headerH = 160;
+    // Full-width dark header with gradient feel
+    const headerH = 200;
     doc.rect(0, 0, pageW, headerH).fill(C.primary);
 
-    // Accent stripe at bottom of header
-    doc.rect(0, headerH - 4, pageW, 4).fill(C.accent);
+    // Subtle decorative accent bar
+    doc.rect(0, headerH - 5, pageW, 5).fill(C.accent);
 
-    // Company name
-    doc.font("Sans-Bold").fontSize(24).fillColor(C.white)
-      .text(company, ML, 35, { width: contentW });
+    // Geometric accent element (top-right corner decoration)
+    doc.save().opacity(0.08);
+    doc.rect(pageW - 200, 0, 200, 120).fill(C.white);
+    doc.restore();
 
-    // "Коммерческое предложение" badge
-    doc.font("Sans").fontSize(11).fillColor(C.white).opacity(0.85)
-      .text("КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ", ML, 70, { width: contentW });
+    doc.save().opacity(0.05);
+    doc.rect(pageW - 150, 0, 150, 80).fill(C.white);
+    doc.restore();
+
+    // Company name — big and bold
+    doc.font("Sans-Bold").fontSize(28).fillColor(C.white)
+      .text(company, ML, 32, { width: contentW * 0.65 });
+
+    // Subtitle
+    doc.font("Sans").fontSize(11).fillColor(C.white).opacity(0.6)
+      .text("КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ", ML, 72);
     doc.opacity(1);
 
-    // Date + КП number
+    // Date + ID
     const dateStr = new Date(estimate.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-    doc.font("Sans").fontSize(9).fillColor(C.white).opacity(0.7)
-      .text(`${dateStr}  •  КП #${estimate.publicId.slice(0, 8).toUpperCase()}`, ML, 90);
+    doc.font("Sans").fontSize(9).fillColor(C.white).opacity(0.45)
+      .text(`${dateStr}  ·  #${estimate.publicId.slice(0, 8).toUpperCase()}`, ML, 90);
     doc.opacity(1);
 
-    // Contact phone (right side)
+    // Contact phone — prominent right side
     if (contactPhone) {
-      doc.font("Sans").fontSize(10).fillColor(C.white).opacity(0.9)
-        .text(contactPhone, ML, 35, { width: contentW, align: "right" });
-      doc.opacity(1);
+      doc.font("Sans-Bold").fontSize(14).fillColor(C.white)
+        .text(contactPhone, ML, 32, { width: contentW, align: "right" });
     }
 
-    // Public link (right side)
+    // Public link
     const publicUrl = `potolok.ai/kp/${estimate.publicId}`;
-    doc.font("Sans").fontSize(8).fillColor(C.white).opacity(0.6)
-      .text(publicUrl, ML, 48, { width: contentW, align: "right" });
+    doc.font("Sans").fontSize(8).fillColor(C.white).opacity(0.4)
+      .text(publicUrl, ML, 52, { width: contentW, align: "right" });
     doc.opacity(1);
 
-    // ── Summary cards row ──
-    const cardY = headerH - 50;
-    const cardH = 70;
-    const cardGap = 12;
-    const cardCount = 4;
-    const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
+    // ── BIG TOTAL PRICE — hero element ──
+    const totalBoxY = 115;
+    const totalBoxW = contentW;
+    const totalBoxH = 68;
 
-    const summaryCards = isQuick
-      ? [
-          { label: "Позиций", value: `${roomResults[0]?.items?.length ?? 0}`, color: C.primary },
-          { label: "ИТОГО", value: fmtPrice(total), color: C.accent },
-        ]
-      : [
-          { label: "Площадь", value: `${(calc.totalArea ?? 0).toFixed(1)} м²`, color: C.primary },
-          { label: "Комнат", value: `${roomResults.length}`, color: C.primary },
-          { label: "Цена/м²", value: fmtPrice(calc.pricePerM2 ?? 0), color: C.primary },
-          { label: "ИТОГО", value: fmtPrice(total), color: C.accent },
-        ];
+    // Total background — warm accent
+    doc.save();
+    roundedRect(doc, ML, totalBoxY, totalBoxW, totalBoxH, 12);
+    doc.fill(C.accent);
+    doc.restore();
 
-    for (let i = 0; i < summaryCards.length; i++) {
-      const cx = ML + i * (cardW + cardGap);
-      const card = summaryCards[i];
+    // Inner subtle gradient
+    doc.save().opacity(0.15);
+    doc.rect(ML, totalBoxY, totalBoxW * 0.4, totalBoxH).fill(C.white);
+    doc.restore();
 
-      // Card shadow
-      doc.save();
-      roundedRect(doc, cx + 1, cardY + 2, cardW, cardH, 8);
-      doc.fill("#00000010");
-      doc.restore();
+    // Total label
+    doc.font("Sans").fontSize(10).fillColor(C.white).opacity(0.85)
+      .text("ИТОГО К ОПЛАТЕ", ML + 24, totalBoxY + 14);
+    doc.opacity(1);
 
-      // Card background
-      doc.save();
-      roundedRect(doc, cx, cardY, cardW, cardH, 8);
-      doc.fill(C.white);
-      doc.restore();
+    // Total price — large
+    doc.font("Sans-Bold").fontSize(30).fillColor(C.white)
+      .text(fmtPrice(total), ML + 24, totalBoxY + 30, { width: totalBoxW - 48, align: "right" });
 
-      // Card border accent (top line)
-      doc.save();
-      doc.rect(cx + 8, cardY, cardW - 16, 3)
-        .fill(i === summaryCards.length - 1 ? C.accent : C.primaryLight);
-      doc.restore();
+    // ── Summary stats row ──
+    let y = headerH + 18;
 
-      // Card value
-      doc.font("Sans-Bold").fontSize(i === 3 ? 14 : 16).fillColor(card.color)
-        .text(card.value, cx, cardY + 18, { width: cardW, align: "center" });
+    if (!isQuick) {
+      const stats = [
+        { label: "Площадь", value: `${(calc.totalArea ?? 0).toFixed(1)} м²`, icon: "◻" },
+        { label: "Комнат", value: `${roomResults.length}`, icon: "⌂" },
+        { label: "Цена за м²", value: fmtPrice(calc.pricePerM2 ?? 0), icon: "₸" },
+        { label: "Светильников", value: `${calc.totalSpots ?? 0}`, icon: "●" },
+      ];
 
-      // Card label
-      doc.font("Sans").fontSize(8).fillColor(C.textLight)
-        .text(card.label, cx, cardY + 42, { width: cardW, align: "center" });
+      const statW = contentW / stats.length;
+      for (let i = 0; i < stats.length; i++) {
+        const sx = ML + i * statW;
+        doc.font("Sans-Bold").fontSize(16).fillColor(C.text)
+          .text(stats[i].value, sx, y, { width: statW, align: "center" });
+        doc.font("Sans").fontSize(8).fillColor(C.textMuted)
+          .text(stats[i].label.toUpperCase(), sx, y + 20, { width: statW, align: "center" });
+      }
+      y += 46;
+    } else {
+      y += 8;
     }
 
-    // ── Client info section ──
-    let y = headerH + cardH / 2 + 20;
-
-    if (estimate.clientName || estimate.clientPhone || estimate.clientAddress) {
-      // Client info card
+    // ── Client section ──
+    if (estimate.clientName || estimate.clientPhone) {
       doc.save();
-      roundedRect(doc, ML, y, contentW, 50, 8);
-      doc.fill(C.bg);
+      roundedRect(doc, ML, y, contentW, 44, 8);
+      doc.fillAndStroke(C.bg, C.border);
       doc.restore();
 
-      // Left: label
-      doc.font("Sans").fontSize(8).fillColor(C.textMuted)
-        .text("КЛИЕНТ", ML + 14, y + 8);
+      // Orange left accent
+      doc.rect(ML, y + 8, 3, 28).fill(C.accent);
 
-      // Client details
+      doc.font("Sans").fontSize(8).fillColor(C.textMuted)
+        .text("КЛИЕНТ", ML + 16, y + 10);
+
       const clientParts = [estimate.clientName, estimate.clientPhone, estimate.clientAddress].filter(Boolean);
-      doc.font("Sans-Bold").fontSize(11).fillColor(C.text)
-        .text(clientParts[0] || "", ML + 14, y + 22);
+      doc.font("Sans-Bold").fontSize(12).fillColor(C.text)
+        .text(clientParts[0] || "", ML + 16, y + 24);
       if (clientParts.length > 1) {
         doc.font("Sans").fontSize(9).fillColor(C.textLight)
-          .text(clientParts.slice(1).join("  •  "), ML + 14 + doc.widthOfString(clientParts[0] || "") + 12, y + 24);
+        doc.font("Sans-Bold").fontSize(12);
+      const nameW = doc.widthOfString(clientParts[0] || "");
+      doc.font("Sans").fontSize(9).fillColor(C.textLight)
+        .text(clientParts.slice(1).join("  ·  "), ML + 16 + nameW + 10, y + 26);
       }
-
-      y += 62;
+      y += 54;
     }
 
-    // Discount badge (if applicable)
+    // Discount badge
     if (discount > 0) {
       doc.save();
-      roundedRect(doc, ML, y, contentW, 32, 6);
-      doc.fill("#fef3c7");
+      roundedRect(doc, ML, y, contentW, 30, 6);
+      doc.fill(C.bgWarm);
       doc.restore();
 
-      doc.font("Sans-Bold").fontSize(10).fillColor(C.warning)
-        .text(`СКИДКА ${discount}%`, ML + 14, y + 10, { continued: true });
+      doc.font("Sans-Bold").fontSize(10).fillColor(C.gold)
+        .text(`🏷 СКИДКА ${discount}%`, ML + 14, y + 9, { continued: true });
       doc.font("Sans").fillColor(C.textLight)
-        .text(`  — ${fmtPrice(subtotal)} → ${fmtPrice(total)}`);
-      y += 42;
+        .text(`  ${fmtPrice(subtotal)} → ${fmtPrice(total)}`);
+      y += 40;
     }
 
-    y += 8;
+    y += 6;
 
     // ================================================================
-    // ROOMS SECTION
+    // ROOMS SECTION — clean, professional tables
     // ================================================================
 
-    const colX = [ML, ML + 260, ML + 340, ML + 420];
-    const colW2 = [250, 70, 70, RE - (ML + 420)];
+    const colX = [ML, ML + 265, ML + 340, ML + 418];
+    const colW2 = [255, 65, 70, RE - (ML + 418)];
 
     for (let ri = 0; ri < roomResults.length; ri++) {
       const rr = roomResults[ri];
 
-      // Page break check
-      if (y > 680) {
-        doc.addPage();
-        y = 40;
-      }
+      if (y > 680) { doc.addPage(); y = 40; }
 
-      // Room header with colored left border
+      // Room header — clean with accent left bar
       doc.save();
-      doc.rect(ML, y, 4, 22).fill(C.accent);
+      roundedRect(doc, ML, y, contentW, 28, 6);
+      doc.fill(C.bg);
       doc.restore();
+      doc.rect(ML, y + 4, 4, 20).fill(C.accent);
 
       doc.font("Sans-Bold").fontSize(13).fillColor(C.primary)
-        .text(rr.roomName ?? "Комната", ML + 12, y + 3, { continued: (rr.area ?? 0) > 0 });
+        .text(`${ri + 1}. ${rr.roomName ?? "Комната"}`, ML + 16, y + 7, { continued: (rr.area ?? 0) > 0 });
       if ((rr.area ?? 0) > 0) {
-        doc.font("Sans").fontSize(11).fillColor(C.textLight)
-          .text(`  ${rr.area.toFixed(1)} м²`);
+        doc.font("Sans").fontSize(10).fillColor(C.textLight)
+          .text(` · ${rr.area.toFixed(1)} м²`);
       }
-      y += 30;
+      y += 36;
 
       // Table header
       doc.save();
-      roundedRect(doc, ML, y, contentW, 20, 4);
-      doc.fill(C.primary);
+      roundedRect(doc, ML, y, contentW, 22, 4);
+      doc.fill(C.primaryMid);
       doc.restore();
 
       doc.font("Sans-Bold").fontSize(8).fillColor(C.white);
-      doc.text("Наименование", colX[0] + 10, y + 6, { width: colW2[0] });
-      doc.text("Кол-во", colX[1], y + 6, { width: colW2[1], align: "center" });
-      doc.text("Цена", colX[2], y + 6, { width: colW2[2], align: "right" });
-      doc.text("Сумма", colX[3], y + 6, { width: colW2[3], align: "right" });
-      y += 24;
+      doc.text("Наименование", colX[0] + 12, y + 7, { width: colW2[0] });
+      doc.text("Кол-во", colX[1], y + 7, { width: colW2[1], align: "center" });
+      doc.text("Цена", colX[2], y + 7, { width: colW2[2], align: "right" });
+      doc.text("Сумма", colX[3], y + 7, { width: colW2[3], align: "right" });
+      y += 26;
 
       // Table rows
       const items = rr.items ?? [];
       for (let ii = 0; ii < items.length; ii++) {
         const item = items[ii];
-        if (y > 760) {
-          doc.addPage();
-          y = 40;
-        }
+        if (y > 760) { doc.addPage(); y = 40; }
 
-        // Alternating row background
+        // Alternating backgrounds
         if (ii % 2 === 0) {
-          doc.rect(ML, y - 2, contentW, 16).fill(C.bgRow);
+          doc.rect(ML, y - 2, contentW, 18).fill("#F1F5F9");
         }
 
         doc.font("Sans").fontSize(9).fillColor(C.text);
-        doc.text(String(item.itemName ?? ""), colX[0] + 10, y, { width: colW2[0] });
-        const textH = doc.y - y;
-        doc.fillColor(C.textLight);
-        doc.text(`${item.quantity ?? 0} ${item.unit ?? ""}`, colX[1], y, { width: colW2[1], align: "center" });
-        doc.text(fmtPrice(item.unitPrice), colX[2], y, { width: colW2[2], align: "right" });
-        doc.font("Sans-Bold").fillColor(C.text);
-        doc.text(fmtPrice(item.total), colX[3], y, { width: colW2[3], align: "right" });
+        doc.text(String(item.itemName ?? ""), colX[0] + 12, y + 1, { width: colW2[0] });
+        const textH = doc.y - (y + 1);
 
-        y += Math.max(textH, 14) + 2;
+        doc.fillColor(C.textLight);
+        doc.text(`${item.quantity ?? 0} ${item.unit ?? ""}`, colX[1], y + 1, { width: colW2[1], align: "center" });
+        doc.text(fmtPrice(item.unitPrice), colX[2], y + 1, { width: colW2[2], align: "right" });
+
+        doc.font("Sans-Bold").fillColor(C.text);
+        doc.text(fmtPrice(item.total), colX[3], y + 1, { width: colW2[3], align: "right" });
+
+        y += Math.max(textH, 14) + 4;
       }
 
       // Height multiplier note
       if (rr.heightMultiplied) {
-        doc.font("Sans").fontSize(8).fillColor(C.warning)
-          .text("* Коэффициент высоты (>3м): ×1.3", ML + 10, y + 2);
+        doc.font("Sans").fontSize(8).fillColor(C.gold)
+          .text("* Коэффициент высоты (>3м): ×1.3", ML + 12, y + 2);
         y += 14;
       }
 
-      // Room subtotal bar
+      // Room subtotal
+      y += 4;
       doc.save();
-      roundedRect(doc, RE - 200, y, 200, 24, 4);
+      roundedRect(doc, RE - 180, y, 180, 26, 6);
       doc.fill(C.bg);
       doc.restore();
 
-      doc.font("Sans-Bold").fontSize(11).fillColor(C.primary)
-        .text(fmtPrice(rr.subtotalAfterHeight ?? 0), RE - 196, y + 6, { width: 192, align: "right" });
-      y += 36;
+      doc.font("Sans-Bold").fontSize(12).fillColor(C.primary)
+        .text(fmtPrice(rr.subtotalAfterHeight ?? 0), RE - 176, y + 7, { width: 172, align: "right" });
+      y += 38;
     }
 
     // ================================================================
-    // GRAND TOTAL SECTION
+    // GRAND TOTAL SECTION — premium feel
     // ================================================================
 
-    if (y > 700) { doc.addPage(); y = 40; }
+    if (y > 690) { doc.addPage(); y = 40; }
 
-    // Separator line
-    doc.moveTo(ML, y).lineTo(RE, y).strokeColor(C.primary).lineWidth(2).stroke();
-    y += 16;
+    // Thin separator
+    doc.moveTo(ML, y).lineTo(RE, y).strokeColor(C.border).lineWidth(1).stroke();
+    y += 12;
 
     // Min order note
     if (calc.minOrderApplied) {
@@ -330,32 +336,36 @@ export async function GET(
       y += 14;
     }
 
-    // Grand total card
+    // Grand total card — premium dark box
+    const gtH = 64;
     doc.save();
-    roundedRect(doc, ML, y, contentW, 56, 10);
+    roundedRect(doc, ML, y, contentW, gtH, 12);
     doc.fill(C.primary);
     doc.restore();
 
-    // Accent stripe inside total card
-    doc.rect(ML, y + 52, contentW, 4).fill(C.accent);
+    // Accent stripe at bottom of total
+    doc.save();
+    roundedRect(doc, ML, y + gtH - 5, contentW, 5, 0);
+    doc.fill(C.accent);
+    doc.restore();
 
-    doc.font("Sans").fontSize(10).fillColor(C.white).opacity(0.8)
-      .text("ИТОГО К ОПЛАТЕ", ML + 20, y + 10);
+    doc.font("Sans").fontSize(10).fillColor(C.white).opacity(0.65)
+      .text("ИТОГО К ОПЛАТЕ", ML + 24, y + 14);
     doc.opacity(1);
 
-    doc.font("Sans-Bold").fontSize(22).fillColor(C.white)
-      .text(fmtPrice(total), ML + 20, y + 26, { width: contentW - 40, align: "right" });
+    doc.font("Sans-Bold").fontSize(26).fillColor(C.white)
+      .text(fmtPrice(total), ML + 24, y + 28, { width: contentW - 48, align: "right" });
 
-    y += 72;
+    y += gtH + 16;
 
-    // Stats row below total
+    // Stats summary
     if (!isQuick && (calc.totalArea ?? 0) > 0) {
       const statsText = [
         `${(calc.totalArea ?? 0).toFixed(1)} м²`,
         `${fmtPrice(calc.pricePerM2 ?? 0)}/м²`,
-        `${calc.totalSpots ?? 0} светильников`,
-        `${roomResults.length} помещений`,
-      ].join("  •  ");
+        `${calc.totalSpots ?? 0} светильн.`,
+        `${roomResults.length} помещ.`,
+      ].join("   ·   ");
 
       doc.font("Sans").fontSize(8).fillColor(C.textMuted)
         .text(statsText, ML, y, { width: contentW, align: "center" });
@@ -363,10 +373,39 @@ export async function GET(
     }
 
     // ================================================================
-    // FOOTER
+    // BENEFITS SECTION — selling points
     // ================================================================
 
-    const footerY = Math.max(y + 30, pageH - 80);
+    if (y < 680) {
+      y += 16;
+
+      const benefits = [
+        { icon: "✓", text: "Гарантия на работу — 10 лет" },
+        { icon: "✓", text: "Бесплатный замер на объекте" },
+        { icon: "✓", text: "Монтаж за 1 день" },
+      ];
+
+      doc.save();
+      roundedRect(doc, ML, y, contentW, 22 * benefits.length + 16, 8);
+      doc.fill(C.accentSoft);
+      doc.restore();
+
+      for (let i = 0; i < benefits.length; i++) {
+        const by = y + 10 + i * 22;
+        doc.font("Sans-Bold").fontSize(10).fillColor(C.success)
+          .text(benefits[i].icon, ML + 16, by);
+        doc.font("Sans").fontSize(10).fillColor(C.text)
+          .text(benefits[i].text, ML + 32, by);
+      }
+
+      y += 22 * benefits.length + 26;
+    }
+
+    // ================================================================
+    // FOOTER — clean and professional
+    // ================================================================
+
+    const footerY = Math.max(y + 20, pageH - 70);
 
     // Validity note
     if (estimate.validUntil) {
@@ -380,8 +419,8 @@ export async function GET(
       .text("Расчёт предварительный. Точная стоимость определяется после замера на объекте.", ML, footerY + 14, { width: contentW, align: "center" });
 
     // Branding
-    doc.font("Sans-Bold").fontSize(8).fillColor(C.textMuted)
-      .text("potolok.ai", ML, footerY + 28, { width: contentW, align: "center" });
+    doc.font("Sans-Bold").fontSize(9).fillColor(C.accent)
+      .text("potolok.ai", ML, footerY + 30, { width: contentW, align: "center" });
 
     doc.end();
     const pdfBuffer = await promise;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,11 +63,9 @@ function formatPriceCompact(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(Math.round(n));
 }
 
-const SHAPE_OPTIONS: { value: RoomShape; label: string; icon: string }[] = [
-  { value: "rectangle", label: "Прямоугольник", icon: "▭" },
-  { value: "l-shape", label: "Г-образная", icon: "Г" },
-  { value: "t-shape", label: "Т-образная", icon: "Т" },
-  { value: "custom", label: "Произвольная", icon: "⬡" },
+const SHAPE_OPTIONS: { value: RoomShape | "designer"; label: string; icon: string; desc?: string }[] = [
+  { value: "rectangle", label: "Прямоугольник", icon: "▭", desc: "Длина × Ширина" },
+  { value: "designer", label: "Нарисовать", icon: "✏️", desc: "Любая форма" },
 ];
 
 const DEFAULT_CUSTOM_WALLS = [
@@ -77,6 +76,7 @@ const DEFAULT_CUSTOM_WALLS = [
 ];
 
 export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: customItemsProp }: RoomFormProps) {
+  const router = useRouter();
   const prices = priceMap ?? DEFAULT_PRICES;
   const er = editRoom; // shorthand
 
@@ -394,20 +394,27 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       {/* Shape selector */}
       <div className="space-y-2">
         <Label>Форма комнаты</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {SHAPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => handleShapeChange(opt.value)}
-              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg border text-xs transition-colors ${
+              onClick={() => {
+                if (opt.value === "designer") {
+                  router.push("/dashboard/vision-test?mode=calculator");
+                } else {
+                  handleShapeChange(opt.value as RoomShape);
+                }
+              }}
+              className={`flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl border-2 text-sm transition-all ${
                 shape === opt.value
-                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
-                  : "hover:bg-muted border-border"
+                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md"
+                  : "hover:bg-muted border-border hover:border-[#1e3a5f]/30"
               }`}
             >
-              <span className="text-lg font-bold leading-none">{opt.icon}</span>
-              <span className="leading-tight text-center">{opt.label}</span>
+              <span className="text-2xl leading-none">{opt.icon}</span>
+              <span className="font-semibold">{opt.label}</span>
+              {opt.desc && <span className={`text-xs ${shape === opt.value ? "text-white/70" : "text-muted-foreground"}`}>{opt.desc}</span>}
             </button>
           ))}
         </div>

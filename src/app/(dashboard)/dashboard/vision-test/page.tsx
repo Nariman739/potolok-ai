@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
@@ -1515,6 +1515,8 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 
 export default function ZameryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isCalculatorMode = searchParams.get("mode") === "calculator";
   const [rooms, setRooms] = useState<Room[]>([]);
   const [objectName, setObjectName] = useState("");
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
@@ -1524,7 +1526,17 @@ export default function ZameryPage() {
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(true);
+  const calcModeInitRef = useRef(false);
   const addressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Calculator mode: auto-open wizard on mount
+  useEffect(() => {
+    if (isCalculatorMode && !calcModeInitRef.current) {
+      calcModeInitRef.current = true;
+      setShowWizard(true);
+      setLoading(false);
+    }
+  }, [isCalculatorMode]);
 
   // ── Load from server on mount ──
   useEffect(() => {
@@ -1880,7 +1892,10 @@ export default function ZameryPage() {
       {showWizard && (
         <WallWizard
           onDone={room => { setDesigningRoom(room); setShowWizard(false); }}
-          onCancel={() => setShowWizard(false)}
+          onCancel={() => {
+            if (isCalculatorMode) { router.push("/dashboard/calculator"); return; }
+            setShowWizard(false);
+          }}
         />
       )}
       {designingRoom && (
@@ -1888,7 +1903,55 @@ export default function ZameryPage() {
           room={designingRoom}
           onDone={elements => {
             const roomWithElements = { ...designingRoom, elements };
-            // Check if this room already exists in the list (editing) or is new
+
+            // Calculator mode: save room and redirect to calculator
+            if (isCalculatorMode) {
+              const room = roomWithElements;
+              const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
+              const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
+              const chandelierCount = elements.filter(e => e.type === "chandelier").length;
+              const trackEls = elements.filter(e => e.type === "track");
+              const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const lightLineEls = elements.filter(e => e.type === "lightline");
+              const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const gardinaEls = elements.filter(e => e.type === "curtain");
+              const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const podshtornikEls = elements.filter(e => e.type === "subcurtain");
+              const podshtornikLength = Math.round(podshtornikEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+
+              const roomInput: RoomInput = {
+                id: crypto.randomUUID(),
+                name: room.name || "Помещение",
+                length: Math.max(...room.walls) / 100 || room.area / (Math.min(...room.walls) / 100) || 5,
+                width: Math.min(...room.walls) / 100 || 4,
+                ceilingHeight: 3,
+                canvasType: "mat" as CanvasType,
+                spotsCount: spotsOurs + spotsClient,
+                spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
+                chandelierCount,
+                chandelierInstallCount: chandelierCount,
+                trackMagneticLength,
+                lightLineLength,
+                curtainRodLength: 0,
+                pipeBypasses: 0,
+                cornersCount: room.walls.length,
+                eurobrusCount: 0,
+                gardinaLength,
+                podshtornikLength,
+                shape: room.walls.length === 4 && room.angles?.every(a => a === 90) ? "rectangle" : "custom" as any,
+                customDims: room.walls.length !== 4 || !room.angles?.every(a => a === 90) ? {
+                  walls: room.walls.map((w, i) => ({
+                    length: w / 100,
+                    turnRight: (room.angles?.[i] ?? 90) > 0,
+                  })),
+                } : undefined,
+              };
+              localStorage.setItem("vision-rooms", JSON.stringify([roomInput]));
+              router.push("/dashboard/calculator?from=vision");
+              return;
+            }
+
+            // Normal mode
             const exists = rooms.some(r => r.id === designingRoom.id);
             if (exists) {
               updateRoom(roomWithElements);
@@ -1898,6 +1961,10 @@ export default function ZameryPage() {
             setDesigningRoom(null);
           }}
           onCancel={() => {
+            if (isCalculatorMode) {
+              router.push("/dashboard/calculator");
+              return;
+            }
             // If new room, add without elements; if existing, just close
             const exists = rooms.some(r => r.id === designingRoom.id);
             if (!exists) addRooms([designingRoom]);

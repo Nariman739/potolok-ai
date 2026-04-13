@@ -6,8 +6,8 @@ import { DEFAULT_PRICES } from "@/lib/constants";
 
 // ── Types ──
 
-export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating" | "door" | "window" | "furniture";
-export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk";
+export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating" | "door" | "window" | "furniture" | "builtin_gardina" | "shower_curtain";
+export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk" | "radiator";
 
 export interface RoomElement {
   id: string;
@@ -47,6 +47,8 @@ const LIGHT_ELEMENTS: { type: ElementType; label: string; icon: string; color: s
   { type: "track",       label: "Трек",        icon: "🔲", color: "#EF4444", category: "wall" },
   { type: "lightline",   label: "Свет.линия",  icon: "✨", color: "#F97316", category: "wall" },
   { type: "floating",    label: "Парящий",     icon: "〰️", color: "#3B82F6", category: "perimeter" },
+  { type: "builtin_gardina", label: "Гардина",  icon: "🪟", color: "#059669", category: "wall" },
+  { type: "shower_curtain",  label: "Шторка ванн.", icon: "🚿", color: "#7C3AED", category: "wall" },
 ];
 
 const WALL_ELEMENTS: { type: ElementType; label: string; icon: string; color: string }[] = [
@@ -63,6 +65,7 @@ const FURNITURE: { furnitureType: FurnitureType; label: string; icon: string; co
   { furnitureType: "nightstand", label: "Тумба",      icon: "📦", color: "#A3A3A3", defaultW: 50,  defaultH: 50 },
   { furnitureType: "chair",      label: "Стул",       icon: "💺", color: "#10B981", defaultW: 45,  defaultH: 45 },
   { furnitureType: "desk",       label: "Письм.стол", icon: "🖥️", color: "#F59E0B", defaultW: 140, defaultH: 70 },
+  { furnitureType: "radiator",   label: "Батарея",    icon: "🔥", color: "#DC2626", defaultW: 100, defaultH: 15 },
 ];
 
 const ALL_ELEMENTS = LIGHT_ELEMENTS; // backwards compat
@@ -165,6 +168,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [alignMode, setAlignMode] = useState(false);
   // Position editor
   const [posEditor, setPosEditor] = useState<{ elId: string; wall1Dist: string; wall2Dist: string } | null>(null);
+  // Fixture width editor (doors/windows)
+  const [fixtureEditor, setFixtureEditor] = useState<{ elId: string; width: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const pointerHandled = useRef(false);
   const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
@@ -360,7 +365,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (!lengthInput || !activeType) return;
     const len = parseFloat(lengthValue);
     if (!len || len <= 0) { setLengthInput(null); return; }
-    const hasVariant = activeType === "track";
+    const hasVariant = activeType === "spot";
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: activeType as ElementType,
@@ -584,7 +589,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const elLen = Math.min(el.length, wallLen);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
-    const offset = el.type === "curtain" || el.type === "subcurtain" ? wallOffset * 1.5 : wallOffset;
+    const offset = el.type === "curtain" || el.type === "subcurtain" || el.type === "builtin_gardina" || el.type === "shower_curtain" ? wallOffset * 1.5 : wallOffset;
 
     const x1 = a.x + nx * startT + perpX * offset;
     const y1 = a.y + ny * startT + perpY * offset;
@@ -632,7 +637,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         )}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke={config.color}
-          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : strokeW}
+          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : el.type === "builtin_gardina" ? strokeW * 2 : strokeW}
           strokeLinecap="round"
           strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
           opacity={0.9}
@@ -650,6 +655,32 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         >
           {el.length} см
         </text>
+        {/* Distance from wall edges when selected/dragging */}
+        {(selectedId === el.id || isDragging) && !isDragging && (() => {
+          const distFromEdge = Math.round(startT);
+          const distFromEnd = Math.round(wallLen - (startT + elLen));
+          const outPX = -ny, outPY = nx; // perpendicular outward direction of original wall
+          return (
+            <>
+              {distFromEdge > 5 && (
+                <text x={(a.x + x1) / 2 + outPX * offset + outPX * labelSize}
+                  y={(a.y + y1) / 2 + outPY * offset + outPY * labelSize}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600">
+                  {distFromEdge}
+                </text>
+              )}
+              {distFromEnd > 5 && (
+                <text x={(a.x + nx * (startT + elLen) + b.x) / 2 + outPX * offset + outPX * labelSize}
+                  y={(a.y + ny * (startT + elLen) + b.y) / 2 + outPY * offset + outPY * labelSize}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600">
+                  {distFromEnd}
+                </text>
+              )}
+            </>
+          );
+        })()}
       </g>
     );
   }
@@ -739,15 +770,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const elLen = el.length || (el.type === "door" ? 90 : 120);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
+    const endT = startT + elLen;
+    const distFromEdge = Math.round(startT);
+    const distFromEnd = Math.round(wallLen - endT);
 
     const x1 = a.x + nx * startT;
     const y1 = a.y + ny * startT;
-    const x2 = a.x + nx * (startT + elLen);
-    const y2 = a.y + ny * (startT + elLen);
+    const x2 = a.x + nx * endT;
+    const y2 = a.y + ny * endT;
 
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const color = el.type === "door" ? "#78716C" : "#60A5FA";
     const isSel = selectedId === el.id;
+    const showDims = isSel || isDragging;
+
+    // Perpendicular direction (outward)
+    const perpX = ny, perpY = -nx;
 
     return (
       <g key={el.id}
@@ -766,12 +804,39 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           />
         )}
         <text
-          x={(x1 + x2) / 2 + ny * labelSize * 1.5} y={(y1 + y2) / 2 - nx * labelSize * 1.5}
+          x={(x1 + x2) / 2 + perpX * labelSize * 1.5} y={(y1 + y2) / 2 + perpY * labelSize * 1.5}
           textAnchor="middle" dominantBaseline="central"
           fontSize={labelSize * 0.7} fill={color} fontWeight="500"
         >
           {el.type === "door" ? "🚪" : "🪟"}
         </text>
+        {/* Distance from edge labels */}
+        {showDims && distFromEdge > 5 && (
+          <>
+            <line x1={a.x} y1={a.y} x2={x1} y2={y1}
+              stroke="#94A3B8" strokeWidth={strokeW * 0.4} strokeDasharray={`${strokeW},${strokeW * 0.8}`} />
+            <text
+              x={(a.x + x1) / 2 + perpX * labelSize * 1.2} y={(a.y + y1) / 2 + perpY * labelSize * 1.2}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={labelSize * 0.6} fill="#64748B" fontWeight="600"
+            >
+              {distFromEdge}
+            </text>
+          </>
+        )}
+        {showDims && distFromEnd > 5 && (
+          <>
+            <line x1={x2} y1={y2} x2={b.x} y2={b.y}
+              stroke="#94A3B8" strokeWidth={strokeW * 0.4} strokeDasharray={`${strokeW},${strokeW * 0.8}`} />
+            <text
+              x={(x2 + b.x) / 2 + perpX * labelSize * 1.2} y={(y2 + b.y) / 2 + perpY * labelSize * 1.2}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={labelSize * 0.6} fill="#64748B" fontWeight="600"
+            >
+              {distFromEnd}
+            </text>
+          </>
+        )}
       </g>
     );
   }
@@ -988,56 +1053,67 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       </div>
 
       {/* Hint + selected actions */}
-      <div className="shrink-0 px-4 py-1.5 text-center border-b bg-gray-50 flex items-center justify-center gap-2">
+      <div className="shrink-0 px-4 py-2 text-center border-b bg-gray-50 flex items-center justify-center gap-3">
         <p className="text-xs text-muted-foreground">{hintText}</p>
         {selectedId && (
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             {/* Rotate */}
             {(elements.find(e => e.id === selectedId)?.type === "furniture"
               || elements.find(e => e.id === selectedId)?.type === "spot"
               || elements.find(e => e.id === selectedId)?.type === "chandelier") && (
               <button onClick={rotateSelected}
-                className="p-1 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95"
+                className="p-2.5 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95 shadow-sm"
                 title="Повернуть">
-                <RotateCw className="h-3.5 w-3.5" />
+                <RotateCw className="h-5 w-5" />
               </button>
             )}
             {/* Position editor */}
             {(elements.find(e => e.id === selectedId)?.x !== undefined) && (
               <button onClick={openPosEditor}
-                className="p-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 active:scale-95"
+                className="p-2.5 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 active:scale-95 shadow-sm"
                 title="Точная позиция">
-                <Move className="h-3.5 w-3.5" />
+                <Move className="h-5 w-5" />
+              </button>
+            )}
+            {/* Width editor for doors/windows */}
+            {(elements.find(e => e.id === selectedId)?.type === "door" || elements.find(e => e.id === selectedId)?.type === "window") && (
+              <button onClick={() => {
+                const el = elements.find(e => e.id === selectedId);
+                if (el) setFixtureEditor({ elId: el.id, width: String(el.length || (el.type === "door" ? 90 : 120)) });
+              }}
+                className="px-3 py-2 rounded-xl bg-cyan-100 text-cyan-700 text-xs font-semibold hover:bg-cyan-200 active:scale-95 shadow-sm"
+                title="Ширина">
+                📏 Ширина
               </button>
             )}
             <button onClick={removeSelected}
-              className="px-2 py-0.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-200 active:scale-95">
+              className="p-2.5 rounded-xl bg-red-100 text-red-600 text-sm font-medium hover:bg-red-200 active:scale-95 shadow-sm">
               🗑️
             </button>
           </div>
         )}
         {/* Align spots */}
         {!selectedId && elements.filter(e => e.type === "spot").length >= 2 && (
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             {!alignMode ? (
               <button onClick={() => setAlignMode(true)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-700 text-xs font-medium hover:bg-amber-200 active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-700 text-sm font-medium hover:bg-amber-200 active:scale-95 shadow-sm"
                 title="Выровнять софиты">
-                <AlignHorizontalSpaceBetween className="h-3.5 w-3.5" />
+                <AlignHorizontalSpaceBetween className="h-4 w-4" />
                 Выровнять
               </button>
             ) : (
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 <button onClick={() => alignSpots("row")}
-                  className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-medium active:scale-95">
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-sm font-medium active:scale-95 shadow-sm">
                   ↔ В ряд
                 </button>
                 <button onClick={() => alignSpots("col")}
-                  className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-medium active:scale-95">
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-sm font-medium active:scale-95 shadow-sm">
                   ↕ В колонку
                 </button>
                 <button onClick={() => setAlignMode(false)}
-                  className="px-2 py-0.5 rounded-lg bg-gray-200 text-gray-600 text-xs font-medium active:scale-95">
+                  className="px-3 py-1.5 rounded-xl bg-gray-200 text-gray-600 text-sm font-medium active:scale-95">
                   ✕
                 </button>
               </div>
@@ -1048,19 +1124,30 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
       {/* Interactive SVG */}
       <div className="flex-1 min-h-0 px-2 py-1 relative">
+        {/* Floating dimension panel — visible during drag so user can see distances */}
+        {dimLines.length > 0 && dragId && dragStartRef.current?.moved && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-white/95 backdrop-blur rounded-xl shadow-lg border px-4 py-2 flex items-center gap-4">
+            {dimLines.map((d, i) => (
+              <div key={`fp-${i}`} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                <span className="text-sm font-bold text-gray-800">{d.label} см</span>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Zoom controls */}
-        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
           <button onClick={() => setZoom(z => Math.min(5, z * 1.3))}
-            className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-            <ZoomIn className="h-4 w-4" />
+            className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+            <ZoomIn className="h-5 w-5" />
           </button>
           <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))}
-            className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-            <ZoomOut className="h-4 w-4" />
+            className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+            <ZoomOut className="h-5 w-5" />
           </button>
           {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
             <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-              className="w-8 h-8 bg-white/90 rounded-lg shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-xs font-bold">
+              className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-sm font-bold">
               1:1
             </button>
           )}
@@ -1167,12 +1254,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
-      {/* Variant toggle */}
-      {(activeType === "spot" || activeType === "track") && (
+      {/* Variant toggle — only for spots */}
+      {activeType === "spot" && (
         <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex items-center justify-center gap-2">
-          <span className="text-xs text-amber-800 font-medium">
-            {activeType === "spot" ? "Софиты:" : "Трек:"}
-          </span>
+          <span className="text-xs text-amber-800 font-medium">Софиты:</span>
           <button
             onClick={() => setActiveVariant("ours")}
             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -1215,7 +1300,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
         {/* Tab content */}
         <div className="px-2 py-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {toolbarTab === "light" && LIGHT_ELEMENTS.map(el => (
               <button
                 key={el.type}
@@ -1223,14 +1308,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                   if (activeType === el.type) { setActiveType(null); }
                   else { setActiveType(el.type); setActiveVariant("ours"); }
                 }}
-                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                className={`flex flex-col items-center min-w-[64px] px-3 py-2 rounded-xl text-xs transition-all ${
                   activeType === el.type
                     ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
                     : "bg-white border border-gray-200 text-gray-600 active:scale-95"
                 }`}
               >
-                <span className="text-lg leading-none">{el.icon}</span>
-                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{el.label}</span>
+                <span className="text-xl leading-none">{el.icon}</span>
+                <span className="mt-1 whitespace-nowrap text-[11px] font-medium">{el.label}</span>
               </button>
             ))}
             {toolbarTab === "walls" && WALL_ELEMENTS.map(el => (
@@ -1240,14 +1325,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                   if (activeType === el.type) { setActiveType(null); }
                   else { setActiveType(el.type); }
                 }}
-                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                className={`flex flex-col items-center min-w-[64px] px-3 py-2 rounded-xl text-xs transition-all ${
                   activeType === el.type
                     ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
                     : "bg-white border border-gray-200 text-gray-600 active:scale-95"
                 }`}
               >
-                <span className="text-lg leading-none">{el.icon}</span>
-                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{el.label}</span>
+                <span className="text-xl leading-none">{el.icon}</span>
+                <span className="mt-1 whitespace-nowrap text-[11px] font-medium">{el.label}</span>
               </button>
             ))}
             {toolbarTab === "furniture" && FURNITURE.map(f => (
@@ -1257,14 +1342,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                   if (activeType === f.furnitureType) { setActiveType(null); }
                   else { setActiveType(f.furnitureType); }
                 }}
-                className={`flex flex-col items-center min-w-[60px] px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                className={`flex flex-col items-center min-w-[64px] px-3 py-2 rounded-xl text-xs transition-all ${
                   activeType === f.furnitureType
                     ? "bg-[#1e3a5f] text-white shadow-lg scale-105"
                     : "bg-white border border-gray-200 text-gray-600 active:scale-95"
                 }`}
               >
-                <span className="text-lg leading-none">{f.icon}</span>
-                <span className="mt-0.5 whitespace-nowrap text-[10px] font-medium">{f.label}</span>
+                <span className="text-xl leading-none">{f.icon}</span>
+                <span className="mt-1 whitespace-nowrap text-[11px] font-medium">{f.label}</span>
               </button>
             ))}
           </div>
@@ -1340,6 +1425,41 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 Отмена
               </button>
               <button onClick={applyPosEditor}
+                className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
+                Применить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fixture width editor (doors/windows) */}
+      {fixtureEditor && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
+          onClick={() => setFixtureEditor(null)}>
+          <div className="bg-white rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-center mb-1">
+              {elements.find(e => e.id === fixtureEditor.elId)?.type === "door" ? "🚪 Дверь" : "🪟 Окно"}
+            </p>
+            <p className="text-xs text-muted-foreground text-center mb-4">Укажите ширину (см)</p>
+            <input
+              type="number" value={fixtureEditor.width}
+              onChange={e => setFixtureEditor(prev => prev ? { ...prev, width: e.target.value } : null)}
+              className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors mb-4"
+              autoFocus inputMode="numeric"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setFixtureEditor(null)}
+                className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">
+                Отмена
+              </button>
+              <button onClick={() => {
+                const w = parseFloat(fixtureEditor.width);
+                if (w > 0) {
+                  setElements(prev => prev.map(e => e.id === fixtureEditor.elId ? { ...e, length: w } : e));
+                }
+                setFixtureEditor(null);
+              }}
                 className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
                 Применить
               </button>
