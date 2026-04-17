@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { RoomInput, CalculationResult } from "@/lib/types";
 
 const AUTOSAVE_KEY = "calculator-rooms-draft";
+
+function readFromStorage(): RoomInput[] {
+  try {
+    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    if (saved) {
+      const parsed: RoomInput[] = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [];
+}
 
 function saveToStorage(rooms: RoomInput[]) {
   try {
@@ -16,73 +27,58 @@ function saveToStorage(rooms: RoomInput[]) {
 }
 
 export function useCalculator() {
-  const [rooms, setRooms] = useState<RoomInput[]>([]);
+  // Lazy init: read from localStorage IMMEDIATELY (no useEffect race)
+  const [rooms, setRooms] = useState<RoomInput[]>(readFromStorage);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restoredDraft, setRestoredDraft] = useState(false);
+  const [restoredDraft] = useState(() => readFromStorage().length > 0);
 
-  // Restore draft on first mount
+  // Ref always holds latest rooms — used in callbacks to avoid stale closures
+  const roomsRef = useRef<RoomInput[]>(rooms);
+
+  // Sync ref + localStorage on every rooms change
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        const parsed: RoomInput[] = JSON.parse(saved);
-        if (parsed.length > 0) {
-          setRooms(parsed);
-          setRestoredDraft(true);
-        }
-      }
-    } catch {}
-  }, []);
+    roomsRef.current = rooms;
+    saveToStorage(rooms);
+  }, [rooms]);
 
   const addRoom = useCallback((room: RoomInput) => {
-    setRooms((prev) => {
-      const next = [...prev, room];
-      saveToStorage(next);
-      return next;
-    });
+    // Use ref to guarantee latest value (belt + suspenders with functional updater)
+    const next = [...roomsRef.current, room];
+    roomsRef.current = next;
+    setRooms(next);
     setResult(null);
   }, []);
 
   const updateRoom = useCallback((id: string, updates: Partial<RoomInput>) => {
-    setRooms((prev) => {
-      const next = prev.map((r) => (r.id === id ? { ...r, ...updates } : r));
-      saveToStorage(next);
-      return next;
-    });
+    const next = roomsRef.current.map((r) => (r.id === id ? { ...r, ...updates } : r));
+    roomsRef.current = next;
+    setRooms(next);
     setResult(null);
   }, []);
 
   const removeRoom = useCallback((id: string) => {
-    setRooms((prev) => {
-      const next = prev.filter((r) => r.id !== id);
-      saveToStorage(next);
-      return next;
-    });
+    const next = roomsRef.current.filter((r) => r.id !== id);
+    roomsRef.current = next;
+    setRooms(next);
     setResult(null);
   }, []);
 
   const duplicateRoom = useCallback((id: string) => {
-    setRooms((prev) => {
-      const room = prev.find((r) => r.id === id);
-      if (!room) return prev;
-      const next = [
-        ...prev,
-        {
-          ...room,
-          id: crypto.randomUUID(),
-          name: room.name + " (копия)",
-        },
-      ];
-      saveToStorage(next);
-      return next;
-    });
+    const room = roomsRef.current.find((r) => r.id === id);
+    if (!room) return;
+    const next = [
+      ...roomsRef.current,
+      { ...room, id: crypto.randomUUID(), name: room.name + " (копия)" },
+    ];
+    roomsRef.current = next;
+    setRooms(next);
     setResult(null);
   }, []);
 
   const calculate = useCallback(async () => {
-    if (rooms.length === 0) {
+    if (roomsRef.current.length === 0) {
       setError("Добавьте хотя бы одну комнату");
       return;
     }
@@ -94,7 +90,7 @@ export function useCalculator() {
       const res = await fetch("/api/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rooms }),
+        body: JSON.stringify({ rooms: roomsRef.current }),
       });
 
       const data = await res.json();
@@ -110,18 +106,18 @@ export function useCalculator() {
     } finally {
       setIsCalculating(false);
     }
-  }, [rooms]);
+  }, []);
 
   const loadRooms = useCallback((importedRooms: RoomInput[]) => {
-    // Give fresh IDs to avoid collisions
     const fresh = importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() }));
+    roomsRef.current = fresh;
     setRooms(fresh);
-    saveToStorage(fresh);
     setResult(null);
     setError(null);
   }, []);
 
   const reset = useCallback(() => {
+    roomsRef.current = [];
     setRooms([]);
     saveToStorage([]);
     setResult(null);
