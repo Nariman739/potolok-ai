@@ -2217,6 +2217,8 @@ export default function ZameryPage() {
                 } : undefined,
               };
               localStorage.setItem("vision-rooms", JSON.stringify([roomInput]));
+              setDesigningRoom(null);
+              calcModeInitRef.current = false; // allow wizard to open on next visit
               router.push("/dashboard/calculator?from=vision");
               return;
             }
@@ -2232,6 +2234,8 @@ export default function ZameryPage() {
           }}
           onCancel={() => {
             if (isCalculatorMode) {
+              setDesigningRoom(null);
+              calcModeInitRef.current = false;
               router.push("/dashboard/calculator");
               return;
             }

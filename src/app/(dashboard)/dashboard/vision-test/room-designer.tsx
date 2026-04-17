@@ -1047,7 +1047,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </button>
         <span className="text-sm font-semibold">{room.name || "Дизайн"} · {room.area} м²</span>
         <button onClick={() => onDone(elements)}
-          className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-1">
+          className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
       </div>
