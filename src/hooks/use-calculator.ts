@@ -1,84 +1,96 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import type { RoomInput, CalculationResult } from "@/lib/types";
 
 const AUTOSAVE_KEY = "calculator-rooms-draft";
 
-function readFromStorage(): RoomInput[] {
+// ── localStorage as the single source of truth ──
+
+let cachedRooms: RoomInput[] | null = null;
+const listeners = new Set<() => void>();
+
+function getRooms(): RoomInput[] {
+  if (cachedRooms !== null) return cachedRooms;
   try {
-    const saved = localStorage.getItem(AUTOSAVE_KEY);
-    if (saved) {
-      const parsed: RoomInput[] = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        cachedRooms = parsed;
+        return parsed;
+      }
     }
   } catch {}
+  cachedRooms = [];
   return [];
 }
 
-function saveToStorage(rooms: RoomInput[]) {
+function setRoomsStore(next: RoomInput[]) {
+  cachedRooms = next;
   try {
-    if (rooms.length > 0) {
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(rooms));
+    if (next.length > 0) {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(next));
     } else {
       localStorage.removeItem(AUTOSAVE_KEY);
     }
   } catch {}
+  // Notify all subscribers (triggers React re-render)
+  listeners.forEach((fn) => fn());
 }
 
+function subscribe(callback: () => void) {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
+
+function getSnapshot(): RoomInput[] {
+  return getRooms();
+}
+
+// ── Hook ──
+
 export function useCalculator() {
-  // Lazy init: read from localStorage IMMEDIATELY (no useEffect race)
-  const [rooms, setRooms] = useState<RoomInput[]>(readFromStorage);
+  // useSyncExternalStore: React-recommended way to sync with external store
+  const rooms = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restoredDraft] = useState(() => readFromStorage().length > 0);
-
-  // Ref always holds latest rooms — used in callbacks to avoid stale closures
-  const roomsRef = useRef<RoomInput[]>(rooms);
-
-  // Sync ref + localStorage on every rooms change
-  useEffect(() => {
-    roomsRef.current = rooms;
-    saveToStorage(rooms);
-  }, [rooms]);
+  const restoredDraft = rooms.length > 0;
 
   const addRoom = useCallback((room: RoomInput) => {
-    // Use ref to guarantee latest value (belt + suspenders with functional updater)
-    const next = [...roomsRef.current, room];
-    roomsRef.current = next;
-    setRooms(next);
+    const current = getRooms();
+    setRoomsStore([...current, room]);
     setResult(null);
   }, []);
 
   const updateRoom = useCallback((id: string, updates: Partial<RoomInput>) => {
-    const next = roomsRef.current.map((r) => (r.id === id ? { ...r, ...updates } : r));
-    roomsRef.current = next;
-    setRooms(next);
+    const current = getRooms();
+    setRoomsStore(current.map((r) => (r.id === id ? { ...r, ...updates } : r)));
     setResult(null);
   }, []);
 
   const removeRoom = useCallback((id: string) => {
-    const next = roomsRef.current.filter((r) => r.id !== id);
-    roomsRef.current = next;
-    setRooms(next);
+    const current = getRooms();
+    setRoomsStore(current.filter((r) => r.id !== id));
     setResult(null);
   }, []);
 
   const duplicateRoom = useCallback((id: string) => {
-    const room = roomsRef.current.find((r) => r.id === id);
+    const current = getRooms();
+    const room = current.find((r) => r.id === id);
     if (!room) return;
-    const next = [
-      ...roomsRef.current,
+    setRoomsStore([
+      ...current,
       { ...room, id: crypto.randomUUID(), name: room.name + " (копия)" },
-    ];
-    roomsRef.current = next;
-    setRooms(next);
+    ]);
     setResult(null);
   }, []);
 
   const calculate = useCallback(async () => {
-    if (roomsRef.current.length === 0) {
+    const current = getRooms();
+    if (current.length === 0) {
       setError("Добавьте хотя бы одну комнату");
       return;
     }
@@ -90,7 +102,7 @@ export function useCalculator() {
       const res = await fetch("/api/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rooms: roomsRef.current }),
+        body: JSON.stringify({ rooms: current }),
       });
 
       const data = await res.json();
@@ -109,17 +121,13 @@ export function useCalculator() {
   }, []);
 
   const loadRooms = useCallback((importedRooms: RoomInput[]) => {
-    const fresh = importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() }));
-    roomsRef.current = fresh;
-    setRooms(fresh);
+    setRoomsStore(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
     setResult(null);
     setError(null);
   }, []);
 
   const reset = useCallback(() => {
-    roomsRef.current = [];
-    setRooms([]);
-    saveToStorage([]);
+    setRoomsStore([]);
     setResult(null);
     setError(null);
   }, []);
