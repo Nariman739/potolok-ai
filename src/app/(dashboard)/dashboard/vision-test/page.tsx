@@ -530,17 +530,6 @@ function WallWizard({ onDone, onCancel }: {
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
 
-  const approxResult = !isValid && committed.length >= 4 && gap < 30 && committedVerts.length >= 4 ? (() => {
-    let sum = 0;
-    for (let i = 0; i < committedVerts.length; i++) {
-      const j = (i + 1) % committedVerts.length;
-      sum += committedVerts[i].x * committedVerts[j].y - committedVerts[j].x * committedVerts[i].y;
-    }
-    const area = Math.round(Math.abs(sum) / 2 / 100) / 100;
-    const perimeter = Math.round(committed.reduce((s, w) => s + w.length, 0)) / 100;
-    return area > 0 ? { area, perimeter, gap } : null;
-  })() : null;
-
   const gapParts: string[] = [];
   if (committed.length >= 4 && !isDone && gap >= 5) {
     if (Math.abs(gapX) > 2) gapParts.push(`${Math.abs(Math.round(gapX))} см ${gapX > 0 ? "влево" : "вправо"}`);
@@ -636,12 +625,11 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   function handleAdd() {
-    const result = isValid ? doneResult! : approxResult;
-    if (!result) return;
-    onDone(buildRoom(result.area, result.perimeter));
+    if (!doneResult) return;
+    onDone(buildRoom(doneResult.area, doneResult.perimeter));
   }
 
-  const headerText = isValid ? "✓ Готово" : approxResult ? "~ Приблизительно" : `Стена ${committed.length + 1}`;
+  const headerText = isValid ? "✓ Готово" : `Стена ${committed.length + 1}`;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
@@ -672,7 +660,7 @@ function WallWizard({ onDone, onCancel }: {
           </button>
         </div>
 
-        {(isValid && doneResult) || approxResult ? (
+        {isValid && doneResult ? (
           /* ── Done: всё скроллится ── */
           <div className="flex-1 min-h-0 overflow-y-auto">
             {/* Room preview */}
@@ -682,7 +670,7 @@ function WallWizard({ onDone, onCancel }: {
                   walls={previewWalls}
                   committedCount={committed.length}
                   nextDirDeg={undefined}
-                  forceClose={!!approxResult}
+                  forceClose={false}
                   roomColumns={columns.length > 0 ? columns : undefined}
                   roomCutouts={cutouts.length > 0 ? cutouts : undefined}
                   onCornerClick={(i) => {
@@ -693,27 +681,15 @@ function WallWizard({ onDone, onCancel }: {
                 />
               </PinchZoom>
             </div>
-            {!isValid && gapParts.length > 0 && (
-              <p className={`text-xs text-center ${gap < 30 ? "text-amber-600" : "text-red-500"}`}>
-                {gap < 30
-                  ? `Погрешность ${Math.round(gap)} см — можно принять`
-                  : `Не сходится: ${gapParts.join(" и ")}`}
-              </p>
-            )}
             {/* Results + modifications */}
             <div className="p-4 pb-20 space-y-3 border-t">
-            {!isValid && approxResult && (
-              <p className="text-xs text-center text-amber-600 font-medium">
-                ⚠ Погрешность {Math.round(approxResult.gap)} см — результат приблизительный
-              </p>
-            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-blue-50 p-4 text-center">
-                <div className="text-4xl font-bold text-blue-600">{(isValid ? doneResult! : approxResult!).area}</div>
+                <div className="text-4xl font-bold text-blue-600">{doneResult.area}</div>
                 <div className="text-xs text-muted-foreground mt-1">м² площадь</div>
               </div>
               <div className="rounded-xl bg-purple-50 p-4 text-center">
-                <div className="text-4xl font-bold text-purple-600">{(isValid ? doneResult! : approxResult!).perimeter}</div>
+                <div className="text-4xl font-bold text-purple-600">{doneResult.perimeter}</div>
                 <div className="text-xs text-muted-foreground mt-1">м периметр</div>
               </div>
             </div>
@@ -873,10 +849,8 @@ function WallWizard({ onDone, onCancel }: {
             )}
 
             <button onClick={handleAdd}
-              className={`w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 ${
-                isValid ? "bg-[#1e3a5f]" : "bg-amber-500"
-              }`}>
-              {isValid ? "Добавить помещение" : "Принять приблизительно"}
+              className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 bg-[#1e3a5f]">
+              Добавить помещение
             </button>
           </div>
           </div>
@@ -1025,10 +999,24 @@ function WallWizard({ onDone, onCancel }: {
             </div>
 
             {committed.length >= 4 && !isValid && (
-              <button onClick={handleForceFinish}
-                className="w-full py-3 text-sm font-semibold text-[#1e3a5f] border-t active:bg-blue-50">
-                Завершить комнату ({committed.length} стен) →
-              </button>
+              <div className="border-t">
+                {gap > 0 && gap < 30 && (
+                  <p className="text-[10px] text-center text-amber-600 pt-1.5 px-2">
+                    Погрешность {Math.round(gap)} см — можно принять
+                  </p>
+                )}
+                {gapParts.length > 0 && gap >= 30 && (
+                  <p className="text-[10px] text-center text-muted-foreground pt-1.5 px-2">
+                    Не замкнуто: {gapParts.join(" и ")}
+                  </p>
+                )}
+                <button onClick={handleForceFinish}
+                  className={`w-full py-3 text-sm font-semibold active:opacity-80 ${
+                    gap < 30 ? "text-amber-600 bg-amber-50" : "text-[#1e3a5f] active:bg-blue-50"
+                  }`}>
+                  {gap < 30 ? `Принять приблизительно (${committed.length} стен) →` : `Завершить комнату (${committed.length} стен) →`}
+                </button>
+              </div>
             )}
           </div>
           </>
@@ -1528,6 +1516,20 @@ export default function ZameryPage() {
   const [loading, setLoading] = useState(true);
   const calcModeInitRef = useRef(false);
   const addressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeObjectIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync with state (avoids stale closure in async functions)
+  useEffect(() => { activeObjectIdRef.current = activeObjectId; }, [activeObjectId]);
+
+  // ── Persist rooms to localStorage as backup ──
+  useEffect(() => {
+    if (loading) return; // don't overwrite before initial load
+    try {
+      localStorage.setItem("zamery-rooms", JSON.stringify(rooms));
+      localStorage.setItem("zamery-object", objectName);
+      if (activeObjectId) localStorage.setItem("zamery-objectId", activeObjectId);
+    } catch { /* quota exceeded — ignore */ }
+  }, [rooms, objectName, activeObjectId, loading]);
 
   // Calculator mode: auto-open wizard on mount
   useEffect(() => {
@@ -1546,6 +1548,7 @@ export default function ZameryPage() {
           fetch("/api/measurements?status=active"),
           fetch("/api/measurements?status=saved"),
         ]);
+        let loadedFromServer = false;
         if (activeRes.ok) {
           const activeList = await activeRes.json();
           if (activeList.length > 0) {
@@ -1565,7 +1568,24 @@ export default function ZameryPage() {
               elements: (r.elements as RoomElement[]) || [],
               photoUrls: (r.photoUrls as string[]) || [],
             })));
+            loadedFromServer = true;
           }
+        }
+        // If server has no active object, restore from localStorage backup
+        if (!loadedFromServer) {
+          try {
+            const lr = localStorage.getItem("zamery-rooms");
+            const lo = localStorage.getItem("zamery-object");
+            const loid = localStorage.getItem("zamery-objectId");
+            if (lr) {
+              const parsed = JSON.parse(lr) as Room[];
+              if (parsed.length > 0) {
+                setRooms(parsed);
+                if (lo) setObjectName(lo);
+                if (loid) setActiveObjectId(loid);
+              }
+            }
+          } catch { /* ignore */ }
         }
         if (savedRes.ok) {
           const savedList = await savedRes.json();
@@ -1607,7 +1627,8 @@ export default function ZameryPage() {
 
   // ── Helper: ensure active object exists on server ──
   async function ensureActiveObject(): Promise<string> {
-    if (activeObjectId) return activeObjectId;
+    // Use ref to get latest value (avoids stale closure in rapid async calls)
+    if (activeObjectIdRef.current) return activeObjectIdRef.current;
     const res = await fetch("/api/measurements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1616,6 +1637,7 @@ export default function ZameryPage() {
     if (!res.ok) throw new Error("Не удалось создать объект замера");
     const obj = await res.json();
     setActiveObjectId(obj.id);
+    activeObjectIdRef.current = obj.id; // update ref immediately (no wait for re-render)
     return obj.id;
   }
 
@@ -1636,6 +1658,7 @@ export default function ZameryPage() {
           columns: r.columns,
           area: r.area,
           perimeter: r.perimeter,
+          elements: r.elements || [],
         }))),
       });
       if (res.ok) {
@@ -1659,9 +1682,10 @@ export default function ZameryPage() {
   // ── Remove room ──
   async function removeRoom(roomId: string) {
     setRooms(prev => prev.filter(r => r.id !== roomId));
-    if (activeObjectId) {
+    const objId = activeObjectIdRef.current;
+    if (objId) {
       try {
-        const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${roomId}`, { method: "DELETE" });
+        const res = await fetch(`/api/measurements/${objId}/rooms/${roomId}`, { method: "DELETE" });
         if (!res.ok) alert("Не удалось удалить комнату с сервера.");
       } catch {
         alert("Ошибка при удалении комнаты. Проверьте интернет.");
@@ -1673,9 +1697,10 @@ export default function ZameryPage() {
   async function updateRoom(updated: Room) {
     setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
     setViewingRoom(null);
-    if (activeObjectId) {
+    const objId = activeObjectIdRef.current;
+    if (objId) {
       try {
-        const res = await fetch(`/api/measurements/${activeObjectId}/rooms/${updated.id}`, {
+        const res = await fetch(`/api/measurements/${objId}/rooms/${updated.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1704,8 +1729,9 @@ export default function ZameryPage() {
     setObjectName(value);
     if (addressTimer.current) clearTimeout(addressTimer.current);
     addressTimer.current = setTimeout(() => {
-      if (activeObjectId) {
-        fetch(`/api/measurements/${activeObjectId}`, {
+      const objId = activeObjectIdRef.current;
+      if (objId) {
+        fetch(`/api/measurements/${objId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ address: value }),
@@ -1763,6 +1789,12 @@ export default function ZameryPage() {
       setRooms([]);
       setObjectName("");
       setActiveObjectId(null);
+      activeObjectIdRef.current = null;
+      try {
+        localStorage.removeItem("zamery-rooms");
+        localStorage.removeItem("zamery-object");
+        localStorage.removeItem("zamery-objectId");
+      } catch { /* ignore */ }
     } catch {
       alert("Не удалось сохранить замеры. Проверьте интернет и попробуйте ещё раз.");
     }
@@ -1775,9 +1807,10 @@ export default function ZameryPage() {
     }
 
     // Delete current active on server
-    if (activeObjectId) {
+    const currentObjId = activeObjectIdRef.current;
+    if (currentObjId) {
       try {
-        await fetch(`/api/measurements/${activeObjectId}`, { method: "DELETE" });
+        await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
       } catch { /* non-critical */ }
     }
 
