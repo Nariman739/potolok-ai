@@ -555,6 +555,17 @@ function WallWizard({ onDone, onCancel }: {
     : null;
   const isValid = !!doneResult && doneResult.area > 0;
 
+  // Prevent ghost click: delay before done-screen buttons become active
+  const [doneReady, setDoneReady] = useState(false);
+  useEffect(() => {
+    if (isValid) {
+      setDoneReady(false);
+      const t = setTimeout(() => setDoneReady(true), 400);
+      return () => clearTimeout(t);
+    }
+    setDoneReady(false);
+  }, [isValid]);
+
   const gapParts: string[] = [];
   if (committed.length >= 4 && !isDone && gap >= 5) {
     if (Math.abs(gapX) > 2) gapParts.push(`${Math.abs(Math.round(gapX))} см ${gapX > 0 ? "влево" : "вправо"}`);
@@ -874,7 +885,8 @@ function WallWizard({ onDone, onCancel }: {
             )}
 
             <button onClick={handleAdd}
-              className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 bg-[#1e3a5f]">
+              disabled={!doneReady}
+              className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 bg-[#1e3a5f] disabled:opacity-60 transition-opacity">
               Добавить помещение
             </button>
           </div>
@@ -1921,18 +1933,23 @@ export default function ZameryPage() {
   async function handleShareToFactory() {
     if (rooms.length === 0) return;
 
+    // Hi-DPI: 2x for retina clarity
+    const DPR = 2;
     const cols = rooms.length === 1 ? 1 : Math.min(rooms.length, 2);
     const rowCount = Math.ceil(rooms.length / cols);
-    const CELL = 600;
-    const HEADER = 100;
-    const FOOTER = 50;
+    const CELL = 800;
+    const HEADER = 120;
+    const FOOTER = 60;
     const W = CELL * cols;
     const H = HEADER + CELL * rowCount + FOOTER;
 
     const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
     const ctx = canvas.getContext("2d")!;
+    ctx.scale(DPR, DPR);
 
     // Background
     ctx.fillStyle = "#ffffff";
@@ -1940,24 +1957,24 @@ export default function ZameryPage() {
 
     // Header
     ctx.fillStyle = "#1e3a5f";
-    ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
+    ctx.font = "bold 36px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(objectName || "Замеры потолков", 28, 18);
+    ctx.fillText(objectName || "Замеры потолков", 32, 20);
 
     ctx.fillStyle = "#6b7280";
-    ctx.font = "20px system-ui, -apple-system, sans-serif";
+    ctx.font = "22px system-ui, -apple-system, sans-serif";
     ctx.fillText(
-      `${totalArea} м² | ${rooms.length} помещ. | ${new Date().toLocaleDateString("ru-RU")}`,
-      28, 58,
+      `${totalArea} м²  |  ${rooms.length} помещ.  |  ${new Date().toLocaleDateString("ru-RU")}`,
+      32, 62,
     );
 
     // Separator
     ctx.strokeStyle = "#e5e7eb";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(28, HEADER - 6);
-    ctx.lineTo(W - 28, HEADER - 6);
+    ctx.moveTo(32, HEADER - 6);
+    ctx.lineTo(W - 32, HEADER - 6);
     ctx.stroke();
 
     // Draw rooms
@@ -1969,13 +1986,13 @@ export default function ZameryPage() {
 
       // Title
       ctx.fillStyle = "#1e3a5f";
-      ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+      ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.fillText(room.name || `Помещение ${i + 1}`, ox + 20, oy + 10);
+      ctx.fillText(room.name || `Помещение ${i + 1}`, ox + 24, oy + 12);
       ctx.fillStyle = "#6b7280";
-      ctx.font = "17px system-ui, -apple-system, sans-serif";
-      ctx.fillText(`${room.area} м²  P = ${room.perimeter} м`, ox + 20, oy + 36);
+      ctx.font = "20px system-ui, -apple-system, sans-serif";
+      ctx.fillText(`${room.area} м²  P = ${room.perimeter} м`, ox + 24, oy + 42);
 
       // Vertices
       const angles = room.angles || room.normalCorners.map(nc => nc ? 90 : -90);
@@ -2009,8 +2026,8 @@ export default function ZameryPage() {
       const minY = Math.min(...ys), maxY = Math.max(...ys);
       const rW = maxX - minX || 1;
       const rH = maxY - minY || 1;
-      const PAD = 80;
-      const TITLE_H = 55;
+      const PAD = 100;
+      const TITLE_H = 65;
       const drawW = CELL - PAD * 2;
       const drawH = CELL - PAD * 2 - TITLE_H;
       const sc = Math.min(drawW / rW, drawH / rH);
@@ -2043,30 +2060,38 @@ export default function ZameryPage() {
         const edx = v2.x - v1.x, edy = v2.y - v1.y;
         const elen = Math.sqrt(edx * edx + edy * edy) || 1;
         const nx = edy / elen, ny = -edx / elen;
-        const off = 28;
+        const off = 40;
         const lx = mx + nx * off;
         const ly = my + ny * off;
 
-        // Extension lines
-        ctx.strokeStyle = "#94a3b8";
-        ctx.lineWidth = 0.8;
+        // Extension lines with serifs
+        ctx.strokeStyle = "#64748b";
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(p1x, p1y);
-        ctx.lineTo(p1x + nx * (off - 6), p1y + ny * (off - 6));
-        ctx.moveTo(p2x, p2y);
-        ctx.lineTo(p2x + nx * (off - 6), p2y + ny * (off - 6));
+        ctx.moveTo(p1x + nx * 6, p1y + ny * 6);
+        ctx.lineTo(p1x + nx * (off - 8), p1y + ny * (off - 8));
+        ctx.moveTo(p2x + nx * 6, p2y + ny * 6);
+        ctx.lineTo(p2x + nx * (off - 8), p2y + ny * (off - 8));
+        ctx.stroke();
+
+        // Dimension line between extension lines
+        const d1x = p1x + nx * (off / 2), d1y = p1y + ny * (off / 2);
+        const d2x = p2x + nx * (off / 2), d2y = p2y + ny * (off / 2);
+        ctx.beginPath();
+        ctx.moveTo(d1x, d1y);
+        ctx.lineTo(d2x, d2y);
         ctx.stroke();
 
         // Label text
         const text = String(room.walls[j]);
-        ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+        ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         const tw = ctx.measureText(text).width;
 
         // Pill background
-        const pillW = tw + 18;
-        const pillH = 28;
+        const pillW = tw + 22;
+        const pillH = 34;
         const rx = lx - pillW / 2, ry = ly - pillH / 2, r = 7;
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = "#94a3b8";
@@ -2093,10 +2118,10 @@ export default function ZameryPage() {
 
     // Footer
     ctx.fillStyle = "#9ca3af";
-    ctx.font = "15px system-ui, -apple-system, sans-serif";
+    ctx.font = "18px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText("potolok.ai", W / 2, H - 16);
+    ctx.fillText("potolok.ai  •  все размеры в см", W / 2, H - 18);
 
     // Export to blob and share
     const blob = await new Promise<Blob | null>(resolve =>
