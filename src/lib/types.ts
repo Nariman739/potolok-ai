@@ -70,6 +70,17 @@ export interface RoomInput {
   podshtornikType?: string;
   // Custom items per room
   customItems?: { itemId: string; quantity: number }[];
+  // Raw data for Room Designer round-trip editing
+  designerData?: {
+    walls: number[];
+    angles: number[];
+    normalCorners: boolean[];
+    area: number;
+    perimeter: number;
+    elements?: unknown[];
+    arcBulges?: number[];
+    columns?: unknown[];
+  };
 }
 
 // ============================================

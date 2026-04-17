@@ -1529,7 +1529,8 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 export default function ZameryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isCalculatorMode = searchParams.get("mode") === "calculator";
+  const isCalculatorMode = searchParams.get("mode") === "calculator" || searchParams.get("mode") === "calculator-edit";
+  const isCalculatorEditMode = searchParams.get("mode") === "calculator-edit";
   const [rooms, setRooms] = useState<Room[]>([]);
   const [objectName, setObjectName] = useState("");
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
@@ -1560,10 +1561,37 @@ export default function ZameryPage() {
   useEffect(() => {
     if (isCalculatorMode && !calcModeInitRef.current) {
       calcModeInitRef.current = true;
+
+      // Edit mode: load room from localStorage and open designer directly
+      if (isCalculatorEditMode) {
+        try {
+          const stored = localStorage.getItem("vision-edit-room");
+          if (stored) {
+            const data = JSON.parse(stored);
+            const room: Room = {
+              id: data.id || crypto.randomUUID(),
+              name: data.name || "Помещение",
+              walls: data.walls,
+              angles: data.angles,
+              normalCorners: data.normalCorners,
+              area: data.area,
+              perimeter: data.perimeter,
+              elements: data.elements || [],
+              arcBulges: data.arcBulges,
+              columns: data.columns,
+            };
+            setDesigningRoom(room);
+          }
+        } catch { /* ignore */ }
+        setLoading(false);
+        return;
+      }
+
+      // Add mode: open wall wizard
       setShowWizard(true);
       setLoading(false);
     }
-  }, [isCalculatorMode]);
+  }, [isCalculatorMode, isCalculatorEditMode]);
 
   // ── Load from server on mount ──
   useEffect(() => {
@@ -2215,11 +2243,27 @@ export default function ZameryPage() {
                     turnRight: (room.angles?.[i] ?? 90) > 0,
                   })),
                 } : undefined,
+                // Raw data for editing in Room Designer later
+                designerData: {
+                  walls: room.walls,
+                  angles: room.angles || room.normalCorners.map(nc => nc ? 90 : -90),
+                  normalCorners: room.normalCorners,
+                  area: room.area,
+                  perimeter: room.perimeter,
+                  elements: elements || [],
+                  arcBulges: room.arcBulges,
+                  columns: room.columns,
+                },
               };
               localStorage.setItem("vision-rooms", JSON.stringify([roomInput]));
               setDesigningRoom(null);
-              calcModeInitRef.current = false; // allow wizard to open on next visit
-              router.push("/dashboard/calculator?from=vision");
+              calcModeInitRef.current = false;
+              // Edit mode: return with edit flag so calculator updates instead of adding
+              const editId = isCalculatorEditMode ? searchParams.get("roomId") : null;
+              router.push(editId
+                ? `/dashboard/calculator?from=vision-edit&roomId=${editId}`
+                : "/dashboard/calculator?from=vision"
+              );
               return;
             }
 

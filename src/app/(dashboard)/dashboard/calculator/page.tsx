@@ -69,24 +69,37 @@ function CalculatorContent() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [rooms.length, result]);
 
-  // Load room from vision (?from=vision) — APPEND to existing rooms
+  // Load room from vision (?from=vision or ?from=vision-edit&roomId=xxx)
   useEffect(() => {
-    if (searchParams.get("from") === "vision") {
+    const from = searchParams.get("from");
+
+    if (from === "vision" || from === "vision-edit") {
       try {
         const stored = localStorage.getItem("vision-rooms");
         if (stored) {
           const importedRooms: RoomInput[] = JSON.parse(stored);
           localStorage.removeItem("vision-rooms");
-          for (const room of importedRooms) {
-            addRoom({ ...room, id: crypto.randomUUID() });
+          localStorage.removeItem("vision-edit-room");
+
+          if (from === "vision-edit") {
+            // Update existing room
+            const roomId = searchParams.get("roomId");
+            if (roomId && importedRooms.length > 0) {
+              updateRoom(roomId, { ...importedRooms[0], id: roomId });
+              toast.success("Комната обновлена");
+            }
+          } else {
+            // Add new room(s)
+            for (const room of importedRooms) {
+              addRoom({ ...room, id: crypto.randomUUID() });
+            }
+            toast.success("Комната добавлена");
           }
           setFormOpen(false);
-          toast.success("Комната добавлена");
         }
       } catch {
-        toast.error("Не удалось загрузить комнату из замеров");
+        toast.error("Не удалось загрузить комнату");
       }
-      // Clean URL to prevent re-processing
       router.replace("/dashboard/calculator", { scroll: false });
       return;
     }
@@ -251,8 +264,20 @@ function CalculatorContent() {
                 onDuplicate={duplicateRoom}
                 onRemove={removeRoom}
                 onEdit={(id) => {
-                  setEditingRoomId(id);
-                  setFormOpen(false);
+                  const r = rooms.find(rm => rm.id === id);
+                  if (r?.designerData) {
+                    // Open Room Designer with saved room data
+                    localStorage.setItem("vision-edit-room", JSON.stringify({
+                      id: r.id,
+                      name: r.name,
+                      ...r.designerData,
+                    }));
+                    router.push(`/dashboard/vision-test?mode=calculator-edit&roomId=${id}`);
+                  } else {
+                    // Fallback: inline form edit (for rooms without designer data)
+                    setEditingRoomId(id);
+                    setFormOpen(false);
+                  }
                 }}
               />
             )
