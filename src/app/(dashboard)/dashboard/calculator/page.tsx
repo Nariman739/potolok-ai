@@ -55,12 +55,13 @@ function CalculatorContent() {
   const [loadingFrom, setLoadingFrom] = useState(false);
   const loadedRef = useRef(false);
 
-  // Toast when draft is restored from localStorage
+  // When draft is restored, hide the add-form so user sees existing rooms
   useEffect(() => {
-    if (restoredDraft) {
+    if (restoredDraft && rooms.length > 0) {
+      setShowForm(false);
       toast.info("Восстановлен черновик из предыдущего сеанса");
     }
-  }, [restoredDraft]);
+  }, [restoredDraft, rooms.length]);
 
   // Warn before leaving if rooms are added
   useEffect(() => {

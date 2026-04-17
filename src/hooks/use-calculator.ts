@@ -114,7 +114,9 @@ export function useCalculator() {
 
   const loadRooms = useCallback((importedRooms: RoomInput[]) => {
     // Give fresh IDs to avoid collisions
-    setRooms(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
+    const fresh = importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() }));
+    setRooms(fresh);
+    saveToStorage(fresh);
     setResult(null);
     setError(null);
   }, []);
