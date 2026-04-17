@@ -278,13 +278,38 @@ function RoomPreview({
           const my = sy((v.y + next.y) / 2);
           const len = parseFloat(walls[i]?.length) || 0;
           const isCurrent = i === committed;
+          const isActive = activeWallIdx === i;
+
+          // Pixel length of wall segment
+          const pdx = sx(next.x) - sx(v.x);
+          const pdy = sy(next.y) - sy(v.y);
+          const pixelLen = Math.sqrt(pdx * pdx + pdy * pdy);
+
+          // Outward offset for short walls (< 50px)
+          const plen = pixelLen || 1;
+          const pnx = pdy / plen;
+          const pny = -pdx / plen;
+          const labelOffset = pixelLen < 50 ? 24 : 0;
+          const lx = mx + pnx * labelOffset;
+          const ly = my + pny * labelOffset;
+
+          // Dynamic label width
+          const text = len > 0 ? String(len) : "?";
+          const textW = text.length * 10 + 14;
+
           return (
             <g key={i}>
-              <rect x={mx - 14} y={my - 9} width={28} height={16} rx={3}
-                fill={isCurrent ? "#fef3c7" : "white"} fillOpacity={0.92} />
-              <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fontFamily="monospace"
-                fill={closed ? "#1e3a5f" : isCurrent ? "#92400e" : "#64748b"} fontWeight="600">
-                {len > 0 ? len : "?"}
+              {labelOffset > 0 && (
+                <line x1={mx} y1={my} x2={lx} y2={ly}
+                  stroke="#94a3b8" strokeWidth={0.7} strokeDasharray="2,2" />
+              )}
+              <rect x={lx - textW / 2} y={ly - 12} width={textW} height={24} rx={5}
+                fill={isCurrent ? "#fef3c7" : isActive ? "#fff7ed" : "white"}
+                stroke={isCurrent ? "#f59e0b" : isActive ? "#f97316" : "#cbd5e1"} strokeWidth={1} />
+              <text x={lx} y={ly + 1} textAnchor="middle" dominantBaseline="central"
+                fontSize={14} fontFamily="system-ui, -apple-system, sans-serif"
+                fill={closed ? "#1e3a5f" : isCurrent ? "#92400e" : "#1e293b"} fontWeight="700">
+                {text}
               </text>
             </g>
           );
@@ -1860,6 +1885,218 @@ export default function ZameryPage() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
 
+  // ── Share factory image (PNG with room drawings) ──
+  async function handleShareToFactory() {
+    if (rooms.length === 0) return;
+
+    const cols = rooms.length === 1 ? 1 : Math.min(rooms.length, 2);
+    const rowCount = Math.ceil(rooms.length / cols);
+    const CELL = 600;
+    const HEADER = 100;
+    const FOOTER = 50;
+    const W = CELL * cols;
+    const H = HEADER + CELL * rowCount + FOOTER;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+
+    // Header
+    ctx.fillStyle = "#1e3a5f";
+    ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(objectName || "Замеры потолков", 28, 18);
+
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "20px system-ui, -apple-system, sans-serif";
+    ctx.fillText(
+      `${totalArea} м² | ${rooms.length} помещ. | ${new Date().toLocaleDateString("ru-RU")}`,
+      28, 58,
+    );
+
+    // Separator
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(28, HEADER - 6);
+    ctx.lineTo(W - 28, HEADER - 6);
+    ctx.stroke();
+
+    // Draw rooms
+    rooms.forEach((room, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const ox = col * CELL;
+      const oy = HEADER + row * CELL;
+
+      // Title
+      ctx.fillStyle = "#1e3a5f";
+      ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(room.name || `Помещение ${i + 1}`, ox + 20, oy + 10);
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "17px system-ui, -apple-system, sans-serif";
+      ctx.fillText(`${room.area} м²  P = ${room.perimeter} м`, ox + 20, oy + 36);
+
+      // Vertices
+      const angles = room.angles || room.normalCorners.map(nc => nc ? 90 : -90);
+      const allRect = angles.every(a => a === 90 || a === -90);
+      const verts: { x: number; y: number }[] = [{ x: 0, y: 0 }];
+
+      if (allRect) {
+        let cx = 0, cy = 0, dir = 0;
+        for (let j = 0; j < room.walls.length; j++) {
+          cx += DX[dir] * room.walls[j];
+          cy += DY[dir] * room.walls[j];
+          verts.push({ x: cx, y: cy });
+          dir = angles[j] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+        }
+      } else {
+        let cx = 0, cy = 0, dirRad = 0;
+        for (let j = 0; j < room.walls.length; j++) {
+          cx += Math.cos(dirRad) * room.walls[j];
+          cy += Math.sin(dirRad) * room.walls[j];
+          verts.push({ x: cx, y: cy });
+          dirRad += angles[j] * Math.PI / 180;
+        }
+      }
+
+      if (verts.length < 3) return;
+
+      // Bounds + scale
+      const xs = verts.map(v => v.x);
+      const ys = verts.map(v => v.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const rW = maxX - minX || 1;
+      const rH = maxY - minY || 1;
+      const PAD = 80;
+      const TITLE_H = 55;
+      const drawW = CELL - PAD * 2;
+      const drawH = CELL - PAD * 2 - TITLE_H;
+      const sc = Math.min(drawW / rW, drawH / rH);
+      const baseX = ox + PAD + (drawW - rW * sc) / 2;
+      const baseY = oy + TITLE_H + PAD + (drawH - rH * sc) / 2;
+      const toX = (x: number) => baseX + (x - minX) * sc;
+      const toY = (y: number) => baseY + (y - minY) * sc;
+
+      // Fill polygon
+      ctx.beginPath();
+      ctx.moveTo(toX(verts[0].x), toY(verts[0].y));
+      for (let j = 1; j < verts.length; j++) ctx.lineTo(toX(verts[j].x), toY(verts[j].y));
+      ctx.closePath();
+      ctx.fillStyle = "#eef2ff";
+      ctx.fill();
+      ctx.strokeStyle = "#1e3a5f";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Dimension labels
+      for (let j = 0; j < room.walls.length; j++) {
+        const v1 = verts[j];
+        const v2 = verts[j + 1] || verts[0];
+        const p1x = toX(v1.x), p1y = toY(v1.y);
+        const p2x = toX(v2.x), p2y = toY(v2.y);
+        const mx = (p1x + p2x) / 2;
+        const my = (p1y + p2y) / 2;
+
+        // Outward normal
+        const edx = v2.x - v1.x, edy = v2.y - v1.y;
+        const elen = Math.sqrt(edx * edx + edy * edy) || 1;
+        const nx = edy / elen, ny = -edx / elen;
+        const off = 28;
+        const lx = mx + nx * off;
+        const ly = my + ny * off;
+
+        // Extension lines
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(p1x, p1y);
+        ctx.lineTo(p1x + nx * (off - 6), p1y + ny * (off - 6));
+        ctx.moveTo(p2x, p2y);
+        ctx.lineTo(p2x + nx * (off - 6), p2y + ny * (off - 6));
+        ctx.stroke();
+
+        // Label text
+        const text = String(room.walls[j]);
+        ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const tw = ctx.measureText(text).width;
+
+        // Pill background
+        const pillW = tw + 18;
+        const pillH = 28;
+        const rx = lx - pillW / 2, ry = ly - pillH / 2, r = 7;
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + pillW - r, ry);
+        ctx.quadraticCurveTo(rx + pillW, ry, rx + pillW, ry + r);
+        ctx.lineTo(rx + pillW, ry + pillH - r);
+        ctx.quadraticCurveTo(rx + pillW, ry + pillH, rx + pillW - r, ry + pillH);
+        ctx.lineTo(rx + r, ry + pillH);
+        ctx.quadraticCurveTo(rx, ry + pillH, rx, ry + pillH - r);
+        ctx.lineTo(rx, ry + r);
+        ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Text
+        ctx.fillStyle = "#1e3a5f";
+        ctx.fillText(text, lx, ly);
+      }
+    });
+
+    // Footer
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "15px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("potolok.ai", W / 2, H - 16);
+
+    // Export to blob and share
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, "image/png"),
+    );
+    if (!blob) { alert("Не удалось создать изображение"); return; }
+
+    const fileName = `zamery-${(objectName || "potolok").replace(/\s+/g, "-")}.png`;
+    const file = new File([blob], fileName, { type: "image/png" });
+
+    try {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: `Замеры: ${objectName || "потолки"} — ${totalArea} м²`,
+        });
+      } else {
+        // Desktop fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // User cancelled share
+    }
+  }
+
   function handleCreateEstimate() {
     const roomInputs: RoomInput[] = rooms.map(room => {
       const l = room.walls.length === 4 ? room.walls[0] / 100 : Math.sqrt(room.area);
@@ -2085,6 +2322,10 @@ export default function ZameryPage() {
                 <button onClick={handleSaveObject}
                   className="rounded-lg border border-[#1e3a5f] px-4 py-2.5 text-sm font-medium text-[#1e3a5f] hover:bg-blue-50 active:opacity-80">
                   Сохранить 💾
+                </button>
+                <button onClick={handleShareToFactory}
+                  className="rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 active:opacity-80">
+                  В цех 📐
                 </button>
                 <button onClick={handleShare}
                   className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 active:opacity-80">
