@@ -10,7 +10,7 @@ import { CalculationResults } from "@/components/calculator/calculation-results"
 import { SaveDialog } from "@/components/calculator/save-dialog";
 import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
-import { Plus, Calculator, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { RoomInput } from "@/lib/types";
 
@@ -69,29 +69,32 @@ function CalculatorContent() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [rooms.length, result]);
 
-  // Load rooms from existing estimate (?from=estimateId) or from vision (?from=vision)
+  // Load room from vision (?from=vision) — APPEND to existing rooms
   useEffect(() => {
-    const fromId = searchParams.get("from");
-    if (!fromId || loadedRef.current) return;
-    loadedRef.current = true;
-
-    if (fromId === "vision") {
+    if (searchParams.get("from") === "vision") {
       try {
         const stored = localStorage.getItem("vision-rooms");
         if (stored) {
           const importedRooms: RoomInput[] = JSON.parse(stored);
           localStorage.removeItem("vision-rooms");
-          if (importedRooms.length > 0) {
-            loadRooms(importedRooms);
-            setFormOpen(false);
-            toast.success(`Загружено ${importedRooms.length} комнат из замеров — выберите тип полотна и рассчитайте`);
+          for (const room of importedRooms) {
+            addRoom({ ...room, id: crypto.randomUUID() });
           }
+          setFormOpen(false);
+          toast.success("Комната добавлена");
         }
       } catch {
-        toast.error("Не удалось загрузить комнаты из замеров");
+        toast.error("Не удалось загрузить комнату из замеров");
       }
+      // Clean URL to prevent re-processing
+      router.replace("/dashboard/calculator", { scroll: false });
       return;
     }
+
+    // Load from existing estimate (?from=estimateId)
+    const fromId = searchParams.get("from");
+    if (!fromId || loadedRef.current) return;
+    loadedRef.current = true;
 
     setLoadingFrom(true);
     fetch(`/api/estimates/${fromId}`)
@@ -107,7 +110,7 @@ function CalculatorContent() {
       })
       .catch(() => {})
       .finally(() => setLoadingFrom(false));
-  }, [searchParams, loadRooms]);
+  }, [searchParams, addRoom, loadRooms, router]);
 
   useEffect(() => {
     fetch("/api/prices")
@@ -208,13 +211,15 @@ function CalculatorContent() {
         </details>
       </div>
 
-      {rooms.length === 0 && !result && (
-        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-4 py-3">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-emerald-800">
-            Цены по умолчанию уже настроены. Добавьте комнату и нажмите «Рассчитать».
-          </p>
-        </div>
+      {/* Add room button — always visible */}
+      {!editingRoomId && (
+        <Button
+          className="w-full h-14 text-base bg-[#1e3a5f] hover:bg-[#152d4a]"
+          onClick={() => router.push("/dashboard/vision-test?mode=calculator")}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          {rooms.length === 0 ? "Добавить помещение" : "Добавить ещё помещение"}
+        </Button>
       )}
 
       {/* Room list */}
@@ -254,36 +259,6 @@ function CalculatorContent() {
           ))}
         </div>
       )}
-
-      {/* Room form */}
-      {showForm && !editingRoomId ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {rooms.length === 0 ? "Добавьте комнату" : "Новая комната"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RoomForm
-              onAdd={(room) => {
-                addRoom(room);
-                setFormOpen(false);
-              }}
-              onCancel={rooms.length > 0 ? () => setFormOpen(false) : undefined}
-              priceMap={priceMap}
-            />
-          </CardContent>
-        </Card>
-      ) : !editingRoomId && rooms.length > 0 ? (
-        <Button
-          variant="outline"
-          className="w-full border-dashed h-12"
-          onClick={() => setFormOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить комнату
-        </Button>
-      ) : null}
 
       {/* Error */}
       {error && (
