@@ -222,14 +222,6 @@ function CalculatorContent() {
         <p className="text-sm text-muted-foreground">
           Добавьте комнаты и получите стоимость
         </p>
-        {/* DEBUG — временный блок для отладки */}
-        <details className="mt-2 text-xs text-gray-400 border rounded p-2">
-          <summary>debug ({rooms.length} комнат в памяти)</summary>
-          <pre className="mt-1 whitespace-pre-wrap break-all">
-            {JSON.stringify(rooms.map(r => ({ id: r.id?.slice(0,8), name: r.name, area: (r.length * r.width).toFixed(1) })), null, 1)}
-          </pre>
-          <p className="mt-1">localStorage: {typeof window !== 'undefined' ? (localStorage.getItem('calculator-rooms-draft')?.length ?? 0) : '?'} bytes</p>
-        </details>
       </div>
 
       {/* Add room button — always visible */}

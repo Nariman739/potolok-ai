@@ -54,7 +54,22 @@ export function useCalculator() {
   // useSyncExternalStore: React-recommended way to sync with external store
   const rooms = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [result, setResultState] = useState<CalculationResult | null>(() => {
+    try {
+      const saved = localStorage.getItem("calculator-result-draft");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+
+  // Wrapper that persists result to localStorage
+  const setResult = useCallback((r: CalculationResult | null) => {
+    setResultState(r);
+    try {
+      if (r) localStorage.setItem("calculator-result-draft", JSON.stringify(r));
+      else localStorage.removeItem("calculator-result-draft");
+    } catch {}
+  }, []);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const restoredDraft = rooms.length > 0;

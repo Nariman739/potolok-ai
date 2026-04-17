@@ -997,10 +997,11 @@ function WallWizard({ onDone, onCancel }: {
             </div>
 
             {/* Numpad */}
-            <div className="grid grid-cols-3 select-none">
+            <div className="grid grid-cols-3 select-none" style={{ touchAction: "manipulation" }}>
               {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
                 <button key={d} onClick={() => digit(d)}
-                  className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="py-3.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                   {d}
                 </button>
               ))}
@@ -1009,16 +1010,19 @@ function WallWizard({ onDone, onCancel }: {
                   if (input) setInput(p => p.slice(0, -1));
                   else if (committed.length > 0) setCommitted(prev => prev.slice(0, -1));
                 }}
-                className="py-2.5 text-xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
+                style={{ touchAction: "manipulation" }}
+                className="py-3.5 text-xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
                 ⌫
               </button>
               <button onClick={() => digit("0")}
-                className="py-2.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                style={{ touchAction: "manipulation" }}
+                className="py-3.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
                 0
               </button>
               <button onClick={confirm}
                 disabled={!input || parseFloat(input) <= 0}
-                className="py-2.5 text-2xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
+                style={{ touchAction: "manipulation" }}
+                className="py-3.5 text-2xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
                 ✓
               </button>
             </div>
