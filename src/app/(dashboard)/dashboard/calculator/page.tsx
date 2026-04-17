@@ -69,6 +69,14 @@ function CalculatorContent() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [rooms.length, result]);
 
+  // New calculation (?new=1) — clear draft
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      reset();
+      router.replace("/dashboard/calculator", { scroll: false });
+    }
+  }, [searchParams, reset, router]);
+
   // Load room from vision (?from=vision or ?from=vision-edit&roomId=xxx)
   useEffect(() => {
     const from = searchParams.get("from");

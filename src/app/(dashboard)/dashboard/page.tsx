@@ -132,7 +132,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/dashboard/calculator">
+        <Link href="/dashboard/calculator?new=1">
           <Card className="border-[#1e3a5f]/25 bg-[#1e3a5f]/5 h-full hover:bg-[#1e3a5f]/10 transition-colors cursor-pointer">
             <CardContent className="p-4 flex flex-col gap-2 h-full">
               <div className="rounded-lg bg-[#1e3a5f]/15 p-2 w-fit">
