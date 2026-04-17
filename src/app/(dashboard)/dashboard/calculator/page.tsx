@@ -36,7 +36,6 @@ function CalculatorContent() {
     result,
     isCalculating,
     error,
-    restoredDraft,
     addRoom,
     updateRoom,
     removeRoom,
@@ -46,7 +45,11 @@ function CalculatorContent() {
     loadRooms,
   } = useCalculator();
 
-  const [showForm, setShowForm] = useState(rooms.length === 0);
+  // formOpen = user manually opened the "add room" form
+  const [formOpen, setFormOpen] = useState(false);
+  // Show form when: no rooms yet OR user clicked "Добавить комнату"
+  const showForm = rooms.length === 0 || formOpen;
+
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,14 +57,6 @@ function CalculatorContent() {
   const [priceMap, setPriceMap] = useState<Record<string, number>>({});
   const [loadingFrom, setLoadingFrom] = useState(false);
   const loadedRef = useRef(false);
-
-  // When draft is restored, hide the add-form so user sees existing rooms
-  useEffect(() => {
-    if (restoredDraft && rooms.length > 0) {
-      setShowForm(false);
-      toast.info("Восстановлен черновик из предыдущего сеанса");
-    }
-  }, [restoredDraft, rooms.length]);
 
   // Warn before leaving if rooms are added
   useEffect(() => {
@@ -88,7 +83,7 @@ function CalculatorContent() {
           localStorage.removeItem("vision-rooms");
           if (importedRooms.length > 0) {
             loadRooms(importedRooms);
-            setShowForm(false);
+            setFormOpen(false);
             toast.success(`Загружено ${importedRooms.length} комнат из замеров — выберите тип полотна и рассчитайте`);
           }
         }
@@ -106,7 +101,7 @@ function CalculatorContent() {
         const importedRooms: RoomInput[] = est.roomsData ?? est.calculationData?.rooms ?? [];
         if (importedRooms.length > 0) {
           loadRooms(importedRooms);
-          setShowForm(false);
+          setFormOpen(false);
           toast.success(`Загружено ${importedRooms.length} комнат — редактируйте и пересчитайте`);
         }
       })
@@ -203,6 +198,14 @@ function CalculatorContent() {
         <p className="text-sm text-muted-foreground">
           Добавьте комнаты и получите стоимость
         </p>
+        {/* DEBUG — временный блок для отладки */}
+        <details className="mt-2 text-xs text-gray-400 border rounded p-2">
+          <summary>debug ({rooms.length} комнат в памяти)</summary>
+          <pre className="mt-1 whitespace-pre-wrap break-all">
+            {JSON.stringify(rooms.map(r => ({ id: r.id?.slice(0,8), name: r.name, area: (r.length * r.width).toFixed(1) })), null, 1)}
+          </pre>
+          <p className="mt-1">localStorage: {typeof window !== 'undefined' ? (localStorage.getItem('calculator-rooms-draft')?.length ?? 0) : '?'} bytes</p>
+        </details>
       </div>
 
       {rooms.length === 0 && !result && (
@@ -244,7 +247,7 @@ function CalculatorContent() {
                 onRemove={removeRoom}
                 onEdit={(id) => {
                   setEditingRoomId(id);
-                  setShowForm(false);
+                  setFormOpen(false);
                 }}
               />
             )
@@ -264,9 +267,9 @@ function CalculatorContent() {
             <RoomForm
               onAdd={(room) => {
                 addRoom(room);
-                setShowForm(false);
+                setFormOpen(false);
               }}
-              onCancel={rooms.length > 0 ? () => setShowForm(false) : undefined}
+              onCancel={rooms.length > 0 ? () => setFormOpen(false) : undefined}
               priceMap={priceMap}
             />
           </CardContent>
@@ -275,7 +278,7 @@ function CalculatorContent() {
         <Button
           variant="outline"
           className="w-full border-dashed h-12"
-          onClick={() => setShowForm(true)}
+          onClick={() => setFormOpen(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
           Добавить комнату
