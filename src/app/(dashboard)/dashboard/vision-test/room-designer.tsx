@@ -153,6 +153,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [toolbarTab, setToolbarTab] = useState<ToolbarTab>("light");
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
+  const [lengthSide, setLengthSide] = useState<"left" | "center" | "right">("center");
   const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
@@ -352,6 +353,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       const nearest = nearestWall(coords.x, coords.y, vertices);
       setLengthInput({ wallIndex: nearest.wallIndex });
       setLengthValue(String(Math.round(nearest.wallLength)));
+      setLengthSide("center");
     } else if (config.category === "perimeter") {
       const nearest = nearestWall(coords.x, coords.y, vertices);
       setElements(prev => {
@@ -378,16 +380,23 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (!lengthInput || !activeType) return;
     const len = parseFloat(lengthValue);
     if (!len || len <= 0) { setLengthInput(null); return; }
+    const wallLen = room.walls[lengthInput.wallIndex] || 0;
+    const clampedLen = Math.min(len, wallLen);
+    const pos = lengthSide === "left" ? clampedLen / 2 / wallLen
+      : lengthSide === "right" ? 1 - clampedLen / 2 / wallLen
+      : 0.5;
     const hasVariant = activeType === "spot";
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: activeType as ElementType,
       wallIndex: lengthInput.wallIndex,
-      length: len,
+      wallPosition: pos,
+      length: clampedLen,
       ...(hasVariant && { variant: activeVariant }),
     }]);
     setLengthInput(null);
     setLengthValue("");
+    setLengthSide("center");
   }
 
   function confirmFurniture() {
@@ -677,7 +686,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const elTx = drawMidX + drawPerpX * labelSize * 1.5;
           const elTy = drawMidY + drawPerpY * labelSize * 1.5;
           let elAng = Math.atan2(dy, dx) * 180 / Math.PI;
-          if (elAng > 90 || elAng < -90) elAng += 180;
+          if (elAng > 90 || elAng <= -90) elAng += 180;
           return (
             <text x={elTx} y={elTy}
               textAnchor="middle" dominantBaseline="central"
@@ -693,7 +702,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const distFromEnd = Math.round(wallLen - (startT + elLen));
           const outPX = -ny, outPY = nx;
           let edgeAng = Math.atan2(dy, dx) * 180 / Math.PI;
-          if (edgeAng > 90 || edgeAng < -90) edgeAng += 180;
+          if (edgeAng > 90 || edgeAng <= -90) edgeAng += 180;
           const ex1 = (a.x + x1) / 2 + outPX * offset + outPX * labelSize;
           const ey1 = (a.y + y1) / 2 + outPY * offset + outPY * labelSize;
           const ex2 = (a.x + nx * (startT + elLen) + b.x) / 2 + outPX * offset + outPX * labelSize;
@@ -964,7 +973,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         {(() => {
           const tx = mx + perpX * labelSize * 0.8, ty = my + perpY * labelSize * 0.8;
           let ang = Math.atan2(dy, dx) * 180 / Math.PI;
-          if (ang > 90 || ang < -90) ang += 180;
+          if (ang > 90 || ang <= -90) ang += 180;
           return (
             <text x={tx} y={ty}
               textAnchor="middle" dominantBaseline="central"
@@ -1246,7 +1255,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             const mx = (a.x + b.x) / 2 + outX * labelSize * 1.8;
             const my = (a.y + b.y) / 2 + outY * labelSize * 1.8;
             let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            if (angle > 90 || angle < -90) angle += 180;
+            if (angle > 90 || angle <= -90) angle += 180;
             return (
               <text key={`dim-${i}`} x={mx} y={my} textAnchor="middle" dominantBaseline="central"
                 fontSize={labelSize * 0.75} fill="#94A3B8" fontWeight="500"
@@ -1426,41 +1435,77 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       </div>
 
-      {/* Length input modal */}
-      {lengthInput && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
-          onClick={() => setLengthInput(null)}>
-          <div className="bg-white rounded-2xl p-5 w-72 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <p className="text-sm font-semibold text-center mb-1">
-              {ALL_ELEMENTS.find(e => e.type === activeType)?.icon} {ALL_ELEMENTS.find(e => e.type === activeType)?.label}
-            </p>
-            <p className="text-xs text-muted-foreground text-center mb-4">
-              Стена {(lengthInput.wallIndex + 1)}: {room.walls[lengthInput.wallIndex]} см
-            </p>
-            <div className="relative">
-              <input
-                type="number"
-                value={lengthValue}
-                onChange={e => setLengthValue(e.target.value)}
-                className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-4 py-3 text-center text-2xl font-bold outline-none transition-colors"
-                autoFocus
-                inputMode="numeric"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">см</span>
+      {/* Length input with numpad */}
+      {lengthInput && (() => {
+        const wallLen = room.walls[lengthInput.wallIndex] || 0;
+        const elConfig = ALL_ELEMENTS.find(e => e.type === activeType);
+        const numDigit = (d: string) => setLengthValue(p => p === "0" ? d : p + d);
+        const numBack = () => setLengthValue(p => p.slice(0, -1));
+        return (
+          <div className="fixed inset-0 z-[300] flex flex-col bg-white" style={{ height: "100svh" }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+              <button onClick={() => { setLengthInput(null); setLengthValue(""); setLengthSide("center"); }} className="p-1 text-muted-foreground">
+                <X className="h-5 w-5" />
+              </button>
+              <span className="text-sm font-semibold">
+                {elConfig?.icon} {elConfig?.label}
+              </span>
+              <div className="w-8" />
             </div>
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setLengthInput(null)}
-                className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">
-                Отмена
-              </button>
-              <button onClick={confirmLength}
-                className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a]">
-                Добавить
-              </button>
+
+            <div className="px-4 py-3 border-b bg-gray-50 shrink-0">
+              <p className="text-xs text-muted-foreground text-center mb-2">
+                Стена {lengthInput.wallIndex + 1}: {wallLen} см
+              </p>
+              <div className="flex items-center gap-1.5 justify-center">
+                {(["left", "center", "right"] as const).map(side => (
+                  <button key={side} onClick={() => setLengthSide(side)}
+                    className={`px-3 py-1.5 text-xs rounded-lg border active:scale-95 transition-colors ${
+                      lengthSide === side ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold" : "border-gray-300 text-gray-600"
+                    }`}>
+                    {side === "left" ? "← Слева" : side === "right" ? "Справа →" : "По центру"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="shrink-0 border-t">
+              <div className="flex items-baseline justify-center py-3 gap-1">
+                <span className="text-4xl font-bold tabular-nums">{lengthValue || "0"}</span>
+                <span className="text-base text-muted-foreground">см</span>
+              </div>
+
+              <div className="grid grid-cols-3 select-none" style={{ touchAction: "manipulation" }}>
+                {(["1","2","3","4","5","6","7","8","9"] as const).map(d => (
+                  <button key={d} onClick={() => numDigit(d)}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className="py-3.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                    {d}
+                  </button>
+                ))}
+                <button onClick={numBack}
+                  style={{ touchAction: "manipulation" }}
+                  className="py-3.5 text-xl text-center border-b border-r border-gray-100 active:bg-red-50 text-muted-foreground">
+                  ⌫
+                </button>
+                <button onClick={() => numDigit("0")}
+                  style={{ touchAction: "manipulation" }}
+                  className="py-3.5 text-2xl font-medium text-center border-b border-r border-gray-100 active:bg-gray-100">
+                  0
+                </button>
+                <button onClick={confirmLength}
+                  disabled={!lengthValue || parseFloat(lengthValue) <= 0}
+                  style={{ touchAction: "manipulation" }}
+                  className="py-3.5 text-2xl font-bold bg-[#1e3a5f] text-white border-b active:bg-[#152d4a] disabled:opacity-30">
+                  ✓
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Position editor modal */}
       {posEditor && (
