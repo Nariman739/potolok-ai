@@ -1,4 +1,4 @@
-const CACHE_NAME = 'potolok-ai-v1';
+const CACHE_NAME = 'potolok-ai-v2';
 
 // Файлы для кэширования при установке
 const PRECACHE_URLS = [
