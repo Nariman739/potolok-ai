@@ -154,6 +154,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
   const [lengthSide, setLengthSide] = useState<"left" | "center" | "right">("center");
+  const [editingWallElId, setEditingWallElId] = useState<string | null>(null);
   const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
@@ -377,26 +378,37 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   function confirmLength() {
-    if (!lengthInput || !activeType) return;
+    if (!lengthInput) return;
     const len = parseFloat(lengthValue);
-    if (!len || len <= 0) { setLengthInput(null); return; }
+    if (!len || len <= 0) { setLengthInput(null); setEditingWallElId(null); return; }
     const wallLen = room.walls[lengthInput.wallIndex] || 0;
     const clampedLen = Math.min(len, wallLen);
     const pos = lengthSide === "left" ? clampedLen / 2 / wallLen
       : lengthSide === "right" ? 1 - clampedLen / 2 / wallLen
       : 0.5;
-    const hasVariant = activeType === "spot";
-    setElements(prev => [...prev, {
-      id: crypto.randomUUID(),
-      type: activeType as ElementType,
-      wallIndex: lengthInput.wallIndex,
-      wallPosition: pos,
-      length: clampedLen,
-      ...(hasVariant && { variant: activeVariant }),
-    }]);
+
+    if (editingWallElId) {
+      // Editing existing element
+      setElements(prev => prev.map(e =>
+        e.id === editingWallElId ? { ...e, length: clampedLen, wallPosition: pos } : e
+      ));
+    } else {
+      // Creating new element
+      if (!activeType) return;
+      const hasVariant = activeType === "spot";
+      setElements(prev => [...prev, {
+        id: crypto.randomUUID(),
+        type: activeType as ElementType,
+        wallIndex: lengthInput.wallIndex,
+        wallPosition: pos,
+        length: clampedLen,
+        ...(hasVariant && { variant: activeVariant }),
+      }]);
+    }
     setLengthInput(null);
     setLengthValue("");
     setLengthSide("center");
+    setEditingWallElId(null);
   }
 
   function confirmFurniture() {
@@ -1143,6 +1155,31 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 📏 Ширина
               </button>
             )}
+            {/* Size editor for wall elements (subcurtain, curtain, track, etc.) */}
+            {(() => {
+              const selEl = elements.find(e => e.id === selectedId);
+              const selCfg = selEl ? ALL_ELEMENTS.find(c => c.type === selEl.type) : null;
+              if (!selEl || !selCfg || selCfg.category !== "wall") return null;
+              return (
+                <button onClick={() => {
+                  if (selEl.wallIndex != null) {
+                    setEditingWallElId(selEl.id);
+                    setLengthInput({ wallIndex: selEl.wallIndex });
+                    setLengthValue(String(Math.round(selEl.length || 0)));
+                    const wallLen = room.walls[selEl.wallIndex] || 1;
+                    const pos = selEl.wallPosition ?? 0.5;
+                    const halfRatio = (selEl.length || 0) / 2 / wallLen;
+                    if (pos <= halfRatio + 0.05) setLengthSide("left");
+                    else if (pos >= 1 - halfRatio - 0.05) setLengthSide("right");
+                    else setLengthSide("center");
+                  }
+                }}
+                  className="px-3 py-2 rounded-xl bg-cyan-100 text-cyan-700 text-xs font-semibold hover:bg-cyan-200 active:scale-95 shadow-sm"
+                  title="Размер">
+                  📏 Размер
+                </button>
+              );
+            })()}
             <button onClick={removeSelected}
               className="p-2.5 rounded-xl bg-red-100 text-red-600 text-sm font-medium hover:bg-red-200 active:scale-95 shadow-sm">
               🗑️
@@ -1438,13 +1475,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       {/* Length input with numpad */}
       {lengthInput && (() => {
         const wallLen = room.walls[lengthInput.wallIndex] || 0;
-        const elConfig = ALL_ELEMENTS.find(e => e.type === activeType);
+        const editEl = editingWallElId ? elements.find(e => e.id === editingWallElId) : null;
+        const elConfig = ALL_ELEMENTS.find(e => e.type === (editEl?.type || activeType));
         const numDigit = (d: string) => setLengthValue(p => p === "0" ? d : p + d);
         const numBack = () => setLengthValue(p => p.slice(0, -1));
         return (
           <div className="fixed inset-0 z-[300] flex flex-col bg-white" style={{ height: "100svh" }}>
             <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-              <button onClick={() => { setLengthInput(null); setLengthValue(""); setLengthSide("center"); }} className="p-1 text-muted-foreground">
+              <button onClick={() => { setLengthInput(null); setLengthValue(""); setLengthSide("center"); setEditingWallElId(null); }} className="p-1 text-muted-foreground">
                 <X className="h-5 w-5" />
               </button>
               <span className="text-sm font-semibold">
