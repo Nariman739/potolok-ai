@@ -30,9 +30,11 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { address, status, rooms } = body as {
+    const { address, status, rooms, latitude, longitude } = body as {
       address?: string;
       status?: string;
+      latitude?: number;
+      longitude?: number;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
     };
@@ -47,6 +49,8 @@ export async function POST(request: Request) {
         address: address || "",
         status: status || "active",
         totalArea,
+        ...(latitude != null && { latitude }),
+        ...(longitude != null && { longitude }),
         rooms: rooms
           ? {
               create: rooms.map((r, i) => ({

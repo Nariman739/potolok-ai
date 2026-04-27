@@ -37,10 +37,12 @@ export async function PATCH(
     const master = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea } = body as {
+    const { address, status, totalArea, latitude, longitude } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
+      latitude?: number;
+      longitude?: number;
     };
 
     const result = await prisma.measurementObject.updateMany({
@@ -49,6 +51,8 @@ export async function PATCH(
         ...(address !== undefined && { address }),
         ...(status !== undefined && { status }),
         ...(totalArea !== undefined && { totalArea }),
+        ...(latitude != null && { latitude }),
+        ...(longitude != null && { longitude }),
       },
     });
 

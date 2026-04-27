@@ -8,7 +8,7 @@ const securityHeaders = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
   "Permissions-Policy":
-    "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+    "camera=(), microphone=(), geolocation=(self), browsing-topics=()",
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",

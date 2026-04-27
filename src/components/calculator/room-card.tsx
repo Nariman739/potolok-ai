@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { computeArea, computePerimeter } from "@/lib/room-geometry";
 import type { RoomInput } from "@/lib/types";
 import { CANVAS_TYPES } from "@/lib/constants";
@@ -17,12 +17,11 @@ const SHAPE_LABELS: Record<string, string> = {
 interface RoomCardProps {
   room: RoomInput;
   index: number;
-  onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onEdit?: (id: string) => void;
 }
 
-export function RoomCard({ room, index, onDuplicate, onRemove, onEdit }: RoomCardProps) {
+export function RoomCard({ room, index, onRemove, onEdit }: RoomCardProps) {
   const area = computeArea(room).toFixed(1);
   const perimeter = computePerimeter(room).toFixed(1);
   const canvasLabel = CANVAS_TYPES.find((ct) => ct.value === room.canvasType)?.label ?? room.canvasType;
@@ -35,10 +34,10 @@ export function RoomCard({ room, index, onDuplicate, onRemove, onEdit }: RoomCar
 
   return (
     <Card>
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+      <CardContent className="pt-4 pb-4 px-3 sm:px-6">
+        <div className="flex items-start justify-between overflow-hidden">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1e3a5f] text-white text-xs font-bold">
                 {index + 1}
               </span>
@@ -83,27 +82,19 @@ export function RoomCard({ room, index, onDuplicate, onRemove, onEdit }: RoomCar
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => onEdit(room.id)}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
-              onClick={() => onDuplicate(room.id)}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-destructive hover:text-destructive"
+              className="h-8 w-8 sm:h-9 sm:w-9 text-destructive hover:text-destructive"
               onClick={() => onRemove(room.id)}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           </div>
         </div>

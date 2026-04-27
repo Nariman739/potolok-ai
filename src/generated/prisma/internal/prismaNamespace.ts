@@ -1475,6 +1475,8 @@ export const MeasurementObjectScalarFieldEnum = {
   address: 'address',
   totalArea: 'totalArea',
   status: 'status',
+  latitude: 'latitude',
+  longitude: 'longitude',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

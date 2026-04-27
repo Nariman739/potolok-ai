@@ -506,6 +506,8 @@ interface SavedObject {
   savedAt: number; // kept for localStorage compat
   createdAt?: string;
   updatedAt?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // ─────────────────────────────────────────────────────
@@ -1397,6 +1399,14 @@ function HistoryDrawer({ saved, onResume, onDelete, onClose }: {
                           · <ImageIcon className="h-3 w-3 inline" /> {totalPhotos}
                         </span>
                       )}
+                      {obj.latitude && obj.longitude && (
+                        <a href={`https://maps.google.com/?q=${obj.latitude},${obj.longitude}`}
+                          target="_blank" rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="ml-1.5 text-green-600 hover:text-green-700">
+                          · 📍
+                        </a>
+                      )}
                     </div>
                   </button>
                   {totalPhotos > 0 && (
@@ -1556,12 +1566,23 @@ export default function ZameryPage() {
   const [viewingRoom, setViewingRoom] = useState<Room | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
   const calcModeInitRef = useRef(false);
   const addressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeObjectIdRef = useRef<string | null>(null);
 
   // Keep ref in sync with state (avoids stale closure in async functions)
   useEffect(() => { activeObjectIdRef.current = activeObjectId; }, [activeObjectId]);
+
+  // Capture GPS coordinates
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {} // silently fail if denied
+      );
+    }
+  }, []);
 
   // ── Persist rooms to localStorage as backup ──
   useEffect(() => {
@@ -1663,6 +1684,8 @@ export default function ZameryPage() {
             address: o.address,
             totalArea: o.totalArea,
             savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
+            latitude: o.latitude,
+            longitude: o.longitude,
             rooms: (o.rooms || []).map((r: Room & { arcBulges?: number[]; columns?: RoomColumn[] }) => ({
               id: r.id,
               name: r.name,
@@ -1828,7 +1851,7 @@ export default function ZameryPage() {
         const res = await fetch(`/api/measurements/${currentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "saved", totalArea }),
+          body: JSON.stringify({ status: "saved", totalArea, ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }) }),
         });
         if (!res.ok) throw new Error("Ошибка сохранения");
       } else {
@@ -1838,6 +1861,7 @@ export default function ZameryPage() {
           body: JSON.stringify({
             address: currentName,
             status: "saved",
+            ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
             rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
           }),
         });
@@ -1853,6 +1877,7 @@ export default function ZameryPage() {
         rooms: currentRooms,
         totalArea,
         savedAt: Date.now(),
+        ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
       };
       setSavedObjects(prev => [...prev, savedObj]);
       setRooms([]);

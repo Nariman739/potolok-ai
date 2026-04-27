@@ -28,10 +28,14 @@ export type AggregateMeasurementObject = {
 
 export type MeasurementObjectAvgAggregateOutputType = {
   totalArea: number | null
+  latitude: number | null
+  longitude: number | null
 }
 
 export type MeasurementObjectSumAggregateOutputType = {
   totalArea: number | null
+  latitude: number | null
+  longitude: number | null
 }
 
 export type MeasurementObjectMinAggregateOutputType = {
@@ -40,6 +44,8 @@ export type MeasurementObjectMinAggregateOutputType = {
   address: string | null
   totalArea: number | null
   status: string | null
+  latitude: number | null
+  longitude: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -50,6 +56,8 @@ export type MeasurementObjectMaxAggregateOutputType = {
   address: string | null
   totalArea: number | null
   status: string | null
+  latitude: number | null
+  longitude: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -60,6 +68,8 @@ export type MeasurementObjectCountAggregateOutputType = {
   address: number
   totalArea: number
   status: number
+  latitude: number
+  longitude: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -68,10 +78,14 @@ export type MeasurementObjectCountAggregateOutputType = {
 
 export type MeasurementObjectAvgAggregateInputType = {
   totalArea?: true
+  latitude?: true
+  longitude?: true
 }
 
 export type MeasurementObjectSumAggregateInputType = {
   totalArea?: true
+  latitude?: true
+  longitude?: true
 }
 
 export type MeasurementObjectMinAggregateInputType = {
@@ -80,6 +94,8 @@ export type MeasurementObjectMinAggregateInputType = {
   address?: true
   totalArea?: true
   status?: true
+  latitude?: true
+  longitude?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -90,6 +106,8 @@ export type MeasurementObjectMaxAggregateInputType = {
   address?: true
   totalArea?: true
   status?: true
+  latitude?: true
+  longitude?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -100,6 +118,8 @@ export type MeasurementObjectCountAggregateInputType = {
   address?: true
   totalArea?: true
   status?: true
+  latitude?: true
+  longitude?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -197,6 +217,8 @@ export type MeasurementObjectGroupByOutputType = {
   address: string
   totalArea: number
   status: string
+  latitude: number | null
+  longitude: number | null
   createdAt: Date
   updatedAt: Date
   _count: MeasurementObjectCountAggregateOutputType | null
@@ -230,6 +252,8 @@ export type MeasurementObjectWhereInput = {
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
+  latitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   rooms?: Prisma.MeasurementRoomListRelationFilter
@@ -242,6 +266,8 @@ export type MeasurementObjectOrderByWithRelationInput = {
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  latitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  longitude?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   rooms?: Prisma.MeasurementRoomOrderByRelationAggregateInput
@@ -257,6 +283,8 @@ export type MeasurementObjectWhereUniqueInput = Prisma.AtLeast<{
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
+  latitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   rooms?: Prisma.MeasurementRoomListRelationFilter
@@ -269,6 +297,8 @@ export type MeasurementObjectOrderByWithAggregationInput = {
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  latitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  longitude?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.MeasurementObjectCountOrderByAggregateInput
@@ -287,6 +317,8 @@ export type MeasurementObjectScalarWhereWithAggregatesInput = {
   address?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatWithAggregatesFilter<"MeasurementObject"> | number
   status?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
+  latitude?: Prisma.FloatNullableWithAggregatesFilter<"MeasurementObject"> | number | null
+  longitude?: Prisma.FloatNullableWithAggregatesFilter<"MeasurementObject"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementObject"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementObject"> | Date | string
 }
@@ -296,6 +328,8 @@ export type MeasurementObjectCreateInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomCreateNestedManyWithoutObjectInput
@@ -308,6 +342,8 @@ export type MeasurementObjectUncheckedCreateInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomUncheckedCreateNestedManyWithoutObjectInput
@@ -318,6 +354,8 @@ export type MeasurementObjectUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUpdateManyWithoutObjectNestedInput
@@ -330,6 +368,8 @@ export type MeasurementObjectUncheckedUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUncheckedUpdateManyWithoutObjectNestedInput
@@ -341,6 +381,8 @@ export type MeasurementObjectCreateManyInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -350,6 +392,8 @@ export type MeasurementObjectUpdateManyMutationInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -360,6 +404,8 @@ export type MeasurementObjectUncheckedUpdateManyInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -380,12 +426,16 @@ export type MeasurementObjectCountOrderByAggregateInput = {
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type MeasurementObjectAvgOrderByAggregateInput = {
   totalArea?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
 }
 
 export type MeasurementObjectMaxOrderByAggregateInput = {
@@ -394,6 +444,8 @@ export type MeasurementObjectMaxOrderByAggregateInput = {
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -404,12 +456,16 @@ export type MeasurementObjectMinOrderByAggregateInput = {
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type MeasurementObjectSumOrderByAggregateInput = {
   totalArea?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
 }
 
 export type MeasurementObjectScalarRelationFilter = {
@@ -478,6 +534,8 @@ export type MeasurementObjectCreateWithoutMasterInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomCreateNestedManyWithoutObjectInput
@@ -488,6 +546,8 @@ export type MeasurementObjectUncheckedCreateWithoutMasterInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomUncheckedCreateNestedManyWithoutObjectInput
@@ -528,6 +588,8 @@ export type MeasurementObjectScalarWhereInput = {
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
+  latitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"MeasurementObject"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
 }
@@ -537,6 +599,8 @@ export type MeasurementObjectCreateWithoutRoomsInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutMeasurementsInput
@@ -548,6 +612,8 @@ export type MeasurementObjectUncheckedCreateWithoutRoomsInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -573,6 +639,8 @@ export type MeasurementObjectUpdateWithoutRoomsInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutMeasurementsNestedInput
@@ -584,6 +652,8 @@ export type MeasurementObjectUncheckedUpdateWithoutRoomsInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -593,6 +663,8 @@ export type MeasurementObjectCreateManyMasterInput = {
   address?: string
   totalArea?: number
   status?: string
+  latitude?: number | null
+  longitude?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -602,6 +674,8 @@ export type MeasurementObjectUpdateWithoutMasterInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUpdateManyWithoutObjectNestedInput
@@ -612,6 +686,8 @@ export type MeasurementObjectUncheckedUpdateWithoutMasterInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUncheckedUpdateManyWithoutObjectNestedInput
@@ -622,6 +698,8 @@ export type MeasurementObjectUncheckedUpdateManyWithoutMasterInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -663,6 +741,8 @@ export type MeasurementObjectSelect<ExtArgs extends runtime.Types.Extensions.Int
   address?: boolean
   totalArea?: boolean
   status?: boolean
+  latitude?: boolean
+  longitude?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   rooms?: boolean | Prisma.MeasurementObject$roomsArgs<ExtArgs>
@@ -676,6 +756,8 @@ export type MeasurementObjectSelectCreateManyAndReturn<ExtArgs extends runtime.T
   address?: boolean
   totalArea?: boolean
   status?: boolean
+  latitude?: boolean
+  longitude?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -687,6 +769,8 @@ export type MeasurementObjectSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   address?: boolean
   totalArea?: boolean
   status?: boolean
+  latitude?: boolean
+  longitude?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -698,11 +782,13 @@ export type MeasurementObjectSelectScalar = {
   address?: boolean
   totalArea?: boolean
   status?: boolean
+  latitude?: boolean
+  longitude?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MeasurementObjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "address" | "totalArea" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementObject"]>
+export type MeasurementObjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "address" | "totalArea" | "status" | "latitude" | "longitude" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementObject"]>
 export type MeasurementObjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   rooms?: boolean | Prisma.MeasurementObject$roomsArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -727,6 +813,8 @@ export type $MeasurementObjectPayload<ExtArgs extends runtime.Types.Extensions.I
     address: string
     totalArea: number
     status: string
+    latitude: number | null
+    longitude: number | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["measurementObject"]>
@@ -1159,6 +1247,8 @@ export interface MeasurementObjectFieldRefs {
   readonly address: Prisma.FieldRef<"MeasurementObject", 'String'>
   readonly totalArea: Prisma.FieldRef<"MeasurementObject", 'Float'>
   readonly status: Prisma.FieldRef<"MeasurementObject", 'String'>
+  readonly latitude: Prisma.FieldRef<"MeasurementObject", 'Float'>
+  readonly longitude: Prisma.FieldRef<"MeasurementObject", 'Float'>
   readonly createdAt: Prisma.FieldRef<"MeasurementObject", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MeasurementObject", 'DateTime'>
 }

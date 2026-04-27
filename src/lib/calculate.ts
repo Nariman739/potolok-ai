@@ -67,6 +67,10 @@ function calculateRoom(
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
 
+  // Подшторник заканчивает потолок — за ним нет профиля
+  const podshtornikM = room.podshtornikLength ?? 0;
+  const profilePerimeter = Math.max(0, perimeter - podshtornikM);
+
   // Canvas
   const canvasCode = getCanvasCode(room);
   const canvasItem = makeLineItem(canvasCode, area, prices);
@@ -76,17 +80,17 @@ function calculateRoom(
   const profileCode = room.profileType || "profile_insert";
   if (profileCode === "profile_galtel") {
     // Plastic profile only (galtel installed by others)
-    const plasticItem = makeLineItem("profile_plastic", perimeter, prices);
+    const plasticItem = makeLineItem("profile_plastic", profilePerimeter, prices);
     if (plasticItem) items.push(plasticItem);
   } else if (profileCode === "profile_insert") {
     // Plastic profile + insert strip (2 line items)
-    const plasticItem = makeLineItem("profile_plastic", perimeter, prices);
+    const plasticItem = makeLineItem("profile_plastic", profilePerimeter, prices);
     if (plasticItem) items.push(plasticItem);
-    const insertItem = makeLineItem("insert", perimeter, prices);
+    const insertItem = makeLineItem("insert", profilePerimeter, prices);
     if (insertItem) items.push(insertItem);
   } else {
     // Shadow or floating — single aluminum profile
-    const profileItem = makeLineItem(profileCode, perimeter, prices);
+    const profileItem = makeLineItem(profileCode, profilePerimeter, prices);
     if (profileItem) items.push(profileItem);
   }
 

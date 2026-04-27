@@ -190,6 +190,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const centerX = baseVbX + baseVbW / 2, centerY = baseVbY + baseVbH / 2;
   const vbX = centerX - vbW / 2 + pan.x, vbY = centerY - vbH / 2 + pan.y;
 
+  // Grid snapping for spots
+  const gridSize = roomSize * 0.02;
+  function snapToGrid(val: number): number {
+    return Math.round(val / gridSize) * gridSize;
+  }
+
   // Scale factors
   const spotR = roomSize * 0.022;
   const chandelierR = roomSize * 0.045;
@@ -241,7 +247,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
     const coords = svgCoords(e.clientX, e.clientY);
     if (!coords) return;
-    setDragPos(coords);
+    // Snap during drag for spots/chandeliers
+    const dragEl = elements.find(el => el.id === ds.id);
+    if (dragEl && (dragEl.type === "spot" || dragEl.type === "chandelier")) {
+      setDragPos({ x: snapToGrid(coords.x), y: snapToGrid(coords.y) });
+    } else {
+      setDragPos(coords);
+    }
   }
 
   function handleSVGPointerUp(e: React.PointerEvent<SVGSVGElement>) {
@@ -255,8 +267,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const el = elements.find(el => el.id === ds.id);
           if (el) {
             if (el.type === "spot" || el.type === "chandelier" || el.type === "furniture") {
+              const useSnap = el.type === "spot" || el.type === "chandelier";
               setElements(prev => prev.map(e =>
-                e.id === ds.id ? { ...e, x: dropPos.x, y: dropPos.y } : e
+                e.id === ds.id ? { ...e, x: useSnap ? snapToGrid(dropPos.x) : dropPos.x, y: useSnap ? snapToGrid(dropPos.y) : dropPos.y } : e
               ));
             } else if (el.type === "door" || el.type === "window") {
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
@@ -331,8 +344,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       setElements(prev => [...prev, {
         id: crypto.randomUUID(),
         type: activeType as ElementType,
-        x: coords.x,
-        y: coords.y,
+        x: snapToGrid(coords.x),
+        y: snapToGrid(coords.y),
         ...(hasVariant && { variant: activeVariant }),
       }]);
     } else if (config.category === "wall") {
@@ -589,7 +602,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const elLen = Math.min(el.length, wallLen);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
-    const offset = el.type === "curtain" || el.type === "subcurtain" || el.type === "builtin_gardina" || el.type === "shower_curtain" ? wallOffset * 1.5 : wallOffset;
+    const offset = el.type === "subcurtain" ? wallOffset * 0.15
+      : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
+      : wallOffset;
 
     const x1 = a.x + nx * startT + perpX * offset;
     const y1 = a.y + ny * startT + perpY * offset;
@@ -637,7 +652,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         )}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke={config.color}
-          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : el.type === "builtin_gardina" ? strokeW * 2 : strokeW}
+          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : el.type === "builtin_gardina" ? strokeW * 2 : el.type === "subcurtain" ? strokeW * 1.8 : strokeW}
           strokeLinecap="round"
           strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
           opacity={0.9}
@@ -648,33 +663,56 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             <circle cx={drawX2} cy={drawY2} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
           </>
         )}
-        <text
-          x={drawMidX + drawPerpX * labelSize * 1.5} y={drawMidY + drawPerpY * labelSize * 1.5}
-          textAnchor="middle" dominantBaseline="central"
-          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
-        >
-          {el.length} см
-        </text>
+        {el.type === "subcurtain" && (
+          <>
+            <line x1={drawX1 + drawPerpX * strokeW * 2} y1={drawY1 + drawPerpY * strokeW * 2}
+              x2={drawX1 - drawPerpX * strokeW * 2} y2={drawY1 - drawPerpY * strokeW * 2}
+              stroke={config.color} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
+            <line x1={drawX2 + drawPerpX * strokeW * 2} y1={drawY2 + drawPerpY * strokeW * 2}
+              x2={drawX2 - drawPerpX * strokeW * 2} y2={drawY2 - drawPerpY * strokeW * 2}
+              stroke={config.color} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
+          </>
+        )}
+        {(() => {
+          const elTx = drawMidX + drawPerpX * labelSize * 1.5;
+          const elTy = drawMidY + drawPerpY * labelSize * 1.5;
+          let elAng = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (elAng > 90 || elAng < -90) elAng += 180;
+          return (
+            <text x={elTx} y={elTy}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
+              transform={`rotate(${elAng}, ${elTx}, ${elTy})`}>
+              {el.length} см
+            </text>
+          );
+        })()}
         {/* Distance from wall edges when selected/dragging */}
         {(selectedId === el.id || isDragging) && !isDragging && (() => {
           const distFromEdge = Math.round(startT);
           const distFromEnd = Math.round(wallLen - (startT + elLen));
-          const outPX = -ny, outPY = nx; // perpendicular outward direction of original wall
+          const outPX = -ny, outPY = nx;
+          let edgeAng = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (edgeAng > 90 || edgeAng < -90) edgeAng += 180;
+          const ex1 = (a.x + x1) / 2 + outPX * offset + outPX * labelSize;
+          const ey1 = (a.y + y1) / 2 + outPY * offset + outPY * labelSize;
+          const ex2 = (a.x + nx * (startT + elLen) + b.x) / 2 + outPX * offset + outPX * labelSize;
+          const ey2 = (a.y + ny * (startT + elLen) + b.y) / 2 + outPY * offset + outPY * labelSize;
           return (
             <>
               {distFromEdge > 5 && (
-                <text x={(a.x + x1) / 2 + outPX * offset + outPX * labelSize}
-                  y={(a.y + y1) / 2 + outPY * offset + outPY * labelSize}
+                <text x={ex1} y={ey1}
                   textAnchor="middle" dominantBaseline="central"
-                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600">
+                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600"
+                  transform={`rotate(${edgeAng}, ${ex1}, ${ey1})`}>
                   {distFromEdge}
                 </text>
               )}
               {distFromEnd > 5 && (
-                <text x={(a.x + nx * (startT + elLen) + b.x) / 2 + outPX * offset + outPX * labelSize}
-                  y={(a.y + ny * (startT + elLen) + b.y) / 2 + outPY * offset + outPY * labelSize}
+                <text x={ex2} y={ey2}
                   textAnchor="middle" dominantBaseline="central"
-                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600">
+                  fontSize={labelSize * 0.55} fill="#64748B" fontWeight="600"
+                  transform={`rotate(${edgeAng}, ${ex2}, ${ey2})`}>
                   {distFromEnd}
                 </text>
               )}
@@ -923,11 +961,19 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           strokeDasharray={`${spotR * 0.4},${spotR * 0.3}`} opacity={0.6} />
         <circle cx={x1} cy={y1} r={spotR * 0.2} fill={color} opacity={0.5} />
         <circle cx={x2} cy={y2} r={spotR * 0.2} fill={color} opacity={0.5} />
-        <text x={mx + perpX * labelSize * 0.8} y={my + perpY * labelSize * 0.8}
-          textAnchor="middle" dominantBaseline="central"
-          fontSize={labelSize * 0.7} fill={color} fontWeight="600">
-          {label}
-        </text>
+        {(() => {
+          const tx = mx + perpX * labelSize * 0.8, ty = my + perpY * labelSize * 0.8;
+          let ang = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (ang > 90 || ang < -90) ang += 180;
+          return (
+            <text x={tx} y={ty}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={labelSize * 0.7} fill={color} fontWeight="600"
+              transform={`rotate(${ang}, ${tx}, ${ty})`}>
+              {label}
+            </text>
+          );
+        })()}
       </g>
     );
   }
@@ -964,8 +1010,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const p = DEFAULT_PRICES;
     let cost = 0;
     cost += room.area * (p.canvas_320 || 2000);
-    cost += room.perimeter * (p.profile_plastic || 500);
-    cost += room.perimeter * (p.insert || 1000);
+    const podSubM = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    const profilePerim = Math.max(0, room.perimeter - podSubM);
+    cost += profilePerim * (p.profile_plastic || 500);
+    cost += profilePerim * (p.insert || 1000);
     cost += room.walls.length * (p.corner_plastic || 1000);
     const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
     const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
@@ -1163,10 +1211,29 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined }}
         >
           {/* Room fill */}
+          <defs>
+            <clipPath id="room-clip">
+              <polygon points={vertices.map(v => `${v.x},${v.y}`).join(" ")} />
+            </clipPath>
+          </defs>
           <polygon
             points={vertices.map(v => `${v.x},${v.y}`).join(" ")}
             fill="#F8FAFC" stroke="#94A3B8" strokeWidth={strokeW * 0.6} strokeLinejoin="round"
           />
+
+          {/* Grid overlay for spot/chandelier placement */}
+          {(activeType === "spot" || activeType === "chandelier") && (
+            <g clipPath="url(#room-clip)" opacity={0.15}>
+              {Array.from({ length: Math.ceil(roomW / gridSize) + 1 }, (_, i) => {
+                const x = minX + i * gridSize;
+                return <line key={`gv-${i}`} x1={x} y1={minY} x2={x} y2={maxY} stroke="#94A3B8" strokeWidth={strokeW * 0.12} />;
+              })}
+              {Array.from({ length: Math.ceil(roomH / gridSize) + 1 }, (_, i) => {
+                const y = minY + i * gridSize;
+                return <line key={`gh-${i}`} x1={minX} y1={y} x2={maxX} y2={y} stroke="#94A3B8" strokeWidth={strokeW * 0.12} />;
+              })}
+            </g>
+          )}
 
           {/* Wall dimension labels */}
           {vertices.slice(0, -1).map((a, i) => {
@@ -1178,9 +1245,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             const outX = ny, outY = -nx;
             const mx = (a.x + b.x) / 2 + outX * labelSize * 1.8;
             const my = (a.y + b.y) / 2 + outY * labelSize * 1.8;
+            let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            if (angle > 90 || angle < -90) angle += 180;
             return (
               <text key={`dim-${i}`} x={mx} y={my} textAnchor="middle" dominantBaseline="central"
-                fontSize={labelSize * 0.75} fill="#94A3B8" fontWeight="500">
+                fontSize={labelSize * 0.75} fill="#94A3B8" fontWeight="500"
+                transform={`rotate(${angle}, ${mx}, ${my})`}>
                 {room.walls[i]}
               </text>
             );

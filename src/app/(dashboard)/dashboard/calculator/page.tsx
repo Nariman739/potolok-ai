@@ -39,7 +39,7 @@ function CalculatorContent() {
     addRoom,
     updateRoom,
     removeRoom,
-    duplicateRoom,
+
     calculate,
     reset,
     loadRooms,
@@ -261,7 +261,6 @@ function CalculatorContent() {
                 key={room.id}
                 room={room}
                 index={i}
-                onDuplicate={duplicateRoom}
                 onRemove={removeRoom}
                 onEdit={(id) => {
                   const r = rooms.find(rm => rm.id === id);

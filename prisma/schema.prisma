@@ -230,6 +230,8 @@ model MeasurementObject {
   address     String   @default("")
   totalArea   Float    @default(0)
   status      String   @default("active")  // "active" | "saved"
+  latitude    Float?
+  longitude   Float?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
