@@ -776,9 +776,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         opacity={isDragging ? 0.7 : 1}
       >
         <circle cx={pos.x} cy={pos.y} r={spotR * 4} fill="transparent" />
-        {isSel && <circle cx={pos.x} cy={pos.y} r={spotR * 3.5} fill="none" stroke={fillColor} strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
-        <circle cx={pos.x} cy={pos.y} r={spotR * 2.2} fill={glowColor} opacity={0.6} />
-        <circle cx={pos.x} cy={pos.y} r={spotR} fill={fillColor} stroke={strokeColor} strokeWidth={spotR * 0.25} />
+        {isSel && <circle cx={pos.x} cy={pos.y} r={spotR * 1.4} fill="none" stroke={fillColor} strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
+        <circle cx={pos.x} cy={pos.y} r={spotR * 0.7} fill="none" stroke={fillColor} strokeWidth={spotR * 0.28} />
         {isClient && (
           <text x={pos.x} y={pos.y + spotR * 3.5} textAnchor="middle" fontSize={labelSize * 0.6} fill="#6B7280">кл.</text>
         )}
@@ -788,7 +787,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   function chandelierIcon(el: RoomElement) {
     const pos = getElPos(el);
-    const r = chandelierR;
+    const r = roomSize * 0.025;
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const isSel = selectedId === el.id;
     return (
@@ -798,22 +797,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         opacity={isDragging ? 0.7 : 1}
       >
         <circle cx={pos.x} cy={pos.y} r={r * 2} fill="transparent" />
-        {isSel && <circle cx={pos.x} cy={pos.y} r={r * 2.5} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
-        <circle cx={pos.x} cy={pos.y} r={r * 1.6} fill="#EDE9FE" opacity={0.5} />
-        <circle cx={pos.x} cy={pos.y} r={r} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.35} />
-        <circle cx={pos.x} cy={pos.y} r={spotR * 0.7} fill="#8B5CF6" />
-        {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
-          const rad = (angle * Math.PI) / 180;
-          return (
-            <line key={angle}
-              x1={pos.x + Math.cos(rad) * r * 0.45}
-              y1={pos.y + Math.sin(rad) * r * 0.45}
-              x2={pos.x + Math.cos(rad) * r * 0.85}
-              y2={pos.y + Math.sin(rad) * r * 0.85}
-              stroke="#8B5CF6" strokeWidth={spotR * 0.22} strokeLinecap="round"
-            />
-          );
-        })}
+        {isSel && <circle cx={pos.x} cy={pos.y} r={r * 1.8} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />}
+        <circle cx={pos.x} cy={pos.y} r={r} fill="none" stroke="#8B5CF6" strokeWidth={spotR * 0.32} />
+        <circle cx={pos.x} cy={pos.y} r={spotR * 0.35} fill="#8B5CF6" />
       </g>
     );
   }
@@ -1281,21 +1267,26 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             </g>
           )}
 
-          {/* Wall dimension labels */}
+          {/* Wall dimension labels — короткие стены получают меньший шрифт и больший отступ, чтобы подписи в углах ступенек не наезжали друг на друга */}
           {vertices.slice(0, -1).map((a, i) => {
             const b = vertices[i + 1];
             const dx = b.x - a.x, dy = b.y - a.y;
             const wLen = Math.sqrt(dx * dx + dy * dy);
             if (wLen === 0) return null;
+            const realLen = room.walls[i] || 0;
+            const isShort = realLen < 100;
+            const isVeryShort = realLen < 60;
+            const fontScale = isVeryShort ? 0.5 : isShort ? 0.6 : 0.75;
+            const offsetMul = isVeryShort ? 2.6 : isShort ? 2.2 : 1.8;
             const nx = dx / wLen, ny = dy / wLen;
             const outX = ny, outY = -nx;
-            const mx = (a.x + b.x) / 2 + outX * labelSize * 1.8;
-            const my = (a.y + b.y) / 2 + outY * labelSize * 1.8;
+            const mx = (a.x + b.x) / 2 + outX * labelSize * offsetMul;
+            const my = (a.y + b.y) / 2 + outY * labelSize * offsetMul;
             let angle = Math.atan2(dy, dx) * 180 / Math.PI;
             if (angle > 90 || angle <= -90) angle += 180;
             return (
               <text key={`dim-${i}`} x={mx} y={my} textAnchor="middle" dominantBaseline="central"
-                fontSize={labelSize * 0.75} fill="#94A3B8" fontWeight="500"
+                fontSize={labelSize * fontScale} fill="#94A3B8" fontWeight="500"
                 transform={`rotate(${angle}, ${mx}, ${my})`}>
                 {room.walls[i]}
               </text>
