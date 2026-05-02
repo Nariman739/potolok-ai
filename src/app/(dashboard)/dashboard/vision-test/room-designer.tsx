@@ -188,7 +188,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [subcurtainShapeChoice, setSubcurtainShapeChoice] = useState<{ wallIndex: number } | null>(null);
   // Ввод размеров для П/Г-ниши
   const [nicheInput, setNicheInput] = useState<
-    | { wallIndex: number; shape: "u-niche" | "l-bend"; width: string; depth: string; side: "left" | "right" }
+    | {
+        wallIndex: number;
+        shape: "u-niche" | "l-bend";
+        width: string;
+        depth: string;
+        side: "left" | "right";
+        position: "left" | "center" | "right";
+      }
     | null
   >(null);
   const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
@@ -510,7 +517,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     }
     const wallLen = room.walls[nicheInput.wallIndex] || 0;
     const clampedW = Math.min(w, wallLen);
-    const pos = 0.5; // центр стены — пользователь потом drag'ом перетащит
+    const pos =
+      nicheInput.position === "left" ? clampedW / 2 / wallLen
+      : nicheInput.position === "right" ? 1 - clampedW / 2 / wallLen
+      : 0.5;
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: "subcurtain",
@@ -900,16 +910,18 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const elLen = Math.min(el.length, wL);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wL - elLen, pos * wL - elLen / 2));
-    const offset = wallOffset * 0.15;
-    const x1 = a.x + nx * startT + perpX * offset;
-    const y1 = a.y + ny * startT + perpY * offset;
-    const x2 = a.x + nx * (startT + elLen) + perpX * offset;
-    const y2 = a.y + ny * (startT + elLen) + perpY * offset;
+    // Подшторник идёт ПО самой стене (offset=0), чтобы перекрывать линию стены
+    const x1 = a.x + nx * startT;
+    const y1 = a.y + ny * startT;
+    const x2 = a.x + nx * (startT + elLen);
+    const y2 = a.y + ny * (startT + elLen);
 
-    const config = ALL_ELEMENTS.find(c => c.type === "subcurtain")!;
     const isSel = selectedId === el.id;
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const dpth = el.depth;
+    // Цвет подшторника — тёмный, толщина чуть больше стены чтобы перекрыть её
+    const podColor = "#0F172A";
+    const podWidth = strokeW * 1.0;
 
     // Точки в глубине ниши
     const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
@@ -933,43 +945,43 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Полупрозрачная заливка области ниши */}
-        <path d={fillPath} fill={config.color} opacity={0.1} />
+        {/* Лёгкая заливка кармана — показывает объём ниши */}
+        <path d={fillPath} fill={podColor} opacity={0.07} />
 
-        {/* Невидимая толстая обводка для тапа по подшторнику */}
+        {/* Невидимая толстая зона тапа */}
         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={strokeW * 8} strokeLinecap="round" />
 
-        {/* Подшторник вдоль стены — чуть толще основных линий стен */}
+        {/* Подшторник вдоль стены — перекрывает линию стены */}
         <line x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
+          stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
 
         {/* Левая боковина — для П и Г-left */}
         {(isU || isLBendLeft) && (
           <line x1={x1} y1={y1} x2={px1} y2={py1}
-            stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
+            stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
         )}
 
         {/* Правая боковина — для П и Г-right */}
         {(isU || isLBendRight) && (
           <line x1={x2} y1={y2} x2={px2} y2={py2}
-            stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
+            stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
         )}
 
-        {/* Дальняя стенка ниши — только для П (пунктиром) */}
+        {/* Дальняя стенка ниши — только для П (пунктиром, она «внутри» потолка) */}
         {isU && (
           <line x1={px1} y1={py1} x2={px2} y2={py2}
-            stroke={config.color} strokeWidth={strokeW * 1.1} strokeLinecap="round"
-            strokeDasharray={`${strokeW * 1.2} ${strokeW * 0.6}`} opacity={0.6} />
+            stroke={podColor} strokeWidth={strokeW * 0.8} strokeLinecap="butt"
+            strokeDasharray={`${strokeW * 1.2} ${strokeW * 0.6}`} opacity={0.5} />
         )}
 
         {/* Подпись общей длины */}
         <text x={midX} y={midY} textAnchor="middle" dominantBaseline="central"
-          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600">
+          fontSize={labelSize * 0.85} fill={podColor} fontWeight="600">
           {Math.round(totalLen)} см
         </text>
 
         {isSel && (
-          <path d={fillPath} stroke={config.color} strokeWidth={strokeW * 0.5}
+          <path d={fillPath} stroke={podColor} strokeWidth={strokeW * 0.5}
             fill="none" strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} opacity={0.5} />
         )}
       </g>
@@ -1777,6 +1789,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             width: String(Math.round(wallLen)),
             depth: "25",
             side: "left",
+            position: "center",
           });
         };
         return (
@@ -1854,6 +1867,21 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                     </div>
                   </div>
                 )}
+                {/* Положение на стене */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Положение на стене</label>
+                  <div className="flex gap-2 mt-1">
+                    {(["left", "center", "right"] as const).map(p => (
+                      <button key={p}
+                        onClick={() => setNicheInput(prev => prev ? { ...prev, position: p } : null)}
+                        className={`flex-1 py-2 rounded-lg border text-xs font-semibold ${
+                          nicheInput.position === p ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                        }`}>
+                        {p === "left" ? "← Слева" : p === "right" ? "Справа →" : "По центру"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <button onClick={confirmNiche}
