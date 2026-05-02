@@ -665,8 +665,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
+        {/* Невидимая толстая обводка — расширенная зона тапа/перетаскивания.
+            Для тонких линий (lightline, track) без неё пальцем/мышкой не попасть. */}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
-          stroke="transparent" strokeWidth={strokeW * 6} strokeLinecap="round" />
+          stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
         {el.type === "lightline" && (
           <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
             stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
