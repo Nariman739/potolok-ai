@@ -3,8 +3,9 @@ import type {
   LineItem,
   RoomResult,
   CalculationResult,
+  ExtraItem,
 } from "./types";
-import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP, CANVAS_TYPES } from "./constants";
+import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants";
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 
 type PriceMap = Record<string, number>;
@@ -46,12 +47,10 @@ function makeLineItem(
 }
 
 /**
- * Determine canvas code based on master's canvas type choice
+ * Цена полотна определяется автоматически по короткой стороне комнаты.
+ * Это ширина рулона плёнки: ≤3.2м, ≤5.5м или больше — без шва на потолке.
  */
 function getCanvasCode(room: RoomInput): string {
-  const entry = CANVAS_TYPES.find((ct) => ct.value === room.canvasType);
-  if (entry) return entry.code;
-  // Fallback for old data without canvasType
   const minDim = getBoundingBoxMinDim(room);
   if (minDim <= 3.2) return "canvas_320";
   if (minDim <= 5.5) return "canvas_550";
@@ -167,12 +166,12 @@ function calculateRoom(
 
   // Podshtornik
   if ((room.podshtornikLength ?? 0) > 0) {
-    const podshtornikCode = room.podshtornikType || "podshtornik_plastic";
+    const podshtornikCode = room.podshtornikType || "podshtornik_aluminum";
     const podshtornikItem = makeLineItem(podshtornikCode, room.podshtornikLength, prices);
     if (podshtornikItem) items.push(podshtornikItem);
   }
 
-  // Custom items
+  // Custom items (из справочника /dashboard/prices)
   if (room.customItems && room.customItems.length > 0 && customItemsMap) {
     for (const ci of room.customItems) {
       if (ci.quantity <= 0) continue;
@@ -185,6 +184,22 @@ function calculateRoom(
         unit: info.unit,
         unitPrice: info.price,
         total: Math.round(info.price * ci.quantity),
+      });
+    }
+  }
+
+  // One-off items (разовые позиции этой комнаты, без сохранения в справочник)
+  if (room.oneOffItems && room.oneOffItems.length > 0) {
+    for (const oi of room.oneOffItems) {
+      const qty = oi.quantity ?? 1;
+      if (qty <= 0 || !oi.name || oi.price <= 0) continue;
+      items.push({
+        itemCode: `oneoff:${oi.name}`,
+        itemName: oi.name,
+        quantity: qty,
+        unit: oi.unit ?? "шт.",
+        unitPrice: oi.price,
+        total: Math.round(oi.price * qty),
       });
     }
   }
@@ -213,7 +228,8 @@ function calculateRoom(
 export function calculate(
   rooms: RoomInput[],
   prices: PriceMap,
-  customItemsMap?: Record<string, CustomItemInfo>
+  customItemsMap?: Record<string, CustomItemInfo>,
+  extraItems?: ExtraItem[]
 ): CalculationResult {
   const totalArea = rooms.reduce((sum, r) => sum + computeArea(r), 0);
   const totalPerimeter = rooms.reduce(
@@ -228,10 +244,30 @@ export function calculate(
 
   const roomResults = rooms.map((room) => calculateRoom(room, prices, customItemsMap));
 
-  const subtotal = roomResults.reduce(
+  const roomsSubtotal = roomResults.reduce(
     (sum, rr) => sum + rr.subtotalAfterHeight,
     0
   );
+
+  // Дополнительные позиции на уровне всего КП (вне комнат)
+  const extraLineItems: LineItem[] = [];
+  if (extraItems && extraItems.length > 0) {
+    for (const ei of extraItems) {
+      const qty = ei.quantity ?? 1;
+      if (qty <= 0 || !ei.name || ei.price <= 0) continue;
+      extraLineItems.push({
+        itemCode: `extra:${ei.name}`,
+        itemName: ei.name,
+        quantity: qty,
+        unit: ei.unit ?? "шт.",
+        unitPrice: ei.price,
+        total: Math.round(ei.price * qty),
+      });
+    }
+  }
+  const extraSubtotal = extraLineItems.reduce((sum, item) => sum + item.total, 0);
+
+  const subtotal = roomsSubtotal + extraSubtotal;
 
   const minOrder = getPrice(prices, "min_order");
   const minOrderApplied = subtotal < minOrder;
@@ -240,6 +276,7 @@ export function calculate(
   return {
     rooms,
     roomResults,
+    extraItems: extraLineItems,
     subtotal,
     minOrderApplied,
     total,

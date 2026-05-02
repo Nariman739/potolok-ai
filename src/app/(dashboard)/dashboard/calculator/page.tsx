@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoomForm } from "@/components/calculator/room-form";
 import { RoomCard } from "@/components/calculator/room-card";
 import { CalculationResults } from "@/components/calculator/calculation-results";
+import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog } from "@/components/calculator/save-dialog";
 import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
@@ -43,6 +44,8 @@ function CalculatorContent() {
     calculate,
     reset,
     loadRooms,
+    extraItems,
+    setExtraItems,
   } = useCalculator();
 
   // formOpen = user manually opened the "add room" form
@@ -128,10 +131,22 @@ function CalculatorContent() {
           setFormOpen(false);
           toast.success(`Загружено ${importedRooms.length} комнат — редактируйте и пересчитайте`);
         }
+        // Восстановление extraItems из calculationData (хранятся как LineItem)
+        const importedExtras = est.calculationData?.extraItems;
+        if (Array.isArray(importedExtras) && importedExtras.length > 0) {
+          setExtraItems(
+            importedExtras.map((li: { itemName: string; unitPrice: number; quantity: number; unit: string }) => ({
+              name: li.itemName,
+              price: li.unitPrice,
+              quantity: li.quantity,
+              unit: li.unit,
+            }))
+          );
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingFrom(false));
-  }, [searchParams, addRoom, loadRooms, router]);
+  }, [searchParams, addRoom, loadRooms, router, setExtraItems]);
 
   useEffect(() => {
     fetch("/api/prices")
@@ -158,6 +173,7 @@ function CalculatorContent() {
         body: JSON.stringify({
           roomsData: result.rooms,
           calculationData: result,
+          extraItems,
           totalArea: result.totalArea,
           total: finalTotal,
           discountPercent,
@@ -233,6 +249,15 @@ function CalculatorContent() {
           <Plus className="h-5 w-5 mr-2" />
           {rooms.length === 0 ? "Добавить помещение" : "Добавить ещё помещение"}
         </Button>
+      )}
+
+      {/* Дополнительно — общий блок (рендерим при наличии комнат) */}
+      {rooms.length > 0 && (
+        <Card>
+          <CardContent className="pt-4">
+            <ExtraItemsForm items={extraItems} onChange={setExtraItems} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Room list */}

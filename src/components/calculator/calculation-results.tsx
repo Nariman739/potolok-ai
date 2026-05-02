@@ -128,6 +128,34 @@ export function CalculationResults({
                 </div>
               ))}
 
+              {/* Дополнительные работы вне комнат */}
+              {result.extraItems && result.extraItems.length > 0 && (
+                <div>
+                  <p className="font-medium text-sm mb-2">Дополнительно</p>
+                  <div className="space-y-1">
+                    {result.extraItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between text-xs text-muted-foreground gap-2"
+                      >
+                        <span className="min-w-0 break-words">
+                          {item.itemName} ({item.quantity} {item.unit} × {formatPrice(item.unitPrice)})
+                        </span>
+                        <span className="font-medium text-foreground whitespace-nowrap shrink-0">
+                          {formatPrice(item.total)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-sm font-medium mt-1 pt-1 border-t border-dashed">
+                    <span>Итого «Дополнительно»</span>
+                    <span>
+                      {formatPrice(result.extraItems.reduce((s, it) => s + it.total, 0))}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <Separator />
 
               <div className="flex justify-between font-bold text-lg">

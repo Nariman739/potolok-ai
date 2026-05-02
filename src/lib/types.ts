@@ -34,6 +34,26 @@ export interface CustomDimensions {
 }
 
 // ============================================
+// Доп. позиции (разовые)
+// ============================================
+
+/** Разовая позиция внутри комнаты (попадает в её итог) */
+export interface OneOffItem {
+  name: string;
+  price: number;
+  quantity: number;
+  unit?: string;
+}
+
+/** Доп. работа на уровне всего КП (отдельный блок «Дополнительно») */
+export interface ExtraItem {
+  name: string;
+  price: number;
+  quantity: number;
+  unit?: string;
+}
+
+// ============================================
 // Room Input
 // ============================================
 
@@ -68,8 +88,10 @@ export interface RoomInput {
   gardinaType?: string;
   podshtornikLength: number;
   podshtornikType?: string;
-  // Custom items per room
+  // Custom items per room (из справочника /dashboard/prices)
   customItems?: { itemId: string; quantity: number }[];
+  // Разовые позиции этой комнаты — мастер вводит руками, не сохраняются в каталог
+  oneOffItems?: OneOffItem[];
   // Raw data for Room Designer round-trip editing
   designerData?: {
     walls: number[];
@@ -110,6 +132,8 @@ export interface RoomResult {
 export interface CalculationResult {
   rooms: RoomInput[];
   roomResults: RoomResult[];
+  /** Дополнительные позиции вне комнат (блок «Дополнительно») */
+  extraItems?: LineItem[];
   subtotal: number;
   minOrderApplied: boolean;
   total: number;

@@ -109,6 +109,56 @@ export function ConfirmSection({
         {/* Rooms — each with subtotal + collapsible items */}
         {roomResults.length > 0 && (
           <div className="divide-y divide-gray-100">
+            {/* Доп. работы — отдельный блок «Дополнительно» */}
+            {calc.extraItems && calc.extraItems.length > 0 && (() => {
+              const isOpen = expandedRooms.has("__extras__");
+              const extrasSubtotal = calc.extraItems.reduce((s, it) => s + it.total, 0);
+              return (
+                <div>
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                    onClick={() => toggleRoom("__extras__")}
+                  >
+                    <div>
+                      <p className="font-semibold text-sm text-gray-900">Дополнительно</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {calc.extraItems.length} {calc.extraItems.length === 1 ? "позиция" : "позиций"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
+                      <span className="font-bold text-sm" style={{ color: brandColor }}>
+                        {formatPrice(extrasSubtotal)}
+                      </span>
+                      <ChevronDown
+                        className="h-4 w-4 text-gray-400 transition-transform"
+                        style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                      />
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="bg-gray-50/70 px-4 pb-3 space-y-1.5">
+                      {calc.extraItems.map((item, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-start text-xs text-gray-600 py-0.5"
+                        >
+                          <div className="leading-tight">
+                            <span className="text-gray-700">{item.itemName}</span>
+                            <span className="text-gray-400 ml-1.5">
+                              {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
+                            </span>
+                          </div>
+                          <span className="font-medium ml-2 shrink-0 text-gray-800">
+                            {formatPrice(item.total)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {roomResults.map((rr) => {
               const isOpen = expandedRooms.has(rr.roomId);
               const subtotal = rr.heightMultiplied ? rr.subtotalAfterHeight : rr.subtotal;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useSyncExternalStore } from "react";
-import type { RoomInput, CalculationResult } from "@/lib/types";
+import { useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import type { RoomInput, CalculationResult, ExtraItem } from "@/lib/types";
 
 const AUTOSAVE_KEY = "calculator-rooms-draft";
+const EXTRA_ITEMS_KEY = "calculator-extra-items-draft";
 
 // ── localStorage as the single source of truth ──
 
@@ -74,6 +75,33 @@ export function useCalculator() {
   const [error, setError] = useState<string | null>(null);
   const restoredDraft = rooms.length > 0;
 
+  // Доп. работы (общий блок «Дополнительно» в КП)
+  const [extraItems, setExtraItemsState] = useState<ExtraItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(EXTRA_ITEMS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const setExtraItems = useCallback((next: ExtraItem[]) => {
+    setExtraItemsState(next);
+    try {
+      if (next.length > 0) localStorage.setItem(EXTRA_ITEMS_KEY, JSON.stringify(next));
+      else localStorage.removeItem(EXTRA_ITEMS_KEY);
+    } catch {}
+  }, []);
+
+  // Очистка результата при смене extraItems (так же как при изменении комнат)
+  useEffect(() => {
+    if (result) setResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraItems]);
+
   const addRoom = useCallback((room: RoomInput) => {
     const current = getRooms();
     setRoomsStore([...current, room]);
@@ -117,7 +145,7 @@ export function useCalculator() {
       const res = await fetch("/api/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rooms: current }),
+        body: JSON.stringify({ rooms: current, extraItems }),
       });
 
       const data = await res.json();
@@ -133,7 +161,7 @@ export function useCalculator() {
     } finally {
       setIsCalculating(false);
     }
-  }, []);
+  }, [extraItems, setResult]);
 
   const loadRooms = useCallback((importedRooms: RoomInput[]) => {
     setRoomsStore(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
@@ -145,7 +173,8 @@ export function useCalculator() {
     setRoomsStore([]);
     setResult(null);
     setError(null);
-  }, []);
+    setExtraItems([]);
+  }, [setExtraItems, setResult]);
 
   return {
     rooms,
@@ -160,5 +189,7 @@ export function useCalculator() {
     calculate,
     reset,
     loadRooms,
+    extraItems,
+    setExtraItems,
   };
 }

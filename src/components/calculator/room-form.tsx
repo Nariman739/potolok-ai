@@ -11,9 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"; // используется для customItems
 import {
-  CANVAS_TYPES,
   ROOM_PRESETS,
   PROFILE_TYPES,
   SPOT_TYPES,
@@ -25,8 +24,7 @@ import {
 } from "@/lib/constants";
 import { getDefaultCorners, validateLShape, validateTShape, validateCustomDims, wallsToVertices, shoelaceArea, polygonGap } from "@/lib/room-geometry";
 import { RoomShapeSvg, CustomRoomSvg } from "./room-shape-svg";
-import type { RoomInput, RoomShape, CustomDimensions } from "@/lib/types";
-import type { CanvasType } from "@/lib/constants";
+import type { RoomInput, RoomShape, CustomDimensions, OneOffItem } from "@/lib/types";
 import { Plus, Trash2 } from "lucide-react";
 
 // Clear "0" on focus so user can type directly, restore "0" on blur if empty
@@ -119,7 +117,6 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
 
   // Common fields
   const [ceilingHeight, setCeilingHeight] = useState(er ? String(Math.round(er.ceilingHeight * 100)) : "300");
-  const [canvasType, setCanvasType] = useState<CanvasType>(er?.canvasType ?? "mat");
   const [spotsCount, setSpotsCount] = useState(er ? String(er.spotsCount) : "0");
   const [chandelierCount, setChandelierCount] = useState(er ? String(er.chandelierCount) : "0");
   const [chandelierInstallCount, setChandelierInstallCount] = useState(er ? String(er.chandelierInstallCount ?? 0) : "0");
@@ -143,13 +140,34 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
   const [podshtornikLength, setPodshtornikLength] = useState(
     er ? String(Math.round((er.podshtornikLength ?? 0) * 100)) : "0"
   );
-  const [podshtornikType, setPodshtornikType] = useState(er?.podshtornikType ?? "podshtornik_plastic");
+  const [podshtornikType, setPodshtornikType] = useState(er?.podshtornikType ?? "podshtornik_aluminum");
 
-  // Custom items
+  // Custom items (из справочника)
   const [availableCustomItems, setAvailableCustomItems] = useState<CustomItemOption[]>(customItemsProp ?? []);
   const [selectedCustomItems, setSelectedCustomItems] = useState<{ itemId: string; quantity: string }[]>(
     er?.customItems?.map((ci) => ({ itemId: ci.itemId, quantity: String(ci.quantity) })) ?? []
   );
+
+  // One-off items (разовые позиции этой комнаты, без сохранения в каталог)
+  type OneOffDraft = { name: string; price: string; quantity: string; unit: string };
+  const [oneOffItems, setOneOffItems] = useState<OneOffDraft[]>(
+    er?.oneOffItems?.map((oi) => ({
+      name: oi.name,
+      price: String(oi.price),
+      quantity: String(oi.quantity),
+      unit: oi.unit ?? "шт.",
+    })) ?? []
+  );
+
+  function addOneOffItem() {
+    setOneOffItems((prev) => [...prev, { name: "", price: "", quantity: "1", unit: "шт." }]);
+  }
+  function updateOneOffItem(idx: number, field: keyof OneOffDraft, value: string) {
+    setOneOffItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
+  }
+  function removeOneOffItem(idx: number) {
+    setOneOffItems((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   useEffect(() => {
     if (customItemsProp) {
@@ -309,13 +327,24 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       widthM = Math.max(...ys) - Math.min(...ys);
     }
 
+    const cleanOneOffs: OneOffItem[] = oneOffItems
+      .map((oi) => ({
+        name: oi.name.trim(),
+        price: parseFloat(oi.price) || 0,
+        quantity: parseFloat(oi.quantity) || 0,
+        unit: oi.unit.trim() || "шт.",
+      }))
+      .filter((oi) => oi.name && oi.price > 0 && oi.quantity > 0);
+
     const room: RoomInput = {
       id: editRoom?.id ?? crypto.randomUUID(),
       name: name || "Комната",
       length: lengthM,
       width: widthM,
       ceilingHeight: heightM,
-      canvasType,
+      // canvasType — оставлено в типе для обратной совместимости со старыми КП,
+      // но цена полотна теперь всегда определяется по геометрии в calculate.ts
+      canvasType: editRoom?.canvasType ?? "mat",
       spotsCount: parseInt(spotsCount) || 0,
       chandelierCount: parseInt(chandelierCount) || 0,
       chandelierInstallCount: parseInt(chandelierInstallCount) || 0,
@@ -340,6 +369,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       customItems: selectedCustomItems
         .filter((ci) => ci.itemId && parseFloat(ci.quantity) > 0)
         .map((ci) => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
+      oneOffItems: cleanOneOffs.length > 0 ? cleanOneOffs : undefined,
     };
 
     onAdd(room);
@@ -355,6 +385,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       setCurtainRodLength("0"); setPipeBypasses("0");
       setGardinaLength("0"); setPodshtornikLength("0");
       setSelectedCustomItems([]);
+      setOneOffItems([]);
       setCustomWalls(DEFAULT_CUSTOM_WALLS.map(w => ({ ...w })));
       setActiveWallIndex(null);
       setShapeError(null); setActiveSide(null);
@@ -614,35 +645,26 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         <p className="text-sm text-destructive">{shapeError}</p>
       )}
 
-      {/* Canvas type + height */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Тип потолка</Label>
-          <Select value={canvasType} onValueChange={(v) => setCanvasType(v as CanvasType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CANVAS_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value}>
-                  {ct.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="height">Высота (см)</Label>
-          <Input
-            id="height"
-            type="number"
-            step="1"
-            min="200"
-            value={ceilingHeight}
-            onChange={(e) => setCeilingHeight(e.target.value)}
-            inputMode="numeric"
-          />
-        </div>
+      {/* Высота потолка. Тип/цена полотна — авто по короткой стороне комнаты. */}
+      <div className="space-y-2">
+        <Label htmlFor="height">Высота потолка (см)</Label>
+        <Input
+          id="height"
+          type="number"
+          step="1"
+          min="200"
+          value={ceilingHeight}
+          onChange={(e) => setCeilingHeight(e.target.value)}
+          inputMode="numeric"
+        />
+        {preview && (
+          <p className="text-xs text-muted-foreground">
+            Полотно подберётся автоматически по короткой стороне комнаты:
+            до 3.2 м — {formatPriceCompact(prices["canvas_320"] ?? 0)}₸/м²,
+            до 5.5 м — {formatPriceCompact(prices["canvas_550"] ?? 0)}₸/м²,
+            больше — {formatPriceCompact(prices["canvas_over"] ?? 0)}₸/м².
+          </p>
+        )}
       </div>
 
       {/* Fixtures */}
@@ -966,6 +988,63 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
           </Button>
         </div>
       )}
+
+      {/* One-off items — разовые позиции этой комнаты */}
+      <div className="space-y-3 pt-2 border-t">
+        <p className="text-sm font-medium text-muted-foreground">Разовые позиции в этой комнате</p>
+        {oneOffItems.map((oi, idx) => (
+          <div key={idx} className="space-y-1.5 rounded-lg border border-border p-2">
+            <div className="flex gap-2">
+              <Input
+                value={oi.name}
+                onChange={(e) => updateOneOffItem(idx, "name", e.target.value)}
+                placeholder="Название работы"
+                className="flex-1 h-9 text-xs"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => removeOneOffItem(idx)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                type="number"
+                min="0"
+                step="0.1"
+                value={oi.quantity}
+                onChange={(e) => updateOneOffItem(idx, "quantity", e.target.value)}
+                placeholder="Кол-во"
+                className="h-9 text-xs"
+                inputMode="decimal"
+              />
+              <Input
+                value={oi.unit}
+                onChange={(e) => updateOneOffItem(idx, "unit", e.target.value)}
+                placeholder="ед."
+                className="h-9 text-xs"
+              />
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={oi.price}
+                onChange={(e) => updateOneOffItem(idx, "price", e.target.value)}
+                placeholder="Цена ₸"
+                className="h-9 text-xs"
+                inputMode="numeric"
+              />
+            </div>
+          </div>
+        ))}
+        <Button type="button" variant="outline" size="sm" className="w-full" onClick={addOneOffItem}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Разовая позиция
+        </Button>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">

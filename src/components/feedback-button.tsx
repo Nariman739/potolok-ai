@@ -93,21 +93,24 @@ export function FeedbackButton({ variant = "sidebar" }: FeedbackButtonProps) {
           <div className="space-y-4 py-2">
             {/* Type selector */}
             <div className="flex gap-2">
-              {TYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setType(opt.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                    type === opt.value
-                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
-                      : "hover:bg-muted border-border"
-                  }`}
-                >
-                  <opt.icon className="h-3.5 w-3.5" />
-                  {opt.label}
-                </button>
-              ))}
+              {TYPE_OPTIONS.map((opt) => {
+                const Icon = opt.icon as React.ComponentType<{ className?: string }>;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setType(opt.value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                      type === opt.value
+                        ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                        : "hover:bg-muted border-border"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Message */}
