@@ -7,7 +7,7 @@ import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
-import RoomDesigner from "./room-designer";
+import RoomDesigner, { totalSubcurtainLengthCm } from "./room-designer";
 import type { RoomElement } from "./room-designer";
 
 // ─────────────────────────────────────────────────────
@@ -2201,9 +2201,7 @@ export default function ZameryPage() {
       const gardinaLength = Math.round(
         els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
       ) / 100;
-      const podshtornikLength = Math.round(
-        els.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
+      const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
 
       return {
         id: crypto.randomUUID(),
@@ -2268,8 +2266,7 @@ export default function ZameryPage() {
               const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
               const gardinaEls = elements.filter(e => e.type === "curtain");
               const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const podshtornikEls = elements.filter(e => e.type === "subcurtain");
-              const podshtornikLength = Math.round(podshtornikEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const podshtornikLength = Math.round(totalSubcurtainLengthCm(elements)) / 100;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),

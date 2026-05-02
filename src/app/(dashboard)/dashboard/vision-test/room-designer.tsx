@@ -22,6 +22,15 @@ export interface RoomElement {
   width?: number;
   height?: number;
   rotation?: number;
+  // Форма wall-элементов: straight (прямой), u-niche (П-ниша), l-bend (Г-ниша),
+  // freeform (свободно перемещаемая линия — для световой линии и трека)
+  shape?: "straight" | "u-niche" | "l-bend" | "freeform";
+  // Глубина ниши в см (для u-niche / l-bend)
+  depth?: number;
+  // Сторона выпуска Г-ниши: left или right (относительно направления стены)
+  side?: "left" | "right";
+  // Точки freeform-линии в координатах SVG (для drag в любую точку)
+  points?: { x: number; y: number }[];
 }
 
 interface Room {
@@ -69,6 +78,26 @@ const FURNITURE: { furnitureType: FurnitureType; label: string; icon: string; co
 ];
 
 const ALL_ELEMENTS = LIGHT_ELEMENTS; // backwards compat
+
+/**
+ * Длина одного подшторника в см с учётом формы:
+ *  - прямой → e.length
+ *  - П-ниша → e.length + 2 × depth (обход трёх стенок)
+ *  - Г-ниша → e.length + depth (обход двух стенок)
+ */
+export function subcurtainTotalLengthCm(e: { length?: number; shape?: string; depth?: number }): number {
+  const len = e.length || 0;
+  if (e.shape === "u-niche" && e.depth) return len + 2 * e.depth;
+  if (e.shape === "l-bend" && e.depth) return len + e.depth;
+  return len;
+}
+
+/** Сумма длин всех подшторников комнаты в см. */
+export function totalSubcurtainLengthCm(elements: { type: string; length?: number; shape?: string; depth?: number }[]): number {
+  return elements
+    .filter(e => e.type === "subcurtain")
+    .reduce((s, e) => s + subcurtainTotalLengthCm(e), 0);
+}
 
 const HINTS: Record<string, string> = {
   point: "Нажмите на комнату чтобы разместить",
@@ -155,6 +184,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [lengthValue, setLengthValue] = useState("");
   const [lengthSide, setLengthSide] = useState<"left" | "center" | "right">("center");
   const [editingWallElId, setEditingWallElId] = useState<string | null>(null);
+  // Подшторник: выбор формы (Прямой / П-ниша / Г-ниша) перед вводом размеров
+  const [subcurtainShapeChoice, setSubcurtainShapeChoice] = useState<{ wallIndex: number } | null>(null);
+  // Ввод размеров для П/Г-ниши
+  const [nicheInput, setNicheInput] = useState<
+    | { wallIndex: number; shape: "u-niche" | "l-bend"; width: string; depth: string; side: "left" | "right" }
+    | null
+  >(null);
   const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
@@ -273,6 +309,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               setElements(prev => prev.map(e =>
                 e.id === ds.id ? { ...e, x: useSnap ? snapToGrid(dropPos.x) : dropPos.x, y: useSnap ? snapToGrid(dropPos.y) : dropPos.y } : e
               ));
+            } else if (el.shape === "freeform" && el.points) {
+              // Freeform-элемент (свет.линия, трек) — двигаем все точки на offset.
+              const cx = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
+              const cy = el.points.reduce((s, p) => s + p.y, 0) / el.points.length;
+              const offX = dropPos.x - cx, offY = dropPos.y - cy;
+              setElements(prev => prev.map(e =>
+                e.id === ds.id && e.points
+                  ? { ...e, points: e.points.map(p => ({ x: p.x + offX, y: p.y + offY })) }
+                  : e
+              ));
             } else if (el.type === "door" || el.type === "window") {
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               setElements(prev => prev.map(e =>
@@ -352,6 +398,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       }]);
     } else if (config.category === "wall") {
       const nearest = nearestWall(coords.x, coords.y, vertices);
+      // Подшторник — сначала спрашиваем форму (Прямой / П-ниша / Г-ниша)
+      if (activeType === "subcurtain") {
+        setSubcurtainShapeChoice({ wallIndex: nearest.wallIndex });
+        return;
+      }
       setLengthInput({ wallIndex: nearest.wallIndex });
       setLengthValue(String(Math.round(nearest.wallLength)));
       setLengthSide("center");
@@ -395,13 +446,50 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     } else {
       // Creating new element
       if (!activeType) return;
+      const newId = crypto.randomUUID();
+
+      // Световая линия и трек — freeform: создаём 2 точки у стены, потом
+      // элемент можно перетащить в любую точку комнаты как софит.
+      if (activeType === "lightline" || activeType === "track") {
+        const a = vertices[lengthInput.wallIndex];
+        const b = vertices[lengthInput.wallIndex + 1];
+        if (a && b) {
+          const dxw = b.x - a.x, dyw = b.y - a.y;
+          const wL = Math.sqrt(dxw * dxw + dyw * dyw);
+          if (wL > 0) {
+            const nx = dxw / wL, ny = dyw / wL;
+            const perpX = -ny, perpY = nx;
+            const ratio = clampedLen / wallLen;
+            const startTSvg = Math.max(0, Math.min(1 - ratio, pos - ratio / 2)) * wL;
+            const endTSvg = startTSvg + ratio * wL;
+            const off = wallOffset;
+            const p1 = { x: a.x + nx * startTSvg + perpX * off, y: a.y + ny * startTSvg + perpY * off };
+            const p2 = { x: a.x + nx * endTSvg + perpX * off, y: a.y + ny * endTSvg + perpY * off };
+            setElements(prev => [...prev, {
+              id: newId,
+              type: activeType as ElementType,
+              shape: "freeform",
+              points: [p1, p2],
+              length: clampedLen,
+            }]);
+            setSelectedId(newId);
+            setActiveType(null);
+            setLengthInput(null);
+            setLengthValue("");
+            setLengthSide("center");
+            return;
+          }
+        }
+      }
+
       const hasVariant = activeType === "spot";
       setElements(prev => [...prev, {
-        id: crypto.randomUUID(),
+        id: newId,
         type: activeType as ElementType,
         wallIndex: lengthInput.wallIndex,
         wallPosition: pos,
         length: clampedLen,
+        shape: "straight",
         ...(hasVariant && { variant: activeVariant }),
       }]);
     }
@@ -409,6 +497,32 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     setLengthValue("");
     setLengthSide("center");
     setEditingWallElId(null);
+  }
+
+  /** Создание П-ниши (u-niche) или Г-ниши (l-bend) подшторника. */
+  function confirmNiche() {
+    if (!nicheInput) return;
+    const w = parseFloat(nicheInput.width);
+    const d = parseFloat(nicheInput.depth);
+    if (!w || w <= 0 || !d || d <= 0) {
+      setNicheInput(null);
+      return;
+    }
+    const wallLen = room.walls[nicheInput.wallIndex] || 0;
+    const clampedW = Math.min(w, wallLen);
+    const pos = 0.5; // центр стены — пользователь потом drag'ом перетащит
+    setElements(prev => [...prev, {
+      id: crypto.randomUUID(),
+      type: "subcurtain",
+      wallIndex: nicheInput.wallIndex,
+      wallPosition: pos,
+      length: clampedW,
+      shape: nicheInput.shape,
+      depth: d,
+      ...(nicheInput.shape === "l-bend" && { side: nicheInput.side }),
+    }]);
+    setNicheInput(null);
+    setActiveType(null);
   }
 
   function confirmFurniture() {
@@ -763,6 +877,154 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     );
   }
 
+  /**
+   * Рендер П-ниши и Г-ниши подшторника. Прямоугольник, выходящий из стены внутрь комнаты.
+   * Для П — ширина по стене + глубина с двух сторон. Для Г — ширина + одна боковина (left/right).
+   */
+  function nicheRender(el: RoomElement) {
+    if (el.wallIndex === undefined || !el.length || !el.depth) return null;
+    const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
+    if (!a || !b) return null;
+    const dxw = b.x - a.x, dyw = b.y - a.y;
+    const wL = Math.sqrt(dxw * dxw + dyw * dyw);
+    if (wL === 0) return null;
+    const nx = dxw / wL, ny = dyw / wL;
+    const perpX = -ny, perpY = nx; // внутрь комнаты (перпендикуляр направо от направления стены)
+
+    const elLen = Math.min(el.length, wL);
+    const pos = el.wallPosition ?? 0.5;
+    const startT = Math.max(0, Math.min(wL - elLen, pos * wL - elLen / 2));
+    const offset = wallOffset * 0.15; // подшторник почти на стене
+    const x1 = a.x + nx * startT + perpX * offset;
+    const y1 = a.y + ny * startT + perpY * offset;
+    const x2 = a.x + nx * (startT + elLen) + perpX * offset;
+    const y2 = a.y + ny * (startT + elLen) + perpY * offset;
+
+    const config = ALL_ELEMENTS.find(c => c.type === "subcurtain")!;
+    const isSel = selectedId === el.id;
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const dpth = el.depth;
+
+    let pathD: string;
+    if (el.shape === "u-niche") {
+      // Прямоугольник: 4 стороны от p1 в глубину и обратно к p2
+      const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
+      const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
+      pathD = `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2}`;
+    } else {
+      // Г-ниша: только одна боковина (left или right)
+      if (el.side === "right") {
+        const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
+        pathD = `M ${x1} ${y1} L ${x2} ${y2} L ${px2} ${py2}`;
+      } else {
+        const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
+        pathD = `M ${px1} ${py1} L ${x1} ${y1} L ${x2} ${y2}`;
+      }
+    }
+
+    // Подпись длины подшторника (общая длина с учётом глубины — то что попадёт в КП)
+    const totalLen = el.shape === "u-niche" ? elLen + 2 * dpth : elLen + dpth;
+    const midX = (x1 + x2) / 2 + perpX * dpth * 0.5;
+    const midY = (y1 + y2) / 2 + perpY * dpth * 0.5;
+
+    return (
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        {/* Невидимая толстая обводка для тапа */}
+        <path d={pathD} stroke="transparent" strokeWidth={strokeW * 8} fill="none" />
+        {/* Видимый контур ниши */}
+        <path d={pathD} stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.95} />
+        {/* Подпись (общая длина подшторника) */}
+        <text x={midX} y={midY} textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600">
+          {Math.round(totalLen)} см
+        </text>
+        {isSel && (
+          <path d={pathD} stroke={config.color} strokeWidth={strokeW * 4}
+            strokeLinecap="round" strokeLinejoin="round" fill="none"
+            opacity={0.25} strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} />
+        )}
+      </g>
+    );
+  }
+
+  /**
+   * Свободно перемещаемая линия (свет.линия и трек) — points вместо wallIndex.
+   * Двигается в любую точку комнаты как софит, не привязана к стене.
+   */
+  function freeformLine(el: RoomElement) {
+    if (!el.points || el.points.length < 2) return null;
+    const config = ALL_ELEMENTS.find(c => c.type === el.type);
+    if (!config) return null;
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+
+    // Во время drag — смещаем все точки на offset до dragPos
+    let drawPoints = el.points;
+    if (isDragging && dragPos) {
+      const cx = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
+      const cy = el.points.reduce((s, p) => s + p.y, 0) / el.points.length;
+      const offX = dragPos.x - cx, offY = dragPos.y - cy;
+      drawPoints = el.points.map(p => ({ x: p.x + offX, y: p.y + offY }));
+    }
+
+    const p1 = drawPoints[0], p2 = drawPoints[drawPoints.length - 1];
+    const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const lineLen = Math.hypot(dx, dy) || 1;
+    const perpX = -dy / lineLen, perpY = dx / lineLen;
+    const isSel = selectedId === el.id;
+
+    let labelAng = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (labelAng > 90 || labelAng <= -90) labelAng += 180;
+    const elTx = midX + perpX * labelSize * 1.5;
+    const elTy = midY + perpY * labelSize * 1.5;
+
+    return (
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        {/* Невидимая толстая обводка — расширенная зона тапа/перетаскивания. */}
+        <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+          stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
+        {el.type === "lightline" && (
+          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+            stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
+        )}
+        <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+          stroke={config.color}
+          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : strokeW}
+          strokeLinecap="round"
+          strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
+          opacity={0.9}
+        />
+        {el.type === "track" && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+            <circle cx={p2.x} cy={p2.y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+          </>
+        )}
+        {/* Подпись длины */}
+        <text x={elTx} y={elTy}
+          textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
+          transform={`rotate(${labelAng}, ${elTx}, ${elTy})`}>
+          {el.length} см
+        </text>
+        {/* Контур выделения */}
+        {isSel && (
+          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+            stroke={config.color} strokeWidth={strokeW * 5} strokeLinecap="round"
+            opacity={0.25} strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} />
+        )}
+      </g>
+    );
+  }
+
   function spotCircle(el: RoomElement) {
     const pos = getElPos(el);
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
@@ -1019,7 +1281,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const p = DEFAULT_PRICES;
     let cost = 0;
     cost += room.area * (p.canvas_320 || 2000);
-    const podSubM = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
+    const podSubM = totalSubcurtainLengthCm(elements) / 100;
     const profilePerim = Math.max(0, room.perimeter - podSubM);
     cost += profilePerim * (p.profile_plastic || 500);
     cost += profilePerim * (p.insert || 1000);
@@ -1037,8 +1299,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     cost += lightM * (p.light_line || 15000);
     const gardinaM = elements.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
     cost += gardinaM * (p.gardina_plastic || 5000);
-    const podM = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0) / 100;
-    cost += podM * (p.podshtornik_plastic || 2500);
+    const podM = totalSubcurtainLengthCm(elements) / 100;
+    cost += podM * (p.podshtornik_aluminum || 8000);
     const floatingM = floatingLenCm / 100;
     cost += floatingM * (p.profile_floating || 14000);
     return Math.round(cost);
@@ -1066,7 +1328,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (lightCm > 0) lines.push(`✨ Световая линия: ${lightCm} см`);
     const gardinaCm = elements.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0);
     if (gardinaCm > 0) lines.push(`📏 Гардина: ${gardinaCm} см`);
-    const podCm = elements.filter(e => e.type === "subcurtain").reduce((s, e) => s + (e.length || 0), 0);
+    const podCm = Math.round(totalSubcurtainLengthCm(elements));
     if (podCm > 0) lines.push(`📐 Подшторник: ${podCm} см`);
     if (floatingCount > 0) lines.push(`〰️ Парящий: ${floatingCount} стен`);
     if (liveCost > 0) lines.push(`\n💰 Ориентировочно: ${formatPrice(liveCost)} ₸`);
@@ -1304,8 +1566,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           {/* Doors/Windows */}
           {fixtureElements.map(fixtureRender)}
 
-          {/* Wall elements */}
-          {elements.filter(e => e.wallIndex !== undefined && e.type !== "floating" && e.type !== "door" && e.type !== "window").map(wallLine)}
+          {/* Wall elements (прямые) — подшторник прямой, гардина, шторка ванной */}
+          {elements.filter(e => e.wallIndex !== undefined && e.shape !== "freeform" && e.shape !== "u-niche" && e.shape !== "l-bend" && e.type !== "floating" && e.type !== "door" && e.type !== "window").map(wallLine)}
+
+          {/* П/Г-ниши подшторника */}
+          {elements.filter(e => e.shape === "u-niche" || e.shape === "l-bend").map(nicheRender)}
+
+          {/* Freeform-линии (свет.линия, трек) — двигаются в любую точку */}
+          {elements.filter(e => e.shape === "freeform").map(freeformLine)}
 
           {/* Spots */}
           {elements.filter(e => e.type === "spot").map(spotCircle)}
@@ -1464,6 +1732,114 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           </div>
         </div>
       </div>
+
+      {/* Подшторник — выбор формы */}
+      {subcurtainShapeChoice && (() => {
+        const wallIdx = subcurtainShapeChoice.wallIndex;
+        const wallLen = room.walls[wallIdx] || 0;
+        const close = () => setSubcurtainShapeChoice(null);
+        const pickStraight = () => {
+          setSubcurtainShapeChoice(null);
+          setLengthInput({ wallIndex: wallIdx });
+          setLengthValue(String(Math.round(wallLen)));
+          setLengthSide("center");
+        };
+        const pickShape = (shape: "u-niche" | "l-bend") => {
+          setSubcurtainShapeChoice(null);
+          setNicheInput({
+            wallIndex: wallIdx,
+            shape,
+            width: String(Math.round(wallLen)),
+            depth: "30",
+            side: "left",
+          });
+        };
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40" onClick={close}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold">📐 Подшторник — форма</span>
+                <button onClick={close} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">Стена {wallIdx + 1}: {wallLen} см</p>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={pickStraight}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">▬</span>
+                  <span className="text-xs font-semibold">Прямой</span>
+                </button>
+                <button onClick={() => pickShape("u-niche")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">⊓</span>
+                  <span className="text-xs font-semibold">П-ниша</span>
+                </button>
+                <button onClick={() => pickShape("l-bend")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">⌐</span>
+                  <span className="text-xs font-semibold">Г-ниша</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Подшторник — размеры П/Г-ниши */}
+      {nicheInput && (() => {
+        const wallLen = room.walls[nicheInput.wallIndex] || 0;
+        const isU = nicheInput.shape === "u-niche";
+        const close = () => setNicheInput(null);
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40" onClick={close}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold">{isU ? "⊓ П-ниша" : "⌐ Г-ниша"} — размеры</span>
+                <button onClick={close} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Стена {nicheInput.wallIndex + 1}: {wallLen} см</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Ширина (см)</label>
+                  <input type="number" inputMode="numeric"
+                    value={nicheInput.width}
+                    onChange={(e) => setNicheInput(prev => prev ? { ...prev, width: e.target.value } : null)}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Глубина (см)</label>
+                  <input type="number" inputMode="numeric"
+                    value={nicheInput.depth}
+                    onChange={(e) => setNicheInput(prev => prev ? { ...prev, depth: e.target.value } : null)}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                </div>
+                {!isU && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Сторона выпуска</label>
+                    <div className="flex gap-2 mt-1">
+                      {(["left", "right"] as const).map(s => (
+                        <button key={s}
+                          onClick={() => setNicheInput(prev => prev ? { ...prev, side: s } : null)}
+                          className={`flex-1 py-2 rounded-lg border text-sm font-semibold ${
+                            nicheInput.side === s ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                          }`}>
+                          {s === "left" ? "← Слева" : "Справа →"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={confirmNiche}
+                disabled={!nicheInput.width || !nicheInput.depth || parseFloat(nicheInput.width) <= 0 || parseFloat(nicheInput.depth) <= 0}
+                className="w-full mt-5 py-3 rounded-xl bg-[#1e3a5f] text-white font-semibold disabled:opacity-30 active:scale-95">
+                Добавить
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Length input with numpad */}
       {lengthInput && (() => {
