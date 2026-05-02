@@ -565,8 +565,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }, []);
 
   function handlePanStart(e: React.PointerEvent) {
-    // Middle button or Ctrl+Left button
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+    // Mouse: средняя кнопка или Ctrl+Left
+    const isMousePan = e.button === 1 || (e.button === 0 && e.ctrlKey);
+    // Touch: при увеличенном зуме палец на свободном месте — пэн.
+    // Не пэним когда у мастера в руке инструмент или открыта форма ввода.
+    const isTouchPan = e.pointerType === "touch" && zoom > 1.05 && !activeType
+      && !lengthInput && !nicheInput && !subcurtainShapeChoice;
+    if (isMousePan || isTouchPan) {
       e.preventDefault();
       setIsPanning(true);
       panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
