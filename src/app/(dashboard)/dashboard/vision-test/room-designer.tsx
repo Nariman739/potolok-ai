@@ -914,12 +914,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const isLBendLeft = el.shape === "l-bend" && el.side !== "right";
     const isLBendRight = el.shape === "l-bend" && el.side === "right";
 
-    // Полупрозрачная заливка ниши — визуально показывает объём
-    const fillPath = isU
-      ? `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2} Z`
-      : isLBendRight
-        ? `M ${x1} ${y1} L ${x2} ${y2} L ${px2} ${py2} Z`
-        : `M ${x1} ${y1} L ${x2} ${y2} L ${px1} ${py1} Z`;
+    // Полупрозрачная заливка ниши — единый прямоугольник «карман в стене»
+    // одинаковый для П и Г, отличается только видимый контур (число боковин)
+    const fillPath = `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2} Z`;
 
     const totalLen = isU ? elLen + 2 * dpth : elLen + dpth;
     const midX = (x1 + x2) / 2 + perpX * dpth * 0.5;
@@ -937,26 +934,26 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         {/* Невидимая толстая обводка для тапа по подшторнику */}
         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={strokeW * 8} strokeLinecap="round" />
 
-        {/* Подшторник вдоль стены */}
+        {/* Подшторник вдоль стены — чуть толще основных линий стен */}
         <line x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+          stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
 
         {/* Левая боковина — для П и Г-left */}
         {(isU || isLBendLeft) && (
           <line x1={x1} y1={y1} x2={px1} y2={py1}
-            stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+            stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
         )}
 
         {/* Правая боковина — для П и Г-right */}
         {(isU || isLBendRight) && (
           <line x1={x2} y1={y2} x2={px2} y2={py2}
-            stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+            stroke={config.color} strokeWidth={strokeW * 1.3} strokeLinecap="round" opacity={0.95} />
         )}
 
-        {/* Дальняя стенка ниши — только для П (пунктиром, она внутри ниши) */}
+        {/* Дальняя стенка ниши — только для П (пунктиром) */}
         {isU && (
           <line x1={px1} y1={py1} x2={px2} y2={py2}
-            stroke={config.color} strokeWidth={strokeW * 1.4} strokeLinecap="round"
+            stroke={config.color} strokeWidth={strokeW * 1.1} strokeLinecap="round"
             strokeDasharray={`${strokeW * 1.2} ${strokeW * 0.6}`} opacity={0.6} />
         )}
 
