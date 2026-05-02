@@ -878,8 +878,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   /**
-   * Рендер П-ниши и Г-ниши подшторника. Прямоугольник, выходящий из стены внутрь комнаты.
-   * Для П — ширина по стене + глубина с двух сторон. Для Г — ширина + одна боковина (left/right).
+   * Рендер П-ниши и Г-ниши подшторника.
+   * П: подшторник вдоль стены + две боковины + дальняя стенка ниши.
+   * Г: подшторник вдоль стены + одна боковина (left/right).
    */
   function nicheRender(el: RoomElement) {
     if (el.wallIndex === undefined || !el.length || !el.depth) return null;
@@ -889,12 +890,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const wL = Math.sqrt(dxw * dxw + dyw * dyw);
     if (wL === 0) return null;
     const nx = dxw / wL, ny = dyw / wL;
-    const perpX = -ny, perpY = nx; // внутрь комнаты (перпендикуляр направо от направления стены)
+    const perpX = -ny, perpY = nx; // внутрь комнаты
 
     const elLen = Math.min(el.length, wL);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wL - elLen, pos * wL - elLen / 2));
-    const offset = wallOffset * 0.15; // подшторник почти на стене
+    const offset = wallOffset * 0.15;
     const x1 = a.x + nx * startT + perpX * offset;
     const y1 = a.y + ny * startT + perpY * offset;
     const x2 = a.x + nx * (startT + elLen) + perpX * offset;
@@ -905,25 +906,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const dpth = el.depth;
 
-    let pathD: string;
-    if (el.shape === "u-niche") {
-      // Прямоугольник: 4 стороны от p1 в глубину и обратно к p2
-      const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
-      const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
-      pathD = `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2}`;
-    } else {
-      // Г-ниша: только одна боковина (left или right)
-      if (el.side === "right") {
-        const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
-        pathD = `M ${x1} ${y1} L ${x2} ${y2} L ${px2} ${py2}`;
-      } else {
-        const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
-        pathD = `M ${px1} ${py1} L ${x1} ${y1} L ${x2} ${y2}`;
-      }
-    }
+    // Точки в глубине ниши
+    const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
+    const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
 
-    // Подпись длины подшторника (общая длина с учётом глубины — то что попадёт в КП)
-    const totalLen = el.shape === "u-niche" ? elLen + 2 * dpth : elLen + dpth;
+    const isU = el.shape === "u-niche";
+    const isLBendLeft = el.shape === "l-bend" && el.side !== "right";
+    const isLBendRight = el.shape === "l-bend" && el.side === "right";
+
+    // Полупрозрачная заливка ниши — визуально показывает объём
+    const fillPath = isU
+      ? `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2} Z`
+      : isLBendRight
+        ? `M ${x1} ${y1} L ${x2} ${y2} L ${px2} ${py2} Z`
+        : `M ${x1} ${y1} L ${x2} ${y2} L ${px1} ${py1} Z`;
+
+    const totalLen = isU ? elLen + 2 * dpth : elLen + dpth;
     const midX = (x1 + x2) / 2 + perpX * dpth * 0.5;
     const midY = (y1 + y2) / 2 + perpY * dpth * 0.5;
 
@@ -933,19 +931,44 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Невидимая толстая обводка для тапа */}
-        <path d={pathD} stroke="transparent" strokeWidth={strokeW * 8} fill="none" />
-        {/* Видимый контур ниши */}
-        <path d={pathD} stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.95} />
-        {/* Подпись (общая длина подшторника) */}
+        {/* Полупрозрачная заливка области ниши */}
+        <path d={fillPath} fill={config.color} opacity={0.1} />
+
+        {/* Невидимая толстая обводка для тапа по подшторнику */}
+        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={strokeW * 8} strokeLinecap="round" />
+
+        {/* Подшторник вдоль стены */}
+        <line x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+
+        {/* Левая боковина — для П и Г-left */}
+        {(isU || isLBendLeft) && (
+          <line x1={x1} y1={y1} x2={px1} y2={py1}
+            stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+        )}
+
+        {/* Правая боковина — для П и Г-right */}
+        {(isU || isLBendRight) && (
+          <line x1={x2} y1={y2} x2={px2} y2={py2}
+            stroke={config.color} strokeWidth={strokeW * 1.8} strokeLinecap="round" opacity={0.95} />
+        )}
+
+        {/* Дальняя стенка ниши — только для П (пунктиром, она внутри ниши) */}
+        {isU && (
+          <line x1={px1} y1={py1} x2={px2} y2={py2}
+            stroke={config.color} strokeWidth={strokeW * 1.4} strokeLinecap="round"
+            strokeDasharray={`${strokeW * 1.2} ${strokeW * 0.6}`} opacity={0.6} />
+        )}
+
+        {/* Подпись общей длины */}
         <text x={midX} y={midY} textAnchor="middle" dominantBaseline="central"
           fontSize={labelSize * 0.85} fill={config.color} fontWeight="600">
           {Math.round(totalLen)} см
         </text>
+
         {isSel && (
-          <path d={pathD} stroke={config.color} strokeWidth={strokeW * 4}
-            strokeLinecap="round" strokeLinejoin="round" fill="none"
-            opacity={0.25} strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} />
+          <path d={fillPath} stroke={config.color} strokeWidth={strokeW * 0.5}
+            fill="none" strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} opacity={0.5} />
         )}
       </g>
     );
@@ -1750,7 +1773,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             wallIndex: wallIdx,
             shape,
             width: String(Math.round(wallLen)),
-            depth: "30",
+            depth: "25",
             side: "left",
           });
         };
