@@ -54,6 +54,10 @@ export interface RoomElement {
   /** Для мебели: режим взаимодействия с потолком.
    *  Для kitchen/wall_panel default = "to-ceiling", для остальных типов default = "decor". */
   ceilingMode?: CeilingMode;
+  /** Парящий, привязанный к ребру шкафа (вместо стены). */
+  furnitureId?: string;
+  /** Индекс ребра шкафа: 0=top, 1=right, 2=bottom, 3=left (в local space). */
+  edgeIndex?: number;
 }
 
 interface Room {
@@ -579,6 +583,60 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       setLengthValue(String(Math.round(nearest.wallLength)));
       setLengthSide("center");
     } else if (config.category === "perimeter") {
+      // Сначала пробуем — попал ли тап в грань шкафа to-ceiling/planned (in-room ребро).
+      // Если да — ставим парящий на ребре шкафа, не на стене.
+      const edgeHit = (() => {
+        const threshold = 25; // см — допуск попадания в ребро
+        let best: { id: string; edgeIndex: number; dist: number } | null = null;
+        for (const f of elements) {
+          if (f.type !== "furniture") continue;
+          if (f.ceilingMode !== "to-ceiling" && f.ceilingMode !== "planned") continue;
+          if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
+          const rot = (f.rotation || 0) * Math.PI / 180;
+          const cosR = Math.cos(rot), sinR = Math.sin(rot);
+          const hw = f.width / 2, hh = f.height / 2;
+          // 4 угла в мир. координатах: top-left, top-right, bottom-right, bottom-left
+          const corners = ([[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const).map(([lx, ly]) => ({
+            x: f.x! + lx * cosR - ly * sinR,
+            y: f.y! + lx * sinR + ly * cosR,
+          }));
+          const inRoomEdges = classifyEdges(
+            { type: "furniture", x: f.x, y: f.y, width: f.width, height: f.height, rotation: f.rotation || 0, ceilingMode: f.ceilingMode },
+            vertices,
+          ).map(at => !at);
+          for (let i = 0; i < 4; i++) {
+            if (!inRoomEdges[i]) continue;
+            const p0 = corners[i], p1 = corners[(i + 1) % 4];
+            const segDx = p1.x - p0.x, segDy = p1.y - p0.y;
+            const segL2 = segDx * segDx + segDy * segDy;
+            if (segL2 < 0.001) continue;
+            const t = Math.max(0, Math.min(1, ((coords.x - p0.x) * segDx + (coords.y - p0.y) * segDy) / segL2));
+            const cx = p0.x + segDx * t, cy = p0.y + segDy * t;
+            const dist = Math.hypot(coords.x - cx, coords.y - cy);
+            if (dist < threshold && (!best || dist < best.dist)) {
+              best = { id: f.id, edgeIndex: i, dist };
+            }
+          }
+        }
+        return best;
+      })();
+
+      if (edgeHit) {
+        setElements(prev => {
+          const existing = prev.find(el =>
+            el.type === "floating" && el.furnitureId === edgeHit.id && el.edgeIndex === edgeHit.edgeIndex
+          );
+          if (existing) return prev.filter(el => el.id !== existing.id);
+          return [...prev, {
+            id: crypto.randomUUID(),
+            type: "floating",
+            furnitureId: edgeHit.id,
+            edgeIndex: edgeHit.edgeIndex,
+          }];
+        });
+        return;
+      }
+
       const nearest = nearestWall(coords.x, coords.y, vertices);
       const wallCm = room.walls[nearest.wallIndex];
       const tapCm = nearest.t * wallCm;
@@ -879,7 +937,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   function removeSelected() {
     if (!selectedId) return;
-    setElements(prev => prev.filter(el => el.id !== selectedId));
+    setElements(prev => prev.filter(el =>
+      el.id !== selectedId
+      // Каскад: удаляя шкаф, удаляем привязанные к нему парящие
+      && el.furnitureId !== selectedId
+    ));
     setSelectedId(null);
   }
 
@@ -1219,6 +1281,27 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   }
 
   function floatingGlow(el: RoomElement) {
+    // Парящий привязан к ребру шкафа
+    if (el.furnitureId && el.edgeIndex !== undefined) {
+      const f = elements.find(e => e.id === el.furnitureId);
+      if (!f || f.x === undefined || f.y === undefined || !f.width || !f.height) return null;
+      const rot = (f.rotation || 0) * Math.PI / 180;
+      const cosR = Math.cos(rot), sinR = Math.sin(rot);
+      const hw = f.width / 2, hh = f.height / 2;
+      const corners = ([[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const).map(([lx, ly]) => ({
+        x: f.x! + lx * cosR - ly * sinR,
+        y: f.y! + lx * sinR + ly * cosR,
+      }));
+      const p0 = corners[el.edgeIndex], p1 = corners[(el.edgeIndex + 1) % 4];
+      return (
+        <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
+          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
+            stroke="#FDBA74" strokeWidth={strokeW * 1.4} strokeLinecap="round" opacity={0.18} />
+          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
+            stroke="#F97316" strokeWidth={strokeW * 0.55} strokeLinecap="round" opacity={0.95} />
+        </g>
+      );
+    }
     if (el.wallIndex === undefined) return null;
     const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
     if (!a || !b) return null;
