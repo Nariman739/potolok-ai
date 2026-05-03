@@ -1293,12 +1293,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         y: f.y! + lx * sinR + ly * cosR,
       }));
       const p0 = corners[el.edgeIndex], p1 = corners[(el.edgeIndex + 1) % 4];
+      // Сдвиг наружу от центра шкафа — чтобы линия не накладывалась на стенку шкафа
+      const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+      const outDx = midX - f.x!, outDy = midY - f.y!;
+      const outL = Math.hypot(outDx, outDy) || 1;
+      const shift = 8; // см от ребра наружу
+      const ox = (outDx / outL) * shift, oy = (outDy / outL) * shift;
+      const sx0 = p0.x + ox, sy0 = p0.y + oy;
+      const sx1 = p1.x + ox, sy1 = p1.y + oy;
       return (
         <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
-          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
-            stroke="#FDBA74" strokeWidth={strokeW * 1.4} strokeLinecap="round" opacity={0.18} />
-          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
-            stroke="#F97316" strokeWidth={strokeW * 0.55} strokeLinecap="round" opacity={0.95} />
+          {/* Мягкое свечение вокруг */}
+          <line x1={sx0} y1={sy0} x2={sx1} y2={sy1}
+            stroke="#FDBA74" strokeWidth={strokeW * 2.2} strokeLinecap="round" opacity={0.25} />
+          {/* Сама полоска — толще обычной парящей, чтобы было заметно поверх контура шкафа */}
+          <line x1={sx0} y1={sy0} x2={sx1} y2={sy1}
+            stroke="#F97316" strokeWidth={strokeW * 1.0} strokeLinecap="round" opacity={1} />
         </g>
       );
     }
