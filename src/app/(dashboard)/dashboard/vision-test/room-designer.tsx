@@ -679,18 +679,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
             const corners = getFurnitureCorners(f);
             if (!corners) continue;
-            const N = corners.length;
-            // Пробегаем рёбра — те, у которых ОБА угла впритык к стене, занимают свой участок
-            for (let i = 0; i < N; i++) {
-              const c0 = corners[i], c1 = corners[(i + 1) % N];
-              const t0 = (c0.x - a0.x) * nx0 + (c0.y - a0.y) * ny0;
-              const d0 = (c0.x - a0.x) * px0 + (c0.y - a0.y) * py0;
-              const t1 = (c1.x - a0.x) * nx0 + (c1.y - a0.y) * ny0;
-              const d1 = (c1.x - a0.x) * px0 + (c1.y - a0.y) * py0;
-              if (d0 < -1 || d1 < -1) continue; // снаружи комнаты
-              if (d0 > wallThreshold || d1 > wallThreshold) continue;
-              const tStart = Math.max(0, Math.min(t0, t1));
-              const tEnd = Math.min(wallCm, Math.max(t0, t1));
+            // Углы furniture, прилегающие к стене (d ≈ 0): берём min/max их t — это занятый отрезок
+            const tsAtWall: number[] = [];
+            for (const c of corners) {
+              const t = (c.x - a0.x) * nx0 + (c.y - a0.y) * ny0;
+              const d = (c.x - a0.x) * px0 + (c.y - a0.y) * py0;
+              if (d >= -1 && d <= wallThreshold) tsAtWall.push(t);
+            }
+            if (tsAtWall.length >= 2) {
+              const tStart = Math.max(0, Math.min(...tsAtWall));
+              const tEnd = Math.min(wallCm, Math.max(...tsAtWall));
               if (tEnd - tStart > 1) occupiedCm.push([tStart, tEnd]);
             }
           }
@@ -1377,17 +1375,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
         const corners = getFurnitureCorners(f);
         if (!corners) continue;
-        const N = corners.length;
-        for (let i = 0; i < N; i++) {
-          const c0 = corners[i], c1 = corners[(i + 1) % N];
-          const t0 = (c0.x - a.x) * nxV + (c0.y - a.y) * ny;
-          const d0 = (c0.x - a.x) * pxV + (c0.y - a.y) * pyV;
-          const t1 = (c1.x - a.x) * nxV + (c1.y - a.y) * ny;
-          const d1 = (c1.x - a.x) * pxV + (c1.y - a.y) * pyV;
-          if (d0 < -1 || d1 < -1) continue;
-          if (d0 > wallThreshold || d1 > wallThreshold) continue;
-          const tStart = Math.max(0, Math.min(t0, t1));
-          const tEnd = Math.min(wLen, Math.max(t0, t1));
+        const tsAtWall: number[] = [];
+        for (const c of corners) {
+          const t = (c.x - a.x) * nxV + (c.y - a.y) * ny;
+          const d = (c.x - a.x) * pxV + (c.y - a.y) * pyV;
+          if (d >= -1 && d <= wallThreshold) tsAtWall.push(t);
+        }
+        if (tsAtWall.length >= 2) {
+          const tStart = Math.max(0, Math.min(...tsAtWall));
+          const tEnd = Math.min(wLen, Math.max(...tsAtWall));
           if (tEnd - tStart > 1) occupied.push([tStart, tEnd]);
         }
       }
