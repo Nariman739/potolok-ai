@@ -66,9 +66,12 @@ function calculateRoom(
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
 
-  // Подшторник заканчивает потолок — за ним нет профиля
-  const podshtornikM = room.podshtornikLength ?? 0;
-  const profilePerimeter = Math.max(0, perimeter - podshtornikM);
+  // Багет/вставка идут только по стенам, НЕ под подшторником.
+  // Вычитаем только участок СТЕНЫ под подшторником (без глубины ниши):
+  // boковины П/Г-ниши идут вглубь потолка, а не по стене, поэтому периметр стен они не уменьшают.
+  // Fallback на podshtornikLength для старых данных без onWall-поля.
+  const podOnWallM = room.podshtornikOnWallLength ?? room.podshtornikLength ?? 0;
+  const profilePerimeter = Math.max(0, perimeter - podOnWallM);
 
   // Canvas
   const canvasCode = getCanvasCode(room);

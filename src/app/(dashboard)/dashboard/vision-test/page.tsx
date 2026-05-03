@@ -7,7 +7,7 @@ import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
-import RoomDesigner, { totalSubcurtainLengthCm } from "./room-designer";
+import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm } from "./room-designer";
 import type { RoomElement } from "./room-designer";
 
 // ─────────────────────────────────────────────────────
@@ -2202,6 +2202,7 @@ export default function ZameryPage() {
         els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
       ) / 100;
       const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
+      const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(els)) / 100;
 
       return {
         id: crypto.randomUUID(),
@@ -2222,6 +2223,7 @@ export default function ZameryPage() {
         eurobrusCount: 0,
         gardinaLength,
         podshtornikLength,
+        podshtornikOnWallLength,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
       } satisfies RoomInput;
     });
@@ -2267,6 +2269,7 @@ export default function ZameryPage() {
               const gardinaEls = elements.filter(e => e.type === "curtain");
               const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
               const podshtornikLength = Math.round(totalSubcurtainLengthCm(elements)) / 100;
+              const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(elements)) / 100;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),
@@ -2287,6 +2290,7 @@ export default function ZameryPage() {
                 eurobrusCount: 0,
                 gardinaLength,
                 podshtornikLength,
+                podshtornikOnWallLength,
                 shape: room.walls.length === 4 && room.angles?.every(a => a === 90) ? "rectangle" : "custom" as any,
                 customDims: room.walls.length !== 4 || !room.angles?.every(a => a === 90) ? {
                   walls: room.walls.map((w, i) => ({

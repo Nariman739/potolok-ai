@@ -87,6 +87,9 @@ export interface RoomInput {
   gardinaLength: number;
   gardinaType?: string;
   podshtornikLength: number;
+  /** Длина участка СТЕНЫ, покрытого подшторником (без глубины ниши).
+   *  Используется для вычитания из периметра багета. Если не задано — fallback на podshtornikLength. */
+  podshtornikOnWallLength?: number;
   podshtornikType?: string;
   // Custom items per room (из справочника /dashboard/prices)
   customItems?: { itemId: string; quantity: number }[];

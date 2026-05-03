@@ -1,8 +1,21 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut } from "lucide-react";
+import dynamic from "next/dynamic";
+import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
+import { Scene3DBoundary } from "./3d/Scene3DBoundary";
+
+const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-sky-50 to-slate-100">
+      <div className="text-sm text-gray-500 animate-pulse">Загружаю 3D-сцену…</div>
+    </div>
+  ),
+});
+
+const DEFAULT_CEILING_HEIGHT_CM = 270;
 
 // ── Types ──
 
@@ -42,6 +55,7 @@ interface Room {
   area: number;
   perimeter: number;
   elements?: RoomElement[];
+  ceilingHeight?: number;
 }
 
 // ── Element config ──
@@ -92,11 +106,22 @@ export function subcurtainTotalLengthCm(e: { length?: number; shape?: string; de
   return len;
 }
 
-/** Сумма длин всех подшторников комнаты в см. */
+/** Сумма длин всех подшторников комнаты в см (полная длина материала с обходом ниши). */
 export function totalSubcurtainLengthCm(elements: { type: string; length?: number; shape?: string; depth?: number }[]): number {
   return elements
     .filter(e => e.type === "subcurtain")
     .reduce((s, e) => s + subcurtainTotalLengthCm(e), 0);
+}
+
+/**
+ * Сумма длин участков СТЕНЫ, покрытых подшторниками (без учёта глубины ниши).
+ * Используется для вычитания из периметра багета — багет не идёт под подшторником,
+ * но и боковины ниши идут вглубь потолка, а не по стене.
+ */
+export function subcurtainOnWallLengthCm(elements: { type: string; length?: number }[]): number {
+  return elements
+    .filter(e => e.type === "subcurtain")
+    .reduce((s, e) => s + (e.length || 0), 0);
 }
 
 const HINTS: Record<string, string> = {
@@ -204,6 +229,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  // View mode (2D editor / 3D preview)
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   // Zoom & Pan
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -577,8 +604,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   function handlePanStart(e: React.PointerEvent) {
     // Mouse: средняя кнопка или Ctrl+Left
     const isMousePan = e.button === 1 || (e.button === 0 && e.ctrlKey);
-    // Touch: при увеличенном зуме палец на свободном месте — пэн.
-    // Не пэним когда у мастера в руке инструмент или открыта форма ввода.
+    // Touch: при увеличенном зуме палец на свободном месте — пэн
+    // (не пэним когда у мастера в руке инструмент или активна форма ввода)
     const isTouchPan = e.pointerType === "touch" && zoom > 1.05 && !activeType
       && !lengthInput && !nicheInput && !subcurtainShapeChoice;
     if (isMousePan || isTouchPan) {
@@ -762,6 +789,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const y2 = a.y + ny * (startT + elLen) + perpY * offset;
 
     const config = ALL_ELEMENTS.find(c => c.type === el.type)!;
+    const strokeColor = el.type === "subcurtain" ? "#0F172A" : config.color;
     const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
 
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
@@ -803,7 +831,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
         )}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
-          stroke={config.color}
+          stroke={strokeColor}
           strokeWidth={el.type === "lightline" ? strokeW * 1.5 : el.type === "builtin_gardina" ? strokeW * 2 : el.type === "subcurtain" ? strokeW * 1.8 : strokeW}
           strokeLinecap="round"
           strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
@@ -819,10 +847,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           <>
             <line x1={drawX1 + drawPerpX * strokeW * 2} y1={drawY1 + drawPerpY * strokeW * 2}
               x2={drawX1 - drawPerpX * strokeW * 2} y2={drawY1 - drawPerpY * strokeW * 2}
-              stroke={config.color} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
+              stroke={strokeColor} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
             <line x1={drawX2 + drawPerpX * strokeW * 2} y1={drawY2 + drawPerpY * strokeW * 2}
               x2={drawX2 - drawPerpX * strokeW * 2} y2={drawY2 - drawPerpY * strokeW * 2}
-              stroke={config.color} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
+              stroke={strokeColor} strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
           </>
         )}
         {(() => {
@@ -833,7 +861,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           return (
             <text x={elTx} y={elTy}
               textAnchor="middle" dominantBaseline="central"
-              fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
+              fontSize={labelSize * 0.85} fill={strokeColor} fontWeight="600"
               transform={`rotate(${elAng}, ${elTx}, ${elTy})`}>
               {el.length} см
             </text>
@@ -894,8 +922,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   /**
    * Рендер П-ниши и Г-ниши подшторника.
-   * П: подшторник вдоль стены + две боковины + дальняя стенка ниши.
-   * Г: подшторник вдоль стены + одна боковина (left/right).
+   * П: подшторник вдоль стены + две боковины уходят вглубь комнаты + дальняя стенка.
+   * Г: подшторник вдоль стены + одна боковина (left или right).
    */
   function nicheRender(el: RoomElement) {
     if (el.wallIndex === undefined || !el.length || !el.depth) return null;
@@ -911,6 +939,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wL - elLen, pos * wL - elLen / 2));
     // Подшторник идёт ПО самой стене (offset=0), чтобы перекрывать линию стены
+    // и визуально «заменять» её в этом участке
     const x1 = a.x + nx * startT;
     const y1 = a.y + ny * startT;
     const x2 = a.x + nx * (startT + elLen);
@@ -919,11 +948,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const isSel = selectedId === el.id;
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const dpth = el.depth;
-    // Цвет подшторника — тёмный, толщина чуть больше стены чтобы перекрыть её
-    const podColor = "#0F172A";
-    const podWidth = strokeW * 1.0;
 
-    // Точки в глубине ниши
+    // Точки в глубине ниши (концы боковин — внутри комнаты)
     const px1 = x1 + perpX * dpth, py1 = y1 + perpY * dpth;
     const px2 = x2 + perpX * dpth, py2 = y2 + perpY * dpth;
 
@@ -931,13 +957,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const isLBendLeft = el.shape === "l-bend" && el.side !== "right";
     const isLBendRight = el.shape === "l-bend" && el.side === "right";
 
-    // Полупрозрачная заливка ниши — единый прямоугольник «карман в стене»
-    // одинаковый для П и Г, отличается только видимый контур (число боковин)
+    // Заливка прямоугольного «кармана» — лёгкий тон чтобы видеть объём ниши
     const fillPath = `M ${x1} ${y1} L ${px1} ${py1} L ${px2} ${py2} L ${x2} ${y2} Z`;
 
     const totalLen = isU ? elLen + 2 * dpth : elLen + dpth;
     const midX = (x1 + x2) / 2 + perpX * dpth * 0.5;
     const midY = (y1 + y2) / 2 + perpY * dpth * 0.5;
+
+    // Цвет подшторника — тёмный, как нарисовано ручкой; перекрывает серую стену
+    const podColor = "#0F172A";
+    const podWidth = strokeW * 1.0; // чуть толще обычной стены (strokeW * 0.6)
 
     return (
       <g key={el.id}
@@ -945,36 +974,35 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Лёгкая заливка кармана — показывает объём ниши */}
+        {/* Лёгкая заливка кармана — показывает объём ниши (где раньше был «потолок»,
+            теперь подшторник). Стена комнаты остаётся видна по полигону. */}
         <path d={fillPath} fill={podColor} opacity={0.07} />
 
-        {/* Невидимая толстая зона тапа */}
-        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={strokeW * 8} strokeLinecap="round" />
+        {/* Невидимая толстая зона тапа — на ФРОНТЕ ниши (где теперь основная линия) */}
+        <line x1={px1} y1={py1} x2={px2} y2={py2} stroke="transparent" strokeWidth={strokeW * 8} strokeLinecap="round" />
 
-        {/* Подшторник вдоль стены — перекрывает линию стены */}
-        <line x1={x1} y1={y1} x2={x2} y2={y2}
+        {/* 1. Фронт ниши (внутри комнаты, на глубине depth) — главная сплошная линия,
+            новая граница натяжного потолка. Раньше рисовали по стене — но физически
+            подшторник стоит на расстоянии depth от стены, образуя карман для штор. */}
+        <line x1={px1} y1={py1} x2={px2} y2={py2}
           stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
 
-        {/* Левая боковина — для П и Г-left */}
+        {/* 2. Левая боковина — соединяет стену с фронтом (для П и Г-left) */}
         {(isU || isLBendLeft) && (
           <line x1={x1} y1={y1} x2={px1} y2={py1}
             stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
         )}
 
-        {/* Правая боковина — для П и Г-right */}
+        {/* 3. Правая боковина — соединяет стену с фронтом (для П и Г-right) */}
         {(isU || isLBendRight) && (
           <line x1={x2} y1={y2} x2={px2} y2={py2}
             stroke={podColor} strokeWidth={podWidth} strokeLinecap="butt" />
         )}
 
-        {/* Дальняя стенка ниши — только для П (пунктиром, она «внутри» потолка) */}
-        {isU && (
-          <line x1={px1} y1={py1} x2={px2} y2={py2}
-            stroke={podColor} strokeWidth={strokeW * 0.8} strokeLinecap="butt"
-            strokeDasharray={`${strokeW * 1.2} ${strokeW * 0.6}`} opacity={0.5} />
-        )}
+        {/* 4. Сама стена в участке подшторника — НЕ рисуем поверх (полигон комнаты
+            уже её рисует серой линией, что и есть «еле видная полоса»). */}
 
-        {/* Подпись общей длины */}
+        {/* Подпись общей длины подшторника */}
         <text x={midX} y={midY} textAnchor="middle" dominantBaseline="central"
           fontSize={labelSize * 0.85} fill={podColor} fontWeight="600">
           {Math.round(totalLen)} см
@@ -1318,8 +1346,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const p = DEFAULT_PRICES;
     let cost = 0;
     cost += room.area * (p.canvas_320 || 2000);
-    const podSubM = totalSubcurtainLengthCm(elements) / 100;
-    const profilePerim = Math.max(0, room.perimeter - podSubM);
+    // Багет/вставка идут только по стенам, НЕ под подшторником.
+    // Вычитаем только участок стены, покрытый подшторником (e.length),
+    // глубина ниши (2*depth для П, depth для Г) — это сам подшторник, не стена.
+    const podOnWallM = subcurtainOnWallLengthCm(elements) / 100;
+    const profilePerim = Math.max(0, room.perimeter - podOnWallM);
     cost += profilePerim * (p.profile_plastic || 500);
     cost += profilePerim * (p.insert || 1000);
     cost += room.walls.length * (p.corner_plastic || 1000);
@@ -1516,23 +1547,49 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             ))}
           </div>
         )}
-        {/* Zoom controls */}
+        {/* View mode + Zoom controls */}
         <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
-          <button onClick={() => setZoom(z => Math.min(5, z * 1.3))}
-            className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-            <ZoomIn className="h-5 w-5" />
+          <button
+            onClick={() => setViewMode(m => m === "2d" ? "3d" : "2d")}
+            className={`h-10 px-3 rounded-xl shadow border flex items-center justify-center gap-1.5 text-xs font-bold active:scale-95 ${
+              viewMode === "3d"
+                ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                : "bg-white/90 text-gray-700 hover:bg-gray-100"
+            }`}
+            title={viewMode === "2d" ? "Показать 3D" : "Вернуться в 2D"}
+          >
+            {viewMode === "2d" ? <Box className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+            {viewMode === "2d" ? "3D" : "2D"}
           </button>
-          <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))}
-            className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-            <ZoomOut className="h-5 w-5" />
-          </button>
-          {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
-            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-              className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-sm font-bold">
-              1:1
-            </button>
+          {viewMode === "2d" && (
+            <>
+              <button onClick={() => setZoom(z => Math.min(5, z * 1.3))}
+                className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+                <ZoomIn className="h-5 w-5" />
+              </button>
+              <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))}
+                className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
+                <ZoomOut className="h-5 w-5" />
+              </button>
+              {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
+                <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+                  className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-sm font-bold">
+                  1:1
+                </button>
+              )}
+            </>
           )}
         </div>
+        {viewMode === "3d" && (
+          <Scene3DBoundary>
+            <Scene3D
+              vertices={vertices}
+              walls={room.walls}
+              ceilingHeight={room.ceilingHeight ?? DEFAULT_CEILING_HEIGHT_CM}
+              elements={elements}
+            />
+          </Scene3DBoundary>
+        )}
         <svg
           ref={svgRef}
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
@@ -1541,7 +1598,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           onPointerDown={handlePanStart}
           onPointerMove={(e) => { handlePanMove(e); if (!isPanning) handleSVGPointerMove(e); }}
           onPointerUp={(e) => { handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
-          style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined }}
+          style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined, display: viewMode === "3d" ? "none" : undefined }}
         >
           {/* Room fill */}
           <defs>
@@ -1867,7 +1924,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                     </div>
                   </div>
                 )}
-                {/* Положение на стене */}
+                {/* Позиция на стене — куда прижать подшторник */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Положение на стене</label>
                   <div className="flex gap-2 mt-1">
