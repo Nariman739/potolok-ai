@@ -1153,15 +1153,63 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (el.wallIndex === undefined) return null;
     const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
     if (!a || !b) return null;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const wLen = Math.sqrt(dx * dx + dy * dy);
+    if (wLen === 0) return null;
+    const nx = dx / wLen, ny = dy / wLen;
+    const wallCm = room.walls[el.wallIndex] || 0;
+    const n = vertices.length - 1;
+
+    // Подшторник «съедает» край потолка — на этих участках парящий не рисуем.
+    // Г-ниша на соседней стене также откусывает depth у нашей стены через общий угол.
+    const occupied: Array<[number, number]> = [];
+    for (const sub of elements) {
+      if (sub.type !== "subcurtain" || !sub.length || sub.wallIndex === undefined) continue;
+      if (sub.wallIndex === el.wallIndex) {
+        const subLenSvg = wallCm > 0 ? Math.min(sub.length, wallCm) * wLen / wallCm : 0;
+        const subPos = sub.wallPosition ?? 0.5;
+        const subStartT = Math.max(0, Math.min(wLen - subLenSvg, subPos * wLen - subLenSvg / 2));
+        occupied.push([subStartT, subStartT + subLenSvg]);
+        continue;
+      }
+      if (sub.shape === "l-bend" && sub.depth) {
+        const subWallCm = room.walls[sub.wallIndex] || 0;
+        if (subWallCm === 0) continue;
+        const depthSvg = sub.depth * wLen / wallCm;
+        if (sub.side === "left" && (sub.wallIndex - 1 + n) % n === el.wallIndex) {
+          occupied.push([Math.max(0, wLen - depthSvg), wLen]);
+        }
+        if (sub.side === "right" && (sub.wallIndex + 1) % n === el.wallIndex) {
+          occupied.push([0, Math.min(wLen, depthSvg)]);
+        }
+      }
+    }
+    occupied.sort((p, q) => p[0] - q[0]);
+    const gaps: Array<[number, number]> = [];
+    let cursor = 0;
+    for (const [s, e] of occupied) {
+      if (s > cursor) gaps.push([cursor, Math.min(s, wLen)]);
+      cursor = Math.max(cursor, e);
+    }
+    if (cursor < wLen) gaps.push([cursor, wLen]);
 
     return (
       <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-          stroke="#60A5FA" strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.2} />
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-          stroke="#3B82F6" strokeWidth={strokeW * 2} strokeLinecap="round" opacity={0.5} />
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-          stroke="#93C5FD" strokeWidth={strokeW * 0.8} strokeLinecap="round" opacity={0.9} />
+        {gaps.map(([s, e], gi) => {
+          if (e - s < 0.5) return null;
+          const x1 = a.x + nx * s, y1 = a.y + ny * s;
+          const x2 = a.x + nx * e, y2 = a.y + ny * e;
+          return (
+            <g key={gi}>
+              {/* Лёгкое мягкое свечение */}
+              <line x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#60A5FA" strokeWidth={strokeW * 1.4} strokeLinecap="round" opacity={0.18} />
+              {/* Сама светящаяся LED-полоска — тонкая, аккуратная */}
+              <line x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#3B82F6" strokeWidth={strokeW * 0.55} strokeLinecap="round" opacity={0.95} />
+            </g>
+          );
+        })}
       </g>
     );
   }
@@ -1287,25 +1335,86 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Во время drag — смещаем все точки на offset до dragPos
     let drawPoints = el.points;
     if (isDragging && dragPos) {
-      const cx = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
-      const cy = el.points.reduce((s, p) => s + p.y, 0) / el.points.length;
-      const offX = dragPos.x - cx, offY = dragPos.y - cy;
+      const cxRaw = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
+      const cyRaw = el.points.reduce((s, p) => s + p.y, 0) / el.points.length;
+      const offX = dragPos.x - cxRaw, offY = dragPos.y - cyRaw;
       drawPoints = el.points.map(p => ({ x: p.x + offX, y: p.y + offY }));
     }
 
     const isClosed = !!el.closed;
     const isSel = selectedId === el.id;
-    // SVG points string. Для polygon и polyline формат одинаковый.
-    const pointsStr = drawPoints.map(p => `${p.x},${p.y}`).join(" ");
-
-    // Подпись — в центроиде всех точек, без поворота (для multi-segment поворот бесмыслен).
+    const isStraight = !isClosed && drawPoints.length === 2;
     const cx = drawPoints.reduce((s, p) => s + p.x, 0) / drawPoints.length;
     const cy = drawPoints.reduce((s, p) => s + p.y, 0) / drawPoints.length;
 
-    const lineW = el.type === "lightline" ? strokeW * 1.5 : strokeW;
-    const dashArr = el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined;
+    // Узкий прямоугольный профиль — как реальный трек/свет.линия 2-3 см
+    const halfW = strokeW * 0.65;
+    const dashArr = el.type === "track" ? `${strokeW * 2} ${strokeW * 1}` : undefined;
 
-    const Shape = isClosed ? "polygon" : "polyline";
+    // Прямоугольный outline для прямой линии — 4 угла, fill=none
+    let lineNode: React.ReactNode;
+    let hitNode: React.ReactNode;
+    if (isStraight) {
+      const [p0, p1] = drawPoints;
+      const sdx = p1.x - p0.x, sdy = p1.y - p0.y;
+      const slen = Math.hypot(sdx, sdy) || 1;
+      const sux = sdx / slen, suy = sdy / slen;
+      const spx = -suy, spy = sux;
+      const corners = [
+        `${p0.x + spx * halfW},${p0.y + spy * halfW}`,
+        `${p1.x + spx * halfW},${p1.y + spy * halfW}`,
+        `${p1.x - spx * halfW},${p1.y - spy * halfW}`,
+        `${p0.x - spx * halfW},${p0.y - spy * halfW}`,
+      ].join(" ");
+      lineNode = (
+        <polygon points={corners} fill="none" stroke={config.color}
+          strokeWidth={strokeW * 0.55} strokeLinejoin="miter"
+          strokeDasharray={dashArr} opacity={0.95} />
+      );
+      // Расширенная зона тапа — толстая прозрачная линия по центру
+      hitNode = (
+        <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
+          stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
+      );
+    } else {
+      const Shape = isClosed ? "polygon" : "polyline";
+      const pointsStr = drawPoints.map(p => `${p.x},${p.y}`).join(" ");
+      lineNode = (
+        <Shape points={pointsStr} fill="none" stroke={config.color}
+          strokeWidth={strokeW * 0.55} strokeLinecap="butt" strokeLinejoin="miter"
+          strokeDasharray={dashArr} opacity={0.95} />
+      );
+      hitNode = (
+        <Shape points={pointsStr} fill="none" stroke="transparent"
+          strokeWidth={strokeW * 12} strokeLinecap="round" strokeLinejoin="round" />
+      );
+    }
+
+    // Размеры от стен — лучи: вдоль линии (от концов) + перпендикулярно (от середины)
+    type Ray = { pt: { x: number; y: number }; ux: number; uy: number; key: string };
+    const rays: Ray[] = [];
+    if (isSel && (el.type === "track" || el.type === "lightline") && drawPoints.length >= 2) {
+      const a0 = { x: drawPoints[0].x - drawPoints[1].x, y: drawPoints[0].y - drawPoints[1].y };
+      const a0L = Math.hypot(a0.x, a0.y);
+      if (a0L > 0.001) rays.push({ pt: drawPoints[0], ux: a0.x / a0L, uy: a0.y / a0L, key: "along0" });
+
+      const lastIdx = drawPoints.length - 1;
+      const aN = { x: drawPoints[lastIdx].x - drawPoints[lastIdx - 1].x, y: drawPoints[lastIdx].y - drawPoints[lastIdx - 1].y };
+      const aNL = Math.hypot(aN.x, aN.y);
+      if (aNL > 0.001) rays.push({ pt: drawPoints[lastIdx], ux: aN.x / aNL, uy: aN.y / aNL, key: "alongN" });
+
+      if (isStraight) {
+        const mx = (drawPoints[0].x + drawPoints[1].x) / 2;
+        const my = (drawPoints[0].y + drawPoints[1].y) / 2;
+        const ldx = drawPoints[1].x - drawPoints[0].x, ldy = drawPoints[1].y - drawPoints[0].y;
+        const lLen = Math.hypot(ldx, ldy);
+        if (lLen > 0.001) {
+          const lux = ldx / lLen, luy = ldy / lLen;
+          rays.push({ pt: { x: mx, y: my }, ux: -luy, uy: lux, key: "perpA" });
+          rays.push({ pt: { x: mx, y: my }, ux: luy, uy: -lux, key: "perpB" });
+        }
+      }
+    }
 
     return (
       <g key={el.id}
@@ -1313,35 +1422,75 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         className="cursor-grab active:cursor-grabbing"
         opacity={isDragging ? 0.7 : 1}
       >
-        {/* Невидимая толстая обводка — расширенная зона тапа/перетаскивания. */}
-        <Shape points={pointsStr}
-          fill="none" stroke="transparent" strokeWidth={strokeW * 12}
-          strokeLinecap="round" strokeLinejoin="round" />
-        <Shape points={pointsStr}
-          fill="none" stroke={config.color} strokeWidth={lineW}
-          strokeLinecap="round" strokeLinejoin="round"
-          strokeDasharray={dashArr}
-          opacity={0.9}
-        />
-        {/* Маркеры концов для трека (только если не замкнутая) */}
-        {el.type === "track" && !isClosed && (
-          <>
-            <circle cx={drawPoints[0].x} cy={drawPoints[0].y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-            <circle cx={drawPoints[drawPoints.length - 1].x} cy={drawPoints[drawPoints.length - 1].y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-          </>
+        {hitNode}
+        {/* Подсветка выделения — пунктирная обводка чуть шире прямоугольника */}
+        {isSel && isStraight && (() => {
+          const [p0, p1] = drawPoints;
+          const sdx = p1.x - p0.x, sdy = p1.y - p0.y;
+          const slen = Math.hypot(sdx, sdy) || 1;
+          const sux = sdx / slen, suy = sdy / slen;
+          const spx = -suy, spy = sux;
+          const selW = halfW * 1.7;
+          const sc = [
+            `${p0.x + spx * selW},${p0.y + spy * selW}`,
+            `${p1.x + spx * selW},${p1.y + spy * selW}`,
+            `${p1.x - spx * selW},${p1.y - spy * selW}`,
+            `${p0.x - spx * selW},${p0.y - spy * selW}`,
+          ].join(" ");
+          return <polygon points={sc} fill="none" stroke={config.color}
+            strokeWidth={strokeW * 0.4} opacity={0.45}
+            strokeDasharray={`${strokeW * 0.8} ${strokeW * 0.6}`} />;
+        })()}
+        {lineNode}
+        {/* Кружки только на концах — белая заливка, тонкий контур (если не замкнутая) */}
+        {!isClosed && [0, drawPoints.length - 1].map(i => (
+          <circle key={i} cx={drawPoints[i].x} cy={drawPoints[i].y}
+            r={strokeW * 0.55} fill="#fff" stroke={config.color}
+            strokeWidth={strokeW * 0.4} opacity={0.95} />
+        ))}
+        {/* Подпись длины — для multi-segment над центроидом */}
+        {!isStraight && (
+          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+            fontSize={labelSize * 0.7} fill={config.color} fontWeight="500" opacity={0.7}>
+            {el.length} см
+          </text>
         )}
-        {/* Подпись длины — общая, в центроиде, без rotation */}
-        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600">
-          {el.length} см
-        </text>
-        {/* Контур выделения */}
-        {isSel && (
-          <Shape points={pointsStr}
-            fill="none" stroke={config.color} strokeWidth={strokeW * 5}
-            strokeLinecap="round" strokeLinejoin="round"
-            opacity={0.25} strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} />
-        )}
+        {/* Размеры от стен */}
+        {rays.map(({ pt, ux, uy, key }) => {
+          let bestT = Infinity, bestScale = 1;
+          for (let w = 0; w < vertices.length - 1; w++) {
+            const va = vertices[w], vb = vertices[w + 1];
+            const wdx = vb.x - va.x, wdy = vb.y - va.y;
+            const det = uy * wdx - ux * wdy;
+            if (Math.abs(det) < 0.001) continue;
+            const t = (-(va.x - pt.x) * wdy + (va.y - pt.y) * wdx) / det;
+            const s = (ux * (va.y - pt.y) - uy * (va.x - pt.x)) / det;
+            if (t > 0.001 && s >= -0.001 && s <= 1.001 && t < bestT) {
+              bestT = t;
+              const wallLenSvg = Math.hypot(wdx, wdy);
+              const wallLenCm = room.walls[w] || wallLenSvg;
+              bestScale = wallLenCm / wallLenSvg;
+            }
+          }
+          if (bestT === Infinity) return null;
+          const hitX = pt.x + ux * bestT;
+          const hitY = pt.y + uy * bestT;
+          const distCm = Math.round(bestT * bestScale);
+          if (distCm < 1) return null;
+          const lblX = (pt.x + hitX) / 2 - uy * labelSize * 0.7;
+          const lblY = (pt.y + hitY) / 2 + ux * labelSize * 0.7;
+          return (
+            <g key={key}>
+              <line x1={pt.x} y1={pt.y} x2={hitX} y2={hitY}
+                stroke={config.color} strokeWidth={strokeW * 0.4}
+                strokeDasharray={`${strokeW * 0.8} ${strokeW * 0.5}`} opacity={0.7} />
+              <text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="central"
+                fontSize={labelSize * 0.6} fill={config.color} fontWeight="700">
+                {distCm}
+              </text>
+            </g>
+          );
+        })}
       </g>
     );
   }
