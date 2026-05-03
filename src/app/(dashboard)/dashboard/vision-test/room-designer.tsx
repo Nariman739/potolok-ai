@@ -912,9 +912,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       const a = parseFloat(furnA), b = parseFloat(furnB), d = parseFloat(furnDepth);
       const c = furnShape === "u-shape" ? parseFloat(furnC) : undefined;
       if (!a || !b || !d || (furnShape === "u-shape" && !c)) { setFurnitureMenu(null); return; }
-      // bbox для bbox-based selection и rect-fallback в getFurnitureCorners
+      // bbox: боковые ветки идут ПОД уголком, полная высота = side + depth
       w = a;
-      h = furnShape === "u-shape" ? Math.max(b, c!) : b;
+      h = furnShape === "u-shape" ? Math.max(b, c!) + d : b + d;
       extra = {
         furnitureShape: furnShape,
         kitchenA: a, kitchenB: b, kitchenDepth: d,
@@ -3160,18 +3160,21 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">{furnShape === "u-shape" ? "Левая боковая" : "Боковая"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{furnShape === "u-shape" ? "Левая (под уголком)" : "Боковая (под уголком)"}</label>
                     <input type="number" value={furnB} onChange={e => setFurnB(e.target.value)}
                       className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
                   </div>
                   {furnShape === "u-shape" && (
                     <div className="flex-1">
-                      <label className="text-xs text-muted-foreground mb-1 block">Правая боковая</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">Правая (под уголком)</label>
                       <input type="number" value={furnC} onChange={e => setFurnC(e.target.value)}
                         className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
                     </div>
                   )}
                 </div>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Боковая считается без верхней рабочей: к ней прибавляется ширина рабочей.
+                </p>
               </div>
             ) : (
               <div className="flex gap-3 mb-4">

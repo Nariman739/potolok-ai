@@ -61,8 +61,9 @@ export function getKitchenLocalPoints(el: FurnitureLikeElement): Vertex[] | null
   if (shape !== "l-shape" && shape !== "u-shape") return null;
   const a = el.kitchenA, b = el.kitchenB, d = el.kitchenDepth || 60;
   if (!a || !b || !d) return null;
+  // Боковая ветка задаётся как часть ПОД уголком; полная высота bbox = b + d
   if (shape === "l-shape") {
-    const w = a, h = b;
+    const w = a, h = b + d;
     return [
       { x: -w / 2,     y: -h / 2     },
       { x:  w / 2,     y: -h / 2     },
@@ -73,16 +74,16 @@ export function getKitchenLocalPoints(el: FurnitureLikeElement): Vertex[] | null
     ];
   }
   const c = el.kitchenC || b;
-  const w = a, h = Math.max(b, c);
+  const w = a, h = Math.max(b, c) + d;
   return [
     { x: -w / 2,     y: -h / 2     },
     { x:  w / 2,     y: -h / 2     },
-    { x:  w / 2,     y: -h / 2 + c },
-    { x:  w / 2 - d, y: -h / 2 + c },
+    { x:  w / 2,     y: -h / 2 + d + c },
+    { x:  w / 2 - d, y: -h / 2 + d + c },
     { x:  w / 2 - d, y: -h / 2 + d },
     { x: -w / 2 + d, y: -h / 2 + d },
-    { x: -w / 2 + d, y: -h / 2 + b },
-    { x: -w / 2,     y: -h / 2 + b },
+    { x: -w / 2 + d, y: -h / 2 + d + b },
+    { x: -w / 2,     y: -h / 2 + d + b },
   ];
 }
 
