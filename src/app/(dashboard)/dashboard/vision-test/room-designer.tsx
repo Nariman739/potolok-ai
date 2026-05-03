@@ -212,8 +212,8 @@ function getRoomPath(vertices: Vertex[], cornerRadii?: number[]): string {
     const a = vertices[i], b = vertices[(i + 1) % n];
     signed += a.x * b.y - b.x * a.y;
   }
-  // Для clockwise contour (что обычно при getVertices с +90° углами в SVG Y-down): sweep=1
-  const sweep = signed > 0 ? 1 : 0;
+  // Базовый sweep для выпуклого угла. Для вогнутого инвертируется (определяется per-corner ниже).
+  const baseSweep = signed > 0 ? 1 : 0;
 
   let d = `M ${outPts[0].x} ${outPts[0].y}`;
   for (let i = 0; i < n; i++) {
@@ -224,6 +224,16 @@ function getRoomPath(vertices: Vertex[], cornerRadii?: number[]): string {
       const off = Math.min(r,
         Math.hypot(vertices[(next - 1 + n) % n].x - vertices[next].x, vertices[(next - 1 + n) % n].y - vertices[next].y) / 2,
         Math.hypot(vertices[next + 1].x - vertices[next].x, vertices[next + 1].y - vertices[next].y) / 2);
+      // Определяем выпуклость через cross product (prev→v) × (v→next).
+      // Если знак совпадает с общим направлением контура — convex, иначе concave.
+      const v = vertices[next];
+      const prev = vertices[(next - 1 + n) % n];
+      const nxt = vertices[next + 1];
+      const d1x = v.x - prev.x, d1y = v.y - prev.y;
+      const d2x = nxt.x - v.x, d2y = nxt.y - v.y;
+      const cross = d1x * d2y - d1y * d2x;
+      const isConvex = (cross > 0) === (signed > 0);
+      const sweep = isConvex ? baseSweep : 1 - baseSweep;
       d += ` A ${off} ${off} 0 0 ${sweep} ${outPts[next].x} ${outPts[next].y}`;
     }
   }
