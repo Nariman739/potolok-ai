@@ -358,6 +358,30 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               setElements(prev => prev.map(e =>
                 e.id === ds.id ? { ...e, wallIndex: nearest.wallIndex, wallPosition: nearest.t } : e
               ));
+            } else if (el.shape === "l-bend" && el.wallIndex !== undefined && el.depth) {
+              // Г-ниша: один конец зашит в угол стены, drag = resize свободного конца.
+              // Стена не меняется, меняется только длина и wallPosition (анкор остаётся на месте).
+              const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
+              if (a && b) {
+                const dxw = b.x - a.x, dyw = b.y - a.y;
+                const wL = Math.sqrt(dxw * dxw + dyw * dyw);
+                const wallLenCm = room.walls[el.wallIndex] || 0;
+                if (wL > 0 && wallLenCm > 0) {
+                  const wnx = dxw / wL, wny = dyw / wL;
+                  // t = проекция drop-точки на стену в [0..1]
+                  const t = Math.max(0, Math.min(1, ((dropPos.x - a.x) * wnx + (dropPos.y - a.y) * wny) / wL));
+                  // side="left" → анкор справа (1), свободный конец слева; новая длина = (1-t)*wallLen
+                  // side="right" → анкор слева (0), свободный конец справа; новая длина = t*wallLen
+                  const rawLen = el.side === "left" ? (1 - t) * wallLenCm : t * wallLenCm;
+                  const newLenCm = Math.max(20, Math.min(wallLenCm, Math.round(rawLen)));
+                  const newPos = el.side === "left"
+                    ? 1 - newLenCm / 2 / wallLenCm
+                    : newLenCm / 2 / wallLenCm;
+                  setElements(prev => prev.map(e =>
+                    e.id === ds.id ? { ...e, length: newLenCm, wallPosition: newPos } : e
+                  ));
+                }
+              }
             } else {
               const config = ALL_ELEMENTS.find(c => c.type === el.type);
               if (config?.category === "wall") {
@@ -544,10 +568,21 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     }
     const wallLen = room.walls[nicheInput.wallIndex] || 0;
     const clampedW = Math.min(w, wallLen);
-    const pos =
-      nicheInput.position === "left" ? clampedW / 2 / wallLen
-      : nicheInput.position === "right" ? 1 - clampedW / 2 / wallLen
-      : 0.5;
+    // Г-ниша всегда упирается одним концом в угол стены (anchor):
+    // side="left" (загиб слева) → анкор на правом углу стены
+    // side="right" (загиб справа) → анкор на левом углу стены
+    // Свободный конец (загиб) можно тянуть, чтобы менять длину.
+    let pos: number;
+    if (nicheInput.shape === "l-bend") {
+      pos = nicheInput.side === "left"
+        ? 1 - clampedW / 2 / wallLen
+        : clampedW / 2 / wallLen;
+    } else {
+      pos =
+        nicheInput.position === "left" ? clampedW / 2 / wallLen
+        : nicheInput.position === "right" ? 1 - clampedW / 2 / wallLen
+        : 0.5;
+    }
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: "subcurtain",
@@ -965,8 +1000,20 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const nx = dxw / wL, ny = dyw / wL;
     const perpX = -ny, perpY = nx; // внутрь комнаты
 
-    const elLen = Math.min(el.length, wL);
-    const pos = el.wallPosition ?? 0.5;
+    const isDraggingNiche = dragId === el.id && dragPos && dragStartRef.current?.moved;
+    const wallLenCm = room.walls[el.wallIndex] || 0;
+
+    // Живой preview Г-ниши при drag: длина пересчитывается из позиции пальца,
+    // анкор остаётся на углу стены.
+    let elLen = Math.min(el.length, wL);
+    let pos = el.wallPosition ?? 0.5;
+    if (isDraggingNiche && el.shape === "l-bend" && wallLenCm > 0 && dragPos) {
+      const t = Math.max(0, Math.min(1, ((dragPos.x - a.x) * nx + (dragPos.y - a.y) * ny) / wL));
+      const rawLen = el.side === "left" ? (1 - t) * wallLenCm : t * wallLenCm;
+      const previewLenCm = Math.max(20, Math.min(wallLenCm, rawLen));
+      elLen = (previewLenCm / wallLenCm) * wL;
+      pos = el.side === "left" ? 1 - previewLenCm / 2 / wallLenCm : previewLenCm / 2 / wallLenCm;
+    }
     const startT = Math.max(0, Math.min(wL - elLen, pos * wL - elLen / 2));
     // Подшторник идёт ПО самой стене (offset=0), чтобы перекрывать линию стены
     // и визуально «заменять» её в этом участке
@@ -1577,33 +1624,33 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             ))}
           </div>
         )}
-        {/* View mode + Zoom controls */}
-        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
+        {/* View mode + Zoom controls — компактные, чтобы не мешать строить потолок */}
+        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
           <button
             onClick={() => setViewMode(m => m === "2d" ? "3d" : "2d")}
-            className={`h-10 px-3 rounded-xl shadow border flex items-center justify-center gap-1.5 text-xs font-bold active:scale-95 ${
+            className={`h-8 px-2 rounded-lg shadow-sm border flex items-center justify-center gap-1 text-[11px] font-bold active:scale-95 ${
               viewMode === "3d"
                 ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
-                : "bg-white/90 text-gray-700 hover:bg-gray-100"
+                : "bg-white/70 text-gray-700 hover:bg-white"
             }`}
             title={viewMode === "2d" ? "Показать 3D" : "Вернуться в 2D"}
           >
-            {viewMode === "2d" ? <Box className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+            {viewMode === "2d" ? <Box className="h-3 w-3" /> : <Square className="h-3 w-3" />}
             {viewMode === "2d" ? "3D" : "2D"}
           </button>
           {viewMode === "2d" && (
             <>
               <button onClick={() => setZoom(z => Math.min(5, z * 1.3))}
-                className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-                <ZoomIn className="h-5 w-5" />
+                className="w-8 h-8 bg-white/70 rounded-lg shadow-sm border flex items-center justify-center text-gray-600 hover:bg-white active:scale-95">
+                <ZoomIn className="h-4 w-4" />
               </button>
               <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))}
-                className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95">
-                <ZoomOut className="h-5 w-5" />
+                className="w-8 h-8 bg-white/70 rounded-lg shadow-sm border flex items-center justify-center text-gray-600 hover:bg-white active:scale-95">
+                <ZoomOut className="h-4 w-4" />
               </button>
               {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
                 <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-                  className="w-10 h-10 bg-white/90 rounded-xl shadow border flex items-center justify-center text-gray-600 hover:bg-gray-100 active:scale-95 text-sm font-bold">
+                  className="w-8 h-8 bg-white/70 rounded-lg shadow-sm border flex items-center justify-center text-gray-600 hover:bg-white active:scale-95 text-[11px] font-bold">
                   1:1
                 </button>
               )}
@@ -1954,21 +2001,24 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                     </div>
                   </div>
                 )}
-                {/* Позиция на стене — куда прижать подшторник */}
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Положение на стене</label>
-                  <div className="flex gap-2 mt-1">
-                    {(["left", "center", "right"] as const).map(p => (
-                      <button key={p}
-                        onClick={() => setNicheInput(prev => prev ? { ...prev, position: p } : null)}
-                        className={`flex-1 py-2 rounded-lg border text-xs font-semibold ${
-                          nicheInput.position === p ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
-                        }`}>
-                        {p === "left" ? "← Слева" : p === "right" ? "Справа →" : "По центру"}
-                      </button>
-                    ))}
+                {/* Позиция на стене — только для П-ниши.
+                    Г-ниша всегда упирается одним концом в угол (определяется стороной выпуска). */}
+                {isU && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Положение на стене</label>
+                    <div className="flex gap-2 mt-1">
+                      {(["left", "center", "right"] as const).map(p => (
+                        <button key={p}
+                          onClick={() => setNicheInput(prev => prev ? { ...prev, position: p } : null)}
+                          className={`flex-1 py-2 rounded-lg border text-xs font-semibold ${
+                            nicheInput.position === p ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                          }`}>
+                          {p === "left" ? "← Слева" : p === "right" ? "Справа →" : "По центру"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <button onClick={confirmNiche}
