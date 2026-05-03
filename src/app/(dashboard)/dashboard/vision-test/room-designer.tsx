@@ -722,25 +722,55 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Show dims for selected element (when not dragging)
     else if (selectedId) {
       const sel = elements.find(e => e.id === selectedId);
-      if (sel && sel.x !== undefined && sel.y !== undefined) {
-        addWallDims(sel, dims);
+      if (sel) {
+        const isFreeform = sel.shape === "freeform" && sel.points && sel.points.length >= 2;
+        if (isFreeform || (sel.x !== undefined && sel.y !== undefined)) {
+          addWallDims(sel, dims);
+        }
       }
     }
     return dims;
   }
 
   function addWallDims(el: RoomElement, dims: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }[]) {
-    if (el.x === undefined || el.y === undefined) return;
+    const isFreeformLine = el.shape === "freeform" && el.points && el.points.length >= 2;
+    // Для freeform-линий (свет.линия, трек) считаем от ближайшего к стене КОНЦА линии,
+    // а не от центра — иначе размер до перпендикулярной стены показывает расстояние
+    // до середины (вводит в заблуждение).
+    if (!isFreeformLine && (el.x === undefined || el.y === undefined)) return;
     const isFurn = el.type === "furniture" && el.width && el.height;
+
+    let lp1: Vertex | null = null, lp2: Vertex | null = null;
+    if (isFreeformLine) {
+      const cx = el.points!.reduce((s, p) => s + p.x, 0) / el.points!.length;
+      const cy = el.points!.reduce((s, p) => s + p.y, 0) / el.points!.length;
+      const offX = el.x !== undefined ? el.x - cx : 0;
+      const offY = el.y !== undefined ? el.y - cy : 0;
+      const last = el.points!.length - 1;
+      lp1 = { x: el.points![0].x + offX, y: el.points![0].y + offY };
+      lp2 = { x: el.points![last].x + offX, y: el.points![last].y + offY };
+    }
+
     const wallDists: { dist: number; proj: Vertex; edgePt: Vertex }[] = [];
     for (let i = 0; i < vertices.length - 1; i++) {
       const a = vertices[i], b = vertices[i + 1];
-      const proj = projectOnWall(el.x, el.y, a, b);
-      const dist = Math.hypot(el.x - proj.x, el.y - proj.y);
-      let edgePt: Vertex = { x: el.x, y: el.y };
+
+      if (isFreeformLine && lp1 && lp2) {
+        const proj1 = projectOnWall(lp1.x, lp1.y, a, b);
+        const proj2 = projectOnWall(lp2.x, lp2.y, a, b);
+        const d1 = Math.hypot(lp1.x - proj1.x, lp1.y - proj1.y);
+        const d2 = Math.hypot(lp2.x - proj2.x, lp2.y - proj2.y);
+        if (d1 <= d2) wallDists.push({ dist: d1, proj: proj1, edgePt: lp1 });
+        else wallDists.push({ dist: d2, proj: proj2, edgePt: lp2 });
+        continue;
+      }
+
+      const proj = projectOnWall(el.x!, el.y!, a, b);
+      const dist = Math.hypot(el.x! - proj.x, el.y! - proj.y);
+      let edgePt: Vertex = { x: el.x!, y: el.y! };
       if (isFurn && dist > 0.01) {
-        const dirX = (proj.x - el.x) / dist;
-        const dirY = (proj.y - el.y) / dist;
+        const dirX = (proj.x - el.x!) / dist;
+        const dirY = (proj.y - el.y!) / dist;
         const rot = (el.rotation || 0) * Math.PI / 180;
         const localDirX = dirX * Math.cos(-rot) - dirY * Math.sin(-rot);
         const localDirY = dirX * Math.sin(-rot) + dirY * Math.cos(-rot);
@@ -748,7 +778,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         const scaleX = Math.abs(localDirX) > 0.001 ? halfW / Math.abs(localDirX) : Infinity;
         const scaleY = Math.abs(localDirY) > 0.001 ? halfH / Math.abs(localDirY) : Infinity;
         const edgeDist = Math.min(scaleX, scaleY);
-        edgePt = { x: el.x + dirX * edgeDist, y: el.y + dirY * edgeDist };
+        edgePt = { x: el.x! + dirX * edgeDist, y: el.y! + dirY * edgeDist };
       }
       const edgeToWall = Math.hypot(edgePt.x - proj.x, edgePt.y - proj.y);
       wallDists.push({ dist: edgeToWall, proj, edgePt });
