@@ -1325,12 +1325,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       const sx1 = p1.x + ox, sy1 = p1.y + oy;
       return (
         <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
-          {/* Мягкое свечение вокруг */}
+          {/* Тёмная подложка — даёт чёткий контур поверх контура шкафа */}
           <line x1={sx0} y1={sy0} x2={sx1} y2={sy1}
-            stroke="#FDBA74" strokeWidth={strokeW * 2.2} strokeLinecap="round" opacity={0.25} />
-          {/* Сама полоска — толще обычной парящей, чтобы было заметно поверх контура шкафа */}
+            stroke="#0F172A" strokeWidth={strokeW * 2.4} strokeLinecap="butt" opacity={1} />
+          {/* Оранжевая полоса парящего */}
           <line x1={sx0} y1={sy0} x2={sx1} y2={sy1}
-            stroke="#F97316" strokeWidth={strokeW * 1.0} strokeLinecap="round" opacity={1} />
+            stroke="#F97316" strokeWidth={strokeW * 1.6} strokeLinecap="butt" opacity={1} />
         </g>
       );
     }
