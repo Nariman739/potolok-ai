@@ -82,7 +82,7 @@ const LIGHT_ELEMENTS: { type: ElementType; label: string; icon: string; color: s
   { type: "subcurtain",  label: "Подшторник",   icon: "📐", color: "#06B6D4", category: "wall" },
   { type: "track",       label: "Трек",        icon: "🔲", color: "#EF4444", category: "wall" },
   { type: "lightline",   label: "Свет.линия",  icon: "✨", color: "#FACC15", category: "wall" },
-  { type: "floating",    label: "Парящий",     icon: "〰️", color: "#3B82F6", category: "perimeter" },
+  { type: "floating",    label: "Парящий",     icon: "〰️", color: "#F97316", category: "perimeter" },
   { type: "builtin_gardina", label: "Гардина",  icon: "🪟", color: "#059669", category: "wall" },
   { type: "shower_curtain",  label: "Шторка ванн.", icon: "🚿", color: "#7C3AED", category: "wall" },
 ];
@@ -297,9 +297,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
   const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
   const [toolbarTab, setToolbarTab] = useState<ToolbarTab>("light");
-  const [lengthInput, setLengthInput] = useState<{ wallIndex: number } | null>(null);
+  const [lengthInput, setLengthInput] = useState<{ wallIndex: number; extraDepth?: string } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
   const [lengthSide, setLengthSide] = useState<"left" | "center" | "right">("center");
+  const [lengthDepthValue, setLengthDepthValue] = useState("20");
   const [editingWallElId, setEditingWallElId] = useState<string | null>(null);
   // Подшторник: выбор формы (Прямой / П-ниша / Г-ниша) перед вводом размеров
   const [subcurtainShapeChoice, setSubcurtainShapeChoice] = useState<{ wallIndex: number } | null>(null);
@@ -579,14 +580,81 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       setLengthSide("center");
     } else if (config.category === "perimeter") {
       const nearest = nearestWall(coords.x, coords.y, vertices);
+      const wallCm = room.walls[nearest.wallIndex];
+      const tapCm = nearest.t * wallCm;
+      const wallsCount = vertices.length - 1;
+      // Считаем занятые подшторником/Г-нишой интервалы на этой стене (в см)
+      const occupiedCm: Array<[number, number]> = [];
+      for (const sub of elements) {
+        if (sub.type !== "subcurtain" || !sub.length || sub.wallIndex === undefined) continue;
+        if (sub.wallIndex === nearest.wallIndex) {
+          const subPos = sub.wallPosition ?? 0.5;
+          const subStart = Math.max(0, Math.min(wallCm - sub.length, subPos * wallCm - sub.length / 2));
+          occupiedCm.push([subStart, subStart + sub.length]);
+        } else if (sub.shape === "l-bend" && sub.depth) {
+          if (sub.side === "left" && (sub.wallIndex - 1 + wallsCount) % wallsCount === nearest.wallIndex) {
+            occupiedCm.push([Math.max(0, wallCm - sub.depth), wallCm]);
+          }
+          if (sub.side === "right" && (sub.wallIndex + 1) % wallsCount === nearest.wallIndex) {
+            occupiedCm.push([0, Math.min(wallCm, sub.depth)]);
+          }
+        }
+      }
+      // Мебель «до потолка», прилегающая к этой стене, тоже «съедает» парящий
+      const a0 = vertices[nearest.wallIndex], b0 = vertices[nearest.wallIndex + 1];
+      if (a0 && b0) {
+        const dx0 = b0.x - a0.x, dy0 = b0.y - a0.y;
+        const wL = Math.hypot(dx0, dy0);
+        if (wL > 0) {
+          const nx0 = dx0 / wL, ny0 = dy0 / wL;
+          const px0 = -ny0, py0 = nx0;
+          const wallThreshold = Math.max(5, wallCm * 0.03);
+          for (const f of elements) {
+            if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
+            if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
+            const rot = (f.rotation || 0) * Math.PI / 180;
+            const cosR = Math.cos(rot), sinR = Math.sin(rot);
+            const hw = f.width / 2, hh = f.height / 2;
+            let tMin = Infinity, tMax = -Infinity, minDist = Infinity;
+            for (const [lx, ly] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const) {
+              const cxp = f.x + lx * cosR - ly * sinR;
+              const cyp = f.y + lx * sinR + ly * cosR;
+              const t = (cxp - a0.x) * nx0 + (cyp - a0.y) * ny0;
+              const d = (cxp - a0.x) * px0 + (cyp - a0.y) * py0;
+              tMin = Math.min(tMin, t);
+              tMax = Math.max(tMax, t);
+              if (d >= 0) minDist = Math.min(minDist, d);
+            }
+            if (minDist > wallThreshold) continue;
+            const fStart = Math.max(0, tMin), fEnd = Math.min(wallCm, tMax);
+            if (fEnd - fStart > 1) occupiedCm.push([fStart, fEnd]);
+          }
+        }
+      }
+      occupiedCm.sort((p, q) => p[0] - q[0]);
+      let gapStart = 0, gapEnd = wallCm;
+      for (const [s, e] of occupiedCm) {
+        if (e <= tapCm) gapStart = Math.max(gapStart, e);
+        if (s >= tapCm) { gapEnd = Math.min(gapEnd, s); break; }
+      }
+      if (tapCm < gapStart || tapCm > gapEnd) return;
+      const fLen = gapEnd - gapStart;
+      const fPos = (gapStart + fLen / 2) / wallCm;
       setElements(prev => {
-        const existing = prev.find(el => el.type === "floating" && el.wallIndex === nearest.wallIndex);
+        const existing = prev.find(el => {
+          if (el.type !== "floating" || el.wallIndex !== nearest.wallIndex || !el.length) return false;
+          const ePos = el.wallPosition ?? 0.5;
+          const eStart = ePos * wallCm - el.length / 2;
+          const eEnd = eStart + el.length;
+          return tapCm >= eStart && tapCm <= eEnd;
+        });
         if (existing) return prev.filter(el => el.id !== existing.id);
         return [...prev, {
           id: crypto.randomUUID(),
           type: "floating",
           wallIndex: nearest.wallIndex,
-          length: nearest.wallLength,
+          wallPosition: fPos,
+          length: fLen,
         }];
       });
     }
@@ -628,6 +696,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       }
 
       const hasVariant = activeType === "spot";
+      const extraDepth = activeType === "subcurtain" && lengthInput.extraDepth !== undefined
+        ? parseFloat(lengthDepthValue)
+        : undefined;
       setElements(prev => [...prev, {
         id: newId,
         type: activeType as ElementType,
@@ -636,6 +707,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         length: clampedLen,
         shape: "straight",
         ...(hasVariant && { variant: activeVariant }),
+        ...(extraDepth && extraDepth > 0 && { depth: extraDepth }),
       }]);
     }
     setLengthInput(null);
@@ -1029,7 +1101,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const elLen = Math.min(el.length, wallLen);
     const pos = el.wallPosition ?? 0.5;
     const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
-    const offset = el.type === "subcurtain" ? wallOffset * 0.15
+    const offset = el.type === "subcurtain"
+        ? (el.shape === "u-niche" || el.shape === "l-bend"
+            ? wallOffset * 0.15
+            : ((el.depth ?? 20) * wallLen / (room.walls[el.wallIndex] || 1)))
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
@@ -1083,12 +1158,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
           opacity={0.9}
         />
-        {el.type === "track" && (
-          <>
-            <circle cx={drawX1} cy={drawY1} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-            <circle cx={drawX2} cy={drawY2} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-          </>
-        )}
         {el.type === "subcurtain" && (
           <>
             <line x1={drawX1 + drawPerpX * strokeW * 2} y1={drawY1 + drawPerpY * strokeW * 2}
@@ -1184,14 +1253,50 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         }
       }
     }
+    // Мебель «до потолка», прилегающая к этой стене — закрывает свой кусок потолка
+    {
+      const ny = dy / wLen;
+      const nxV = dx / wLen;
+      const pxV = -ny, pyV = nxV;
+      const wallThreshold = Math.max(5, wallCm * 0.03);
+      for (const f of elements) {
+        if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
+        if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
+        const rot = (f.rotation || 0) * Math.PI / 180;
+        const cosR = Math.cos(rot), sinR = Math.sin(rot);
+        const hw = f.width / 2, hh = f.height / 2;
+        let tMin = Infinity, tMax = -Infinity, minDist = Infinity;
+        for (const [lx, ly] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const) {
+          const cxp = f.x + lx * cosR - ly * sinR;
+          const cyp = f.y + lx * sinR + ly * cosR;
+          const t = (cxp - a.x) * nxV + (cyp - a.y) * ny;
+          const d = (cxp - a.x) * pxV + (cyp - a.y) * pyV;
+          tMin = Math.min(tMin, t);
+          tMax = Math.max(tMax, t);
+          if (d >= 0) minDist = Math.min(minDist, d);
+        }
+        if (minDist > wallThreshold) continue;
+        const fStart = Math.max(0, tMin), fEnd = Math.min(wLen, tMax);
+        if (fEnd - fStart > 1) occupied.push([fStart, fEnd]);
+      }
+    }
     occupied.sort((p, q) => p[0] - q[0]);
-    const gaps: Array<[number, number]> = [];
+    let gaps: Array<[number, number]> = [];
     let cursor = 0;
     for (const [s, e] of occupied) {
       if (s > cursor) gaps.push([cursor, Math.min(s, wLen)]);
       cursor = Math.max(cursor, e);
     }
     if (cursor < wLen) gaps.push([cursor, wLen]);
+    // Если у floating задан конкретный интервал — обрезаем gaps по нему
+    if (el.wallPosition !== undefined && el.length && wallCm > 0) {
+      const fLenSvg = el.length * wLen / wallCm;
+      const fStart = Math.max(0, Math.min(wLen - fLenSvg, el.wallPosition * wLen - fLenSvg / 2));
+      const fEnd = fStart + fLenSvg;
+      gaps = gaps
+        .map(([s, e]): [number, number] => [Math.max(s, fStart), Math.min(e, fEnd)])
+        .filter(([s, e]) => e - s > 0.5);
+    }
 
     return (
       <g key={el.id} onPointerDown={(e) => handleElementPointerDown(el.id, e)} className="cursor-pointer">
@@ -1203,10 +1308,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             <g key={gi}>
               {/* Лёгкое мягкое свечение */}
               <line x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="#60A5FA" strokeWidth={strokeW * 1.4} strokeLinecap="round" opacity={0.18} />
+                stroke="#FDBA74" strokeWidth={strokeW * 1.4} strokeLinecap="round" opacity={0.18} />
               {/* Сама светящаяся LED-полоска — тонкая, аккуратная */}
               <line x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="#3B82F6" strokeWidth={strokeW * 0.55} strokeLinecap="round" opacity={0.95} />
+                stroke="#F97316" strokeWidth={strokeW * 0.55} strokeLinecap="round" opacity={0.95} />
             </g>
           );
         })}
@@ -1351,43 +1456,61 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const halfW = strokeW * 0.65;
     const dashArr = el.type === "track" ? `${strokeW * 2} ${strokeW * 1}` : undefined;
 
-    // Прямоугольный outline для прямой линии — 4 угла, fill=none
+    // Прямоугольный outline шириной 2*halfW. Для прямой — 4 угла, для multi-segment —
+    // offset polygon с miter joins (две параллельные обводки на каждом сегменте).
     let lineNode: React.ReactNode;
     let hitNode: React.ReactNode;
-    if (isStraight) {
-      const [p0, p1] = drawPoints;
-      const sdx = p1.x - p0.x, sdy = p1.y - p0.y;
-      const slen = Math.hypot(sdx, sdy) || 1;
-      const sux = sdx / slen, suy = sdy / slen;
-      const spx = -suy, spy = sux;
-      const corners = [
-        `${p0.x + spx * halfW},${p0.y + spy * halfW}`,
-        `${p1.x + spx * halfW},${p1.y + spy * halfW}`,
-        `${p1.x - spx * halfW},${p1.y - spy * halfW}`,
-        `${p0.x - spx * halfW},${p0.y - spy * halfW}`,
-      ].join(" ");
+    {
+      const n = drawPoints.length;
+      const outer: Array<{ x: number; y: number }> = [];
+      const inner: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < n; i++) {
+        if (i === 0 || i === n - 1) {
+          const j = i === 0 ? 0 : i - 1;
+          const k = i === 0 ? 1 : i;
+          const dxs = drawPoints[k].x - drawPoints[j].x, dys = drawPoints[k].y - drawPoints[j].y;
+          const L = Math.hypot(dxs, dys) || 1;
+          const px = -dys / L, py = dxs / L;
+          outer.push({ x: drawPoints[i].x + px * halfW, y: drawPoints[i].y + py * halfW });
+          inner.push({ x: drawPoints[i].x - px * halfW, y: drawPoints[i].y - py * halfW });
+        } else {
+          const dx1 = drawPoints[i].x - drawPoints[i - 1].x, dy1 = drawPoints[i].y - drawPoints[i - 1].y;
+          const L1 = Math.hypot(dx1, dy1) || 1;
+          const n1x = -dy1 / L1, n1y = dx1 / L1;
+          const dx2 = drawPoints[i + 1].x - drawPoints[i].x, dy2 = drawPoints[i + 1].y - drawPoints[i].y;
+          const L2 = Math.hypot(dx2, dy2) || 1;
+          const n2x = -dy2 / L2, n2y = dx2 / L2;
+          const sx = n1x + n2x, sy = n1y + n2y;
+          const sL = Math.hypot(sx, sy) || 1;
+          const ux = sx / sL, uy = sy / sL;
+          const cosA = ux * n1x + uy * n1y;
+          const limit = halfW * 4;
+          const m = Math.min(halfW / Math.max(Math.abs(cosA), 0.2), limit);
+          outer.push({ x: drawPoints[i].x + ux * m, y: drawPoints[i].y + uy * m });
+          inner.push({ x: drawPoints[i].x - ux * m, y: drawPoints[i].y - uy * m });
+        }
+      }
+      const polyPts = [...outer, ...inner.reverse()].map(p => `${p.x},${p.y}`).join(" ");
       lineNode = (
-        <polygon points={corners} fill="none" stroke={config.color}
+        <polygon points={polyPts} fill="none" stroke={config.color}
           strokeWidth={strokeW * 0.55} strokeLinejoin="miter"
           strokeDasharray={dashArr} opacity={0.95} />
       );
-      // Расширенная зона тапа — толстая прозрачная линия по центру
-      hitNode = (
-        <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
-          stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
-      );
-    } else {
-      const Shape = isClosed ? "polygon" : "polyline";
-      const pointsStr = drawPoints.map(p => `${p.x},${p.y}`).join(" ");
-      lineNode = (
-        <Shape points={pointsStr} fill="none" stroke={config.color}
-          strokeWidth={strokeW * 0.55} strokeLinecap="butt" strokeLinejoin="miter"
-          strokeDasharray={dashArr} opacity={0.95} />
-      );
-      hitNode = (
-        <Shape points={pointsStr} fill="none" stroke="transparent"
-          strokeWidth={strokeW * 12} strokeLinecap="round" strokeLinejoin="round" />
-      );
+      // Расширенная зона тапа — толстая прозрачная линия/полилиния по центру
+      if (isStraight) {
+        const [p0, p1] = drawPoints;
+        hitNode = (
+          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
+            stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
+        );
+      } else {
+        const Shape = isClosed ? "polygon" : "polyline";
+        const pointsStr = drawPoints.map(p => `${p.x},${p.y}`).join(" ");
+        hitNode = (
+          <Shape points={pointsStr} fill="none" stroke="transparent"
+            strokeWidth={strokeW * 12} strokeLinecap="round" strokeLinejoin="round" />
+        );
+      }
     }
 
     // Размеры от стен — лучи: вдоль линии (от концов) + перпендикулярно (от середины)
@@ -1412,6 +1535,24 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const lux = ldx / lLen, luy = ldy / lLen;
           rays.push({ pt: { x: mx, y: my }, ux: -luy, uy: lux, key: "perpA" });
           rays.push({ pt: { x: mx, y: my }, ux: luy, uy: -lux, key: "perpB" });
+        }
+      } else {
+        // Многосегментная (П/Г-форма): для каждого сегмента — perp-луч НАРУЖУ от центра формы.
+        const cxF = drawPoints.reduce((s, p) => s + p.x, 0) / drawPoints.length;
+        const cyF = drawPoints.reduce((s, p) => s + p.y, 0) / drawPoints.length;
+        for (let i = 0; i < drawPoints.length - 1; i++) {
+          const p0 = drawPoints[i], p1 = drawPoints[i + 1];
+          const segLen = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+          if (segLen < 0.001) continue;
+          const mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2;
+          const lux = (p1.x - p0.x) / segLen, luy = (p1.y - p0.y) / segLen;
+          const vx = mx - cxF, vy = my - cyF;
+          const dot = vx * (-luy) + vy * lux;
+          if (dot >= 0) {
+            rays.push({ pt: { x: mx, y: my }, ux: -luy, uy: lux, key: `perp${i}` });
+          } else {
+            rays.push({ pt: { x: mx, y: my }, ux: luy, uy: -lux, key: `perp${i}` });
+          }
         }
       }
     }
@@ -1442,12 +1583,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             strokeDasharray={`${strokeW * 0.8} ${strokeW * 0.6}`} />;
         })()}
         {lineNode}
-        {/* Кружки только на концах — белая заливка, тонкий контур (если не замкнутая) */}
-        {!isClosed && [0, drawPoints.length - 1].map(i => (
-          <circle key={i} cx={drawPoints[i].x} cy={drawPoints[i].y}
-            r={strokeW * 0.55} fill="#fff" stroke={config.color}
-            strokeWidth={strokeW * 0.4} opacity={0.95} />
-        ))}
         {/* Подпись длины — для multi-segment над центроидом */}
         {!isStraight && (
           <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
@@ -2398,9 +2533,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         const close = () => setSubcurtainShapeChoice(null);
         const pickStraight = () => {
           setSubcurtainShapeChoice(null);
-          setLengthInput({ wallIndex: wallIdx });
+          setLengthInput({ wallIndex: wallIdx, extraDepth: "20" });
           setLengthValue(String(Math.round(wallLen)));
           setLengthSide("center");
+          setLengthDepthValue("20");
         };
         const pickShape = (shape: "u-niche" | "l-bend") => {
           setSubcurtainShapeChoice(null);
@@ -2686,6 +2822,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                   </button>
                 ))}
               </div>
+              {lengthInput.extraDepth !== undefined && (
+                <div className="flex items-center gap-2 justify-center mt-3">
+                  <span className="text-xs text-muted-foreground">Отступ от стены:</span>
+                  <input type="number" inputMode="numeric" min={1}
+                    value={lengthDepthValue}
+                    onChange={(e) => setLengthDepthValue(e.target.value)}
+                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-lg text-center" />
+                  <span className="text-xs text-muted-foreground">см</span>
+                </div>
+              )}
             </div>
 
             <div className="flex-1" />
