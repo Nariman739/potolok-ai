@@ -2823,13 +2823,20 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 ))}
               </div>
               {lengthInput.extraDepth !== undefined && (
-                <div className="flex items-center gap-2 justify-center mt-3">
-                  <span className="text-xs text-muted-foreground">Отступ от стены:</span>
-                  <input type="number" inputMode="numeric" min={1}
-                    value={lengthDepthValue}
-                    onChange={(e) => setLengthDepthValue(e.target.value)}
-                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-lg text-center" />
-                  <span className="text-xs text-muted-foreground">см</span>
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground text-center mb-1.5">Отступ от стены</p>
+                  <div className="flex items-center gap-1.5 justify-center flex-wrap">
+                    {[10, 15, 20, 25, 30].map(d => (
+                      <button key={d} onClick={() => setLengthDepthValue(String(d))}
+                        className={`px-3 py-1.5 text-xs rounded-lg border active:scale-95 transition-colors ${
+                          parseInt(lengthDepthValue) === d
+                            ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold"
+                            : "border-gray-300 text-gray-600"
+                        }`}>
+                        {d} см
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
