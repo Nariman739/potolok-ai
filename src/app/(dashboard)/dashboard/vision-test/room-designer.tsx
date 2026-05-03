@@ -1898,12 +1898,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
     // Стиль обводки и заливки в зависимости от режима
     const strokeColor = isToCeil || isPlanned ? "#0F172A" : clr;
-    const strokeW2 = isToCeil ? strokeW * 1.2 : isPlanned ? strokeW * 0.8 : strokeW * 0.5;
+    const strokeW2 = isToCeil ? strokeW * 0.7 : isPlanned ? strokeW * 0.5 : strokeW * 0.4;
     const dashArr = isPlanned ? `${strokeW * 1.5} ${strokeW * 0.8}` : undefined;
     const fillOpacity = isToCeil ? 0.25 : isPlanned ? 0.12 : 0.12;
-    // Подсветка in-room граней — толще, цветом профиля
+    // Подсветка in-room граней — цветом профиля, тоньше для чёткости
     const profileColor = "#06B6D4";
-    const profileWidth = strokeW * 1.6;
+    const profileWidth = strokeW * 1.0;
     // Локальные точки полигона: для rect — 4 угла, для L — 6, для U — 8.
     const kp = getKitchenLocalPoints({
       type: "furniture",
@@ -1941,11 +1941,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             strokeWidth={spotR * 0.25} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />
         )}
         <polygon points={polygonPath} fill={clr} opacity={fillOpacity}
-          stroke={strokeColor} strokeWidth={strokeW2} strokeDasharray={dashArr} strokeLinejoin="miter" />
+          stroke={strokeColor} strokeWidth={strokeW2} strokeDasharray={dashArr}
+          strokeLinejoin="miter" strokeLinecap="butt" vectorEffect="non-scaling-stroke" />
         {/* Подсветка in-room граней (где идёт профиль натяжного потолка) */}
         {(isToCeil || isPlanned) && localEdges.map((e, i) => inRoomEdges[i] && (
           <line key={`pe-${i}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
-            stroke={profileColor} strokeWidth={profileWidth} strokeLinecap="round"
+            stroke={profileColor} strokeWidth={profileWidth} strokeLinecap="butt"
             strokeDasharray={isPlanned ? `${strokeW * 2} ${strokeW * 1}` : undefined} />
         ))}
         {/* Inner details */}
