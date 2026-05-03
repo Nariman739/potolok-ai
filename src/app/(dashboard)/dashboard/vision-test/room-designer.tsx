@@ -54,6 +54,9 @@ interface Room {
   walls: number[];
   normalCorners: boolean[];
   angles?: number[];
+  /** Радиус скругления каждого угла (см). Индекс i = угол МЕЖДУ стеной i-1 и i.
+   *  0 или undefined = прямой угол. */
+  cornerRadii?: number[];
   area: number;
   perimeter: number;
   elements?: RoomElement[];
@@ -167,6 +170,65 @@ function getVertices(walls: number[], normalCorners: boolean[], angles?: number[
   }
 
   return vertices;
+}
+
+/**
+ * Строит SVG path комнаты с учётом скруглений в углах.
+ * cornerRadii[i] — радиус скругления угла перед стеной i (т.е. в вершине vertices[i]).
+ * Если все радиусы 0/undefined — возвращает обычный polygon path.
+ * Для 90° углов длина "съедания" по стене = R. Для других углов аппроксимация (для замеров с прямоугольными комнатами OK).
+ */
+function getRoomPath(vertices: Vertex[], cornerRadii?: number[]): string {
+  const n = vertices.length - 1; // последняя дублирует первую
+  if (n < 3) return "";
+  const hasRounded = cornerRadii?.some(r => r && r > 0);
+  if (!hasRounded) {
+    return "M " + vertices.slice(0, n).map(v => `${v.x},${v.y}`).join(" L ") + " Z";
+  }
+  // Точки начала/конца дуги для каждой вершины
+  const inPts: Vertex[] = []; // куда приходим от предыдущей стены
+  const outPts: Vertex[] = []; // откуда уходим на следующую
+  for (let i = 0; i < n; i++) {
+    const v = vertices[i];
+    const r = cornerRadii![i] || 0;
+    if (r <= 0) {
+      inPts.push(v);
+      outPts.push(v);
+      continue;
+    }
+    const prev = vertices[(i - 1 + n) % n];
+    const next = vertices[i + 1];
+    const dxPrev = prev.x - v.x, dyPrev = prev.y - v.y;
+    const dxNext = next.x - v.x, dyNext = next.y - v.y;
+    const lenPrev = Math.hypot(dxPrev, dyPrev) || 1;
+    const lenNext = Math.hypot(dxNext, dyNext) || 1;
+    const off = Math.min(r, lenPrev / 2, lenNext / 2);
+    inPts.push({ x: v.x + (dxPrev / lenPrev) * off, y: v.y + (dyPrev / lenPrev) * off });
+    outPts.push({ x: v.x + (dxNext / lenNext) * off, y: v.y + (dyNext / lenNext) * off });
+  }
+  // Направление контура (signed area). В SVG Y растёт вниз — корректируем sweep.
+  let signed = 0;
+  for (let i = 0; i < n; i++) {
+    const a = vertices[i], b = vertices[(i + 1) % n];
+    signed += a.x * b.y - b.x * a.y;
+  }
+  // Для clockwise contour (что обычно при getVertices с +90° углами в SVG Y-down): sweep=1
+  const sweep = signed > 0 ? 1 : 0;
+
+  let d = `M ${outPts[0].x} ${outPts[0].y}`;
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const r = cornerRadii![next] || 0;
+    d += ` L ${inPts[next].x} ${inPts[next].y}`;
+    if (r > 0) {
+      const off = Math.min(r,
+        Math.hypot(vertices[(next - 1 + n) % n].x - vertices[next].x, vertices[(next - 1 + n) % n].y - vertices[next].y) / 2,
+        Math.hypot(vertices[next + 1].x - vertices[next].x, vertices[next + 1].y - vertices[next].y) / 2);
+      d += ` A ${off} ${off} 0 0 ${sweep} ${outPts[next].x} ${outPts[next].y}`;
+    }
+  }
+  d += " Z";
+  return d;
 }
 
 function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: number; dist: number; wallLength: number; t: number } {
@@ -1529,6 +1591,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     cost += podM * (p.podshtornik_aluminum || 8000);
     const floatingM = floatingLenCm / 100;
     cost += floatingM * (p.profile_floating || 14000);
+    // Скруглённые углы — отдельная позиция в КП (сложнее в монтаже)
+    const roundedCount = (room.cornerRadii || []).filter(r => r > 0).length;
+    if (roundedCount > 0) cost += roundedCount * (p.corner_rounded || 5000);
     return Math.round(cost);
   }
 
@@ -1760,16 +1825,21 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           onPointerUp={(e) => { handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
           style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined, display: viewMode === "3d" ? "none" : undefined }}
         >
-          {/* Room fill */}
-          <defs>
-            <clipPath id="room-clip">
-              <polygon points={vertices.map(v => `${v.x},${v.y}`).join(" ")} />
-            </clipPath>
-          </defs>
-          <polygon
-            points={vertices.map(v => `${v.x},${v.y}`).join(" ")}
-            fill="#F8FAFC" stroke="#94A3B8" strokeWidth={strokeW * 0.6} strokeLinejoin="round"
-          />
+          {/* Room fill — path с дугами на скруглённых углах (если есть) */}
+          {(() => {
+            const roomPath = getRoomPath(vertices, room.cornerRadii);
+            return (
+              <>
+                <defs>
+                  <clipPath id="room-clip">
+                    <path d={roomPath} />
+                  </clipPath>
+                </defs>
+                <path d={roomPath}
+                  fill="#F8FAFC" stroke="#94A3B8" strokeWidth={strokeW * 0.6} strokeLinejoin="round" />
+              </>
+            );
+          })()}
 
           {/* Grid overlay for spot/chandelier placement */}
           {(activeType === "spot" || activeType === "chandelier") && (

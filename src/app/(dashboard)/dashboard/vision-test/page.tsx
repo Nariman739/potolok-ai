@@ -490,6 +490,7 @@ interface Room {
   normalCorners: boolean[]; // legacy compat
   angles: number[];         // turn angles in degrees (+90, -90, or any custom)
   arcBulges?: number[];     // bulge per wall (cm). 0 = straight, >0 = outward arc, <0 = inward arc
+  cornerRadii?: number[];   // радиус скругления каждого угла (см). 0 = прямой угол. Индекс i = угол МЕЖДУ стеной i-1 и i.
   columns?: RoomColumn[];   // columns/pillars inside room (area subtracted)
   cutouts?: RoomCutout[];   // internal rectangular cutouts (area subtracted)
   area: number;
@@ -631,6 +632,25 @@ function WallWizard({ onDone, onCancel }: {
   }
 
   function buildRoom(area: number, perimeter: number): Room {
+    const cornerRadii = committed.map(w => w.cornerRadius || 0);
+    const hasRoundedCorners = cornerRadii.some(r => r > 0);
+    // Корректировка площади и периметра при скруглении углов:
+    //  - Площадь: -R²(1 - π/4) на каждый выпуклый угол (для прямоугольных комнат — все углы выпуклые)
+    //  - Периметр: -R(2 - π/2) на каждый угол (хорда 2R заменяется дугой πR/2, экономия)
+    let areaAdj = 0; // в см²
+    let perimAdj = 0; // в см
+    if (hasRoundedCorners) {
+      const k = 1 - Math.PI / 4;
+      const m = 2 - Math.PI / 2;
+      cornerRadii.forEach(r => {
+        if (r > 0) {
+          areaAdj -= r * r * k;
+          perimAdj -= r * m;
+        }
+      });
+    }
+    const adjArea = Math.round(Math.max(area * 10000 + areaAdj, 0) / 100) / 100;
+    const adjPerim = Math.round(perimeter * 100 + perimAdj) / 100;
     return {
       id: crypto.randomUUID(),
       name: roomName,
@@ -638,10 +658,11 @@ function WallWizard({ onDone, onCancel }: {
       normalCorners: committed.map(w => w.angle >= 0),
       angles: committed.map(w => w.angle),
       ...(hasBulges ? { arcBulges: bulges } : {}),
+      ...(hasRoundedCorners ? { cornerRadii } : {}),
       ...(hasColumns ? { columns } : {}),
       ...(hasCutouts ? { cutouts } : {}),
-      area,
-      perimeter,
+      area: adjArea,
+      perimeter: adjPerim,
     };
   }
 
@@ -2203,6 +2224,7 @@ export default function ZameryPage() {
       ) / 100;
       const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
       const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(els)) / 100;
+      const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
 
       return {
         id: crypto.randomUUID(),
@@ -2224,6 +2246,7 @@ export default function ZameryPage() {
         gardinaLength,
         podshtornikLength,
         podshtornikOnWallLength,
+        roundedCornersCount,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
       } satisfies RoomInput;
     });
@@ -2270,6 +2293,7 @@ export default function ZameryPage() {
               const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
               const podshtornikLength = Math.round(totalSubcurtainLengthCm(elements)) / 100;
               const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(elements)) / 100;
+              const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),
@@ -2291,6 +2315,7 @@ export default function ZameryPage() {
                 gardinaLength,
                 podshtornikLength,
                 podshtornikOnWallLength,
+                roundedCornersCount,
                 shape: room.walls.length === 4 && room.angles?.every(a => a === 90) ? "rectangle" : "custom" as any,
                 customDims: room.walls.length !== 4 || !room.angles?.every(a => a === 90) ? {
                   walls: room.walls.map((w, i) => ({

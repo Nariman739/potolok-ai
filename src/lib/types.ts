@@ -91,6 +91,9 @@ export interface RoomInput {
    *  Используется для вычитания из периметра багета. Если не задано — fallback на podshtornikLength. */
   podshtornikOnWallLength?: number;
   podshtornikType?: string;
+  /** Количество скруглённых углов комнаты — отдельная позиция в КП.
+   *  Площадь и периметр уже скорректированы (Room.area/perimeter), но монтаж дороже. */
+  roundedCornersCount?: number;
   // Custom items per room (из справочника /dashboard/prices)
   customItems?: { itemId: string; quantity: number }[];
   // Разовые позиции этой комнаты — мастер вводит руками, не сохраняются в каталог

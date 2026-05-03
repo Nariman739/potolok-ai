@@ -60,6 +60,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Углы
   { code: "corner_plastic", name: "Угол пластик", unit: "шт.", defaultPrice: 1000, category: "corner", description: "Для галтели / вставки" },
   { code: "corner_aluminum", name: "Угол алюминий", unit: "шт.", defaultPrice: 5000, category: "corner", description: "Для теневого / парящего" },
+  { code: "corner_rounded", name: "Скруглённый угол", unit: "шт.", defaultPrice: 5000, category: "corner", description: "Дуга вместо обычного угла — сложнее в монтаже" },
 
   // Прочее
   { code: "pipe_bypass", name: "Обход трубы", unit: "шт.", defaultPrice: 2000, category: "other" },

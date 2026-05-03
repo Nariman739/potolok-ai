@@ -174,6 +174,13 @@ function calculateRoom(
     if (podshtornikItem) items.push(podshtornikItem);
   }
 
+  // Скруглённые углы — отдельная позиция (сложнее в монтаже).
+  // Площадь и периметр уже скорректированы выше; здесь только надбавка за каждый скруглённый угол.
+  if ((room.roundedCornersCount ?? 0) > 0) {
+    const roundedItem = makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
+    if (roundedItem) items.push(roundedItem);
+  }
+
   // Custom items (из справочника /dashboard/prices)
   if (room.customItems && room.customItems.length > 0 && customItemsMap) {
     for (const ci of room.customItems) {
