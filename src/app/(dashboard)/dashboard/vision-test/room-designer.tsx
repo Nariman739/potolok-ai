@@ -1865,7 +1865,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             </g>
           )}
 
-          {/* Wall dimension labels — общая длина + прямая часть (если есть скругления у концов) */}
+          {/* Wall dimension labels — архитектурный стиль:
+              - подложка-плашка под текстом (читаемо на любом фоне)
+              - короткие стены: больший отступ + линия-выноска от середины стены к подписи
+              - длинные: подпись прямо у стены без выноски */}
           {vertices.slice(0, -1).map((a, i) => {
             const b = vertices[i + 1];
             const dx = b.x - a.x, dy = b.y - a.y;
@@ -1874,36 +1877,77 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             const realLen = room.walls[i] || 0;
             const isShort = realLen < 100;
             const isVeryShort = realLen < 60;
-            const fontScale = isVeryShort ? 0.5 : isShort ? 0.6 : 0.75;
-            const offsetMul = isVeryShort ? 2.6 : isShort ? 2.2 : 1.8;
+            const fontScale = isVeryShort ? 0.55 : isShort ? 0.65 : 0.75;
+            const offsetMul = isVeryShort ? 3.6 : isShort ? 2.8 : 1.8;
             const nx = dx / wLen, ny = dy / wLen;
             const outX = ny, outY = -nx;
-            const mx = (a.x + b.x) / 2 + outX * labelSize * offsetMul;
-            const my = (a.y + b.y) / 2 + outY * labelSize * offsetMul;
+            const cx = (a.x + b.x) / 2;
+            const cy = (a.y + b.y) / 2;
+            const mx = cx + outX * labelSize * offsetMul;
+            const my = cy + outY * labelSize * offsetMul;
             let angle = Math.atan2(dy, dx) * 180 / Math.PI;
             if (angle > 90 || angle <= -90) angle += 180;
-            // Скругления концов стены: cornerRadii[i] — у вершины a, cornerRadii[i+1] — у вершины b
+            // Скругления концов стены
             const rA = room.cornerRadii?.[i] || 0;
             const nextIdx = (i + 1) % (vertices.length - 1);
             const rB = room.cornerRadii?.[nextIdx] || 0;
             const straightLen = realLen - rA - rB;
             const hasRounding = rA > 0 || rB > 0;
+            // Размер плашки под текст
+            const fs = labelSize * fontScale;
+            const lenStr = String(realLen);
+            const padX = fs * 0.5;
+            const bgW = lenStr.length * fs * 0.55 + padX * 2;
+            const bgH = fs * 1.15;
             return (
               <g key={`dim-${i}`}>
+                {/* Линия-выноска для коротких стен (от середины стены к подписи) */}
+                {isShort && (
+                  <line x1={cx} y1={cy} x2={mx} y2={my}
+                    stroke="#cbd5e1" strokeWidth={strokeW * 0.15} strokeDasharray={`${strokeW * 0.4} ${strokeW * 0.3}`} />
+                )}
+                {/* Засечки на концах стены — где она реально начинается/кончается */}
+                {isShort && (
+                  <>
+                    <line x1={a.x - outX * labelSize * 0.2} y1={a.y - outY * labelSize * 0.2}
+                      x2={a.x + outX * labelSize * 0.6} y2={a.y + outY * labelSize * 0.6}
+                      stroke="#cbd5e1" strokeWidth={strokeW * 0.2} />
+                    <line x1={b.x - outX * labelSize * 0.2} y1={b.y - outY * labelSize * 0.2}
+                      x2={b.x + outX * labelSize * 0.6} y2={b.y + outY * labelSize * 0.6}
+                      stroke="#cbd5e1" strokeWidth={strokeW * 0.2} />
+                  </>
+                )}
+                {/* Подложка-плашка под текстом */}
+                <rect x={mx - bgW / 2} y={my - bgH / 2} width={bgW} height={bgH}
+                  rx={bgH * 0.25} fill="#ffffff" stroke="#e2e8f0" strokeWidth={strokeW * 0.1}
+                  opacity={0.95}
+                  transform={`rotate(${angle}, ${mx}, ${my})`} />
                 <text x={mx} y={my} textAnchor="middle" dominantBaseline="central"
-                  fontSize={labelSize * fontScale} fill="#94A3B8" fontWeight="500"
+                  fontSize={fs} fill="#475569" fontWeight="600"
                   transform={`rotate(${angle}, ${mx}, ${my})`}>
                   {realLen}
                 </text>
-                {hasRounding && straightLen > 0 && (
-                  <text x={mx + outX * labelSize * fontScale * 1.1}
-                    y={my + outY * labelSize * fontScale * 1.1}
-                    textAnchor="middle" dominantBaseline="central"
-                    fontSize={labelSize * fontScale * 0.7} fill="#10b981" fontWeight="600"
-                    transform={`rotate(${angle}, ${mx + outX * labelSize * fontScale * 1.1}, ${my + outY * labelSize * fontScale * 1.1})`}>
-                    прям. {Math.round(straightLen)}
-                  </text>
-                )}
+                {/* Прямая часть стены (если есть скругления концов) — ниже подложки */}
+                {hasRounding && straightLen > 0 && (() => {
+                  const sx2 = mx + outX * fs * 1.4;
+                  const sy2 = my + outY * fs * 1.4;
+                  const sStr = `пр. ${Math.round(straightLen)}`;
+                  const sBgW = sStr.length * fs * 0.45 + padX * 1.6;
+                  const sBgH = fs * 0.95;
+                  return (
+                    <g>
+                      <rect x={sx2 - sBgW / 2} y={sy2 - sBgH / 2} width={sBgW} height={sBgH}
+                        rx={sBgH * 0.25} fill="#ecfdf5" stroke="#10b981" strokeWidth={strokeW * 0.12}
+                        opacity={0.95}
+                        transform={`rotate(${angle}, ${sx2}, ${sy2})`} />
+                      <text x={sx2} y={sy2} textAnchor="middle" dominantBaseline="central"
+                        fontSize={fs * 0.75} fill="#047857" fontWeight="700"
+                        transform={`rotate(${angle}, ${sx2}, ${sy2})`}>
+                        {sStr}
+                      </text>
+                    </g>
+                  );
+                })()}
               </g>
             );
           })}
