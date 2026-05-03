@@ -1782,8 +1782,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             ))}
           </div>
         )}
-        {/* View mode + Zoom controls — компактные, чтобы не мешать строить потолок */}
-        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+        {/* View mode + Zoom controls — слева, чтобы не закрывать подписи правой стены */}
+        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
           <button
             onClick={() => setViewMode(m => m === "2d" ? "3d" : "2d")}
             className={`h-8 px-2 rounded-lg shadow-sm border flex items-center justify-center gap-1 text-[11px] font-bold active:scale-95 ${
@@ -1865,7 +1865,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             </g>
           )}
 
-          {/* Wall dimension labels — короткие стены получают меньший шрифт и больший отступ, чтобы подписи в углах ступенек не наезжали друг на друга */}
+          {/* Wall dimension labels — общая длина + прямая часть (если есть скругления у концов) */}
           {vertices.slice(0, -1).map((a, i) => {
             const b = vertices[i + 1];
             const dx = b.x - a.x, dy = b.y - a.y;
@@ -1882,12 +1882,63 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             const my = (a.y + b.y) / 2 + outY * labelSize * offsetMul;
             let angle = Math.atan2(dy, dx) * 180 / Math.PI;
             if (angle > 90 || angle <= -90) angle += 180;
+            // Скругления концов стены: cornerRadii[i] — у вершины a, cornerRadii[i+1] — у вершины b
+            const rA = room.cornerRadii?.[i] || 0;
+            const nextIdx = (i + 1) % (vertices.length - 1);
+            const rB = room.cornerRadii?.[nextIdx] || 0;
+            const straightLen = realLen - rA - rB;
+            const hasRounding = rA > 0 || rB > 0;
             return (
-              <text key={`dim-${i}`} x={mx} y={my} textAnchor="middle" dominantBaseline="central"
-                fontSize={labelSize * fontScale} fill="#94A3B8" fontWeight="500"
-                transform={`rotate(${angle}, ${mx}, ${my})`}>
-                {room.walls[i]}
-              </text>
+              <g key={`dim-${i}`}>
+                <text x={mx} y={my} textAnchor="middle" dominantBaseline="central"
+                  fontSize={labelSize * fontScale} fill="#94A3B8" fontWeight="500"
+                  transform={`rotate(${angle}, ${mx}, ${my})`}>
+                  {realLen}
+                </text>
+                {hasRounding && straightLen > 0 && (
+                  <text x={mx + outX * labelSize * fontScale * 1.1}
+                    y={my + outY * labelSize * fontScale * 1.1}
+                    textAnchor="middle" dominantBaseline="central"
+                    fontSize={labelSize * fontScale * 0.7} fill="#10b981" fontWeight="600"
+                    transform={`rotate(${angle}, ${mx + outX * labelSize * fontScale * 1.1}, ${my + outY * labelSize * fontScale * 1.1})`}>
+                    прям. {Math.round(straightLen)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Подписи скруглённых углов: R и длина дуги (πR/2 для угла 90°).
+              Размещаем рядом с дугой, внутри комнаты (по биссектрисе угла). */}
+          {room.cornerRadii && vertices.slice(0, -1).map((v, i) => {
+            const r = room.cornerRadii?.[i] || 0;
+            if (r <= 0) return null;
+            const n = vertices.length - 1;
+            const prev = vertices[(i - 1 + n) % n];
+            const next = vertices[i + 1];
+            const dxP = prev.x - v.x, dyP = prev.y - v.y;
+            const dxN = next.x - v.x, dyN = next.y - v.y;
+            const lenP = Math.hypot(dxP, dyP) || 1;
+            const lenN = Math.hypot(dxN, dyN) || 1;
+            // Биссектриса (внутрь угла) = нормированная сумма направлений к prev и next
+            let bx = dxP / lenP + dxN / lenN;
+            let by = dyP / lenP + dyN / lenN;
+            const blen = Math.hypot(bx, by) || 1;
+            bx /= blen; by /= blen;
+            // Размещаем подпись на расстоянии R от вершины по биссектрисе (примерно центр зоны дуги)
+            const labelX = v.x + bx * (r + labelSize * 1.5);
+            const labelY = v.y + by * (r + labelSize * 1.5);
+            const arcLen = Math.round(Math.PI * r / 2);
+            return (
+              <g key={`rc-label-${i}`}>
+                <rect x={labelX - labelSize * 1.6} y={labelY - labelSize * 0.5}
+                  width={labelSize * 3.2} height={labelSize * 1.0}
+                  rx={labelSize * 0.2} fill="#ecfdf5" stroke="#10b981" strokeWidth={strokeW * 0.2} opacity={0.95} />
+                <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="central"
+                  fontSize={labelSize * 0.55} fill="#047857" fontWeight="700">
+                  R{r}·дуга {arcLen}
+                </text>
+              </g>
             );
           })}
 
