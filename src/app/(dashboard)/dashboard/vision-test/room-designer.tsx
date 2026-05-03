@@ -677,23 +677,22 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           const wallThreshold = Math.max(5, wallCm * 0.03);
           for (const f of elements) {
             if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
-            if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
-            const rot = (f.rotation || 0) * Math.PI / 180;
-            const cosR = Math.cos(rot), sinR = Math.sin(rot);
-            const hw = f.width / 2, hh = f.height / 2;
-            let tMin = Infinity, tMax = -Infinity, minDist = Infinity;
-            for (const [lx, ly] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const) {
-              const cxp = f.x + lx * cosR - ly * sinR;
-              const cyp = f.y + lx * sinR + ly * cosR;
-              const t = (cxp - a0.x) * nx0 + (cyp - a0.y) * ny0;
-              const d = (cxp - a0.x) * px0 + (cyp - a0.y) * py0;
-              tMin = Math.min(tMin, t);
-              tMax = Math.max(tMax, t);
-              if (d >= 0) minDist = Math.min(minDist, d);
+            const corners = getFurnitureCorners(f);
+            if (!corners) continue;
+            const N = corners.length;
+            // Пробегаем рёбра — те, у которых ОБА угла впритык к стене, занимают свой участок
+            for (let i = 0; i < N; i++) {
+              const c0 = corners[i], c1 = corners[(i + 1) % N];
+              const t0 = (c0.x - a0.x) * nx0 + (c0.y - a0.y) * ny0;
+              const d0 = (c0.x - a0.x) * px0 + (c0.y - a0.y) * py0;
+              const t1 = (c1.x - a0.x) * nx0 + (c1.y - a0.y) * ny0;
+              const d1 = (c1.x - a0.x) * px0 + (c1.y - a0.y) * py0;
+              if (d0 < -1 || d1 < -1) continue; // снаружи комнаты
+              if (d0 > wallThreshold || d1 > wallThreshold) continue;
+              const tStart = Math.max(0, Math.min(t0, t1));
+              const tEnd = Math.min(wallCm, Math.max(t0, t1));
+              if (tEnd - tStart > 1) occupiedCm.push([tStart, tEnd]);
             }
-            if (minDist > wallThreshold) continue;
-            const fStart = Math.max(0, tMin), fEnd = Math.min(wallCm, tMax);
-            if (fEnd - fStart > 1) occupiedCm.push([fStart, fEnd]);
           }
         }
       }
@@ -1376,23 +1375,21 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       const wallThreshold = Math.max(5, wallCm * 0.03);
       for (const f of elements) {
         if (f.type !== "furniture" || f.ceilingMode !== "to-ceiling") continue;
-        if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
-        const rot = (f.rotation || 0) * Math.PI / 180;
-        const cosR = Math.cos(rot), sinR = Math.sin(rot);
-        const hw = f.width / 2, hh = f.height / 2;
-        let tMin = Infinity, tMax = -Infinity, minDist = Infinity;
-        for (const [lx, ly] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const) {
-          const cxp = f.x + lx * cosR - ly * sinR;
-          const cyp = f.y + lx * sinR + ly * cosR;
-          const t = (cxp - a.x) * nxV + (cyp - a.y) * ny;
-          const d = (cxp - a.x) * pxV + (cyp - a.y) * pyV;
-          tMin = Math.min(tMin, t);
-          tMax = Math.max(tMax, t);
-          if (d >= 0) minDist = Math.min(minDist, d);
+        const corners = getFurnitureCorners(f);
+        if (!corners) continue;
+        const N = corners.length;
+        for (let i = 0; i < N; i++) {
+          const c0 = corners[i], c1 = corners[(i + 1) % N];
+          const t0 = (c0.x - a.x) * nxV + (c0.y - a.y) * ny;
+          const d0 = (c0.x - a.x) * pxV + (c0.y - a.y) * pyV;
+          const t1 = (c1.x - a.x) * nxV + (c1.y - a.y) * ny;
+          const d1 = (c1.x - a.x) * pxV + (c1.y - a.y) * pyV;
+          if (d0 < -1 || d1 < -1) continue;
+          if (d0 > wallThreshold || d1 > wallThreshold) continue;
+          const tStart = Math.max(0, Math.min(t0, t1));
+          const tEnd = Math.min(wLen, Math.max(t0, t1));
+          if (tEnd - tStart > 1) occupied.push([tStart, tEnd]);
         }
-        if (minDist > wallThreshold) continue;
-        const fStart = Math.max(0, tMin), fEnd = Math.min(wLen, tMax);
-        if (fEnd - fStart > 1) occupied.push([fStart, fEnd]);
       }
     }
     occupied.sort((p, q) => p[0] - q[0]);
