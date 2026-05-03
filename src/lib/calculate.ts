@@ -62,16 +62,18 @@ function calculateRoom(
   prices: PriceMap,
   customItemsMap?: Record<string, CustomItemInfo>
 ): RoomResult {
-  const area = computeArea(room);
+  // Площадь натяжного потолка: вычитаем мебель «до потолка» (она съедает площадь).
+  const furnitureArea = room.furnitureCeilingArea ?? 0;
+  const area = Math.max(0, computeArea(room) - furnitureArea);
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
 
   // Багет/вставка идут только по стенам, НЕ под подшторником.
-  // Вычитаем только участок СТЕНЫ под подшторником (без глубины ниши):
-  // boковины П/Г-ниши идут вглубь потолка, а не по стене, поэтому периметр стен они не уменьшают.
+  // + Учитываем обход мебели до потолка: in-room грани добавляются, at-wall грани вычитаются.
   // Fallback на podshtornikLength для старых данных без onWall-поля.
   const podOnWallM = room.podshtornikOnWallLength ?? room.podshtornikLength ?? 0;
-  const profilePerimeter = Math.max(0, perimeter - podOnWallM);
+  const furniturePerimDelta = room.furnitureCeilingPerimeterDelta ?? 0;
+  const profilePerimeter = Math.max(0, perimeter - podOnWallM + furniturePerimDelta);
 
   // Canvas
   const canvasCode = getCanvasCode(room);
@@ -179,6 +181,17 @@ function calculateRoom(
   if ((room.roundedCornersCount ?? 0) > 0) {
     const roundedItem = makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
     if (roundedItem) items.push(roundedItem);
+  }
+
+  // Уголки обхода мебели до потолка — отдельная позиция, чтобы было видно почему дороже.
+  if ((room.furnitureCeilingCorners ?? 0) > 0) {
+    const item = makeLineItem("corner_furniture_bypass", room.furnitureCeilingCorners ?? 0, prices);
+    if (item) items.push(item);
+  }
+  // Уголки под будущую мебель — отдельная позиция, помечает резерв под последующую установку.
+  if ((room.furniturePlannedCorners ?? 0) > 0) {
+    const item = makeLineItem("corner_furniture_planned", room.furniturePlannedCorners ?? 0, prices);
+    if (item) items.push(item);
   }
 
   // Custom items (из справочника /dashboard/prices)

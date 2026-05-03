@@ -94,6 +94,17 @@ export interface RoomInput {
   /** Количество скруглённых углов комнаты — отдельная позиция в КП.
    *  Площадь и периметр уже скорректированы (Room.area/perimeter), но монтаж дороже. */
   roundedCornersCount?: number;
+  /** Площадь мебели «до потолка» в м² — вычитается из площади натяжного потолка. */
+  furnitureCeilingArea?: number;
+  /** Изменение периметра профиля от обхода мебели до потолка (м, может быть отрицательным).
+   *  perimeterDelta = (длина граней мебели «в комнату») − (длина граней «у стены»). */
+  furnitureCeilingPerimeterDelta?: number;
+  /** Углы профиля для обхода мебели до потолка — отдельная позиция в КП. */
+  furnitureCeilingCorners?: number;
+  /** Углы под будущую мебель (planned) — отдельная позиция в КП. */
+  furniturePlannedCorners?: number;
+  /** Площадь planned мебели (м²) — для информации в КП (зарезервировано). */
+  furniturePlannedArea?: number;
   // Custom items per room (из справочника /dashboard/prices)
   customItems?: { itemId: string; quantity: number }[];
   // Разовые позиции этой комнаты — мастер вводит руками, не сохраняются в каталог

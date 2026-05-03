@@ -61,6 +61,8 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "corner_plastic", name: "Угол пластик", unit: "шт.", defaultPrice: 1000, category: "corner", description: "Для галтели / вставки" },
   { code: "corner_aluminum", name: "Угол алюминий", unit: "шт.", defaultPrice: 5000, category: "corner", description: "Для теневого / парящего" },
   { code: "corner_rounded", name: "Скруглённый угол", unit: "шт.", defaultPrice: 5000, category: "corner", description: "Дуга вместо обычного угла — сложнее в монтаже" },
+  { code: "corner_furniture_bypass", name: "Уголок обхода мебели до потолка", unit: "шт.", defaultPrice: 1500, category: "corner", description: "Профиль обходит мебель — каждый угол доп. работа" },
+  { code: "corner_furniture_planned", name: "Уголок под будущую мебель", unit: "шт.", defaultPrice: 1500, category: "corner", description: "Подготовка под установку мебели мебельщиком после нас" },
 
   // Прочее
   { code: "pipe_bypass", name: "Обход трубы", unit: "шт.", defaultPrice: 2000, category: "other" },

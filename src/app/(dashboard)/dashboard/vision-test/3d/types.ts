@@ -22,6 +22,8 @@ export const FURNITURE_3D_DIMENSIONS: Record<FurnitureType, { heightCm: number; 
   chair:      { heightCm: 90, color: "#34D399", label: "Стул" },
   desk:       { heightCm: 75, color: "#F59E0B", label: "Стол" },
   radiator:   { heightCm: 50, color: "#F87171", label: "Батарея" },
+  kitchen:    { heightCm: 220, color: "#06B6D4", label: "Кухня" },
+  wall_panel: { heightCm: 270, color: "#6B7280", label: "Стенка" },
 };
 
 export type ViewSpot = "center" | "door" | "window";

@@ -7,8 +7,9 @@ import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
-import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm } from "./room-designer";
+import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVertices } from "./room-designer";
 import type { RoomElement } from "./room-designer";
+import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2225,6 +2226,13 @@ export default function ZameryPage() {
       const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
       const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(els)) / 100;
       const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
+      // Мебель «до потолка» влияет на площадь и периметр профиля
+      const fcStats = furnitureCeilingStats(
+        els as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
+        getVertices(room.walls, room.normalCorners, room.angles),
+      );
+      const furnitureCeilingArea = Math.round(fcStats.areaToSubtractCm2 / 100) / 100;
+      const furnitureCeilingPerimeterDelta = Math.round(fcStats.perimeterDeltaCm) / 100;
 
       return {
         id: crypto.randomUUID(),
@@ -2247,6 +2255,11 @@ export default function ZameryPage() {
         podshtornikLength,
         podshtornikOnWallLength,
         roundedCornersCount,
+        furnitureCeilingArea,
+        furnitureCeilingPerimeterDelta,
+        furnitureCeilingCorners: fcStats.extraCorners,
+        furniturePlannedCorners: fcStats.plannedCorners,
+        furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
       } satisfies RoomInput;
     });
@@ -2294,6 +2307,12 @@ export default function ZameryPage() {
               const podshtornikLength = Math.round(totalSubcurtainLengthCm(elements)) / 100;
               const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(elements)) / 100;
               const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
+              const fcStatsCalc = furnitureCeilingStats(
+                elements as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
+                getVertices(room.walls, room.normalCorners, room.angles),
+              );
+              const furnitureCeilingArea = Math.round(fcStatsCalc.areaToSubtractCm2 / 100) / 100;
+              const furnitureCeilingPerimeterDelta = Math.round(fcStatsCalc.perimeterDeltaCm) / 100;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),
@@ -2316,6 +2335,11 @@ export default function ZameryPage() {
                 podshtornikLength,
                 podshtornikOnWallLength,
                 roundedCornersCount,
+                furnitureCeilingArea,
+                furnitureCeilingPerimeterDelta,
+                furnitureCeilingCorners: fcStatsCalc.extraCorners,
+                furniturePlannedCorners: fcStatsCalc.plannedCorners,
+                furniturePlannedArea: Math.round(fcStatsCalc.plannedAreaCm2 / 100) / 100,
                 shape: room.walls.length === 4 && room.angles?.every(a => a === 90) ? "rectangle" : "custom" as any,
                 customDims: room.walls.length !== 4 || !room.angles?.every(a => a === 90) ? {
                   walls: room.walls.map((w, i) => ({

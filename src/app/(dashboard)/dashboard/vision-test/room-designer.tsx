@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
+import { furnitureCeilingStats, classifyEdges } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "./3d/Scene3DBoundary";
 
 const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
@@ -20,7 +21,11 @@ const DEFAULT_CEILING_HEIGHT_CM = 270;
 // ── Types ──
 
 export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating" | "door" | "window" | "furniture" | "builtin_gardina" | "shower_curtain";
-export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk" | "radiator";
+export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk" | "radiator" | "kitchen" | "wall_panel";
+/** decor — чисто декоративная мебель (не влияет на потолок).
+ *  to-ceiling — мебель до потолка, профиль обходит её (меняется периметр и площадь).
+ *  planned — мебели ещё нет, но клиент просит сделать уголки под будущую установку. */
+export type CeilingMode = "decor" | "to-ceiling" | "planned";
 
 export interface RoomElement {
   id: string;
@@ -46,6 +51,9 @@ export interface RoomElement {
   points?: { x: number; y: number }[];
   // Замкнутый контур (для квадратной свет.линии/трека) — render как polygon вместо polyline
   closed?: boolean;
+  /** Для мебели: режим взаимодействия с потолком.
+   *  Для kitchen/wall_panel default = "to-ceiling", для остальных типов default = "decor". */
+  ceilingMode?: CeilingMode;
 }
 
 interface Room {
@@ -84,17 +92,27 @@ const WALL_ELEMENTS: { type: ElementType; label: string; icon: string; color: st
   { type: "window", label: "Окно",   icon: "🪟", color: "#60A5FA" },
 ];
 
-const FURNITURE: { furnitureType: FurnitureType; label: string; icon: string; color: string; defaultW: number; defaultH: number }[] = [
+/** Мебель типы потолка: kitchen и wall_panel почти всегда «до потолка», поэтому они
+ *  попадают в палитру с дефолтным режимом to-ceiling. Шкаф остаётся декоративным
+ *  по умолчанию (бэк-компат), мастер переключает в форме. */
+const FURNITURE: { furnitureType: FurnitureType; label: string; icon: string; color: string; defaultW: number; defaultH: number; defaultCeilingMode?: CeilingMode }[] = [
   { furnitureType: "bed",        label: "Кровать",    icon: "🛏️", color: "#8B5CF6", defaultW: 200, defaultH: 160 },
   { furnitureType: "sofa",       label: "Диван",      icon: "🛋️", color: "#6366F1", defaultW: 200, defaultH: 90 },
   { furnitureType: "table",      label: "Стол",       icon: "🪑", color: "#D97706", defaultW: 120, defaultH: 80 },
   { furnitureType: "wardrobe",   label: "Шкаф",       icon: "🗄️", color: "#78716C", defaultW: 200, defaultH: 60 },
+  { furnitureType: "kitchen",    label: "Кухня",      icon: "🍳", color: "#0891B2", defaultW: 300, defaultH: 60, defaultCeilingMode: "to-ceiling" },
+  { furnitureType: "wall_panel", label: "Стенка",     icon: "🚪", color: "#6B7280", defaultW: 400, defaultH: 40, defaultCeilingMode: "to-ceiling" },
   { furnitureType: "tv",         label: "ТВ",         icon: "📺", color: "#1e3a5f", defaultW: 120, defaultH: 10 },
   { furnitureType: "nightstand", label: "Тумба",      icon: "📦", color: "#A3A3A3", defaultW: 50,  defaultH: 50 },
   { furnitureType: "chair",      label: "Стул",       icon: "💺", color: "#10B981", defaultW: 45,  defaultH: 45 },
   { furnitureType: "desk",       label: "Письм.стол", icon: "🖥️", color: "#F59E0B", defaultW: 140, defaultH: 70 },
   { furnitureType: "radiator",   label: "Батарея",    icon: "🔥", color: "#DC2626", defaultW: 100, defaultH: 15 },
 ];
+
+/** Может ли мебель быть «до потолка» (показывать выбор режима в форме). */
+function canBeToCeiling(t: FurnitureType): boolean {
+  return t === "wardrobe" || t === "kitchen" || t === "wall_panel";
+}
 
 const ALL_ELEMENTS = LIGHT_ELEMENTS; // backwards compat
 
@@ -144,7 +162,7 @@ const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 
 interface Vertex { x: number; y: number }
 
-function getVertices(walls: number[], normalCorners: boolean[], angles?: number[]): Vertex[] {
+export function getVertices(walls: number[], normalCorners: boolean[], angles?: number[]): Vertex[] {
   const n = walls.length;
   const wallAngles = angles ?? normalCorners.map(nc => nc ? 90 : -90);
   const allRectilinear = wallAngles.every(a => a === 90 || a === -90);
@@ -311,9 +329,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       }
     | null
   >(null);
-  const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number } | null>(null);
+  const [furnitureMenu, setFurnitureMenu] = useState<{ x: number; y: number; furnitureType: FurnitureType; defaultW: number; defaultH: number; defaultCeilingMode?: CeilingMode } | null>(null);
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
+  const [furnCeilingMode, setFurnCeilingMode] = useState<CeilingMode>("decor");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
@@ -509,9 +528,10 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const furnType = isFurnitureActive();
     if (furnType) {
       const fCfg = FURNITURE.find(f => f.furnitureType === furnType)!;
-      setFurnitureMenu({ x: coords.x, y: coords.y, furnitureType: furnType, defaultW: fCfg.defaultW, defaultH: fCfg.defaultH });
+      setFurnitureMenu({ x: coords.x, y: coords.y, furnitureType: furnType, defaultW: fCfg.defaultW, defaultH: fCfg.defaultH, defaultCeilingMode: fCfg.defaultCeilingMode });
       setFurnW(String(fCfg.defaultW));
       setFurnH(String(fCfg.defaultH));
+      setFurnCeilingMode(fCfg.defaultCeilingMode || "decor");
       return;
     }
 
@@ -745,17 +765,23 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     if (!furnitureMenu) return;
     const w = parseFloat(furnW), h = parseFloat(furnH);
     if (!w || !h) { setFurnitureMenu(null); return; }
+    const t = furnitureMenu.furnitureType;
+    // ceilingMode сохраняем только если он осмыслен для типа (или explicitly не decor)
+    const canCeil = canBeToCeiling(t);
+    const mode: CeilingMode = canCeil ? furnCeilingMode : "decor";
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: "furniture",
       x: furnitureMenu.x,
       y: furnitureMenu.y,
-      furnitureType: furnitureMenu.furnitureType,
+      furnitureType: t,
       width: w,
       height: h,
       rotation: 0,
+      ...(mode !== "decor" && { ceilingMode: mode }),
     }]);
     setFurnitureMenu(null);
+    setFurnCeilingMode("decor");
   }
 
   function rotateSelected() {
@@ -1454,9 +1480,40 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const rot = el.rotation || 0;
     const w = el.width, h = el.height;
     const pos = getElPos(el);
+    const ceilingMode: CeilingMode = el.ceilingMode || "decor";
+    const isToCeil = ceilingMode === "to-ceiling";
+    const isPlanned = ceilingMode === "planned";
+
+    // Грани мебели «в комнату» (где идёт профиль) — для подсветки. Только если to-ceiling/planned.
+    let inRoomEdges: boolean[] = [false, false, false, false];
+    if (isToCeil || isPlanned) {
+      const atWall = classifyEdges(
+        { type: "furniture", x: pos.x, y: pos.y, width: w, height: h, rotation: rot, ceilingMode },
+        vertices,
+      );
+      inRoomEdges = atWall.map(a => !a);
+    }
 
     // In light tab, furniture should not intercept pointer events
     const pointerEvents = toolbarTab === "light" ? "none" as const : undefined;
+
+    // Стиль обводки и заливки в зависимости от режима
+    const strokeColor = isToCeil || isPlanned ? "#0F172A" : clr;
+    const strokeW2 = isToCeil ? strokeW * 1.2 : isPlanned ? strokeW * 0.8 : strokeW * 0.5;
+    const dashArr = isPlanned ? `${strokeW * 1.5} ${strokeW * 0.8}` : undefined;
+    const fillOpacity = isToCeil ? 0.25 : isPlanned ? 0.12 : 0.12;
+    // Подсветка in-room граней — толще, цветом профиля
+    const profileColor = "#06B6D4";
+    const profileWidth = strokeW * 1.6;
+    // Локальные грани прямоугольника в порядке как в getFurnitureCorners:
+    // 0: (-w/2,-h/2)→(w/2,-h/2) (top), 1: (w/2,-h/2)→(w/2,h/2) (right),
+    // 2: (w/2,h/2)→(-w/2,h/2) (bottom), 3: (-w/2,h/2)→(-w/2,-h/2) (left)
+    const localEdges: { x1: number; y1: number; x2: number; y2: number }[] = [
+      { x1: -w / 2, y1: -h / 2, x2:  w / 2, y2: -h / 2 },
+      { x1:  w / 2, y1: -h / 2, x2:  w / 2, y2:  h / 2 },
+      { x1:  w / 2, y1:  h / 2, x2: -w / 2, y2:  h / 2 },
+      { x1: -w / 2, y1:  h / 2, x2: -w / 2, y2: -h / 2 },
+    ];
 
     return (
       <g key={el.id} transform={`translate(${pos.x}, ${pos.y}) rotate(${rot})`}
@@ -1472,8 +1529,14 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             strokeWidth={spotR * 0.25} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />
         )}
         <rect x={-w / 2} y={-h / 2} width={w} height={h}
-          rx={roomSize * 0.008} fill={clr} opacity={0.12}
-          stroke={clr} strokeWidth={strokeW * 0.5} />
+          rx={roomSize * 0.008} fill={clr} opacity={fillOpacity}
+          stroke={strokeColor} strokeWidth={strokeW2} strokeDasharray={dashArr} />
+        {/* Подсветка in-room граней (где идёт профиль натяжного потолка) */}
+        {(isToCeil || isPlanned) && localEdges.map((e, i) => inRoomEdges[i] && (
+          <line key={`pe-${i}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+            stroke={profileColor} strokeWidth={profileWidth} strokeLinecap="round"
+            strokeDasharray={isPlanned ? `${strokeW * 2} ${strokeW * 1}` : undefined} />
+        ))}
         {/* Inner details */}
         {el.furnitureType === "bed" && (
           <>
@@ -1509,6 +1572,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
           fontSize={labelSize * 0.55} fill="#94A3B8" fontWeight="500">
           {w}x{h}
         </text>
+        {/* Бейдж режима — для to-ceiling/planned */}
+        {(isToCeil || isPlanned) && (
+          <text x={0} y={-h / 2 - labelSize * 0.6} textAnchor="middle" dominantBaseline="central"
+            fontSize={labelSize * 0.5} fill={isToCeil ? "#0891B2" : "#7C3AED"} fontWeight="700">
+            {isToCeil ? "📐 ДО ПОТОЛКА" : "💭 ПОД БУДУЩУЮ"}
+          </text>
+        )}
       </g>
     );
   }
@@ -1575,12 +1645,19 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   function calcLiveCost(): number {
     const p = DEFAULT_PRICES;
     let cost = 0;
-    cost += room.area * (p.canvas_320 || 2000);
+    // Площадь натяжного потолка минус мебель «до потолка» (она съедает площадь)
+    const fcStats = furnitureCeilingStats(
+      elements as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
+      vertices,
+    );
+    const furnAreaM2 = fcStats.areaToSubtractCm2 / 10000;
+    const effectiveArea = Math.max(0, room.area - furnAreaM2);
+    cost += effectiveArea * (p.canvas_320 || 2000);
     // Багет/вставка идут только по стенам, НЕ под подшторником.
-    // Вычитаем только участок стены, покрытый подшторником (e.length),
-    // глубина ниши (2*depth для П, depth для Г) — это сам подшторник, не стена.
+    // + Учитываем обход мебели до потолка (in-room грани добавляются, at-wall вычитаются).
     const podOnWallM = subcurtainOnWallLengthCm(elements) / 100;
-    const profilePerim = Math.max(0, room.perimeter - podOnWallM);
+    const furnPerimDeltaM = fcStats.perimeterDeltaCm / 100;
+    const profilePerim = Math.max(0, room.perimeter - podOnWallM + furnPerimDeltaM);
     cost += profilePerim * (p.profile_plastic || 500);
     cost += profilePerim * (p.insert || 1000);
     cost += room.walls.length * (p.corner_plastic || 1000);
@@ -1604,6 +1681,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Скруглённые углы — отдельная позиция в КП (сложнее в монтаже)
     const roundedCount = (room.cornerRadii || []).filter(r => r > 0).length;
     if (roundedCount > 0) cost += roundedCount * (p.corner_rounded || 5000);
+    // Уголки обхода мебели до потолка
+    if (fcStats.extraCorners > 0) cost += fcStats.extraCorners * (p.corner_furniture_bypass || 1500);
+    if (fcStats.plannedCorners > 0) cost += fcStats.plannedCorners * (p.corner_furniture_planned || 1500);
     return Math.round(cost);
   }
 
@@ -2574,7 +2654,9 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       )}
 
       {/* Furniture size modal */}
-      {furnitureMenu && (
+      {furnitureMenu && (() => {
+        const showCeilingPicker = canBeToCeiling(furnitureMenu.furnitureType);
+        return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
           onClick={() => setFurnitureMenu(null)}>
           <div className="bg-white rounded-2xl p-5 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -2583,6 +2665,34 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               {FURNITURE.find(f => f.furnitureType === furnitureMenu.furnitureType)?.label}
             </p>
             <p className="text-xs text-muted-foreground text-center mb-4">Укажите размеры (см)</p>
+            {/* Тип взаимодействия с потолком — только для шкафа/кухни/стенки */}
+            {showCeilingPicker && (
+              <div className="mb-4">
+                <label className="text-xs text-muted-foreground mb-1 block">Тип</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { v: "decor", emoji: "🪑", label: "Декор" },
+                    { v: "to-ceiling", emoji: "📐", label: "До потолка" },
+                    { v: "planned", emoji: "💭", label: "План" },
+                  ] as const).map(opt => (
+                    <button key={opt.v}
+                      onClick={() => setFurnCeilingMode(opt.v)}
+                      className={`py-2 rounded-lg border text-[11px] font-semibold leading-tight active:scale-95 ${
+                        furnCeilingMode === opt.v ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-700"
+                      }`}>
+                      <div className="text-base">{opt.emoji}</div>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {furnCeilingMode === "to-ceiling" && (
+                  <p className="text-[10px] text-cyan-700 mt-1.5 text-center">Профиль обойдёт мебель — углы доп. в КП</p>
+                )}
+                {furnCeilingMode === "planned" && (
+                  <p className="text-[10px] text-cyan-700 mt-1.5 text-center">Уголки под будущую мебель — пунктиром</p>
+                )}
+              </div>
+            )}
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground mb-1 block">Ширина</label>
@@ -2618,7 +2728,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
