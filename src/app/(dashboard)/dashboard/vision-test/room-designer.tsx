@@ -68,7 +68,7 @@ const LIGHT_ELEMENTS: { type: ElementType; label: string; icon: string; color: s
   { type: "curtain",     label: "Гардина",     icon: "📏", color: "#10B981", category: "wall" },
   { type: "subcurtain",  label: "Подшторник",   icon: "📐", color: "#06B6D4", category: "wall" },
   { type: "track",       label: "Трек",        icon: "🔲", color: "#EF4444", category: "wall" },
-  { type: "lightline",   label: "Свет.линия",  icon: "✨", color: "#F97316", category: "wall" },
+  { type: "lightline",   label: "Свет.линия",  icon: "✨", color: "#FACC15", category: "wall" },
   { type: "floating",    label: "Парящий",     icon: "〰️", color: "#3B82F6", category: "perimeter" },
   { type: "builtin_gardina", label: "Гардина",  icon: "🪟", color: "#059669", category: "wall" },
   { type: "shower_curtain",  label: "Шторка ванн.", icon: "🚿", color: "#7C3AED", category: "wall" },
@@ -891,10 +891,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             Для тонких линий (lightline, track) без неё пальцем/мышкой не попасть. */}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
-        {el.type === "lightline" && (
-          <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
-            stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
-        )}
         <line x1={drawX1} y1={drawY1} x2={drawX2} y2={drawY2}
           stroke={strokeColor}
           strokeWidth={el.type === "lightline" ? strokeW * 1.5 : el.type === "builtin_gardina" ? strokeW * 2 : el.type === "subcurtain" ? strokeW * 1.8 : strokeW}
@@ -1133,10 +1129,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         {/* Невидимая толстая обводка — расширенная зона тапа/перетаскивания. */}
         <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
           stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
-        {el.type === "lightline" && (
-          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-            stroke={config.color} strokeWidth={strokeW * 4} strokeLinecap="round" opacity={0.15} />
-        )}
         <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
           stroke={config.color}
           strokeWidth={el.type === "lightline" ? strokeW * 1.5 : strokeW}
