@@ -1284,7 +1284,7 @@ function RoomDetail({ room, onUpdate, onClose }: {
   const result = recalc(walls);
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
+    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100dvh", paddingBottom: "env(safe-area-inset-bottom)" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <button onClick={onClose} className="p-1 -ml-1 text-muted-foreground">
@@ -1368,7 +1368,7 @@ function HistoryDrawer({ saved, onResume, onDelete, onClose }: {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100svh" }}>
+    <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ height: "100dvh", paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <button onClick={onClose} className="p-1 -ml-1 text-muted-foreground">
           <X className="h-5 w-5" />

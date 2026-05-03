@@ -1959,7 +1959,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         const numDigit = (d: string) => setLengthValue(p => p === "0" ? d : p + d);
         const numBack = () => setLengthValue(p => p.slice(0, -1));
         return (
-          <div className="fixed inset-0 z-[300] flex flex-col bg-white" style={{ height: "100svh" }}>
+          <div className="fixed inset-0 z-[300] flex flex-col bg-white" style={{ height: "100dvh", paddingBottom: "env(safe-area-inset-bottom)" }}>
             <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
               <button onClick={() => { setLengthInput(null); setLengthValue(""); setLengthSide("center"); setEditingWallElId(null); }} className="p-1 text-muted-foreground">
                 <X className="h-5 w-5" />
