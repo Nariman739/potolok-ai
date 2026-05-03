@@ -44,6 +44,8 @@ export interface RoomElement {
   side?: "left" | "right";
   // Точки freeform-линии в координатах SVG (для drag в любую точку)
   points?: { x: number; y: number }[];
+  // Замкнутый контур (для квадратной свет.линии/трека) — render как polygon вместо polyline
+  closed?: boolean;
 }
 
 interface Room {
@@ -220,6 +222,20 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         depth: string;
         side: "left" | "right";
         position: "left" | "center" | "right";
+      }
+    | null
+  >(null);
+  // Свет.линия / трек: выбор формы (Прямая / Г / П / Квадрат) перед размерами
+  const [lightShapeChoice, setLightShapeChoice] = useState<{ type: "lightline" | "track" } | null>(null);
+  // Ввод размеров свет.линии/трека для выбранной формы
+  const [lightSpecInput, setLightSpecInput] = useState<
+    | {
+        type: "lightline" | "track";
+        shape: "straight" | "l" | "u" | "square";
+        length: string;       // прямая
+        width: string;        // Г/П: горизонталь, квадрат: сторона
+        depth: string;        // Г/П: глубина боковин
+        side: "left" | "right"; // Г: куда выпуск
       }
     | null
   >(null);
@@ -461,6 +477,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         setSubcurtainShapeChoice({ wallIndex: nearest.wallIndex });
         return;
       }
+      // Свет.линия и трек — freeform, выбор формы (Прямая / Г / П / Квадрат)
+      if (activeType === "lightline" || activeType === "track") {
+        setLightShapeChoice({ type: activeType });
+        return;
+      }
       setLengthInput({ wallIndex: nearest.wallIndex });
       setLengthValue(String(Math.round(nearest.wallLength)));
       setLengthSide("center");
@@ -506,38 +527,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       if (!activeType) return;
       const newId = crypto.randomUUID();
 
-      // Световая линия и трек — freeform: создаём 2 точки у стены, потом
-      // элемент можно перетащить в любую точку комнаты как софит.
+      // Свет.линия и трек теперь идут через lightShapeChoice → lightSpecInput
+      // (см. confirmLightSpec), а не через lengthInput. Этот блок больше не используется
+      // для них, но если бы — резервная заглушка чтобы не упасть.
       if (activeType === "lightline" || activeType === "track") {
-        const a = vertices[lengthInput.wallIndex];
-        const b = vertices[lengthInput.wallIndex + 1];
-        if (a && b) {
-          const dxw = b.x - a.x, dyw = b.y - a.y;
-          const wL = Math.sqrt(dxw * dxw + dyw * dyw);
-          if (wL > 0) {
-            const nx = dxw / wL, ny = dyw / wL;
-            const perpX = -ny, perpY = nx;
-            const ratio = clampedLen / wallLen;
-            const startTSvg = Math.max(0, Math.min(1 - ratio, pos - ratio / 2)) * wL;
-            const endTSvg = startTSvg + ratio * wL;
-            const off = wallOffset;
-            const p1 = { x: a.x + nx * startTSvg + perpX * off, y: a.y + ny * startTSvg + perpY * off };
-            const p2 = { x: a.x + nx * endTSvg + perpX * off, y: a.y + ny * endTSvg + perpY * off };
-            setElements(prev => [...prev, {
-              id: newId,
-              type: activeType as ElementType,
-              shape: "freeform",
-              points: [p1, p2],
-              length: clampedLen,
-            }]);
-            setSelectedId(newId);
-            setActiveType(null);
-            setLengthInput(null);
-            setLengthValue("");
-            setLengthSide("center");
-            return;
-          }
-        }
+        setLengthInput(null);
+        return;
       }
 
       const hasVariant = activeType === "spot";
@@ -597,6 +592,83 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     setActiveType(null);
   }
 
+  /** Создание свет.линии или трека выбранной формы. Точки вычисляются от
+   *  центра комнаты и пользователь потом перетаскивает куда нужно. */
+  function confirmLightSpec() {
+    if (!lightSpecInput) return;
+    const s = lightSpecInput.shape;
+    const W = parseFloat(lightSpecInput.width);
+    const D = parseFloat(lightSpecInput.depth);
+    const L = parseFloat(lightSpecInput.length);
+
+    // Центр комнаты в SVG-координатах
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    let points: { x: number; y: number }[] = [];
+    let closed = false;
+    let totalLen = 0;
+
+    if (s === "straight") {
+      if (!L || L <= 0) return;
+      // Горизонтальная линия с центром в (cx, cy)
+      points = [{ x: cx - L / 2, y: cy }, { x: cx + L / 2, y: cy }];
+      totalLen = L;
+    } else if (s === "l") {
+      if (!W || W <= 0 || !D || D <= 0) return;
+      // Г-форма: горизонтальный сегмент W + вертикальный D
+      // Сторона: left → загиб слева, right → загиб справа
+      const x0 = cx - W / 2, x1 = cx + W / 2;
+      const y0 = cy - D / 2, y1 = cy + D / 2;
+      if (lightSpecInput.side === "left") {
+        // Г: вертикаль слева вниз, потом горизонталь вправо
+        points = [{ x: x0, y: y0 }, { x: x0, y: y1 }, { x: x1, y: y1 }];
+      } else {
+        // зеркально: вертикаль справа, горизонталь влево
+        points = [{ x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      }
+      totalLen = W + D;
+    } else if (s === "u") {
+      if (!W || W <= 0 || !D || D <= 0) return;
+      // П-форма: 4 точки, основа + 2 боковины
+      const x0 = cx - W / 2, x1 = cx + W / 2;
+      const y0 = cy - D / 2, y1 = cy + D / 2;
+      points = [
+        { x: x0, y: y0 },
+        { x: x0, y: y1 },
+        { x: x1, y: y1 },
+        { x: x1, y: y0 },
+      ];
+      totalLen = W + 2 * D;
+    } else if (s === "square") {
+      if (!W || W <= 0) return;
+      const half = W / 2;
+      points = [
+        { x: cx - half, y: cy - half },
+        { x: cx - half, y: cy + half },
+        { x: cx + half, y: cy + half },
+        { x: cx + half, y: cy - half },
+      ];
+      closed = true;
+      totalLen = W * 4;
+    }
+
+    if (points.length < 2) return;
+    const newId = crypto.randomUUID();
+    setElements(prev => [...prev, {
+      id: newId,
+      type: lightSpecInput.type,
+      shape: "freeform",
+      points,
+      length: Math.round(totalLen),
+      ...(closed && { closed: true }),
+    }]);
+    setSelectedId(newId);
+    setLightSpecInput(null);
+    setLightShapeChoice(null);
+    setActiveType(null);
+  }
+
   function confirmFurniture() {
     if (!furnitureMenu) return;
     const w = parseFloat(furnW), h = parseFloat(furnH);
@@ -616,9 +688,23 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   function rotateSelected() {
     if (!selectedId) return;
-    setElements(prev => prev.map(el =>
-      el.id === selectedId ? { ...el, rotation: ((el.rotation || 0) + 90) % 360 } : el
-    ));
+    setElements(prev => prev.map(el => {
+      if (el.id !== selectedId) return el;
+      // Для freeform-линий (свет.линия, трек) — поворот всех точек на 90° вокруг центроида.
+      // Не используем el.rotation, т.к. render идёт по сырым points.
+      if (el.shape === "freeform" && el.points && el.points.length >= 2) {
+        const cx = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
+        const cy = el.points.reduce((s, p) => s + p.y, 0) / el.points.length;
+        // Поворот на 90° против часовой: (x,y) → (cx - (y-cy), cy + (x-cx))
+        const newPoints = el.points.map(p => ({
+          x: cx - (p.y - cy),
+          y: cy + (p.x - cx),
+        }));
+        return { ...el, points: newPoints };
+      }
+      // Стандартный путь — для furniture (использует el.rotation в transform).
+      return { ...el, rotation: ((el.rotation || 0) + 90) % 360 };
+    }));
   }
 
   function removeSelected() {
@@ -642,7 +728,8 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Touch: при увеличенном зуме палец на свободном месте — пэн
     // (не пэним когда у мастера в руке инструмент или активна форма ввода)
     const isTouchPan = e.pointerType === "touch" && zoom > 1.05 && !activeType
-      && !lengthInput && !nicheInput && !subcurtainShapeChoice;
+      && !lengthInput && !nicheInput && !subcurtainShapeChoice
+      && !lightShapeChoice && !lightSpecInput;
     if (isMousePan || isTouchPan) {
       e.preventDefault();
       setIsPanning(true);
@@ -1108,17 +1195,19 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       drawPoints = el.points.map(p => ({ x: p.x + offX, y: p.y + offY }));
     }
 
-    const p1 = drawPoints[0], p2 = drawPoints[drawPoints.length - 1];
-    const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
-    const dx = p2.x - p1.x, dy = p2.y - p1.y;
-    const lineLen = Math.hypot(dx, dy) || 1;
-    const perpX = -dy / lineLen, perpY = dx / lineLen;
+    const isClosed = !!el.closed;
     const isSel = selectedId === el.id;
+    // SVG points string. Для polygon и polyline формат одинаковый.
+    const pointsStr = drawPoints.map(p => `${p.x},${p.y}`).join(" ");
 
-    let labelAng = Math.atan2(dy, dx) * 180 / Math.PI;
-    if (labelAng > 90 || labelAng <= -90) labelAng += 180;
-    const elTx = midX + perpX * labelSize * 1.5;
-    const elTy = midY + perpY * labelSize * 1.5;
+    // Подпись — в центроиде всех точек, без поворота (для multi-segment поворот бесмыслен).
+    const cx = drawPoints.reduce((s, p) => s + p.x, 0) / drawPoints.length;
+    const cy = drawPoints.reduce((s, p) => s + p.y, 0) / drawPoints.length;
+
+    const lineW = el.type === "lightline" ? strokeW * 1.5 : strokeW;
+    const dashArr = el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined;
+
+    const Shape = isClosed ? "polygon" : "polyline";
 
     return (
       <g key={el.id}
@@ -1127,32 +1216,32 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         opacity={isDragging ? 0.7 : 1}
       >
         {/* Невидимая толстая обводка — расширенная зона тапа/перетаскивания. */}
-        <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-          stroke="transparent" strokeWidth={strokeW * 12} strokeLinecap="round" />
-        <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-          stroke={config.color}
-          strokeWidth={el.type === "lightline" ? strokeW * 1.5 : strokeW}
-          strokeLinecap="round"
-          strokeDasharray={el.type === "track" ? `${strokeW * 2.5} ${strokeW * 1.2}` : undefined}
+        <Shape points={pointsStr}
+          fill="none" stroke="transparent" strokeWidth={strokeW * 12}
+          strokeLinecap="round" strokeLinejoin="round" />
+        <Shape points={pointsStr}
+          fill="none" stroke={config.color} strokeWidth={lineW}
+          strokeLinecap="round" strokeLinejoin="round"
+          strokeDasharray={dashArr}
           opacity={0.9}
         />
-        {el.type === "track" && (
+        {/* Маркеры концов для трека (только если не замкнутая) */}
+        {el.type === "track" && !isClosed && (
           <>
-            <circle cx={p1.x} cy={p1.y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
-            <circle cx={p2.x} cy={p2.y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+            <circle cx={drawPoints[0].x} cy={drawPoints[0].y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
+            <circle cx={drawPoints[drawPoints.length - 1].x} cy={drawPoints[drawPoints.length - 1].y} r={strokeW * 0.8} fill={config.color} opacity={0.9} />
           </>
         )}
-        {/* Подпись длины */}
-        <text x={elTx} y={elTy}
-          textAnchor="middle" dominantBaseline="central"
-          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600"
-          transform={`rotate(${labelAng}, ${elTx}, ${elTy})`}>
+        {/* Подпись длины — общая, в центроиде, без rotation */}
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+          fontSize={labelSize * 0.85} fill={config.color} fontWeight="600">
           {el.length} см
         </text>
         {/* Контур выделения */}
         {isSel && (
-          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-            stroke={config.color} strokeWidth={strokeW * 5} strokeLinecap="round"
+          <Shape points={pointsStr}
+            fill="none" stroke={config.color} strokeWidth={strokeW * 5}
+            strokeLinecap="round" strokeLinejoin="round"
             opacity={0.25} strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} />
         )}
       </g>
@@ -1516,10 +1605,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
             {/* Rotate */}
             {(elements.find(e => e.id === selectedId)?.type === "furniture"
               || elements.find(e => e.id === selectedId)?.type === "spot"
-              || elements.find(e => e.id === selectedId)?.type === "chandelier") && (
+              || elements.find(e => e.id === selectedId)?.type === "chandelier"
+              || elements.find(e => e.id === selectedId)?.type === "lightline"
+              || elements.find(e => e.id === selectedId)?.type === "track") && (
               <button onClick={rotateSelected}
                 className="p-2.5 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 active:scale-95 shadow-sm"
-                title="Повернуть">
+                title="Повернуть на 90°">
                 <RotateCw className="h-5 w-5" />
               </button>
             )}
@@ -2015,6 +2106,141 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
               <button onClick={confirmNiche}
                 disabled={!nicheInput.width || !nicheInput.depth || parseFloat(nicheInput.width) <= 0 || parseFloat(nicheInput.depth) <= 0}
+                className="w-full mt-5 py-3 rounded-xl bg-[#1e3a5f] text-white font-semibold disabled:opacity-30 active:scale-95">
+                Добавить
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Свет.линия / трек — выбор формы (Прямая / Г / П / Квадрат) */}
+      {lightShapeChoice && (() => {
+        const t = lightShapeChoice.type;
+        const close = () => setLightShapeChoice(null);
+        const pick = (shape: "straight" | "l" | "u" | "square") => {
+          setLightShapeChoice(null);
+          setLightSpecInput({
+            type: t,
+            shape,
+            length: shape === "straight" ? "200" : "",
+            width: shape === "square" ? "100" : (shape === "l" || shape === "u") ? "200" : "",
+            depth: (shape === "l" || shape === "u") ? "100" : "",
+            side: "left",
+          });
+        };
+        const label = t === "lightline" ? "✨ Свет.линия — форма" : "🔲 Трек — форма";
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40" onClick={close}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold">{label}</span>
+                <button onClick={close} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => pick("straight")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">━</span>
+                  <span className="text-xs font-semibold">Прямая</span>
+                </button>
+                <button onClick={() => pick("l")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">⌐</span>
+                  <span className="text-xs font-semibold">Г-форма</span>
+                </button>
+                <button onClick={() => pick("u")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">⊓</span>
+                  <span className="text-xs font-semibold">П-форма</span>
+                </button>
+                <button onClick={() => pick("square")}
+                  className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                  <span className="text-2xl">□</span>
+                  <span className="text-xs font-semibold">Квадрат</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Свет.линия / трек — ввод размеров для выбранной формы */}
+      {lightSpecInput && (() => {
+        const s = lightSpecInput.shape;
+        const close = () => setLightSpecInput(null);
+        const isStraight = s === "straight";
+        const isL = s === "l";
+        const isU = s === "u";
+        const isSquare = s === "square";
+        const title = lightSpecInput.type === "lightline" ? "✨ Свет.линия" : "🔲 Трек";
+        const shapeLabel = isStraight ? "Прямая" : isL ? "Г-форма" : isU ? "П-форма" : "Квадрат";
+        const validStraight = isStraight && parseFloat(lightSpecInput.length) > 0;
+        const validLU = (isL || isU) && parseFloat(lightSpecInput.width) > 0 && parseFloat(lightSpecInput.depth) > 0;
+        const validSquare = isSquare && parseFloat(lightSpecInput.width) > 0;
+        const valid = validStraight || validLU || validSquare;
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40" onClick={close}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold">{title} — {shapeLabel}</span>
+                <button onClick={close} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="space-y-3">
+                {isStraight && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Длина (см)</label>
+                    <input type="number" inputMode="numeric" autoFocus
+                      value={lightSpecInput.length}
+                      onChange={(e) => setLightSpecInput(prev => prev ? { ...prev, length: e.target.value } : null)}
+                      className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                  </div>
+                )}
+                {(isL || isU) && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Ширина (см)</label>
+                      <input type="number" inputMode="numeric" autoFocus
+                        value={lightSpecInput.width}
+                        onChange={(e) => setLightSpecInput(prev => prev ? { ...prev, width: e.target.value } : null)}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Глубина (см)</label>
+                      <input type="number" inputMode="numeric"
+                        value={lightSpecInput.depth}
+                        onChange={(e) => setLightSpecInput(prev => prev ? { ...prev, depth: e.target.value } : null)}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                    </div>
+                  </>
+                )}
+                {isL && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Сторона выпуска</label>
+                    <div className="flex gap-2 mt-1">
+                      {(["left", "right"] as const).map(sd => (
+                        <button key={sd}
+                          onClick={() => setLightSpecInput(prev => prev ? { ...prev, side: sd } : null)}
+                          className={`flex-1 py-2 rounded-lg border text-sm font-semibold ${
+                            lightSpecInput.side === sd ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300"
+                          }`}>
+                          {sd === "left" ? "← Слева" : "Справа →"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isSquare && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Сторона квадрата (см)</label>
+                    <input type="number" inputMode="numeric" autoFocus
+                      value={lightSpecInput.width}
+                      onChange={(e) => setLightSpecInput(prev => prev ? { ...prev, width: e.target.value } : null)}
+                      className="w-full mt-1 px-3 py-2 border rounded-lg text-base" />
+                  </div>
+                )}
+              </div>
+              <button onClick={confirmLightSpec}
+                disabled={!valid}
                 className="w-full mt-5 py-3 rounded-xl bg-[#1e3a5f] text-white font-semibold disabled:opacity-30 active:scale-95">
                 Добавить
               </button>
