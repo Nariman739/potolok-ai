@@ -24,6 +24,16 @@ export interface FurnitureLikeElement {
   height?: number;
   rotation?: number;
   ceilingMode?: "decor" | "to-ceiling" | "planned";
+  /** Форма мебели для кухонь: rect (default), l-shape, u-shape. */
+  furnitureShape?: "rect" | "l-shape" | "u-shape";
+  /** Кухня L/U: длина основной (горизонтальной) ветки в см. */
+  kitchenA?: number;
+  /** Кухня L/U: длина левой боковой ветки в см. */
+  kitchenB?: number;
+  /** Кухня U: длина правой боковой ветки в см. */
+  kitchenC?: number;
+  /** Кухня L/U: ширина рабочей поверхности в см (default 60). */
+  kitchenDepth?: number;
 }
 
 export type CeilingMode = "decor" | "to-ceiling" | "planned";
@@ -45,19 +55,57 @@ export interface FurnitureCeilingStats {
 /** Порог в см: грань мебели у стены если ОБЕ её точки на расстоянии < этого. */
 const AT_WALL_THRESHOLD_CM = 5;
 
-/** 4 угла мебели в SVG-координатах после rotation вокруг центра. */
+/** Локальные точки полигона (в local space, центр = 0,0) для L/U-формы кухни. */
+export function getKitchenLocalPoints(el: FurnitureLikeElement): Vertex[] | null {
+  const shape = el.furnitureShape;
+  if (shape !== "l-shape" && shape !== "u-shape") return null;
+  const a = el.kitchenA, b = el.kitchenB, d = el.kitchenDepth || 60;
+  if (!a || !b || !d) return null;
+  if (shape === "l-shape") {
+    const w = a, h = b;
+    return [
+      { x: -w / 2,     y: -h / 2     },
+      { x:  w / 2,     y: -h / 2     },
+      { x:  w / 2,     y: -h / 2 + d },
+      { x: -w / 2 + d, y: -h / 2 + d },
+      { x: -w / 2 + d, y:  h / 2     },
+      { x: -w / 2,     y:  h / 2     },
+    ];
+  }
+  const c = el.kitchenC || b;
+  const w = a, h = Math.max(b, c);
+  return [
+    { x: -w / 2,     y: -h / 2     },
+    { x:  w / 2,     y: -h / 2     },
+    { x:  w / 2,     y: -h / 2 + c },
+    { x:  w / 2 - d, y: -h / 2 + c },
+    { x:  w / 2 - d, y: -h / 2 + d },
+    { x: -w / 2 + d, y: -h / 2 + d },
+    { x: -w / 2 + d, y: -h / 2 + b },
+    { x: -w / 2,     y: -h / 2 + b },
+  ];
+}
+
+/** Углы мебели в SVG-координатах после rotation вокруг центра. 4 угла для rect, 6 для L, 8 для U. */
 export function getFurnitureCorners(el: FurnitureLikeElement): Vertex[] | null {
-  if (el.x === undefined || el.y === undefined || !el.width || !el.height) return null;
+  if (el.x === undefined || el.y === undefined) return null;
   const cx = el.x, cy = el.y;
-  const halfW = el.width / 2, halfH = el.height / 2;
   const rad = ((el.rotation || 0) * Math.PI) / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
-  const local: Vertex[] = [
-    { x: -halfW, y: -halfH },
-    { x:  halfW, y: -halfH },
-    { x:  halfW, y:  halfH },
-    { x: -halfW, y:  halfH },
-  ];
+  let local: Vertex[];
+  const kp = getKitchenLocalPoints(el);
+  if (kp) {
+    local = kp;
+  } else {
+    if (!el.width || !el.height) return null;
+    const halfW = el.width / 2, halfH = el.height / 2;
+    local = [
+      { x: -halfW, y: -halfH },
+      { x:  halfW, y: -halfH },
+      { x:  halfW, y:  halfH },
+      { x: -halfW, y:  halfH },
+    ];
+  }
   return local.map(p => ({
     x: cx + p.x * cos - p.y * sin,
     y: cy + p.x * sin + p.y * cos,
@@ -92,12 +140,12 @@ function nearestWallDist(p: Vertex, vertices: Vertex[]): { dist: number; wallIdx
 export function classifyEdges(el: FurnitureLikeElement, vertices: Vertex[]): boolean[] {
   const corners = getFurnitureCorners(el);
   if (!corners) return [false, false, false, false];
+  const n = corners.length;
   const result: boolean[] = [];
-  for (let i = 0; i < 4; i++) {
-    const p1 = corners[i], p2 = corners[(i + 1) % 4];
+  for (let i = 0; i < n; i++) {
+    const p1 = corners[i], p2 = corners[(i + 1) % n];
     const n1 = nearestWallDist(p1, vertices);
     const n2 = nearestWallDist(p2, vertices);
-    // Защита: считаем «у стены» только если обе точки близко к ОДНОЙ стене
     const atWall = n1.dist < AT_WALL_THRESHOLD_CM
                 && n2.dist < AT_WALL_THRESHOLD_CM
                 && n1.wallIdx === n2.wallIdx;
@@ -114,9 +162,10 @@ export function classifyEdges(el: FurnitureLikeElement, vertices: Vertex[]): boo
  *  - at-wall + at-wall → 0 (мебель в углу комнаты, профиль идёт по углу комнаты)
  */
 function countCorners(atWall: boolean[]): number {
+  const n = atWall.length;
   let count = 0;
-  for (let i = 0; i < 4; i++) {
-    const a = atWall[i], b = atWall[(i + 1) % 4];
+  for (let i = 0; i < n; i++) {
+    const a = atWall[i], b = atWall[(i + 1) % n];
     if (!(a && b)) count++;
   }
   return count;
@@ -124,8 +173,20 @@ function countCorners(atWall: boolean[]): number {
 
 /** Длина грани (расстояние между двумя углами мебели). */
 function edgeLen(corners: Vertex[], i: number): number {
-  const p1 = corners[i], p2 = corners[(i + 1) % 4];
+  const n = corners.length;
+  const p1 = corners[i], p2 = corners[(i + 1) % n];
   return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+}
+
+/** Площадь полигона (shoelace). Возвращает абсолютное значение. */
+function polygonArea(corners: Vertex[]): number {
+  const n = corners.length;
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    const p1 = corners[i], p2 = corners[(i + 1) % n];
+    s += p1.x * p2.y - p2.x * p1.y;
+  }
+  return Math.abs(s) / 2;
 }
 
 /**
@@ -149,15 +210,15 @@ export function furnitureCeilingStats(
     const mode = el.ceilingMode;
     if (mode !== "to-ceiling" && mode !== "planned") continue;
     const corners = getFurnitureCorners(el);
-    if (!corners || !el.width || !el.height) continue;
-    const area = el.width * el.height;
+    if (!corners) continue;
+    const area = polygonArea(corners);
     const atWall = classifyEdges(el, vertices);
     const corns = countCorners(atWall);
     if (mode === "to-ceiling") {
       stats.areaToSubtractCm2 += area;
       stats.extraCorners += corns;
       // perimeter delta: добавляем in-room грани, вычитаем at-wall грани
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < corners.length; i++) {
         const len = edgeLen(corners, i);
         if (atWall[i]) stats.perimeterDeltaCm -= len;
         else stats.perimeterDeltaCm += len;

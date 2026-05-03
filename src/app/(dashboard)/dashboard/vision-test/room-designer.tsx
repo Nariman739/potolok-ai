@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
-import { furnitureCeilingStats, classifyEdges } from "@/lib/furniture-ceiling";
+import { furnitureCeilingStats, classifyEdges, getKitchenLocalPoints, getFurnitureCorners } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "./3d/Scene3DBoundary";
 
 const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
@@ -58,6 +58,16 @@ export interface RoomElement {
   furnitureId?: string;
   /** Индекс ребра шкафа: 0=top, 1=right, 2=bottom, 3=left (в local space). */
   edgeIndex?: number;
+  /** Форма мебели для кухонь: rect (default) / l-shape / u-shape. */
+  furnitureShape?: "rect" | "l-shape" | "u-shape";
+  /** L/U-кухня: длина основной горизонтальной ветки (см). */
+  kitchenA?: number;
+  /** L/U-кухня: длина левой боковой ветки (см). */
+  kitchenB?: number;
+  /** U-кухня: длина правой боковой ветки (см). */
+  kitchenC?: number;
+  /** L/U-кухня: ширина рабочей поверхности (см, default 60). */
+  kitchenDepth?: number;
 }
 
 interface Room {
@@ -338,6 +348,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
   const [furnCeilingMode, setFurnCeilingMode] = useState<CeilingMode>("decor");
+  // Кухня L/U: форма + размеры веток
+  const [furnShape, setFurnShape] = useState<"rect" | "l-shape" | "u-shape">("rect");
+  const [furnA, setFurnA] = useState("250"); // длина горизонтали
+  const [furnB, setFurnB] = useState("200"); // длина левой боковой
+  const [furnC, setFurnC] = useState("200"); // длина правой боковой (только U)
+  const [furnDepth, setFurnDepth] = useState("60"); // ширина рабочей поверхности
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
@@ -537,6 +553,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       setFurnW(String(fCfg.defaultW));
       setFurnH(String(fCfg.defaultH));
       setFurnCeilingMode(fCfg.defaultCeilingMode || "decor");
+      setFurnShape("rect");
       return;
     }
 
@@ -586,27 +603,18 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       // Сначала пробуем — попал ли тап в грань шкафа to-ceiling/planned (in-room ребро).
       // Если да — ставим парящий на ребре шкафа, не на стене.
       const edgeHit = (() => {
-        const threshold = 25; // см — допуск попадания в ребро
+        const threshold = 25;
         let best: { id: string; edgeIndex: number; dist: number } | null = null;
         for (const f of elements) {
           if (f.type !== "furniture") continue;
           if (f.ceilingMode !== "to-ceiling" && f.ceilingMode !== "planned") continue;
-          if (f.x === undefined || f.y === undefined || !f.width || !f.height) continue;
-          const rot = (f.rotation || 0) * Math.PI / 180;
-          const cosR = Math.cos(rot), sinR = Math.sin(rot);
-          const hw = f.width / 2, hh = f.height / 2;
-          // 4 угла в мир. координатах: top-left, top-right, bottom-right, bottom-left
-          const corners = ([[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const).map(([lx, ly]) => ({
-            x: f.x! + lx * cosR - ly * sinR,
-            y: f.y! + lx * sinR + ly * cosR,
-          }));
-          const inRoomEdges = classifyEdges(
-            { type: "furniture", x: f.x, y: f.y, width: f.width, height: f.height, rotation: f.rotation || 0, ceilingMode: f.ceilingMode },
-            vertices,
-          ).map(at => !at);
-          for (let i = 0; i < 4; i++) {
+          const corners = getFurnitureCorners(f);
+          if (!corners) continue;
+          const inRoomEdges = classifyEdges(f, vertices).map(at => !at);
+          const n = corners.length;
+          for (let i = 0; i < n; i++) {
             if (!inRoomEdges[i]) continue;
-            const p0 = corners[i], p1 = corners[(i + 1) % 4];
+            const p0 = corners[i], p1 = corners[(i + 1) % n];
             const segDx = p1.x - p0.x, segDy = p1.y - p0.y;
             const segL2 = segDx * segDx + segDy * segDy;
             if (segL2 < 0.001) continue;
@@ -893,12 +901,27 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
 
   function confirmFurniture() {
     if (!furnitureMenu) return;
-    const w = parseFloat(furnW), h = parseFloat(furnH);
-    if (!w || !h) { setFurnitureMenu(null); return; }
     const t = furnitureMenu.furnitureType;
-    // ceilingMode сохраняем только если он осмыслен для типа (или explicitly не decor)
     const canCeil = canBeToCeiling(t);
     const mode: CeilingMode = canCeil ? furnCeilingMode : "decor";
+    const isKitchenLU = t === "kitchen" && (furnShape === "l-shape" || furnShape === "u-shape");
+
+    let w = parseFloat(furnW), h = parseFloat(furnH);
+    let extra: Partial<RoomElement> = {};
+    if (isKitchenLU) {
+      const a = parseFloat(furnA), b = parseFloat(furnB), d = parseFloat(furnDepth);
+      const c = furnShape === "u-shape" ? parseFloat(furnC) : undefined;
+      if (!a || !b || !d || (furnShape === "u-shape" && !c)) { setFurnitureMenu(null); return; }
+      // bbox для bbox-based selection и rect-fallback в getFurnitureCorners
+      w = a;
+      h = furnShape === "u-shape" ? Math.max(b, c!) : b;
+      extra = {
+        furnitureShape: furnShape,
+        kitchenA: a, kitchenB: b, kitchenDepth: d,
+        ...(furnShape === "u-shape" && c && { kitchenC: c }),
+      };
+    }
+    if (!w || !h) { setFurnitureMenu(null); return; }
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
       type: "furniture",
@@ -909,9 +932,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       height: h,
       rotation: 0,
       ...(mode !== "decor" && { ceilingMode: mode }),
+      ...extra,
     }]);
     setFurnitureMenu(null);
     setFurnCeilingMode("decor");
+    setFurnShape("rect");
   }
 
   function rotateSelected() {
@@ -1284,15 +1309,12 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Парящий привязан к ребру шкафа
     if (el.furnitureId && el.edgeIndex !== undefined) {
       const f = elements.find(e => e.id === el.furnitureId);
-      if (!f || f.x === undefined || f.y === undefined || !f.width || !f.height) return null;
-      const rot = (f.rotation || 0) * Math.PI / 180;
-      const cosR = Math.cos(rot), sinR = Math.sin(rot);
-      const hw = f.width / 2, hh = f.height / 2;
-      const corners = ([[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const).map(([lx, ly]) => ({
-        x: f.x! + lx * cosR - ly * sinR,
-        y: f.y! + lx * sinR + ly * cosR,
-      }));
-      const p0 = corners[el.edgeIndex], p1 = corners[(el.edgeIndex + 1) % 4];
+      if (!f) return null;
+      const corners = getFurnitureCorners(f);
+      if (!corners || !corners[el.edgeIndex]) return null;
+      const p0 = corners[el.edgeIndex], p1 = corners[(el.edgeIndex + 1) % corners.length];
+      // f.x, f.y нужны для shift outward
+      if (f.x === undefined || f.y === undefined) return null;
       // Сдвиг наружу от центра шкафа — чтобы линия не накладывалась на стенку шкафа
       const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
       const outDx = midX - f.x!, outDy = midY - f.y!;
@@ -1882,15 +1904,28 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Подсветка in-room граней — толще, цветом профиля
     const profileColor = "#06B6D4";
     const profileWidth = strokeW * 1.6;
-    // Локальные грани прямоугольника в порядке как в getFurnitureCorners:
-    // 0: (-w/2,-h/2)→(w/2,-h/2) (top), 1: (w/2,-h/2)→(w/2,h/2) (right),
-    // 2: (w/2,h/2)→(-w/2,h/2) (bottom), 3: (-w/2,h/2)→(-w/2,-h/2) (left)
-    const localEdges: { x1: number; y1: number; x2: number; y2: number }[] = [
-      { x1: -w / 2, y1: -h / 2, x2:  w / 2, y2: -h / 2 },
-      { x1:  w / 2, y1: -h / 2, x2:  w / 2, y2:  h / 2 },
-      { x1:  w / 2, y1:  h / 2, x2: -w / 2, y2:  h / 2 },
-      { x1: -w / 2, y1:  h / 2, x2: -w / 2, y2: -h / 2 },
+    // Локальные точки полигона: для rect — 4 угла, для L — 6, для U — 8.
+    const kp = getKitchenLocalPoints({
+      type: "furniture",
+      furnitureShape: el.furnitureShape,
+      kitchenA: el.kitchenA, kitchenB: el.kitchenB, kitchenC: el.kitchenC, kitchenDepth: el.kitchenDepth,
+    });
+    const localPoints: { x: number; y: number }[] = kp ?? [
+      { x: -w / 2, y: -h / 2 },
+      { x:  w / 2, y: -h / 2 },
+      { x:  w / 2, y:  h / 2 },
+      { x: -w / 2, y:  h / 2 },
     ];
+    const localEdges = localPoints.map((p, i) => {
+      const next = localPoints[(i + 1) % localPoints.length];
+      return { x1: p.x, y1: p.y, x2: next.x, y2: next.y };
+    });
+    const polygonPath = localPoints.map(p => `${p.x},${p.y}`).join(" ");
+    // BBox для outline-рамки выбора и hit-bg
+    const xs = localPoints.map(p => p.x), ys = localPoints.map(p => p.y);
+    const bbMinX = Math.min(...xs), bbMaxX = Math.max(...xs);
+    const bbMinY = Math.min(...ys), bbMaxY = Math.max(...ys);
+    const bbW = bbMaxX - bbMinX, bbH = bbMaxY - bbMinY;
 
     return (
       <g key={el.id} transform={`translate(${pos.x}, ${pos.y}) rotate(${rot})`}
@@ -1900,14 +1935,13 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         pointerEvents={pointerEvents}
       >
         {isSel && (
-          <rect x={-w / 2 - roomSize * 0.01} y={-h / 2 - roomSize * 0.01}
-            width={w + roomSize * 0.02} height={h + roomSize * 0.02}
+          <rect x={bbMinX - roomSize * 0.01} y={bbMinY - roomSize * 0.01}
+            width={bbW + roomSize * 0.02} height={bbH + roomSize * 0.02}
             rx={roomSize * 0.01} fill="none" stroke={clr}
             strokeWidth={spotR * 0.25} strokeDasharray={`${spotR * 0.5},${spotR * 0.3}`} />
         )}
-        <rect x={-w / 2} y={-h / 2} width={w} height={h}
-          rx={roomSize * 0.008} fill={clr} opacity={fillOpacity}
-          stroke={strokeColor} strokeWidth={strokeW2} strokeDasharray={dashArr} />
+        <polygon points={polygonPath} fill={clr} opacity={fillOpacity}
+          stroke={strokeColor} strokeWidth={strokeW2} strokeDasharray={dashArr} strokeLinejoin="miter" />
         {/* Подсветка in-room граней (где идёт профиль натяжного потолка) */}
         {(isToCeil || isPlanned) && localEdges.map((e, i) => inRoomEdges[i] && (
           <line key={`pe-${i}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
@@ -3088,29 +3122,81 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 )}
               </div>
             )}
-            <div className="flex gap-3 mb-4">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1 block">Ширина</label>
-                <input
-                  type="number"
-                  value={furnW}
-                  onChange={e => setFurnW(e.target.value)}
-                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
-                  autoFocus
-                  inputMode="numeric"
-                />
+            {furnitureMenu.furnitureType === "kitchen" && (
+              <div className="mb-4">
+                <label className="text-xs text-muted-foreground mb-1 block">Форма</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { v: "rect" as const, emoji: "▭", label: "Прямая" },
+                    { v: "l-shape" as const, emoji: "⌐", label: "Г-обр." },
+                    { v: "u-shape" as const, emoji: "⊓", label: "П-обр." },
+                  ]).map(opt => (
+                    <button key={opt.v}
+                      onClick={() => setFurnShape(opt.v)}
+                      className={`py-2 rounded-lg border text-[11px] font-semibold leading-tight active:scale-95 ${
+                        furnShape === opt.v ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-700"
+                      }`}>
+                      <div className="text-base">{opt.emoji}</div>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1 block">Глубина</label>
-                <input
-                  type="number"
-                  value={furnH}
-                  onChange={e => setFurnH(e.target.value)}
-                  className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
-                  inputMode="numeric"
-                />
+            )}
+            {furnitureMenu.furnitureType === "kitchen" && furnShape !== "rect" ? (
+              <div className="space-y-3 mb-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Длина (горизонталь)</label>
+                    <input type="number" value={furnA} onChange={e => setFurnA(e.target.value)}
+                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Ширина рабочей</label>
+                    <input type="number" value={furnDepth} onChange={e => setFurnDepth(e.target.value)}
+                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">{furnShape === "u-shape" ? "Левая боковая" : "Боковая"}</label>
+                    <input type="number" value={furnB} onChange={e => setFurnB(e.target.value)}
+                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
+                  </div>
+                  {furnShape === "u-shape" && (
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Правая боковая</label>
+                      <input type="number" value={furnC} onChange={e => setFurnC(e.target.value)}
+                        className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex gap-3 mb-4">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Ширина</label>
+                  <input
+                    type="number"
+                    value={furnW}
+                    onChange={e => setFurnW(e.target.value)}
+                    className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                    autoFocus
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Глубина</label>
+                  <input
+                    type="number"
+                    value={furnH}
+                    onChange={e => setFurnH(e.target.value)}
+                    className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => setFurnitureMenu(null)}
                 className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">
