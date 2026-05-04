@@ -498,6 +498,7 @@ interface Room {
   perimeter: number;
   elements?: RoomElement[];
   photoUrls?: string[];     // Фото потолка комнаты
+  previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
 }
 
 interface SavedObject {
@@ -1679,6 +1680,7 @@ export default function ZameryPage() {
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
               photoUrls: (r.photoUrls as string[]) || [],
+              previewUrl3d: r.previewUrl3d,
             })));
             loadedFromServer = true;
           }
@@ -1773,6 +1775,7 @@ export default function ZameryPage() {
           area: r.area,
           perimeter: r.perimeter,
           elements: r.elements || [],
+          previewUrl3d: r.previewUrl3d,
         }))),
       });
       if (res.ok) {
@@ -1827,6 +1830,7 @@ export default function ZameryPage() {
             area: updated.area,
             perimeter: updated.perimeter,
             elements: updated.elements || [],
+            previewUrl3d: updated.previewUrl3d,
           }),
         });
         if (!res.ok) {
@@ -2289,8 +2293,24 @@ export default function ZameryPage() {
       {designingRoom && (
         <RoomDesigner
           room={designingRoom}
+          onPreviewSaved={(url) => {
+            // Обновляем designingRoom (в режиме рисования) и persist в БД, если комната уже есть в rooms
+            setDesigningRoom(prev => prev ? { ...prev, previewUrl3d: url } : prev);
+            const exists = rooms.some(r => r.id === designingRoom.id);
+            if (exists) {
+              setRooms(prev => prev.map(r => r.id === designingRoom.id ? { ...r, previewUrl3d: url } : r));
+              const objId = activeObjectIdRef.current;
+              if (objId) {
+                fetch(`/api/measurements/${objId}/rooms/${designingRoom.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ previewUrl3d: url }),
+                }).catch(() => {});
+              }
+            }
+          }}
           onDone={elements => {
-            const roomWithElements = { ...designingRoom, elements };
+            const roomWithElements: Room = { ...designingRoom, elements };
 
             // Calculator mode: save room and redirect to calculator
             if (isCalculatorMode) {

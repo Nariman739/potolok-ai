@@ -171,6 +171,9 @@ model Estimate {
   // PDF
   pdfUrl          String?
 
+  // 3D preview (PNG snapshot of first room from Scene3D)
+  room3dPreviewUrl String?
+
   // Timestamps
   validUntil      DateTime?
   createdAt       DateTime @default(now())
@@ -256,6 +259,7 @@ model MeasurementRoom {
   perimeter      Float
   elements       Json     @default("[]")  // RoomElement[] — софиты, люстры, гардины и т.д.
   photoUrls      String[] @default([])    // Фото потолка комнаты (Vercel Blob URLs)
+  previewUrl3d   String?                  // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
   sortOrder      Int      @default(0)
 
   createdAt      DateTime @default(now())

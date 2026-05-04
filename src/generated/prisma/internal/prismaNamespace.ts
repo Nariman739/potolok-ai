@@ -1445,6 +1445,7 @@ export const EstimateScalarFieldEnum = {
   recommendedVariant: 'recommendedVariant',
   confirmedVariant: 'confirmedVariant',
   pdfUrl: 'pdfUrl',
+  room3dPreviewUrl: 'room3dPreviewUrl',
   validUntil: 'validUntil',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1497,6 +1498,7 @@ export const MeasurementRoomScalarFieldEnum = {
   perimeter: 'perimeter',
   elements: 'elements',
   photoUrls: 'photoUrls',
+  previewUrl3d: 'previewUrl3d',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

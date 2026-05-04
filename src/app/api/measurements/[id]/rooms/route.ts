@@ -37,6 +37,7 @@ export async function POST(
         perimeter: number;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         elements?: any;
+        previewUrl3d?: string;
       };
 
       const room = await prisma.measurementRoom.create({
@@ -51,6 +52,7 @@ export async function POST(
           area: r.area,
           perimeter: r.perimeter,
           elements: r.elements ?? [],
+          previewUrl3d: r.previewUrl3d ?? undefined,
           sortOrder: obj._count.rooms + i,
         },
       });

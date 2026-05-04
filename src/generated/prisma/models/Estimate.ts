@@ -61,6 +61,7 @@ export type EstimateMinAggregateOutputType = {
   recommendedVariant: string | null
   confirmedVariant: string | null
   pdfUrl: string | null
+  room3dPreviewUrl: string | null
   validUntil: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -83,6 +84,7 @@ export type EstimateMaxAggregateOutputType = {
   recommendedVariant: string | null
   confirmedVariant: string | null
   pdfUrl: string | null
+  room3dPreviewUrl: string | null
   validUntil: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -107,6 +109,7 @@ export type EstimateCountAggregateOutputType = {
   recommendedVariant: number
   confirmedVariant: number
   pdfUrl: number
+  room3dPreviewUrl: number
   validUntil: number
   createdAt: number
   updatedAt: number
@@ -149,6 +152,7 @@ export type EstimateMinAggregateInputType = {
   recommendedVariant?: true
   confirmedVariant?: true
   pdfUrl?: true
+  room3dPreviewUrl?: true
   validUntil?: true
   createdAt?: true
   updatedAt?: true
@@ -171,6 +175,7 @@ export type EstimateMaxAggregateInputType = {
   recommendedVariant?: true
   confirmedVariant?: true
   pdfUrl?: true
+  room3dPreviewUrl?: true
   validUntil?: true
   createdAt?: true
   updatedAt?: true
@@ -195,6 +200,7 @@ export type EstimateCountAggregateInputType = {
   recommendedVariant?: true
   confirmedVariant?: true
   pdfUrl?: true
+  room3dPreviewUrl?: true
   validUntil?: true
   createdAt?: true
   updatedAt?: true
@@ -306,6 +312,7 @@ export type EstimateGroupByOutputType = {
   recommendedVariant: string | null
   confirmedVariant: string | null
   pdfUrl: string | null
+  room3dPreviewUrl: string | null
   validUntil: Date | null
   createdAt: Date
   updatedAt: Date
@@ -353,6 +360,7 @@ export type EstimateWhereInput = {
   recommendedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   confirmedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   pdfUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  room3dPreviewUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
@@ -379,6 +387,7 @@ export type EstimateOrderByWithRelationInput = {
   recommendedVariant?: Prisma.SortOrderInput | Prisma.SortOrder
   confirmedVariant?: Prisma.SortOrderInput | Prisma.SortOrder
   pdfUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  room3dPreviewUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -408,6 +417,7 @@ export type EstimateWhereUniqueInput = Prisma.AtLeast<{
   recommendedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   confirmedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   pdfUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  room3dPreviewUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
@@ -434,6 +444,7 @@ export type EstimateOrderByWithAggregationInput = {
   recommendedVariant?: Prisma.SortOrderInput | Prisma.SortOrder
   confirmedVariant?: Prisma.SortOrderInput | Prisma.SortOrder
   pdfUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  room3dPreviewUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -466,6 +477,7 @@ export type EstimateScalarWhereWithAggregatesInput = {
   recommendedVariant?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   confirmedVariant?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   pdfUrl?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
+  room3dPreviewUrl?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   validUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Estimate"> | Date | string
@@ -489,6 +501,7 @@ export type EstimateCreateInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -515,6 +528,7 @@ export type EstimateUncheckedCreateInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -539,6 +553,7 @@ export type EstimateUpdateInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -565,6 +580,7 @@ export type EstimateUncheckedUpdateInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -590,6 +606,7 @@ export type EstimateCreateManyInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -613,6 +630,7 @@ export type EstimateUpdateManyMutationInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -637,6 +655,7 @@ export type EstimateUncheckedUpdateManyInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -671,6 +690,7 @@ export type EstimateCountOrderByAggregateInput = {
   recommendedVariant?: Prisma.SortOrder
   confirmedVariant?: Prisma.SortOrder
   pdfUrl?: Prisma.SortOrder
+  room3dPreviewUrl?: Prisma.SortOrder
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -702,6 +722,7 @@ export type EstimateMaxOrderByAggregateInput = {
   recommendedVariant?: Prisma.SortOrder
   confirmedVariant?: Prisma.SortOrder
   pdfUrl?: Prisma.SortOrder
+  room3dPreviewUrl?: Prisma.SortOrder
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -724,6 +745,7 @@ export type EstimateMinOrderByAggregateInput = {
   recommendedVariant?: Prisma.SortOrder
   confirmedVariant?: Prisma.SortOrder
   pdfUrl?: Prisma.SortOrder
+  room3dPreviewUrl?: Prisma.SortOrder
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -831,6 +853,7 @@ export type EstimateCreateWithoutMasterInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -855,6 +878,7 @@ export type EstimateUncheckedCreateWithoutMasterInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -909,6 +933,7 @@ export type EstimateScalarWhereInput = {
   recommendedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   confirmedVariant?: Prisma.StringNullableFilter<"Estimate"> | string | null
   pdfUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  room3dPreviewUrl?: Prisma.StringNullableFilter<"Estimate"> | string | null
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
@@ -932,6 +957,7 @@ export type EstimateCreateWithoutChatSessionInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -957,6 +983,7 @@ export type EstimateUncheckedCreateWithoutChatSessionInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -996,6 +1023,7 @@ export type EstimateUpdateWithoutChatSessionInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1021,6 +1049,7 @@ export type EstimateUncheckedUpdateWithoutChatSessionInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1044,6 +1073,7 @@ export type EstimateCreateManyMasterInput = {
   recommendedVariant?: string | null
   confirmedVariant?: string | null
   pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1067,6 +1097,7 @@ export type EstimateUpdateWithoutMasterInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1091,6 +1122,7 @@ export type EstimateUncheckedUpdateWithoutMasterInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1115,6 +1147,7 @@ export type EstimateUncheckedUpdateManyWithoutMasterInput = {
   recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1141,6 +1174,7 @@ export type EstimateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   recommendedVariant?: boolean
   confirmedVariant?: boolean
   pdfUrl?: boolean
+  room3dPreviewUrl?: boolean
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1167,6 +1201,7 @@ export type EstimateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   recommendedVariant?: boolean
   confirmedVariant?: boolean
   pdfUrl?: boolean
+  room3dPreviewUrl?: boolean
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1192,6 +1227,7 @@ export type EstimateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   recommendedVariant?: boolean
   confirmedVariant?: boolean
   pdfUrl?: boolean
+  room3dPreviewUrl?: boolean
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1217,12 +1253,13 @@ export type EstimateSelectScalar = {
   recommendedVariant?: boolean
   confirmedVariant?: boolean
   pdfUrl?: boolean
+  room3dPreviewUrl?: boolean
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
+export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
 export type EstimateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -1259,6 +1296,7 @@ export type $EstimatePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     recommendedVariant: string | null
     confirmedVariant: string | null
     pdfUrl: string | null
+    room3dPreviewUrl: string | null
     validUntil: Date | null
     createdAt: Date
     updatedAt: Date
@@ -1705,6 +1743,7 @@ export interface EstimateFieldRefs {
   readonly recommendedVariant: Prisma.FieldRef<"Estimate", 'String'>
   readonly confirmedVariant: Prisma.FieldRef<"Estimate", 'String'>
   readonly pdfUrl: Prisma.FieldRef<"Estimate", 'String'>
+  readonly room3dPreviewUrl: Prisma.FieldRef<"Estimate", 'String'>
   readonly validUntil: Prisma.FieldRef<"Estimate", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Estimate", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Estimate", 'DateTime'>

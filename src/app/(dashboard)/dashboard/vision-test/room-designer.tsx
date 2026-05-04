@@ -77,6 +77,7 @@ interface Room {
   perimeter: number;
   elements?: RoomElement[];
   ceilingHeight?: number;
+  previewUrl3d?: string;
 }
 
 // ── Element config ──
@@ -296,10 +297,11 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 // ── Component ──
 
-export default function RoomDesigner({ room, onDone, onCancel }: {
+export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }: {
   room: Room;
   onDone: (elements: RoomElement[]) => void;
   onCancel: () => void;
+  onPreviewSaved?: (url: string) => void;
 }) {
   const [elements, setElements] = useState<RoomElement[]>(room.elements || []);
   const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
@@ -2347,6 +2349,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               walls={room.walls}
               ceilingHeight={room.ceilingHeight ?? DEFAULT_CEILING_HEIGHT_CM}
               elements={elements}
+              onScreenshot={onPreviewSaved}
             />
           </Scene3DBoundary>
         )}
@@ -2553,6 +2556,69 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
               opacity={0.3} rx={roomSize * 0.02}
             />
           )}
+          {/* Live-preview кухни-wizard: видимая ломаная контура по введённым сегментам */}
+          {kitchenWizard && (() => {
+            const pts: { x: number; y: number }[] = [{ x: kitchenWizard.startX, y: kitchenWizard.startY }];
+            let cx = kitchenWizard.startX, cy = kitchenWizard.startY;
+            for (const seg of kitchenWizard.segments) {
+              const rad = (seg.dir * Math.PI) / 180;
+              cx += Math.cos(rad) * seg.len;
+              cy += Math.sin(rad) * seg.len;
+              pts.push({ x: cx, y: cy });
+            }
+            // Текущий «следующий» сегмент — пунктиром, если введена длина
+            const len = parseFloat(kitchenWizard.lengthValue);
+            let nextEnd: { x: number; y: number } | null = null;
+            if (len > 0) {
+              const rad = (kitchenWizard.nextDir * Math.PI) / 180;
+              nextEnd = { x: cx + Math.cos(rad) * len, y: cy + Math.sin(rad) * len };
+            }
+            const pointsStr = pts.map(p => `${p.x},${p.y}`).join(" ");
+            return (
+              <g opacity={0.95}>
+                {/* Уже введённые сегменты — толстая оранжевая полилиния */}
+                {pts.length >= 2 && (
+                  <polyline points={pointsStr} fill="none" stroke="#F97316"
+                    strokeWidth={strokeW * 1.4} strokeLinecap="butt" strokeLinejoin="miter" />
+                )}
+                {/* Точки на углах */}
+                {pts.map((p, i) => (
+                  <circle key={i} cx={p.x} cy={p.y} r={strokeW * 0.7}
+                    fill={i === 0 ? "#10B981" : "#F97316"} stroke="#fff" strokeWidth={strokeW * 0.3} />
+                ))}
+                {/* Подпись длин уже введённых сегментов */}
+                {kitchenWizard.segments.map((seg, i) => {
+                  const a = pts[i], b = pts[i + 1];
+                  if (!a || !b) return null;
+                  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+                  return (
+                    <text key={`l${i}`} x={mx} y={my - labelSize * 0.5}
+                      textAnchor="middle" fontSize={labelSize * 0.65} fill="#0F172A" fontWeight="700">
+                      {seg.len}
+                    </text>
+                  );
+                })}
+                {/* Текущий «next» сегмент — пунктиром */}
+                {nextEnd && (
+                  <>
+                    <line x1={cx} y1={cy} x2={nextEnd.x} y2={nextEnd.y}
+                      stroke="#F97316" strokeWidth={strokeW * 1.0}
+                      strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} opacity={0.6} />
+                    <text x={(cx + nextEnd.x) / 2} y={(cy + nextEnd.y) / 2 - labelSize * 0.5}
+                      textAnchor="middle" fontSize={labelSize * 0.65} fill="#F97316" fontWeight="700" opacity={0.7}>
+                      {Math.round(len)}
+                    </text>
+                  </>
+                )}
+                {/* Пунктирная линия замыкания (от текущей точки к старту) — если ≥ 3 сегмента */}
+                {kitchenWizard.segments.length >= 3 && (
+                  <line x1={cx} y1={cy} x2={kitchenWizard.startX} y2={kitchenWizard.startY}
+                    stroke="#10B981" strokeWidth={strokeW * 0.7}
+                    strokeDasharray={`${strokeW * 0.8} ${strokeW * 0.6}`} opacity={0.5} />
+                )}
+              </g>
+            );
+          })()}
         </svg>
       </div>
 
@@ -3116,11 +3182,11 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
-      {/* Kitchen shape choice — Прямая / Произвольная */}
+      {/* Kitchen shape choice — Прямая / Произвольная (bottom-sheet) */}
       {kitchenShapeChoice && (
-        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40"
-          onClick={() => { setKitchenShapeChoice(null); setActiveType(null); }}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-x-0 bottom-0 z-[300] pointer-events-none"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="bg-white rounded-t-2xl shadow-2xl mx-auto sm:max-w-md p-5 pointer-events-auto border-t border-gray-200" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold">🍳 Кухня — форма</span>
               <button onClick={() => { setKitchenShapeChoice(null); setActiveType(null); }} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
@@ -3159,15 +3225,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
-      {/* Kitchen wizard — пошаговый ввод сегментов */}
+      {/* Kitchen wizard — пошаговый ввод сегментов (bottom-sheet, не закрывает canvas) */}
       {kitchenWizard && (() => {
         const dirIcon = (d: number) => d === 0 ? "→" : d === 90 ? "↓" : d === 180 ? "←" : "↑";
         const total = kitchenWizard.segments.length;
         const len = parseFloat(kitchenWizard.lengthValue);
         return (
-          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40 p-4"
-            onClick={() => { setKitchenWizard(null); setActiveType(null); }}>
-            <div className="bg-white rounded-2xl p-5 w-full sm:max-w-md shadow-2xl max-h-[100dvh] overflow-y-auto"
+          <div className="fixed inset-x-0 bottom-0 z-[300] pointer-events-none"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <div className="bg-white rounded-t-2xl shadow-2xl mx-auto sm:max-w-md max-h-[60dvh] overflow-y-auto pointer-events-auto p-4 border-t border-gray-200"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-semibold">🍳 Кухня — рисование</span>

@@ -44,6 +44,7 @@ export type MeasurementRoomMinAggregateOutputType = {
   name: string | null
   area: number | null
   perimeter: number | null
+  previewUrl3d: string | null
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -55,6 +56,7 @@ export type MeasurementRoomMaxAggregateOutputType = {
   name: string | null
   area: number | null
   perimeter: number | null
+  previewUrl3d: string | null
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -73,6 +75,7 @@ export type MeasurementRoomCountAggregateOutputType = {
   perimeter: number
   elements: number
   photoUrls: number
+  previewUrl3d: number
   sortOrder: number
   createdAt: number
   updatedAt: number
@@ -98,6 +101,7 @@ export type MeasurementRoomMinAggregateInputType = {
   name?: true
   area?: true
   perimeter?: true
+  previewUrl3d?: true
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
@@ -109,6 +113,7 @@ export type MeasurementRoomMaxAggregateInputType = {
   name?: true
   area?: true
   perimeter?: true
+  previewUrl3d?: true
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
@@ -127,6 +132,7 @@ export type MeasurementRoomCountAggregateInputType = {
   perimeter?: true
   elements?: true
   photoUrls?: true
+  previewUrl3d?: true
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
@@ -232,6 +238,7 @@ export type MeasurementRoomGroupByOutputType = {
   perimeter: number
   elements: runtime.JsonValue
   photoUrls: string[]
+  previewUrl3d: string | null
   sortOrder: number
   createdAt: Date
   updatedAt: Date
@@ -273,6 +280,7 @@ export type MeasurementRoomWhereInput = {
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
   photoUrls?: Prisma.StringNullableListFilter<"MeasurementRoom">
+  previewUrl3d?: Prisma.StringNullableFilter<"MeasurementRoom"> | string | null
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -292,6 +300,7 @@ export type MeasurementRoomOrderByWithRelationInput = {
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
   photoUrls?: Prisma.SortOrder
+  previewUrl3d?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -314,6 +323,7 @@ export type MeasurementRoomWhereUniqueInput = Prisma.AtLeast<{
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
   photoUrls?: Prisma.StringNullableListFilter<"MeasurementRoom">
+  previewUrl3d?: Prisma.StringNullableFilter<"MeasurementRoom"> | string | null
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -333,6 +343,7 @@ export type MeasurementRoomOrderByWithAggregationInput = {
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
   photoUrls?: Prisma.SortOrder
+  previewUrl3d?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -359,6 +370,7 @@ export type MeasurementRoomScalarWhereWithAggregatesInput = {
   perimeter?: Prisma.FloatWithAggregatesFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonWithAggregatesFilter<"MeasurementRoom">
   photoUrls?: Prisma.StringNullableListFilter<"MeasurementRoom">
+  previewUrl3d?: Prisma.StringNullableWithAggregatesFilter<"MeasurementRoom"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MeasurementRoom"> | Date | string
@@ -376,6 +388,7 @@ export type MeasurementRoomCreateInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -395,6 +408,7 @@ export type MeasurementRoomUncheckedCreateInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -412,6 +426,7 @@ export type MeasurementRoomUpdateInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -431,6 +446,7 @@ export type MeasurementRoomUncheckedUpdateInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -449,6 +465,7 @@ export type MeasurementRoomCreateManyInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -466,6 +483,7 @@ export type MeasurementRoomUpdateManyMutationInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -484,6 +502,7 @@ export type MeasurementRoomUncheckedUpdateManyInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -512,6 +531,7 @@ export type MeasurementRoomCountOrderByAggregateInput = {
   perimeter?: Prisma.SortOrder
   elements?: Prisma.SortOrder
   photoUrls?: Prisma.SortOrder
+  previewUrl3d?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -529,6 +549,7 @@ export type MeasurementRoomMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
+  previewUrl3d?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -540,6 +561,7 @@ export type MeasurementRoomMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   area?: Prisma.SortOrder
   perimeter?: Prisma.SortOrder
+  previewUrl3d?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -614,6 +636,7 @@ export type MeasurementRoomCreateWithoutObjectInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -631,6 +654,7 @@ export type MeasurementRoomUncheckedCreateWithoutObjectInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -678,6 +702,7 @@ export type MeasurementRoomScalarWhereInput = {
   perimeter?: Prisma.FloatFilter<"MeasurementRoom"> | number
   elements?: Prisma.JsonFilter<"MeasurementRoom">
   photoUrls?: Prisma.StringNullableListFilter<"MeasurementRoom">
+  previewUrl3d?: Prisma.StringNullableFilter<"MeasurementRoom"> | string | null
   sortOrder?: Prisma.IntFilter<"MeasurementRoom"> | number
   createdAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MeasurementRoom"> | Date | string
@@ -695,6 +720,7 @@ export type MeasurementRoomCreateManyObjectInput = {
   perimeter: number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomCreatephotoUrlsInput | string[]
+  previewUrl3d?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -712,6 +738,7 @@ export type MeasurementRoomUpdateWithoutObjectInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -729,6 +756,7 @@ export type MeasurementRoomUncheckedUpdateWithoutObjectInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -746,6 +774,7 @@ export type MeasurementRoomUncheckedUpdateManyWithoutObjectInput = {
   perimeter?: Prisma.FloatFieldUpdateOperationsInput | number
   elements?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   photoUrls?: Prisma.MeasurementRoomUpdatephotoUrlsInput | string[]
+  previewUrl3d?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -766,6 +795,7 @@ export type MeasurementRoomSelect<ExtArgs extends runtime.Types.Extensions.Inter
   perimeter?: boolean
   elements?: boolean
   photoUrls?: boolean
+  previewUrl3d?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -785,6 +815,7 @@ export type MeasurementRoomSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   perimeter?: boolean
   elements?: boolean
   photoUrls?: boolean
+  previewUrl3d?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -804,6 +835,7 @@ export type MeasurementRoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   perimeter?: boolean
   elements?: boolean
   photoUrls?: boolean
+  previewUrl3d?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -823,12 +855,13 @@ export type MeasurementRoomSelectScalar = {
   perimeter?: boolean
   elements?: boolean
   photoUrls?: boolean
+  previewUrl3d?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "angles" | "arcBulges" | "columns" | "area" | "perimeter" | "elements" | "photoUrls" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
+export type MeasurementRoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "objectId" | "name" | "walls" | "normalCorners" | "angles" | "arcBulges" | "columns" | "area" | "perimeter" | "elements" | "photoUrls" | "previewUrl3d" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementRoom"]>
 export type MeasurementRoomInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   object?: boolean | Prisma.MeasurementObjectDefaultArgs<ExtArgs>
 }
@@ -857,6 +890,7 @@ export type $MeasurementRoomPayload<ExtArgs extends runtime.Types.Extensions.Int
     perimeter: number
     elements: runtime.JsonValue
     photoUrls: string[]
+    previewUrl3d: string | null
     sortOrder: number
     createdAt: Date
     updatedAt: Date
@@ -1296,6 +1330,7 @@ export interface MeasurementRoomFieldRefs {
   readonly perimeter: Prisma.FieldRef<"MeasurementRoom", 'Float'>
   readonly elements: Prisma.FieldRef<"MeasurementRoom", 'Json'>
   readonly photoUrls: Prisma.FieldRef<"MeasurementRoom", 'String[]'>
+  readonly previewUrl3d: Prisma.FieldRef<"MeasurementRoom", 'String'>
   readonly sortOrder: Prisma.FieldRef<"MeasurementRoom", 'Int'>
   readonly createdAt: Prisma.FieldRef<"MeasurementRoom", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MeasurementRoom", 'DateTime'>

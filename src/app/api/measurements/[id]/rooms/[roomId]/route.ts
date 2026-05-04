@@ -10,7 +10,7 @@ export async function PATCH(
     const master = await requireAuth();
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, angles, arcBulges, columns, area, perimeter, elements } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, columns, area, perimeter, elements, previewUrl3d } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
@@ -20,6 +20,7 @@ export async function PATCH(
       area?: number;
       perimeter?: number;
       elements?: unknown;
+      previewUrl3d?: string | null;
     };
 
     // Verify ownership
@@ -42,6 +43,7 @@ export async function PATCH(
     if (area !== undefined) data.area = area;
     if (perimeter !== undefined) data.perimeter = perimeter;
     if (elements !== undefined) data.elements = elements;
+    if (previewUrl3d !== undefined) data.previewUrl3d = previewUrl3d;
 
     const result = await prisma.measurementRoom.updateMany({
       where: { id: roomId, objectId: id },
