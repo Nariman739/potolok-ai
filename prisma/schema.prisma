@@ -271,6 +271,24 @@ model MeasurementRoom {
 }
 
 // ============================================
+// AI CEILING RENDERS (Replicate Flux Fill Pro)
+// ============================================
+
+model AiRenderLog {
+  id          String   @id @default(uuid())
+  masterId    String
+  estimateId  String?
+  renderUrl   String
+  prompt      String
+  model       String   @default("black-forest-labs/flux-fill-pro")
+  costUsd     Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([masterId, createdAt])
+  @@index([estimateId])
+}
+
+// ============================================
 // PORTFOLIO
 // ============================================
 

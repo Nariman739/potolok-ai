@@ -392,6 +392,7 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
+  AiRenderLog: 'AiRenderLog',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
@@ -411,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1007,6 +1008,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AiRenderLog: {
+      payload: Prisma.$AiRenderLogPayload<ExtArgs>
+      fields: Prisma.AiRenderLogFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AiRenderLogFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AiRenderLogFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        findFirst: {
+          args: Prisma.AiRenderLogFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AiRenderLogFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        findMany: {
+          args: Prisma.AiRenderLogFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>[]
+        }
+        create: {
+          args: Prisma.AiRenderLogCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        createMany: {
+          args: Prisma.AiRenderLogCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AiRenderLogCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>[]
+        }
+        delete: {
+          args: Prisma.AiRenderLogDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        update: {
+          args: Prisma.AiRenderLogUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        deleteMany: {
+          args: Prisma.AiRenderLogDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AiRenderLogUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AiRenderLogUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>[]
+        }
+        upsert: {
+          args: Prisma.AiRenderLogUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AiRenderLogPayload>
+        }
+        aggregate: {
+          args: Prisma.AiRenderLogAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAiRenderLog>
+        }
+        groupBy: {
+          args: Prisma.AiRenderLogGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AiRenderLogGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AiRenderLogCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AiRenderLogCountAggregateOutputType> | number
+        }
+      }
+    }
     PortfolioWork: {
       payload: Prisma.$PortfolioWorkPayload<ExtArgs>
       fields: Prisma.PortfolioWorkFieldRefs
@@ -1507,6 +1582,20 @@ export const MeasurementRoomScalarFieldEnum = {
 export type MeasurementRoomScalarFieldEnum = (typeof MeasurementRoomScalarFieldEnum)[keyof typeof MeasurementRoomScalarFieldEnum]
 
 
+export const AiRenderLogScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  estimateId: 'estimateId',
+  renderUrl: 'renderUrl',
+  prompt: 'prompt',
+  model: 'model',
+  costUsd: 'costUsd',
+  createdAt: 'createdAt'
+} as const
+
+export type AiRenderLogScalarFieldEnum = (typeof AiRenderLogScalarFieldEnum)[keyof typeof AiRenderLogScalarFieldEnum]
+
+
 export const PortfolioWorkScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
@@ -1865,6 +1954,7 @@ export type GlobalOmitConfig = {
   chatSession?: Prisma.ChatSessionOmit
   measurementObject?: Prisma.MeasurementObjectOmit
   measurementRoom?: Prisma.MeasurementRoomOmit
+  aiRenderLog?: Prisma.AiRenderLogOmit
   portfolioWork?: Prisma.PortfolioWorkOmit
   instagramAccount?: Prisma.InstagramAccountOmit
   instagramPost?: Prisma.InstagramPostOmit

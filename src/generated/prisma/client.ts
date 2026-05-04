@@ -80,6 +80,11 @@ export type MeasurementObject = Prisma.MeasurementObjectModel
  */
 export type MeasurementRoom = Prisma.MeasurementRoomModel
 /**
+ * Model AiRenderLog
+ * 
+ */
+export type AiRenderLog = Prisma.AiRenderLogModel
+/**
  * Model PortfolioWork
  * 
  */

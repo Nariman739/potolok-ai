@@ -90,6 +90,11 @@ export default async function EstimateDetailPage({
             Пересчитать
           </Link>
         </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/dashboard/ai-render?estimateId=${estimate.id}`}>
+            ✨ AI-фото
+          </Link>
+        </Button>
         <EstimateActions
           estimateId={estimate.id}
           publicId={estimate.publicId}

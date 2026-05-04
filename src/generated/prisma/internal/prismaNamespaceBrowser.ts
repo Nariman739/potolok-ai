@@ -59,6 +59,7 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
+  AiRenderLog: 'AiRenderLog',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
@@ -244,6 +245,20 @@ export const MeasurementRoomScalarFieldEnum = {
 } as const
 
 export type MeasurementRoomScalarFieldEnum = (typeof MeasurementRoomScalarFieldEnum)[keyof typeof MeasurementRoomScalarFieldEnum]
+
+
+export const AiRenderLogScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  estimateId: 'estimateId',
+  renderUrl: 'renderUrl',
+  prompt: 'prompt',
+  model: 'model',
+  costUsd: 'costUsd',
+  createdAt: 'createdAt'
+} as const
+
+export type AiRenderLogScalarFieldEnum = (typeof AiRenderLogScalarFieldEnum)[keyof typeof AiRenderLogScalarFieldEnum]
 
 
 export const PortfolioWorkScalarFieldEnum = {
