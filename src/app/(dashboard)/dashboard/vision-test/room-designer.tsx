@@ -5,9 +5,15 @@ import dynamic from "next/dynamic";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners } from "@/lib/furniture-ceiling";
-import { Scene3DBoundary } from "./3d/Scene3DBoundary";
+import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
+import type { ElementType, FurnitureType, CeilingMode, RoomElement } from "@/lib/room-types";
+import { getVertices } from "@/lib/room-geometry";
 
-const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
+// Re-export — старые импорты `from "./room-designer"` продолжают работать
+export type { ElementType, FurnitureType, CeilingMode, RoomElement };
+export { getVertices };
+
+const Scene3D = dynamic(() => import("@/components/room-3d/Scene3D").then(m => m.Scene3D), {
   ssr: false,
   loading: () => (
     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-sky-50 to-slate-100">
@@ -17,52 +23,6 @@ const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
 });
 
 const DEFAULT_CEILING_HEIGHT_CM = 270;
-
-// ── Types ──
-
-export type ElementType = "spot" | "chandelier" | "curtain" | "subcurtain" | "track" | "lightline" | "floating" | "door" | "window" | "furniture" | "builtin_gardina" | "shower_curtain";
-export type FurnitureType = "bed" | "sofa" | "table" | "wardrobe" | "tv" | "nightstand" | "chair" | "desk" | "radiator" | "kitchen" | "wall_panel";
-/** decor — чисто декоративная мебель (не влияет на потолок).
- *  to-ceiling — мебель до потолка, профиль обходит её (меняется периметр и площадь).
- *  planned — мебели ещё нет, но клиент просит сделать уголки под будущую установку. */
-export type CeilingMode = "decor" | "to-ceiling" | "planned";
-
-export interface RoomElement {
-  id: string;
-  type: ElementType;
-  x?: number;
-  y?: number;
-  wallIndex?: number;
-  wallPosition?: number;
-  length?: number;
-  variant?: "ours" | "client";
-  furnitureType?: FurnitureType;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  // Форма wall-элементов: straight (прямой), u-niche (П-ниша), l-bend (Г-ниша),
-  // freeform (свободно перемещаемая линия — для световой линии и трека)
-  shape?: "straight" | "u-niche" | "l-bend" | "freeform";
-  // Глубина ниши в см (для u-niche / l-bend)
-  depth?: number;
-  // Сторона выпуска Г-ниши: left или right (относительно направления стены)
-  side?: "left" | "right";
-  // Точки freeform-линии в координатах SVG (для drag в любую точку)
-  points?: { x: number; y: number }[];
-  // Замкнутый контур (для квадратной свет.линии/трека) — render как polygon вместо polyline
-  closed?: boolean;
-  /** Для мебели: режим взаимодействия с потолком.
-   *  Для kitchen/wall_panel default = "to-ceiling", для остальных типов default = "decor". */
-  ceilingMode?: CeilingMode;
-  /** Парящий, привязанный к ребру шкафа (вместо стены). */
-  furnitureId?: string;
-  /** Индекс ребра шкафа: 0=top, 1=right, 2=bottom, 3=left (в local space). */
-  edgeIndex?: number;
-  /** Форма мебели: rect (через width/height) / custom (через polygonPoints). */
-  furnitureShape?: "rect" | "custom";
-  /** Точки полигона мебели в local space (центрированы относительно (0,0)). */
-  polygonPoints?: { x: number; y: number }[];
-}
 
 interface Room {
   id: string;
@@ -170,34 +130,7 @@ const HINTS: Record<string, string> = {
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 
 interface Vertex { x: number; y: number }
-
-export function getVertices(walls: number[], normalCorners: boolean[], angles?: number[]): Vertex[] {
-  const n = walls.length;
-  const wallAngles = angles ?? normalCorners.map(nc => nc ? 90 : -90);
-  const allRectilinear = wallAngles.every(a => a === 90 || a === -90);
-
-  const vertices: Vertex[] = [{ x: 0, y: 0 }];
-
-  if (allRectilinear) {
-    let x = 0, y = 0, dir = 0;
-    for (let i = 0; i < n; i++) {
-      x += DX[dir] * walls[i];
-      y += DY[dir] * walls[i];
-      vertices.push({ x, y });
-      dir = wallAngles[i] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
-    }
-  } else {
-    let x = 0, y = 0, dirRad = 0;
-    for (let i = 0; i < n; i++) {
-      x += Math.cos(dirRad) * walls[i];
-      y += Math.sin(dirRad) * walls[i];
-      vertices.push({ x, y });
-      dirRad += wallAngles[i] * Math.PI / 180;
-    }
-  }
-
-  return vertices;
-}
+// getVertices теперь импортится из @/lib/room-geometry (см. шапку файла)
 
 /**
  * Строит SVG path комнаты с учётом скруглений в углах.

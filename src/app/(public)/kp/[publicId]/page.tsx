@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { pickRoomForScene3D } from "@/lib/room-3d";
 
 export async function generateMetadata({
   params,
@@ -21,10 +23,20 @@ export async function generateMetadata({
 
   const company = estimate.master.companyName || estimate.master.firstName;
   const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
-  return {
-    title: `КП от ${company}${areaStr}`,
-    description: `Коммерческое предложение на натяжные потолки от ${company}`,
-  };
+  const title = `КП от ${company}${areaStr}`;
+  const description = `Коммерческое предложение на натяжные потолки от ${company}`;
+
+  if (estimate.room3dPreviewUrl) {
+    const cacheBust = `${estimate.room3dPreviewUrl}?v=${estimate.updatedAt.getTime()}`;
+    return {
+      title,
+      description,
+      openGraph: { title, description, images: [{ url: cacheBust }] },
+      twitter: { card: "summary_large_image", title, description, images: [cacheBust] },
+    };
+  }
+
+  return { title, description };
 }
 
 export default async function PublicKpPage({
@@ -77,6 +89,10 @@ export default async function PublicKpPage({
   const company = master.companyName || master.firstName;
   const brandColor = master.brandColor || "#1e3a5f";
   const isQuick = !!(calc as { quickEstimate?: boolean }).quickEstimate;
+
+  // 3D-просмотр доступен если в roomsData есть комната с walls/normalCorners
+  const has3DRoom = !!pickRoomForScene3D(estimate.roomsData);
+  const previewUrl = estimate.room3dPreviewUrl;
 
   const isExpired =
     estimate.validUntil ? new Date(estimate.validUntil) < new Date() : false;
@@ -214,6 +230,31 @@ export default async function PublicKpPage({
             Мастер отправит вам обновлённый расчёт. Это КП больше не действительно.
           </p>
         </div>
+      )}
+
+      {/* ── 3D PREVIEW ── */}
+      {(previewUrl || has3DRoom) && (
+        <section className="mx-auto max-w-3xl px-4 mt-6">
+          {previewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="3D-превью комнаты"
+              className="w-full rounded-2xl shadow-lg border border-white"
+            />
+          )}
+          {has3DRoom && (
+            <Link
+              href={`/kp/${publicId}/3d`}
+              prefetch={false}
+              className="mt-3 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold shadow-md active:scale-95 transition-transform"
+              style={{ backgroundColor: brandColor }}
+            >
+              <span aria-hidden="true">🔮</span>
+              <span>Открыть в 3D</span>
+            </Link>
+          )}
+        </section>
       )}
 
       {/* ── PRICE DETAILS ── */}

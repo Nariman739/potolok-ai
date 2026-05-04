@@ -1,7 +1,7 @@
 "use client";
 
 import * as THREE from "three";
-import type { ElementType } from "../room-designer";
+import type { ElementType } from "@/lib/room-types";
 import { DOOR_HEIGHT_M, DOOR_THICKNESS_M, WINDOW_HEIGHT_M, WINDOW_SILL_M } from "./constants";
 
 interface WallElement3DProps {

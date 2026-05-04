@@ -1,6 +1,6 @@
-import type { RoomElement, FurnitureType } from "../room-designer";
+import type { RoomElement, FurnitureType, Vertex2D } from "@/lib/room-types";
 
-export type Vertex2D = { x: number; y: number };
+export type { Vertex2D };
 
 export interface Scene3DProps {
   vertices: Vertex2D[];
@@ -8,6 +8,8 @@ export interface Scene3DProps {
   ceilingHeight: number;
   elements: RoomElement[];
   onScreenshot?: (dataUrl: string) => void;
+  /** Скрыть мастер-инструменты (кнопку «Снимок для КП»). Используется на публичной КП. */
+  readOnly?: boolean;
 }
 
 export const cm2m = (cm: number) => cm / 100;

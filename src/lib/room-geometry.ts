@@ -6,6 +6,55 @@ import type {
   CustomWall,
   CustomDimensions,
 } from "./types";
+import type { Vertex2D } from "./room-types";
+
+// ============================================
+// Vertices for room from walls + normalCorners (legacy zamery format)
+// Used by 2D room-designer and 3D scene builder
+// ============================================
+
+const VERTEX_DX = [1, 0, -1, 0];
+const VERTEX_DY = [0, 1, 0, -1];
+
+/** Восстанавливает вершины полигона из (walls, normalCorners | angles).
+ *  walls — длины стен в см, в порядке обхода.
+ *  normalCorners — legacy boolean[] (true = +90°, false = -90°).
+ *  angles — turn angles в градусах после каждой стены. Если задано — приоритетно. */
+export function getVertices(
+  walls: number[],
+  normalCorners: boolean[],
+  angles?: number[],
+): Vertex2D[] {
+  const n = walls.length;
+  const wallAngles = angles ?? normalCorners.map((nc) => (nc ? 90 : -90));
+  const allRectilinear = wallAngles.every((a) => a === 90 || a === -90);
+
+  const vertices: Vertex2D[] = [{ x: 0, y: 0 }];
+
+  if (allRectilinear) {
+    let x = 0;
+    let y = 0;
+    let dir = 0;
+    for (let i = 0; i < n; i++) {
+      x += VERTEX_DX[dir] * walls[i];
+      y += VERTEX_DY[dir] * walls[i];
+      vertices.push({ x, y });
+      dir = wallAngles[i] > 0 ? (dir + 1) % 4 : (dir + 3) % 4;
+    }
+  } else {
+    let x = 0;
+    let y = 0;
+    let dirRad = 0;
+    for (let i = 0; i < n; i++) {
+      x += Math.cos(dirRad) * walls[i];
+      y += Math.sin(dirRad) * walls[i];
+      vertices.push({ x, y });
+      dirRad += (wallAngles[i] * Math.PI) / 180;
+    }
+  }
+
+  return vertices;
+}
 
 export function getRoomShape(room: RoomInput): RoomShape {
   return room.shape || "rectangle";

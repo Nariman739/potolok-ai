@@ -13,7 +13,7 @@ import { Chandelier3D } from "./Chandelier3D";
 import { Furniture3D } from "./Furniture3D";
 import { WallElement3D } from "./WallElement3D";
 import { cm2m, type Scene3DProps, type ViewSpot } from "./types";
-import type { FurnitureType, ElementType } from "../room-designer";
+import type { FurnitureType, ElementType } from "@/lib/room-types";
 
 interface SpotInfo {
   position: THREE.Vector3;
@@ -41,7 +41,7 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
-export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot }: Scene3DProps) {
+export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly }: Scene3DProps) {
   const [spot, setSpot] = useState<ViewSpot>("center");
   const [daylight, setDaylight] = useState(true);
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
@@ -374,13 +374,15 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       </Canvas>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
-        <button
-          onClick={() => setScreenshotTrigger((t) => t + 1)}
-          disabled={savingShot}
-          className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
-        >
-          {savingShot ? "Сохраняю…" : "📸 Снимок для КП"}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setScreenshotTrigger((t) => t + 1)}
+            disabled={savingShot}
+            className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
+          >
+            {savingShot ? "Сохраняю…" : "📸 Снимок для КП"}
+          </button>
+        )}
         <button
           onClick={() => setShowCeilingPanel((v) => !v)}
           className={`h-10 px-3 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold active:scale-95 ${

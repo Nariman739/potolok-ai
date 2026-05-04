@@ -2265,6 +2265,7 @@ export default function ZameryPage() {
         furniturePlannedCorners: fcStats.plannedCorners,
         furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
+        previewUrl3d: room.previewUrl3d,
       } satisfies RoomInput;
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
@@ -2367,6 +2368,7 @@ export default function ZameryPage() {
                     turnRight: (room.angles?.[i] ?? 90) > 0,
                   })),
                 } : undefined,
+                previewUrl3d: room.previewUrl3d ?? designingRoom.previewUrl3d,
                 // Raw data for editing in Room Designer later
                 designerData: {
                   walls: room.walls,

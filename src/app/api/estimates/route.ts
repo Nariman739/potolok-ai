@@ -91,6 +91,12 @@ export async function POST(request: Request) {
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 14);
 
+    // Подхватываем 3D-превью из первой комнаты у которой оно есть
+    const room3dPreviewUrl =
+      Array.isArray(roomsData)
+        ? (roomsData.find((r: { previewUrl3d?: string }) => r?.previewUrl3d)?.previewUrl3d ?? null)
+        : null;
+
     const estimate = await prisma.estimate.create({
       data: {
         masterId: master.id,
@@ -103,6 +109,7 @@ export async function POST(request: Request) {
         clientPhone: clientPhone || null,
         clientAddress: clientAddress || null,
         validUntil,
+        room3dPreviewUrl,
       },
     });
 

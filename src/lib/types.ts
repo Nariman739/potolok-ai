@@ -109,6 +109,8 @@ export interface RoomInput {
   customItems?: { itemId: string; quantity: number }[];
   // Разовые позиции этой комнаты — мастер вводит руками, не сохраняются в каталог
   oneOffItems?: OneOffItem[];
+  /** PNG-снимок 3D-сцены этой комнаты (Vercel Blob URL) — попадает в Estimate.room3dPreviewUrl и на публичную КП. */
+  previewUrl3d?: string;
   // Raw data for Room Designer round-trip editing
   designerData?: {
     walls: number[];

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FurnitureType } from "../room-designer";
+import type { FurnitureType } from "@/lib/room-types";
 import { FURNITURE_3D_DIMENSIONS } from "./types";
 
 interface Furniture3DProps {

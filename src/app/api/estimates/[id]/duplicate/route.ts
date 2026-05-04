@@ -33,6 +33,7 @@ export async function POST(
         standardTotal: existing.standardTotal,
         premiumTotal: existing.premiumTotal,
         recommendedVariant: existing.recommendedVariant,
+        room3dPreviewUrl: existing.room3dPreviewUrl,
         status: "DRAFT",
       },
     });
