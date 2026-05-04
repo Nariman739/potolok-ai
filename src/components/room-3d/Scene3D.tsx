@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { SoftShadows } from "@react-three/drei";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
 import { DOOR_HEIGHT_M, WINDOW_HEIGHT_M, WINDOW_SILL_M, CEILING_COLORS } from "./constants";
@@ -43,7 +42,7 @@ const MAX_POINT_LIGHTS = 14;
 
 export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly }: Scene3DProps) {
   const [spot, setSpot] = useState<ViewSpot>("center");
-  const [daylight, setDaylight] = useState(true);
+  const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
@@ -297,7 +296,6 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
       <Canvas
-        shadows="soft"
         dpr={[1, 1.5]}
         gl={{
           preserveDrawingBuffer: true,
@@ -310,22 +308,11 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       >
         <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
 
-        <SoftShadows size={28} samples={8} focus={0.5} />
-
-        <ambientLight intensity={daylight ? 0.55 : 0.12} />
-        <hemisphereLight args={["#fffaf0", "#23272f", daylight ? 0.5 : 0.06]} />
+        <ambientLight intensity={daylight ? 0.65 : 0.16} />
+        <hemisphereLight args={["#fffaf0", "#23272f", daylight ? 0.55 : 0.08]} />
         <directionalLight
           position={[roomSize * 1.5, roomSize * 2, roomSize * 1.2]}
           intensity={daylight ? 0.9 : 0}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-          shadow-camera-far={roomSize * 5}
-          shadow-camera-left={-roomSize}
-          shadow-camera-right={roomSize}
-          shadow-camera-top={roomSize}
-          shadow-camera-bottom={-roomSize}
-          shadow-bias={-0.0005}
         />
 
         <Room3D
@@ -442,13 +429,6 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         <SpotButton current={spot} value="center" label="🧍 Центр" onSelect={setSpot} enabled={true} />
         <SpotButton current={spot} value="door" label="🚪 От двери" onSelect={setSpot} enabled={spots.door !== null} />
         <SpotButton current={spot} value="window" label="🪟 От окна" onSelect={setSpot} enabled={spots.window !== null} />
-        <button
-          onClick={() => setDaylight(d => !d)}
-          className="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-100 active:scale-95 border-l ml-1 pl-3"
-          title={daylight ? "Включить ночной режим" : "Включить дневной режим"}
-        >
-          {daylight ? "☀️ День" : "🌙 Ночь"}
-        </button>
       </div>
 
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 bg-black/40 text-white text-[11px] rounded-full pointer-events-none backdrop-blur">

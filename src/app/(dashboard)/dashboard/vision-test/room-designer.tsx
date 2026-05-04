@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
-import { furnitureCeilingStats, classifyEdges, getFurnitureCorners } from "@/lib/furniture-ceiling";
+import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
 import type { ElementType, FurnitureType, CeilingMode, RoomElement } from "@/lib/room-types";
 import { getVertices } from "@/lib/room-geometry";
@@ -391,8 +391,17 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           if (el) {
             if (el.type === "spot" || el.type === "chandelier" || el.type === "furniture") {
               const useSnap = el.type === "spot" || el.type === "chandelier";
+              const baseX = useSnap ? snapToGrid(dropPos.x) : dropPos.x;
+              const baseY = useSnap ? snapToGrid(dropPos.y) : dropPos.y;
+              // Для мебели — попытка snap к стене и соседним блокам
+              let finalPatch: Partial<RoomElement> = { x: baseX, y: baseY };
+              if (el.type === "furniture") {
+                const moved: RoomElement = { ...el, x: baseX, y: baseY };
+                const snapped = snapFurnitureToWallAndNeighbors(moved, vertices, elements);
+                if (snapped) finalPatch = { x: snapped.x, y: snapped.y, rotation: snapped.rotation };
+              }
               setElements(prev => prev.map(e =>
-                e.id === ds.id ? { ...e, x: useSnap ? snapToGrid(dropPos.x) : dropPos.x, y: useSnap ? snapToGrid(dropPos.y) : dropPos.y } : e
+                e.id === ds.id ? { ...e, ...finalPatch } : e
               ));
             } else if (el.shape === "freeform" && el.points) {
               // Freeform-элемент (свет.линия, трек) — двигаем все точки на offset.
@@ -825,7 +834,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const mode: CeilingMode = canCeil ? furnCeilingMode : "decor";
     const w = parseFloat(furnW), h = parseFloat(furnH);
     if (!w || !h) { setFurnitureMenu(null); return; }
-    setElements(prev => [...prev, {
+    // Создаём базовый элемент и применяем snap к стене + соседям
+    const base: RoomElement = {
       id: crypto.randomUUID(),
       type: "furniture",
       x: furnitureMenu.x,
@@ -835,7 +845,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       height: h,
       rotation: 0,
       ...(mode !== "decor" && { ceilingMode: mode }),
-    }]);
+    };
+    const snapped = snapFurnitureToWallAndNeighbors(base, vertices, elements);
+    const finalEl = snapped ? { ...base, x: snapped.x, y: snapped.y, rotation: snapped.rotation } : base;
+    setElements(prev => [...prev, finalEl]);
     setFurnitureMenu(null);
     setFurnCeilingMode("decor");
   }
