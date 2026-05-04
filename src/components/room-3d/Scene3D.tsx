@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { ContactShadows, Environment, PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
 import { DOOR_HEIGHT_M, WINDOW_HEIGHT_M, WINDOW_SILL_M, CEILING_COLORS } from "./constants";
@@ -40,6 +41,16 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
+// Если Suspense поймал ошибку загрузки HDR — поднимаем флаг, чтобы перестать пытаться.
+// Используется как fallback внутри `<Suspense fallback={...}>`.
+function EnvFailNotifier({ onFail }: { onFail: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onFail, 4000); // 4 сек — если HDR не загрузился, сдаёмся
+    return () => clearTimeout(t);
+  }, [onFail]);
+  return null;
+}
+
 export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly }: Scene3DProps) {
   const [spot, setSpot] = useState<ViewSpot>("center");
   const daylight = true;
@@ -56,6 +67,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return window.localStorage.getItem("potolok3d.color") ?? "white";
   });
   const [showCeilingPanel, setShowCeilingPanel] = useState(false);
+  // Адаптивное качество: high — с Environment HDR + ContactShadows; low — без них (если FPS падает)
+  const [quality, setQuality] = useState<"high" | "low">("high");
+  // Если HDR не грузится в Safari — переключаемся в low автоматически через Suspense fallback
+  const [envFailed, setEnvFailed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -320,12 +335,26 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       >
         <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
 
-        <ambientLight intensity={daylight ? 0.65 : 0.16} />
-        <hemisphereLight args={["#fffaf0", "#23272f", daylight ? 0.55 : 0.08]} />
+        {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
+        <PerformanceMonitor
+          onDecline={() => setQuality("low")}
+          onIncline={() => setQuality((q) => (q === "low" ? "high" : q))}
+        />
+
+        <ambientLight intensity={daylight ? 0.55 : 0.16} />
+        <hemisphereLight args={["#fffaf0", "#23272f", daylight ? 0.4 : 0.08]} />
         <directionalLight
           position={[roomSize * 1.5, roomSize * 2, roomSize * 1.2]}
-          intensity={daylight ? 0.9 : 0}
+          intensity={daylight ? 0.7 : 0}
         />
+
+        {/* HDR Environment даёт реалистичные рефлексы на глянцевом потолке.
+            Suspense ловит ошибку загрузки в Safari → fallback на null (без env). */}
+        {quality === "high" && !envFailed && (
+          <Suspense fallback={<EnvFailNotifier onFail={() => setEnvFailed(true)} />}>
+            <Environment preset="apartment" environmentIntensity={0.6} />
+          </Suspense>
+        )}
 
         <Room3D
           vertices={vertices}
@@ -335,6 +364,19 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           ceilingColor={ceilingColor}
           ceilingFinish={ceilingFinish}
         />
+
+        {/* Контактные тени под мебелью — без shadow maps, работает на iOS */}
+        {quality === "high" && (
+          <ContactShadows
+            position={[0, 0.005, 0]}
+            opacity={0.35}
+            scale={Math.max(roomSize * 1.2, 8)}
+            blur={2.4}
+            far={2}
+            resolution={512}
+            color="#1a1a1a"
+          />
+        )}
 
         {lightFixtures.map((f) =>
           f.kind === "spot" ? (
