@@ -23,7 +23,10 @@ export const LookAroundControls = forwardRef<LookAroundHandle, Props>(function L
   const pitch = useRef(0);
   const targetYaw = useRef(0);
   const targetPitch = useRef(0);
-  const targetPos = useRef(new THREE.Vector3());
+  // Стартуем с текущей позиции камеры (заданной в Canvas). Если стартовать с (0,0,0),
+  // useFrame будет каждый тик дрейфить камеру к полу пока внешний setView не сработает.
+  const targetPos = useRef(camera.position.clone());
+  const initialized = useRef(false);
   const isDragging = useRef(false);
   const lastX = useRef(0);
   const lastY = useRef(0);
@@ -38,8 +41,16 @@ export const LookAroundControls = forwardRef<LookAroundHandle, Props>(function L
       const horiz = Math.hypot(dx, dz);
       targetPitch.current = Math.atan2(dy, horiz);
       targetPitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, targetPitch.current));
+      // На первый setView — мгновенно ставим камеру в нужную точку, чтобы избежать
+      // некрасивого «полёта» от внешнего origin к спот-позиции.
+      if (!initialized.current) {
+        camera.position.copy(position);
+        yaw.current = targetYaw.current;
+        pitch.current = targetPitch.current;
+        initialized.current = true;
+      }
     },
-  }), []);
+  }), [camera]);
 
   useEffect(() => {
     const dom = gl.domElement;

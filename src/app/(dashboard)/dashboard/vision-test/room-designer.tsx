@@ -277,15 +277,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
   const [furnCeilingMode, setFurnCeilingMode] = useState<CeilingMode>("decor");
-  // Выбор формы кухни перед созданием: показывается до furnitureMenu
-  const [kitchenShapeChoice, setKitchenShapeChoice] = useState<{ x: number; y: number } | null>(null);
-  // Wizard для произвольной кухни — пошаговый ввод сегментов «как стены»
-  const [kitchenWizard, setKitchenWizard] = useState<{
-    startX: number; startY: number;
-    segments: { len: number; dir: 0 | 90 | 180 | 270 }[]; // dir: 0=→ 90=↓ 180=← 270=↑
-    nextDir: 0 | 90 | 180 | 270; // направление следующего сегмента
-    lengthValue: string;
-  } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
@@ -480,11 +471,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     // Check if placing furniture
     const furnType = isFurnitureActive();
     if (furnType) {
-      // Кухня — сначала выбор формы (Прямая / Произвольная)
-      if (furnType === "kitchen") {
-        setKitchenShapeChoice({ x: coords.x, y: coords.y });
-        return;
-      }
       const fCfg = FURNITURE.find(f => f.furnitureType === furnType)!;
       setFurnitureMenu({ x: coords.x, y: coords.y, furnitureType: furnType, defaultW: fCfg.defaultW, defaultH: fCfg.defaultH, defaultCeilingMode: fCfg.defaultCeilingMode });
       setFurnW(String(fCfg.defaultW));
@@ -546,7 +532,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           if (f.ceilingMode !== "to-ceiling" && f.ceilingMode !== "planned") continue;
           const corners = getFurnitureCorners(f);
           if (!corners) continue;
-          const inRoomEdges = classifyEdges(f, vertices).map(at => !at);
+          const inRoomEdges = classifyEdges(f, vertices, elements).map(at => !at);
           const n = corners.length;
           for (let i = 0; i < n; i++) {
             if (!inRoomEdges[i]) continue;
@@ -852,66 +838,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     }]);
     setFurnitureMenu(null);
     setFurnCeilingMode("decor");
-  }
-
-  /** Замыкает wizard и создаёт custom-кухню по введённым сегментам. */
-  function confirmKitchenWizard() {
-    if (!kitchenWizard) return;
-    const { startX, startY, segments } = kitchenWizard;
-    if (segments.length < 3) return;
-    // Строим world-точки по сегментам
-    const worldPoints: { x: number; y: number }[] = [{ x: startX, y: startY }];
-    let cx = startX, cy = startY;
-    for (const seg of segments) {
-      const rad = (seg.dir * Math.PI) / 180;
-      cx += Math.cos(rad) * seg.len;
-      cy += Math.sin(rad) * seg.len;
-      worldPoints.push({ x: cx, y: cy });
-    }
-    // Замыкание: если последняя точка не совпадает со стартом — достраиваем
-    const dx = startX - cx, dy = startY - cy;
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-      // Достроим 1-2 ортогональных сегмента
-      if (Math.abs(dx) < 1) {
-        // только вертикаль
-        worldPoints.push({ x: startX, y: startY });
-      } else if (Math.abs(dy) < 1) {
-        worldPoints.push({ x: startX, y: startY });
-      } else {
-        // 2 сегмента: сначала по dy, потом по dx
-        worldPoints.push({ x: cx, y: startY });
-        worldPoints.push({ x: startX, y: startY });
-      }
-    }
-    // Удаляем дубликат (последняя точка = первая для замкнутого контура)
-    if (worldPoints.length > 0) {
-      const last = worldPoints[worldPoints.length - 1];
-      if (Math.abs(last.x - startX) < 1 && Math.abs(last.y - startY) < 1) {
-        worldPoints.pop();
-      }
-    }
-    if (worldPoints.length < 3) { setKitchenWizard(null); return; }
-    // Centroid + локальные точки
-    const ccx = worldPoints.reduce((s, p) => s + p.x, 0) / worldPoints.length;
-    const ccy = worldPoints.reduce((s, p) => s + p.y, 0) / worldPoints.length;
-    const localPoints = worldPoints.map(p => ({ x: p.x - ccx, y: p.y - ccy }));
-    const xs = localPoints.map(p => p.x), ys = localPoints.map(p => p.y);
-    const bbW = Math.max(...xs) - Math.min(...xs);
-    const bbH = Math.max(...ys) - Math.min(...ys);
-    setElements(prev => [...prev, {
-      id: crypto.randomUUID(),
-      type: "furniture",
-      x: ccx, y: ccy,
-      furnitureType: "kitchen",
-      furnitureShape: "custom",
-      polygonPoints: localPoints,
-      width: bbW, height: bbH,
-      rotation: 0,
-      closed: true,
-      ceilingMode: "to-ceiling",
-    }]);
-    setKitchenWizard(null);
-    setActiveType(null);
   }
 
   function rotateSelected() {
@@ -1860,6 +1786,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       const atWall = classifyEdges(
         { type: "furniture", x: pos.x, y: pos.y, width: w, height: h, rotation: rot, ceilingMode },
         vertices,
+        elements,
       );
       inRoomEdges = atWall.map(a => !a);
     }
@@ -2242,19 +2169,19 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             ))}
           </div>
         )}
-        {/* View mode + Zoom controls — слева, чтобы не закрывать подписи правой стены */}
-        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+        {/* View mode + Zoom controls — в 2D слева, в 3D справа сверху, чтобы не конфликтовать со Scene3D */}
+        <div className={`absolute top-2 z-30 flex flex-col gap-1 ${viewMode === "3d" ? "right-2" : "left-2"}`}>
           <button
             onClick={() => setViewMode(m => m === "2d" ? "3d" : "2d")}
-            className={`h-8 px-2 rounded-lg shadow-sm border flex items-center justify-center gap-1 text-[11px] font-bold active:scale-95 ${
+            className={`h-9 px-3 rounded-lg shadow-md border flex items-center justify-center gap-1 text-xs font-bold active:scale-95 ${
               viewMode === "3d"
                 ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
                 : "bg-white/70 text-gray-700 hover:bg-white"
             }`}
             title={viewMode === "2d" ? "Показать 3D" : "Вернуться в 2D"}
           >
-            {viewMode === "2d" ? <Box className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-            {viewMode === "2d" ? "3D" : "2D"}
+            {viewMode === "2d" ? <Box className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+            {viewMode === "2d" ? "3D" : "← 2D"}
           </button>
           {viewMode === "2d" && (
             <>
@@ -2489,69 +2416,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               opacity={0.3} rx={roomSize * 0.02}
             />
           )}
-          {/* Live-preview кухни-wizard: видимая ломаная контура по введённым сегментам */}
-          {kitchenWizard && (() => {
-            const pts: { x: number; y: number }[] = [{ x: kitchenWizard.startX, y: kitchenWizard.startY }];
-            let cx = kitchenWizard.startX, cy = kitchenWizard.startY;
-            for (const seg of kitchenWizard.segments) {
-              const rad = (seg.dir * Math.PI) / 180;
-              cx += Math.cos(rad) * seg.len;
-              cy += Math.sin(rad) * seg.len;
-              pts.push({ x: cx, y: cy });
-            }
-            // Текущий «следующий» сегмент — пунктиром, если введена длина
-            const len = parseFloat(kitchenWizard.lengthValue);
-            let nextEnd: { x: number; y: number } | null = null;
-            if (len > 0) {
-              const rad = (kitchenWizard.nextDir * Math.PI) / 180;
-              nextEnd = { x: cx + Math.cos(rad) * len, y: cy + Math.sin(rad) * len };
-            }
-            const pointsStr = pts.map(p => `${p.x},${p.y}`).join(" ");
-            return (
-              <g opacity={0.95}>
-                {/* Уже введённые сегменты — толстая оранжевая полилиния */}
-                {pts.length >= 2 && (
-                  <polyline points={pointsStr} fill="none" stroke="#F97316"
-                    strokeWidth={strokeW * 1.4} strokeLinecap="butt" strokeLinejoin="miter" />
-                )}
-                {/* Точки на углах */}
-                {pts.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={strokeW * 0.7}
-                    fill={i === 0 ? "#10B981" : "#F97316"} stroke="#fff" strokeWidth={strokeW * 0.3} />
-                ))}
-                {/* Подпись длин уже введённых сегментов */}
-                {kitchenWizard.segments.map((seg, i) => {
-                  const a = pts[i], b = pts[i + 1];
-                  if (!a || !b) return null;
-                  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-                  return (
-                    <text key={`l${i}`} x={mx} y={my - labelSize * 0.5}
-                      textAnchor="middle" fontSize={labelSize * 0.65} fill="#0F172A" fontWeight="700">
-                      {seg.len}
-                    </text>
-                  );
-                })}
-                {/* Текущий «next» сегмент — пунктиром */}
-                {nextEnd && (
-                  <>
-                    <line x1={cx} y1={cy} x2={nextEnd.x} y2={nextEnd.y}
-                      stroke="#F97316" strokeWidth={strokeW * 1.0}
-                      strokeDasharray={`${strokeW * 1.5} ${strokeW * 0.8}`} opacity={0.6} />
-                    <text x={(cx + nextEnd.x) / 2} y={(cy + nextEnd.y) / 2 - labelSize * 0.5}
-                      textAnchor="middle" fontSize={labelSize * 0.65} fill="#F97316" fontWeight="700" opacity={0.7}>
-                      {Math.round(len)}
-                    </text>
-                  </>
-                )}
-                {/* Пунктирная линия замыкания (от текущей точки к старту) — если ≥ 3 сегмента */}
-                {kitchenWizard.segments.length >= 3 && (
-                  <line x1={cx} y1={cy} x2={kitchenWizard.startX} y2={kitchenWizard.startY}
-                    stroke="#10B981" strokeWidth={strokeW * 0.7}
-                    strokeDasharray={`${strokeW * 0.8} ${strokeW * 0.6}`} opacity={0.5} />
-                )}
-              </g>
-            );
-          })()}
         </svg>
       </div>
 
@@ -3114,139 +2978,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           </div>
         </div>
       )}
-
-      {/* Kitchen shape choice — Прямая / Произвольная (bottom-sheet) */}
-      {kitchenShapeChoice && (
-        <div className="fixed inset-x-0 bottom-0 z-[300] pointer-events-none"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="bg-white rounded-t-2xl shadow-2xl mx-auto sm:max-w-md p-5 pointer-events-auto border-t border-gray-200" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold">🍳 Кухня — форма</span>
-              <button onClick={() => { setKitchenShapeChoice(null); setActiveType(null); }} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => {
-                const fCfg = FURNITURE.find(f => f.furnitureType === "kitchen")!;
-                setFurnitureMenu({ x: kitchenShapeChoice.x, y: kitchenShapeChoice.y, furnitureType: "kitchen", defaultW: fCfg.defaultW, defaultH: fCfg.defaultH, defaultCeilingMode: fCfg.defaultCeilingMode });
-                setFurnW(String(fCfg.defaultW));
-                setFurnH(String(fCfg.defaultH));
-                setFurnCeilingMode(fCfg.defaultCeilingMode || "decor");
-                setKitchenShapeChoice(null);
-              }}
-                className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
-                <span className="text-2xl">▭</span>
-                <span className="text-xs font-semibold">Прямая</span>
-                <span className="text-[10px] text-muted-foreground">ширина × глубина</span>
-              </button>
-              <button onClick={() => {
-                setKitchenWizard({
-                  startX: kitchenShapeChoice.x,
-                  startY: kitchenShapeChoice.y,
-                  segments: [],
-                  nextDir: 0,
-                  lengthValue: "",
-                });
-                setKitchenShapeChoice(null);
-              }}
-                className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
-                <span className="text-2xl">⌐</span>
-                <span className="text-xs font-semibold">Произвольная</span>
-                <span className="text-[10px] text-muted-foreground">пошагово</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Kitchen wizard — пошаговый ввод сегментов (bottom-sheet, не закрывает canvas) */}
-      {kitchenWizard && (() => {
-        const dirIcon = (d: number) => d === 0 ? "→" : d === 90 ? "↓" : d === 180 ? "←" : "↑";
-        const total = kitchenWizard.segments.length;
-        const len = parseFloat(kitchenWizard.lengthValue);
-        return (
-          <div className="fixed inset-x-0 bottom-0 z-[300] pointer-events-none"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-            <div className="bg-white rounded-t-2xl shadow-2xl mx-auto sm:max-w-md max-h-[60dvh] overflow-y-auto pointer-events-auto p-4 border-t border-gray-200"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-semibold">🍳 Кухня — рисование</span>
-                <button onClick={() => { setKitchenWizard(null); setActiveType(null); }} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Сегмент {total + 1} · направление {dirIcon(kitchenWizard.nextDir)}
-                {total > 0 && ` · уже ${total} шт.`}
-              </p>
-              {/* Список введённых сегментов */}
-              {total > 0 && (
-                <div className="text-[11px] text-gray-600 mb-3 max-h-20 overflow-y-auto">
-                  {kitchenWizard.segments.map((seg, i) => (
-                    <div key={i} className="flex justify-between">
-                      <span>{i + 1}. {dirIcon(seg.dir)} {seg.len} см</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Длина */}
-              <label className="text-xs text-muted-foreground mb-1 block">Длина (см)</label>
-              <input type="number" inputMode="numeric" autoFocus
-                value={kitchenWizard.lengthValue}
-                onChange={e => setKitchenWizard({ ...kitchenWizard, lengthValue: e.target.value })}
-                className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none mb-3" />
-              {/* Направление — 4 кнопки */}
-              <label className="text-xs text-muted-foreground mb-1 block">Направление</label>
-              <div className="grid grid-cols-4 gap-1.5 mb-4">
-                {([0, 90, 180, 270] as const).map(d => (
-                  <button key={d}
-                    onClick={() => setKitchenWizard({ ...kitchenWizard, nextDir: d })}
-                    className={`py-2 rounded-lg border text-xl font-bold active:scale-95 ${
-                      kitchenWizard.nextDir === d ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-700"
-                    }`}>
-                    {dirIcon(d)}
-                  </button>
-                ))}
-              </div>
-              {/* Кнопки */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    if (total > 0) {
-                      const newSegs = kitchenWizard.segments.slice(0, -1);
-                      setKitchenWizard({ ...kitchenWizard, segments: newSegs });
-                    }
-                  }}
-                  disabled={total === 0}
-                  className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50 disabled:opacity-30">
-                  ← Назад
-                </button>
-                <button
-                  onClick={() => {
-                    if (!len || len <= 0) return;
-                    const newSegs = [...kitchenWizard.segments, { len, dir: kitchenWizard.nextDir }];
-                    // Авто-поворот на +90° для следующего сегмента (наиболее частый случай)
-                    const autoNext = ((kitchenWizard.nextDir + 90) % 360) as 0 | 90 | 180 | 270;
-                    setKitchenWizard({ ...kitchenWizard, segments: newSegs, lengthValue: "", nextDir: autoNext });
-                  }}
-                  disabled={!len || len <= 0}
-                  className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a] disabled:opacity-30">
-                  Далее →
-                </button>
-                <button
-                  onClick={() => {
-                    if (total < 3) return;
-                    confirmKitchenWizard();
-                  }}
-                  disabled={total < 3}
-                  className="flex-1 rounded-xl bg-emerald-600 text-white py-2.5 text-sm font-semibold active:bg-emerald-700 disabled:opacity-30">
-                  Замкнуть ✓
-                </button>
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                Замыкание: с 3-го сегмента — автоматическое достроение до старта.
-              </p>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Furniture size modal */}
       {furnitureMenu && (() => {

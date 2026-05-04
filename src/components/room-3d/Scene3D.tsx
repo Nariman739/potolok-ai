@@ -454,6 +454,11 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 bg-black/40 text-white text-[11px] rounded-full pointer-events-none backdrop-blur">
         Тяните пальцем чтобы крутить головой
       </div>
+
+      {/* Debug overlay — небольшая сводка по сцене, помогает дебажить пустой 3D */}
+      <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
+        v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
+      </div>
     </div>
   );
 }
