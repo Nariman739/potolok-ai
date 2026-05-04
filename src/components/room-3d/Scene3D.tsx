@@ -198,8 +198,20 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   }, [findWallAnchor, ceilingHeight]);
 
   useEffect(() => {
-    const target = spots[spot] ?? spots.center;
-    if (target) lookRef.current?.setView(target.position, target.lookAt);
+    // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
+    // useEffect lookRef ещё null. Поэтому ретраим через requestAnimationFrame пока
+    // ref не появится, чтобы камера встала в спот, а не висела в initial-позиции.
+    let raf = 0;
+    const tryInit = () => {
+      const target = spots[spot] ?? spots.center;
+      if (lookRef.current && target) {
+        lookRef.current.setView(target.position, target.lookAt);
+      } else {
+        raf = requestAnimationFrame(tryInit);
+      }
+    };
+    raf = requestAnimationFrame(tryInit);
+    return () => cancelAnimationFrame(raf);
   }, [spot, spots]);
 
   const wallCutouts = useMemo<WallCutout[][]>(() => {
@@ -303,7 +315,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: daylight ? 1.0 : 0.85,
         }}
-        camera={{ position: [roomSize, roomSize * 0.9, roomSize], fov: 50, near: 0.05, far: 100 }}
+        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 70, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
       >
         <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
