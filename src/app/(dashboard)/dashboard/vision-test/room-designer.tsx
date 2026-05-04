@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
-import { furnitureCeilingStats, classifyEdges, getKitchenLocalPoints, getFurnitureCorners } from "@/lib/furniture-ceiling";
+import { furnitureCeilingStats, classifyEdges, getFurnitureCorners } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "./3d/Scene3DBoundary";
 
 const Scene3D = dynamic(() => import("./3d/Scene3D").then(m => m.Scene3D), {
@@ -58,16 +58,10 @@ export interface RoomElement {
   furnitureId?: string;
   /** Индекс ребра шкафа: 0=top, 1=right, 2=bottom, 3=left (в local space). */
   edgeIndex?: number;
-  /** Форма мебели для кухонь: rect (default) / l-shape / u-shape. */
-  furnitureShape?: "rect" | "l-shape" | "u-shape";
-  /** L/U-кухня: длина основной горизонтальной ветки (см). */
-  kitchenA?: number;
-  /** L/U-кухня: длина левой боковой ветки (см). */
-  kitchenB?: number;
-  /** U-кухня: длина правой боковой ветки (см). */
-  kitchenC?: number;
-  /** L/U-кухня: ширина рабочей поверхности (см, default 60). */
-  kitchenDepth?: number;
+  /** Форма мебели: rect (через width/height) / custom (через polygonPoints). */
+  furnitureShape?: "rect" | "custom";
+  /** Точки полигона мебели в local space (центрированы относительно (0,0)). */
+  polygonPoints?: { x: number; y: number }[];
 }
 
 interface Room {
@@ -348,12 +342,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
   const [furnW, setFurnW] = useState("");
   const [furnH, setFurnH] = useState("");
   const [furnCeilingMode, setFurnCeilingMode] = useState<CeilingMode>("decor");
-  // Кухня L/U: форма + размеры веток
-  const [furnShape, setFurnShape] = useState<"rect" | "l-shape" | "u-shape">("rect");
-  const [furnA, setFurnA] = useState("250"); // длина горизонтали
-  const [furnB, setFurnB] = useState("200"); // длина левой боковой
-  const [furnC, setFurnC] = useState("200"); // длина правой боковой (только U)
-  const [furnDepth, setFurnDepth] = useState("60"); // ширина рабочей поверхности
+  // Выбор формы кухни перед созданием: показывается до furnitureMenu
+  const [kitchenShapeChoice, setKitchenShapeChoice] = useState<{ x: number; y: number } | null>(null);
+  // Wizard для произвольной кухни — пошаговый ввод сегментов «как стены»
+  const [kitchenWizard, setKitchenWizard] = useState<{
+    startX: number; startY: number;
+    segments: { len: number; dir: 0 | 90 | 180 | 270 }[]; // dir: 0=→ 90=↓ 180=← 270=↑
+    nextDir: 0 | 90 | 180 | 270; // направление следующего сегмента
+    lengthValue: string;
+  } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
@@ -548,12 +545,16 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Check if placing furniture
     const furnType = isFurnitureActive();
     if (furnType) {
+      // Кухня — сначала выбор формы (Прямая / Произвольная)
+      if (furnType === "kitchen") {
+        setKitchenShapeChoice({ x: coords.x, y: coords.y });
+        return;
+      }
       const fCfg = FURNITURE.find(f => f.furnitureType === furnType)!;
       setFurnitureMenu({ x: coords.x, y: coords.y, furnitureType: furnType, defaultW: fCfg.defaultW, defaultH: fCfg.defaultH, defaultCeilingMode: fCfg.defaultCeilingMode });
       setFurnW(String(fCfg.defaultW));
       setFurnH(String(fCfg.defaultH));
       setFurnCeilingMode(fCfg.defaultCeilingMode || "decor");
-      setFurnShape("rect");
       return;
     }
 
@@ -901,23 +902,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     const t = furnitureMenu.furnitureType;
     const canCeil = canBeToCeiling(t);
     const mode: CeilingMode = canCeil ? furnCeilingMode : "decor";
-    const isKitchenLU = t === "kitchen" && (furnShape === "l-shape" || furnShape === "u-shape");
-
-    let w = parseFloat(furnW), h = parseFloat(furnH);
-    let extra: Partial<RoomElement> = {};
-    if (isKitchenLU) {
-      const a = parseFloat(furnA), b = parseFloat(furnB), d = parseFloat(furnDepth);
-      const c = furnShape === "u-shape" ? parseFloat(furnC) : undefined;
-      if (!a || !b || !d || (furnShape === "u-shape" && !c)) { setFurnitureMenu(null); return; }
-      // bbox: боковые ветки идут ПОД уголком, полная высота = side + depth
-      w = a;
-      h = furnShape === "u-shape" ? Math.max(b, c!) + d : b + d;
-      extra = {
-        furnitureShape: furnShape,
-        kitchenA: a, kitchenB: b, kitchenDepth: d,
-        ...(furnShape === "u-shape" && c && { kitchenC: c }),
-      };
-    }
+    const w = parseFloat(furnW), h = parseFloat(furnH);
     if (!w || !h) { setFurnitureMenu(null); return; }
     setElements(prev => [...prev, {
       id: crypto.randomUUID(),
@@ -929,11 +914,69 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
       height: h,
       rotation: 0,
       ...(mode !== "decor" && { ceilingMode: mode }),
-      ...extra,
     }]);
     setFurnitureMenu(null);
     setFurnCeilingMode("decor");
-    setFurnShape("rect");
+  }
+
+  /** Замыкает wizard и создаёт custom-кухню по введённым сегментам. */
+  function confirmKitchenWizard() {
+    if (!kitchenWizard) return;
+    const { startX, startY, segments } = kitchenWizard;
+    if (segments.length < 3) return;
+    // Строим world-точки по сегментам
+    const worldPoints: { x: number; y: number }[] = [{ x: startX, y: startY }];
+    let cx = startX, cy = startY;
+    for (const seg of segments) {
+      const rad = (seg.dir * Math.PI) / 180;
+      cx += Math.cos(rad) * seg.len;
+      cy += Math.sin(rad) * seg.len;
+      worldPoints.push({ x: cx, y: cy });
+    }
+    // Замыкание: если последняя точка не совпадает со стартом — достраиваем
+    const dx = startX - cx, dy = startY - cy;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      // Достроим 1-2 ортогональных сегмента
+      if (Math.abs(dx) < 1) {
+        // только вертикаль
+        worldPoints.push({ x: startX, y: startY });
+      } else if (Math.abs(dy) < 1) {
+        worldPoints.push({ x: startX, y: startY });
+      } else {
+        // 2 сегмента: сначала по dy, потом по dx
+        worldPoints.push({ x: cx, y: startY });
+        worldPoints.push({ x: startX, y: startY });
+      }
+    }
+    // Удаляем дубликат (последняя точка = первая для замкнутого контура)
+    if (worldPoints.length > 0) {
+      const last = worldPoints[worldPoints.length - 1];
+      if (Math.abs(last.x - startX) < 1 && Math.abs(last.y - startY) < 1) {
+        worldPoints.pop();
+      }
+    }
+    if (worldPoints.length < 3) { setKitchenWizard(null); return; }
+    // Centroid + локальные точки
+    const ccx = worldPoints.reduce((s, p) => s + p.x, 0) / worldPoints.length;
+    const ccy = worldPoints.reduce((s, p) => s + p.y, 0) / worldPoints.length;
+    const localPoints = worldPoints.map(p => ({ x: p.x - ccx, y: p.y - ccy }));
+    const xs = localPoints.map(p => p.x), ys = localPoints.map(p => p.y);
+    const bbW = Math.max(...xs) - Math.min(...xs);
+    const bbH = Math.max(...ys) - Math.min(...ys);
+    setElements(prev => [...prev, {
+      id: crypto.randomUUID(),
+      type: "furniture",
+      x: ccx, y: ccy,
+      furnitureType: "kitchen",
+      furnitureShape: "custom",
+      polygonPoints: localPoints,
+      width: bbW, height: bbH,
+      rotation: 0,
+      closed: true,
+      ceilingMode: "to-ceiling",
+    }]);
+    setKitchenWizard(null);
+    setActiveType(null);
   }
 
   function rotateSelected() {
@@ -1897,18 +1940,15 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
     // Подсветка in-room граней — цветом профиля, тоньше для чёткости
     const profileColor = "#06B6D4";
     const profileWidth = strokeW * 1.0;
-    // Локальные точки полигона: для rect — 4 угла, для L — 6, для U — 8.
-    const kp = getKitchenLocalPoints({
-      type: "furniture",
-      furnitureShape: el.furnitureShape,
-      kitchenA: el.kitchenA, kitchenB: el.kitchenB, kitchenC: el.kitchenC, kitchenDepth: el.kitchenDepth,
-    });
-    const localPoints: { x: number; y: number }[] = kp ?? [
-      { x: -w / 2, y: -h / 2 },
-      { x:  w / 2, y: -h / 2 },
-      { x:  w / 2, y:  h / 2 },
-      { x: -w / 2, y:  h / 2 },
-    ];
+    // Локальные точки полигона: custom — из polygonPoints, иначе rect 4 угла.
+    const localPoints: { x: number; y: number }[] = (el.polygonPoints && el.polygonPoints.length >= 3)
+      ? el.polygonPoints
+      : [
+          { x: -w / 2, y: -h / 2 },
+          { x:  w / 2, y: -h / 2 },
+          { x:  w / 2, y:  h / 2 },
+          { x: -w / 2, y:  h / 2 },
+        ];
     const localEdges = localPoints.map((p, i) => {
       const next = localPoints[(i + 1) % localPoints.length];
       return { x1: p.x, y1: p.y, x2: next.x, y2: next.y };
@@ -3076,13 +3116,146 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
         </div>
       )}
 
+      {/* Kitchen shape choice — Прямая / Произвольная */}
+      {kitchenShapeChoice && (
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40"
+          onClick={() => { setKitchenShapeChoice(null); setActiveType(null); }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold">🍳 Кухня — форма</span>
+              <button onClick={() => { setKitchenShapeChoice(null); setActiveType(null); }} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => {
+                const fCfg = FURNITURE.find(f => f.furnitureType === "kitchen")!;
+                setFurnitureMenu({ x: kitchenShapeChoice.x, y: kitchenShapeChoice.y, furnitureType: "kitchen", defaultW: fCfg.defaultW, defaultH: fCfg.defaultH, defaultCeilingMode: fCfg.defaultCeilingMode });
+                setFurnW(String(fCfg.defaultW));
+                setFurnH(String(fCfg.defaultH));
+                setFurnCeilingMode(fCfg.defaultCeilingMode || "decor");
+                setKitchenShapeChoice(null);
+              }}
+                className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                <span className="text-2xl">▭</span>
+                <span className="text-xs font-semibold">Прямая</span>
+                <span className="text-[10px] text-muted-foreground">ширина × глубина</span>
+              </button>
+              <button onClick={() => {
+                setKitchenWizard({
+                  startX: kitchenShapeChoice.x,
+                  startY: kitchenShapeChoice.y,
+                  segments: [],
+                  nextDir: 0,
+                  lengthValue: "",
+                });
+                setKitchenShapeChoice(null);
+              }}
+                className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] active:scale-95">
+                <span className="text-2xl">⌐</span>
+                <span className="text-xs font-semibold">Произвольная</span>
+                <span className="text-[10px] text-muted-foreground">пошагово</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kitchen wizard — пошаговый ввод сегментов */}
+      {kitchenWizard && (() => {
+        const dirIcon = (d: number) => d === 0 ? "→" : d === 90 ? "↓" : d === 180 ? "←" : "↑";
+        const total = kitchenWizard.segments.length;
+        const len = parseFloat(kitchenWizard.lengthValue);
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40 p-4"
+            onClick={() => { setKitchenWizard(null); setActiveType(null); }}>
+            <div className="bg-white rounded-2xl p-5 w-full sm:max-w-md shadow-2xl max-h-[100dvh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold">🍳 Кухня — рисование</span>
+                <button onClick={() => { setKitchenWizard(null); setActiveType(null); }} className="p-1 text-muted-foreground"><X className="h-5 w-5" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Сегмент {total + 1} · направление {dirIcon(kitchenWizard.nextDir)}
+                {total > 0 && ` · уже ${total} шт.`}
+              </p>
+              {/* Список введённых сегментов */}
+              {total > 0 && (
+                <div className="text-[11px] text-gray-600 mb-3 max-h-20 overflow-y-auto">
+                  {kitchenWizard.segments.map((seg, i) => (
+                    <div key={i} className="flex justify-between">
+                      <span>{i + 1}. {dirIcon(seg.dir)} {seg.len} см</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Длина */}
+              <label className="text-xs text-muted-foreground mb-1 block">Длина (см)</label>
+              <input type="number" inputMode="numeric" autoFocus
+                value={kitchenWizard.lengthValue}
+                onChange={e => setKitchenWizard({ ...kitchenWizard, lengthValue: e.target.value })}
+                className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-xl font-bold outline-none mb-3" />
+              {/* Направление — 4 кнопки */}
+              <label className="text-xs text-muted-foreground mb-1 block">Направление</label>
+              <div className="grid grid-cols-4 gap-1.5 mb-4">
+                {([0, 90, 180, 270] as const).map(d => (
+                  <button key={d}
+                    onClick={() => setKitchenWizard({ ...kitchenWizard, nextDir: d })}
+                    className={`py-2 rounded-lg border text-xl font-bold active:scale-95 ${
+                      kitchenWizard.nextDir === d ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-700"
+                    }`}>
+                    {dirIcon(d)}
+                  </button>
+                ))}
+              </div>
+              {/* Кнопки */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (total > 0) {
+                      const newSegs = kitchenWizard.segments.slice(0, -1);
+                      setKitchenWizard({ ...kitchenWizard, segments: newSegs });
+                    }
+                  }}
+                  disabled={total === 0}
+                  className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50 disabled:opacity-30">
+                  ← Назад
+                </button>
+                <button
+                  onClick={() => {
+                    if (!len || len <= 0) return;
+                    const newSegs = [...kitchenWizard.segments, { len, dir: kitchenWizard.nextDir }];
+                    // Авто-поворот на +90° для следующего сегмента (наиболее частый случай)
+                    const autoNext = ((kitchenWizard.nextDir + 90) % 360) as 0 | 90 | 180 | 270;
+                    setKitchenWizard({ ...kitchenWizard, segments: newSegs, lengthValue: "", nextDir: autoNext });
+                  }}
+                  disabled={!len || len <= 0}
+                  className="flex-1 rounded-xl bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold active:bg-[#152d4a] disabled:opacity-30">
+                  Далее →
+                </button>
+                <button
+                  onClick={() => {
+                    if (total < 3) return;
+                    confirmKitchenWizard();
+                  }}
+                  disabled={total < 3}
+                  className="flex-1 rounded-xl bg-emerald-600 text-white py-2.5 text-sm font-semibold active:bg-emerald-700 disabled:opacity-30">
+                  Замкнуть ✓
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
+                Замыкание: с 3-го сегмента — автоматическое достроение до старта.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Furniture size modal */}
       {furnitureMenu && (() => {
         const showCeilingPicker = canBeToCeiling(furnitureMenu.furnitureType);
         return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
           onClick={() => setFurnitureMenu(null)}>
-          <div className="bg-white rounded-2xl p-5 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-5 w-80 shadow-2xl max-h-[100dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold text-center mb-1">
               {FURNITURE.find(f => f.furnitureType === furnitureMenu.furnitureType)?.icon}{" "}
               {FURNITURE.find(f => f.furnitureType === furnitureMenu.furnitureType)?.label}
@@ -3116,61 +3289,7 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                 )}
               </div>
             )}
-            {furnitureMenu.furnitureType === "kitchen" && (
-              <div className="mb-4">
-                <label className="text-xs text-muted-foreground mb-1 block">Форма</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {([
-                    { v: "rect" as const, emoji: "▭", label: "Прямая" },
-                    { v: "l-shape" as const, emoji: "⌐", label: "Г-обр." },
-                    { v: "u-shape" as const, emoji: "⊓", label: "П-обр." },
-                  ]).map(opt => (
-                    <button key={opt.v}
-                      onClick={() => setFurnShape(opt.v)}
-                      className={`py-2 rounded-lg border text-[11px] font-semibold leading-tight active:scale-95 ${
-                        furnShape === opt.v ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "border-gray-300 text-gray-700"
-                      }`}>
-                      <div className="text-base">{opt.emoji}</div>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {furnitureMenu.furnitureType === "kitchen" && furnShape !== "rect" ? (
-              <div className="space-y-3 mb-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">Длина (горизонталь)</label>
-                    <input type="number" value={furnA} onChange={e => setFurnA(e.target.value)}
-                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">Ширина рабочей</label>
-                    <input type="number" value={furnDepth} onChange={e => setFurnDepth(e.target.value)}
-                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">{furnShape === "u-shape" ? "Левая (под уголком)" : "Боковая (под уголком)"}</label>
-                    <input type="number" value={furnB} onChange={e => setFurnB(e.target.value)}
-                      className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
-                  </div>
-                  {furnShape === "u-shape" && (
-                    <div className="flex-1">
-                      <label className="text-xs text-muted-foreground mb-1 block">Правая (под уголком)</label>
-                      <input type="number" value={furnC} onChange={e => setFurnC(e.target.value)}
-                        className="w-full border-2 border-gray-200 focus:border-[#1e3a5f] rounded-xl px-3 py-2.5 text-center text-base font-bold outline-none" inputMode="numeric" />
-                    </div>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center">
-                  Боковая считается без верхней рабочей: к ней прибавляется ширина рабочей.
-                </p>
-              </div>
-            ) : (
-              <div className="flex gap-3 mb-4">
+            <div className="flex gap-3 mb-4">
                 <div className="flex-1">
                   <label className="text-xs text-muted-foreground mb-1 block">Ширина</label>
                   <input
@@ -3193,7 +3312,6 @@ export default function RoomDesigner({ room, onDone, onCancel }: {
                   />
                 </div>
               </div>
-            )}
             <div className="flex gap-3">
               <button onClick={() => setFurnitureMenu(null)}
                 className="flex-1 rounded-xl border py-2.5 text-sm font-medium active:bg-gray-50">

@@ -24,16 +24,10 @@ export interface FurnitureLikeElement {
   height?: number;
   rotation?: number;
   ceilingMode?: "decor" | "to-ceiling" | "planned";
-  /** Форма мебели для кухонь: rect (default), l-shape, u-shape. */
-  furnitureShape?: "rect" | "l-shape" | "u-shape";
-  /** Кухня L/U: длина основной (горизонтальной) ветки в см. */
-  kitchenA?: number;
-  /** Кухня L/U: длина левой боковой ветки в см. */
-  kitchenB?: number;
-  /** Кухня U: длина правой боковой ветки в см. */
-  kitchenC?: number;
-  /** Кухня L/U: ширина рабочей поверхности в см (default 60). */
-  kitchenDepth?: number;
+  /** Форма мебели: rect (default) — задаётся width/height; custom — задаётся polygonPoints. */
+  furnitureShape?: "rect" | "custom";
+  /** Точки полигона мебели в local space (центрированы относительно (0,0)). */
+  polygonPoints?: Vertex[];
 }
 
 export type CeilingMode = "decor" | "to-ceiling" | "planned";
@@ -55,50 +49,17 @@ export interface FurnitureCeilingStats {
 /** Порог в см: грань мебели у стены если ОБЕ её точки на расстоянии < этого. */
 const AT_WALL_THRESHOLD_CM = 5;
 
-/** Локальные точки полигона (в local space, центр = 0,0) для L/U-формы кухни. */
-export function getKitchenLocalPoints(el: FurnitureLikeElement): Vertex[] | null {
-  const shape = el.furnitureShape;
-  if (shape !== "l-shape" && shape !== "u-shape") return null;
-  const a = el.kitchenA, b = el.kitchenB, d = el.kitchenDepth || 60;
-  if (!a || !b || !d) return null;
-  // Боковая ветка задаётся как часть ПОД уголком; полная высота bbox = b + d
-  if (shape === "l-shape") {
-    const w = a, h = b + d;
-    return [
-      { x: -w / 2,     y: -h / 2     },
-      { x:  w / 2,     y: -h / 2     },
-      { x:  w / 2,     y: -h / 2 + d },
-      { x: -w / 2 + d, y: -h / 2 + d },
-      { x: -w / 2 + d, y:  h / 2     },
-      { x: -w / 2,     y:  h / 2     },
-    ];
-  }
-  const c = el.kitchenC || b;
-  const w = a, h = Math.max(b, c) + d;
-  return [
-    { x: -w / 2,     y: -h / 2     },
-    { x:  w / 2,     y: -h / 2     },
-    { x:  w / 2,     y: -h / 2 + d + c },
-    { x:  w / 2 - d, y: -h / 2 + d + c },
-    { x:  w / 2 - d, y: -h / 2 + d },
-    { x: -w / 2 + d, y: -h / 2 + d },
-    { x: -w / 2 + d, y: -h / 2 + d + b },
-    { x: -w / 2,     y: -h / 2 + d + b },
-  ];
-}
-
-/** Углы мебели в SVG-координатах после rotation вокруг центра. 4 угла для rect, 6 для L, 8 для U. */
+/** Углы мебели в SVG-координатах после rotation вокруг центра.
+ *  4 угла для rect (через width/height), произвольное N для custom (через polygonPoints). */
 export function getFurnitureCorners(el: FurnitureLikeElement): Vertex[] | null {
   if (el.x === undefined || el.y === undefined) return null;
   const cx = el.x, cy = el.y;
   const rad = ((el.rotation || 0) * Math.PI) / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
   let local: Vertex[];
-  const kp = getKitchenLocalPoints(el);
-  if (kp) {
-    local = kp;
-  } else {
-    if (!el.width || !el.height) return null;
+  if (el.polygonPoints && el.polygonPoints.length >= 3) {
+    local = el.polygonPoints;
+  } else if (el.width && el.height) {
     const halfW = el.width / 2, halfH = el.height / 2;
     local = [
       { x: -halfW, y: -halfH },
@@ -106,7 +67,7 @@ export function getFurnitureCorners(el: FurnitureLikeElement): Vertex[] | null {
       { x:  halfW, y:  halfH },
       { x: -halfW, y:  halfH },
     ];
-  }
+  } else return null;
   return local.map(p => ({
     x: cx + p.x * cos - p.y * sin,
     y: cy + p.x * sin + p.y * cos,
