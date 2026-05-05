@@ -398,7 +398,8 @@ export const ModelName = {
   InstagramPost: 'InstagramPost',
   InstagramSession: 'InstagramSession',
   Client: 'Client',
-  ClientEvent: 'ClientEvent'
+  ClientEvent: 'ClientEvent',
+  ObjectPhoto: 'ObjectPhoto'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -414,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1528,6 +1529,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ObjectPhoto: {
+      payload: Prisma.$ObjectPhotoPayload<ExtArgs>
+      fields: Prisma.ObjectPhotoFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ObjectPhotoFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ObjectPhotoFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        findFirst: {
+          args: Prisma.ObjectPhotoFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ObjectPhotoFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        findMany: {
+          args: Prisma.ObjectPhotoFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>[]
+        }
+        create: {
+          args: Prisma.ObjectPhotoCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        createMany: {
+          args: Prisma.ObjectPhotoCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ObjectPhotoCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>[]
+        }
+        delete: {
+          args: Prisma.ObjectPhotoDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        update: {
+          args: Prisma.ObjectPhotoUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        deleteMany: {
+          args: Prisma.ObjectPhotoDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ObjectPhotoUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ObjectPhotoUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>[]
+        }
+        upsert: {
+          args: Prisma.ObjectPhotoUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ObjectPhotoPayload>
+        }
+        aggregate: {
+          args: Prisma.ObjectPhotoAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateObjectPhoto>
+        }
+        groupBy: {
+          args: Prisma.ObjectPhotoGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ObjectPhotoGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ObjectPhotoCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ObjectPhotoCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1664,6 +1739,14 @@ export const EstimateScalarFieldEnum = {
   clientPhone: 'clientPhone',
   clientAddress: 'clientAddress',
   clientId: 'clientId',
+  contractPublicId: 'contractPublicId',
+  contractTextSnapshot: 'contractTextSnapshot',
+  contractCreatedAt: 'contractCreatedAt',
+  contractSignedAt: 'contractSignedAt',
+  contractSignerName: 'contractSignerName',
+  contractSignerPassport: 'contractSignerPassport',
+  contractSignerIp: 'contractSignerIp',
+  contractSignerUserAgent: 'contractSignerUserAgent',
   roomsData: 'roomsData',
   calculationData: 'calculationData',
   totalArea: 'totalArea',
@@ -1704,6 +1787,7 @@ export type ChatSessionScalarFieldEnum = (typeof ChatSessionScalarFieldEnum)[key
 export const MeasurementObjectScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
+  clientId: 'clientId',
   address: 'address',
   totalArea: 'totalArea',
   status: 'status',
@@ -1847,6 +1931,21 @@ export const ClientEventScalarFieldEnum = {
 } as const
 
 export type ClientEventScalarFieldEnum = (typeof ClientEventScalarFieldEnum)[keyof typeof ClientEventScalarFieldEnum]
+
+
+export const ObjectPhotoScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  clientId: 'clientId',
+  estimateId: 'estimateId',
+  category: 'category',
+  blobUrl: 'blobUrl',
+  caption: 'caption',
+  takenAt: 'takenAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ObjectPhotoScalarFieldEnum = (typeof ObjectPhotoScalarFieldEnum)[keyof typeof ObjectPhotoScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2077,6 +2176,20 @@ export type EnumEventTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
 export type ListEnumEventTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventType[]'>
     
 
+
+/**
+ * Reference to a field of type 'ObjectPhotoCategory'
+ */
+export type EnumObjectPhotoCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ObjectPhotoCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'ObjectPhotoCategory[]'
+ */
+export type ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ObjectPhotoCategory[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2187,6 +2300,7 @@ export type GlobalOmitConfig = {
   instagramSession?: Prisma.InstagramSessionOmit
   client?: Prisma.ClientOmit
   clientEvent?: Prisma.ClientEventOmit
+  objectPhoto?: Prisma.ObjectPhotoOmit
 }
 
 /* Types for Logging */

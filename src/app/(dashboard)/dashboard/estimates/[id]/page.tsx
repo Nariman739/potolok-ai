@@ -11,6 +11,7 @@ import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import { computeArea } from "@/lib/room-geometry";
 import { EstimateActions } from "./estimate-actions";
+import { ContractSection } from "./contract-section";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   DRAFT: { label: "Черновик", variant: "secondary" },
@@ -124,6 +125,17 @@ export default async function EstimateDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Электронный договор */}
+      <ContractSection
+        estimateId={estimate.id}
+        contractPublicId={estimate.contractPublicId}
+        contractCreatedAt={estimate.contractCreatedAt ? estimate.contractCreatedAt.toISOString() : null}
+        contractSignedAt={estimate.contractSignedAt ? estimate.contractSignedAt.toISOString() : null}
+        contractSignerName={estimate.contractSignerName}
+        clientPhone={estimate.clientPhone}
+        contractConfigured={!!master.contractType && master.contractType !== "none"}
+      />
 
       {/* Total summary */}
       <Card className="border-[#1e3a5f] ring-2 ring-[#1e3a5f]/20">

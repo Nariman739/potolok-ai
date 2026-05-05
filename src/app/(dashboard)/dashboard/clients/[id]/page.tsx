@@ -34,12 +34,57 @@ export default async function ClientPage({
           totalArea: true,
           status: true,
           createdAt: true,
+          contractPublicId: true,
+          contractCreatedAt: true,
+          contractSignedAt: true,
+          contractSignerName: true,
+        },
+      },
+      measurements: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          rooms: {
+            select: {
+              id: true,
+              name: true,
+              area: true,
+              photoUrls: true,
+            },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      },
+      objectPhotos: {
+        orderBy: { takenAt: "desc" },
+        select: {
+          id: true,
+          blobUrl: true,
+          category: true,
+          caption: true,
+          takenAt: true,
         },
       },
     },
   });
 
   if (!client) notFound();
+
+  // Договоры (среди КП этого клиента) — для таба «Договор»
+  const contracts = client.estimates
+    .filter((e) => e.contractPublicId)
+    .map((e) => ({
+      estimateId: e.id,
+      publicId: e.publicId,
+      contractPublicId: e.contractPublicId!,
+      contractCreatedAt: e.contractCreatedAt
+        ? e.contractCreatedAt.toISOString()
+        : null,
+      contractSignedAt: e.contractSignedAt
+        ? e.contractSignedAt.toISOString()
+        : null,
+      contractSignerName: e.contractSignerName,
+      total: e.total,
+    }));
 
   return (
     <ClientCard
@@ -68,6 +113,28 @@ export default async function ClientPage({
         status: e.status,
         createdAt: e.createdAt.toISOString(),
       }))}
+      measurements={client.measurements.map((m) => ({
+        id: m.id,
+        address: m.address,
+        totalArea: m.totalArea,
+        status: m.status,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+        rooms: m.rooms.map((r) => ({
+          id: r.id,
+          name: r.name,
+          area: r.area,
+          photoUrls: r.photoUrls,
+        })),
+      }))}
+      photos={client.objectPhotos.map((p) => ({
+        id: p.id,
+        blobUrl: p.blobUrl,
+        category: p.category,
+        caption: p.caption,
+        takenAt: p.takenAt.toISOString(),
+      }))}
+      contracts={contracts}
     />
   );
 }

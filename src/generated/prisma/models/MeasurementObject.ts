@@ -41,6 +41,7 @@ export type MeasurementObjectSumAggregateOutputType = {
 export type MeasurementObjectMinAggregateOutputType = {
   id: string | null
   masterId: string | null
+  clientId: string | null
   address: string | null
   totalArea: number | null
   status: string | null
@@ -53,6 +54,7 @@ export type MeasurementObjectMinAggregateOutputType = {
 export type MeasurementObjectMaxAggregateOutputType = {
   id: string | null
   masterId: string | null
+  clientId: string | null
   address: string | null
   totalArea: number | null
   status: string | null
@@ -65,6 +67,7 @@ export type MeasurementObjectMaxAggregateOutputType = {
 export type MeasurementObjectCountAggregateOutputType = {
   id: number
   masterId: number
+  clientId: number
   address: number
   totalArea: number
   status: number
@@ -91,6 +94,7 @@ export type MeasurementObjectSumAggregateInputType = {
 export type MeasurementObjectMinAggregateInputType = {
   id?: true
   masterId?: true
+  clientId?: true
   address?: true
   totalArea?: true
   status?: true
@@ -103,6 +107,7 @@ export type MeasurementObjectMinAggregateInputType = {
 export type MeasurementObjectMaxAggregateInputType = {
   id?: true
   masterId?: true
+  clientId?: true
   address?: true
   totalArea?: true
   status?: true
@@ -115,6 +120,7 @@ export type MeasurementObjectMaxAggregateInputType = {
 export type MeasurementObjectCountAggregateInputType = {
   id?: true
   masterId?: true
+  clientId?: true
   address?: true
   totalArea?: true
   status?: true
@@ -214,6 +220,7 @@ export type MeasurementObjectGroupByArgs<ExtArgs extends runtime.Types.Extension
 export type MeasurementObjectGroupByOutputType = {
   id: string
   masterId: string
+  clientId: string | null
   address: string
   totalArea: number
   status: string
@@ -249,6 +256,7 @@ export type MeasurementObjectWhereInput = {
   NOT?: Prisma.MeasurementObjectWhereInput | Prisma.MeasurementObjectWhereInput[]
   id?: Prisma.StringFilter<"MeasurementObject"> | string
   masterId?: Prisma.StringFilter<"MeasurementObject"> | string
+  clientId?: Prisma.StringNullableFilter<"MeasurementObject"> | string | null
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
@@ -258,11 +266,13 @@ export type MeasurementObjectWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   rooms?: Prisma.MeasurementRoomListRelationFilter
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
+  client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
 }
 
 export type MeasurementObjectOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
+  clientId?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -272,6 +282,7 @@ export type MeasurementObjectOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   rooms?: Prisma.MeasurementRoomOrderByRelationAggregateInput
   master?: Prisma.MasterOrderByWithRelationInput
+  client?: Prisma.ClientOrderByWithRelationInput
 }
 
 export type MeasurementObjectWhereUniqueInput = Prisma.AtLeast<{
@@ -280,6 +291,7 @@ export type MeasurementObjectWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.MeasurementObjectWhereInput[]
   NOT?: Prisma.MeasurementObjectWhereInput | Prisma.MeasurementObjectWhereInput[]
   masterId?: Prisma.StringFilter<"MeasurementObject"> | string
+  clientId?: Prisma.StringNullableFilter<"MeasurementObject"> | string | null
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
@@ -289,11 +301,13 @@ export type MeasurementObjectWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"MeasurementObject"> | Date | string
   rooms?: Prisma.MeasurementRoomListRelationFilter
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
+  client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
 }, "id">
 
 export type MeasurementObjectOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
+  clientId?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -314,6 +328,7 @@ export type MeasurementObjectScalarWhereWithAggregatesInput = {
   NOT?: Prisma.MeasurementObjectScalarWhereWithAggregatesInput | Prisma.MeasurementObjectScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
   masterId?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
+  clientId?: Prisma.StringNullableWithAggregatesFilter<"MeasurementObject"> | string | null
   address?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatWithAggregatesFilter<"MeasurementObject"> | number
   status?: Prisma.StringWithAggregatesFilter<"MeasurementObject"> | string
@@ -334,11 +349,13 @@ export type MeasurementObjectCreateInput = {
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomCreateNestedManyWithoutObjectInput
   master: Prisma.MasterCreateNestedOneWithoutMeasurementsInput
+  client?: Prisma.ClientCreateNestedOneWithoutMeasurementsInput
 }
 
 export type MeasurementObjectUncheckedCreateInput = {
   id?: string
   masterId: string
+  clientId?: string | null
   address?: string
   totalArea?: number
   status?: string
@@ -360,11 +377,13 @@ export type MeasurementObjectUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUpdateManyWithoutObjectNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutMeasurementsNestedInput
+  client?: Prisma.ClientUpdateOneWithoutMeasurementsNestedInput
 }
 
 export type MeasurementObjectUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -378,6 +397,7 @@ export type MeasurementObjectUncheckedUpdateInput = {
 export type MeasurementObjectCreateManyInput = {
   id?: string
   masterId: string
+  clientId?: string | null
   address?: string
   totalArea?: number
   status?: string
@@ -401,6 +421,7 @@ export type MeasurementObjectUpdateManyMutationInput = {
 export type MeasurementObjectUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -423,6 +444,7 @@ export type MeasurementObjectOrderByRelationAggregateInput = {
 export type MeasurementObjectCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -441,6 +463,7 @@ export type MeasurementObjectAvgOrderByAggregateInput = {
 export type MeasurementObjectMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -453,6 +476,7 @@ export type MeasurementObjectMaxOrderByAggregateInput = {
 export type MeasurementObjectMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   address?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -529,6 +553,48 @@ export type MeasurementObjectUpdateOneRequiredWithoutRoomsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MeasurementObjectUpdateToOneWithWhereWithoutRoomsInput, Prisma.MeasurementObjectUpdateWithoutRoomsInput>, Prisma.MeasurementObjectUncheckedUpdateWithoutRoomsInput>
 }
 
+export type MeasurementObjectCreateNestedManyWithoutClientInput = {
+  create?: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput> | Prisma.MeasurementObjectCreateWithoutClientInput[] | Prisma.MeasurementObjectUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.MeasurementObjectCreateOrConnectWithoutClientInput | Prisma.MeasurementObjectCreateOrConnectWithoutClientInput[]
+  createMany?: Prisma.MeasurementObjectCreateManyClientInputEnvelope
+  connect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+}
+
+export type MeasurementObjectUncheckedCreateNestedManyWithoutClientInput = {
+  create?: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput> | Prisma.MeasurementObjectCreateWithoutClientInput[] | Prisma.MeasurementObjectUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.MeasurementObjectCreateOrConnectWithoutClientInput | Prisma.MeasurementObjectCreateOrConnectWithoutClientInput[]
+  createMany?: Prisma.MeasurementObjectCreateManyClientInputEnvelope
+  connect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+}
+
+export type MeasurementObjectUpdateManyWithoutClientNestedInput = {
+  create?: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput> | Prisma.MeasurementObjectCreateWithoutClientInput[] | Prisma.MeasurementObjectUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.MeasurementObjectCreateOrConnectWithoutClientInput | Prisma.MeasurementObjectCreateOrConnectWithoutClientInput[]
+  upsert?: Prisma.MeasurementObjectUpsertWithWhereUniqueWithoutClientInput | Prisma.MeasurementObjectUpsertWithWhereUniqueWithoutClientInput[]
+  createMany?: Prisma.MeasurementObjectCreateManyClientInputEnvelope
+  set?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  disconnect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  delete?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  connect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  update?: Prisma.MeasurementObjectUpdateWithWhereUniqueWithoutClientInput | Prisma.MeasurementObjectUpdateWithWhereUniqueWithoutClientInput[]
+  updateMany?: Prisma.MeasurementObjectUpdateManyWithWhereWithoutClientInput | Prisma.MeasurementObjectUpdateManyWithWhereWithoutClientInput[]
+  deleteMany?: Prisma.MeasurementObjectScalarWhereInput | Prisma.MeasurementObjectScalarWhereInput[]
+}
+
+export type MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput = {
+  create?: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput> | Prisma.MeasurementObjectCreateWithoutClientInput[] | Prisma.MeasurementObjectUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.MeasurementObjectCreateOrConnectWithoutClientInput | Prisma.MeasurementObjectCreateOrConnectWithoutClientInput[]
+  upsert?: Prisma.MeasurementObjectUpsertWithWhereUniqueWithoutClientInput | Prisma.MeasurementObjectUpsertWithWhereUniqueWithoutClientInput[]
+  createMany?: Prisma.MeasurementObjectCreateManyClientInputEnvelope
+  set?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  disconnect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  delete?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  connect?: Prisma.MeasurementObjectWhereUniqueInput | Prisma.MeasurementObjectWhereUniqueInput[]
+  update?: Prisma.MeasurementObjectUpdateWithWhereUniqueWithoutClientInput | Prisma.MeasurementObjectUpdateWithWhereUniqueWithoutClientInput[]
+  updateMany?: Prisma.MeasurementObjectUpdateManyWithWhereWithoutClientInput | Prisma.MeasurementObjectUpdateManyWithWhereWithoutClientInput[]
+  deleteMany?: Prisma.MeasurementObjectScalarWhereInput | Prisma.MeasurementObjectScalarWhereInput[]
+}
+
 export type MeasurementObjectCreateWithoutMasterInput = {
   id?: string
   address?: string
@@ -539,10 +605,12 @@ export type MeasurementObjectCreateWithoutMasterInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   rooms?: Prisma.MeasurementRoomCreateNestedManyWithoutObjectInput
+  client?: Prisma.ClientCreateNestedOneWithoutMeasurementsInput
 }
 
 export type MeasurementObjectUncheckedCreateWithoutMasterInput = {
   id?: string
+  clientId?: string | null
   address?: string
   totalArea?: number
   status?: string
@@ -585,6 +653,7 @@ export type MeasurementObjectScalarWhereInput = {
   NOT?: Prisma.MeasurementObjectScalarWhereInput | Prisma.MeasurementObjectScalarWhereInput[]
   id?: Prisma.StringFilter<"MeasurementObject"> | string
   masterId?: Prisma.StringFilter<"MeasurementObject"> | string
+  clientId?: Prisma.StringNullableFilter<"MeasurementObject"> | string | null
   address?: Prisma.StringFilter<"MeasurementObject"> | string
   totalArea?: Prisma.FloatFilter<"MeasurementObject"> | number
   status?: Prisma.StringFilter<"MeasurementObject"> | string
@@ -604,11 +673,13 @@ export type MeasurementObjectCreateWithoutRoomsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutMeasurementsInput
+  client?: Prisma.ClientCreateNestedOneWithoutMeasurementsInput
 }
 
 export type MeasurementObjectUncheckedCreateWithoutRoomsInput = {
   id?: string
   masterId: string
+  clientId?: string | null
   address?: string
   totalArea?: number
   status?: string
@@ -644,11 +715,13 @@ export type MeasurementObjectUpdateWithoutRoomsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutMeasurementsNestedInput
+  client?: Prisma.ClientUpdateOneWithoutMeasurementsNestedInput
 }
 
 export type MeasurementObjectUncheckedUpdateWithoutRoomsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -658,8 +731,61 @@ export type MeasurementObjectUncheckedUpdateWithoutRoomsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type MeasurementObjectCreateWithoutClientInput = {
+  id?: string
+  address?: string
+  totalArea?: number
+  status?: string
+  latitude?: number | null
+  longitude?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rooms?: Prisma.MeasurementRoomCreateNestedManyWithoutObjectInput
+  master: Prisma.MasterCreateNestedOneWithoutMeasurementsInput
+}
+
+export type MeasurementObjectUncheckedCreateWithoutClientInput = {
+  id?: string
+  masterId: string
+  address?: string
+  totalArea?: number
+  status?: string
+  latitude?: number | null
+  longitude?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rooms?: Prisma.MeasurementRoomUncheckedCreateNestedManyWithoutObjectInput
+}
+
+export type MeasurementObjectCreateOrConnectWithoutClientInput = {
+  where: Prisma.MeasurementObjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput>
+}
+
+export type MeasurementObjectCreateManyClientInputEnvelope = {
+  data: Prisma.MeasurementObjectCreateManyClientInput | Prisma.MeasurementObjectCreateManyClientInput[]
+  skipDuplicates?: boolean
+}
+
+export type MeasurementObjectUpsertWithWhereUniqueWithoutClientInput = {
+  where: Prisma.MeasurementObjectWhereUniqueInput
+  update: Prisma.XOR<Prisma.MeasurementObjectUpdateWithoutClientInput, Prisma.MeasurementObjectUncheckedUpdateWithoutClientInput>
+  create: Prisma.XOR<Prisma.MeasurementObjectCreateWithoutClientInput, Prisma.MeasurementObjectUncheckedCreateWithoutClientInput>
+}
+
+export type MeasurementObjectUpdateWithWhereUniqueWithoutClientInput = {
+  where: Prisma.MeasurementObjectWhereUniqueInput
+  data: Prisma.XOR<Prisma.MeasurementObjectUpdateWithoutClientInput, Prisma.MeasurementObjectUncheckedUpdateWithoutClientInput>
+}
+
+export type MeasurementObjectUpdateManyWithWhereWithoutClientInput = {
+  where: Prisma.MeasurementObjectScalarWhereInput
+  data: Prisma.XOR<Prisma.MeasurementObjectUpdateManyMutationInput, Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientInput>
+}
+
 export type MeasurementObjectCreateManyMasterInput = {
   id?: string
+  clientId?: string | null
   address?: string
   totalArea?: number
   status?: string
@@ -679,10 +805,12 @@ export type MeasurementObjectUpdateWithoutMasterInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rooms?: Prisma.MeasurementRoomUpdateManyWithoutObjectNestedInput
+  client?: Prisma.ClientUpdateOneWithoutMeasurementsNestedInput
 }
 
 export type MeasurementObjectUncheckedUpdateWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -695,6 +823,57 @@ export type MeasurementObjectUncheckedUpdateWithoutMasterInput = {
 
 export type MeasurementObjectUncheckedUpdateManyWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type MeasurementObjectCreateManyClientInput = {
+  id?: string
+  masterId: string
+  address?: string
+  totalArea?: number
+  status?: string
+  latitude?: number | null
+  longitude?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type MeasurementObjectUpdateWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rooms?: Prisma.MeasurementRoomUpdateManyWithoutObjectNestedInput
+  master?: Prisma.MasterUpdateOneRequiredWithoutMeasurementsNestedInput
+}
+
+export type MeasurementObjectUncheckedUpdateWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  masterId?: Prisma.StringFieldUpdateOperationsInput | string
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rooms?: Prisma.MeasurementRoomUncheckedUpdateManyWithoutObjectNestedInput
+}
+
+export type MeasurementObjectUncheckedUpdateManyWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  masterId?: Prisma.StringFieldUpdateOperationsInput | string
   address?: Prisma.StringFieldUpdateOperationsInput | string
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -738,6 +917,7 @@ export type MeasurementObjectCountOutputTypeCountRoomsArgs<ExtArgs extends runti
 export type MeasurementObjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   masterId?: boolean
+  clientId?: boolean
   address?: boolean
   totalArea?: boolean
   status?: boolean
@@ -747,12 +927,14 @@ export type MeasurementObjectSelect<ExtArgs extends runtime.Types.Extensions.Int
   updatedAt?: boolean
   rooms?: boolean | Prisma.MeasurementObject$roomsArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
   _count?: boolean | Prisma.MeasurementObjectCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["measurementObject"]>
 
 export type MeasurementObjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   masterId?: boolean
+  clientId?: boolean
   address?: boolean
   totalArea?: boolean
   status?: boolean
@@ -761,11 +943,13 @@ export type MeasurementObjectSelectCreateManyAndReturn<ExtArgs extends runtime.T
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
 }, ExtArgs["result"]["measurementObject"]>
 
 export type MeasurementObjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   masterId?: boolean
+  clientId?: boolean
   address?: boolean
   totalArea?: boolean
   status?: boolean
@@ -774,11 +958,13 @@ export type MeasurementObjectSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
 }, ExtArgs["result"]["measurementObject"]>
 
 export type MeasurementObjectSelectScalar = {
   id?: boolean
   masterId?: boolean
+  clientId?: boolean
   address?: boolean
   totalArea?: boolean
   status?: boolean
@@ -788,17 +974,20 @@ export type MeasurementObjectSelectScalar = {
   updatedAt?: boolean
 }
 
-export type MeasurementObjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "address" | "totalArea" | "status" | "latitude" | "longitude" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementObject"]>
+export type MeasurementObjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "clientId" | "address" | "totalArea" | "status" | "latitude" | "longitude" | "createdAt" | "updatedAt", ExtArgs["result"]["measurementObject"]>
 export type MeasurementObjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   rooms?: boolean | Prisma.MeasurementObject$roomsArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
   _count?: boolean | Prisma.MeasurementObjectCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MeasurementObjectIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
 }
 export type MeasurementObjectIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
+  client?: boolean | Prisma.MeasurementObject$clientArgs<ExtArgs>
 }
 
 export type $MeasurementObjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -806,10 +995,12 @@ export type $MeasurementObjectPayload<ExtArgs extends runtime.Types.Extensions.I
   objects: {
     rooms: Prisma.$MeasurementRoomPayload<ExtArgs>[]
     master: Prisma.$MasterPayload<ExtArgs>
+    client: Prisma.$ClientPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     masterId: string
+    clientId: string | null
     address: string
     totalArea: number
     status: string
@@ -1213,6 +1404,7 @@ export interface Prisma__MeasurementObjectClient<T, Null = never, ExtArgs extend
   readonly [Symbol.toStringTag]: "PrismaPromise"
   rooms<T extends Prisma.MeasurementObject$roomsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MeasurementObject$roomsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MeasurementRoomPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   master<T extends Prisma.MasterDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MasterDefaultArgs<ExtArgs>>): Prisma.Prisma__MasterClient<runtime.Types.Result.GetResult<Prisma.$MasterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  client<T extends Prisma.MeasurementObject$clientArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MeasurementObject$clientArgs<ExtArgs>>): Prisma.Prisma__ClientClient<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1244,6 +1436,7 @@ export interface Prisma__MeasurementObjectClient<T, Null = never, ExtArgs extend
 export interface MeasurementObjectFieldRefs {
   readonly id: Prisma.FieldRef<"MeasurementObject", 'String'>
   readonly masterId: Prisma.FieldRef<"MeasurementObject", 'String'>
+  readonly clientId: Prisma.FieldRef<"MeasurementObject", 'String'>
   readonly address: Prisma.FieldRef<"MeasurementObject", 'String'>
   readonly totalArea: Prisma.FieldRef<"MeasurementObject", 'Float'>
   readonly status: Prisma.FieldRef<"MeasurementObject", 'String'>
@@ -1668,6 +1861,25 @@ export type MeasurementObject$roomsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.MeasurementRoomScalarFieldEnum | Prisma.MeasurementRoomScalarFieldEnum[]
+}
+
+/**
+ * MeasurementObject.client
+ */
+export type MeasurementObject$clientArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Client
+   */
+  select?: Prisma.ClientSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Client
+   */
+  omit?: Prisma.ClientOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClientInclude<ExtArgs> | null
+  where?: Prisma.ClientWhereInput
 }
 
 /**

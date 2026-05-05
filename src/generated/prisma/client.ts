@@ -114,3 +114,8 @@ export type Client = Prisma.ClientModel
  * 
  */
 export type ClientEvent = Prisma.ClientEventModel
+/**
+ * Model ObjectPhoto
+ * 
+ */
+export type ObjectPhoto = Prisma.ObjectPhotoModel

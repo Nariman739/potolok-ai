@@ -217,11 +217,43 @@ export async function GET(
     doc.font("Sans-Bold").fontSize(9).text("Заказчик:", colR, sigY);
     doc.font("Sans").fontSize(9);
     let cy2 = sigY + 14;
-    doc.text(`ФИО: ${clientName}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
+    const signedName = estimate.contractSignerName ?? clientName;
+    doc.text(`ФИО: ${signedName}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     doc.text(`Тел: ${clientPhone}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     doc.text(`Адрес: ${clientAddress}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
-    doc.text("ИИН: _______________", colR, cy2, { width: halfW }); cy2 = doc.y + 2;
-    doc.text("Подпись ________________", colR, cy2 + 8, { width: halfW });
+    if (estimate.contractSignerPassport) {
+      doc.text(`Удостоверение: ${estimate.contractSignerPassport}`, colR, cy2, { width: halfW });
+      cy2 = doc.y + 2;
+    } else {
+      doc.text("ИИН: _______________", colR, cy2, { width: halfW });
+      cy2 = doc.y + 2;
+    }
+    if (estimate.contractSignedAt) {
+      doc.font("Sans-Bold").fontSize(9).fillColor("#059669");
+      doc.text("Подпись: подписано электронно ✓", colR, cy2 + 8, { width: halfW });
+      doc.fillColor("#000");
+    } else {
+      doc.text("Подпись ________________", colR, cy2 + 8, { width: halfW });
+    }
+
+    // Штамп электронной подписи внизу страницы (если подписан)
+    if (estimate.contractSignedAt) {
+      doc.font("Sans").fontSize(7).fillColor("#666");
+      const stampY = Math.max(doc.y + 30, sigY + 110);
+      const dateStr2 = new Date(estimate.contractSignedAt).toLocaleString("ru-RU");
+      doc.text(
+        `── Электронно подписано ──\n` +
+          `Подписант: ${signedName}` +
+          (estimate.contractSignerPassport ? `, удостоверение ${estimate.contractSignerPassport}` : "") +
+          `\nДата и время: ${dateStr2}` +
+          (estimate.contractSignerIp ? `\nIP: ${estimate.contractSignerIp}` : "") +
+          `\nДоговор № ${contractNum}`,
+        L,
+        stampY,
+        { width: CW, align: "center" },
+      );
+      doc.fillColor("#000");
+    }
 
     doc.end();
     const buf = await promise;

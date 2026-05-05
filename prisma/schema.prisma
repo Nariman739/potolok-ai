@@ -85,6 +85,7 @@ model Master {
   instagramAccount InstagramAccount?
   instagramSession InstagramSession?
   clients         Client[]
+  objectPhotos    ObjectPhoto[]
 
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
@@ -158,6 +159,16 @@ model Estimate {
   clientAddress   String?
   clientId        String?
   client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Электронный договор
+  contractPublicId        String?   @unique
+  contractTextSnapshot    Json?
+  contractCreatedAt       DateTime?
+  contractSignedAt        DateTime?
+  contractSignerName      String?
+  contractSignerPassport  String?
+  contractSignerIp        String?
+  contractSignerUserAgent String?
 
   // Data (JSON)
   roomsData       Json
@@ -242,6 +253,7 @@ enum ChatStatus {
 model MeasurementObject {
   id          String   @id @default(uuid())
   masterId    String
+  clientId    String?
   address     String   @default("")
   totalArea   Float    @default(0)
   status      String   @default("active")  // "active" | "saved"
@@ -253,9 +265,11 @@ model MeasurementObject {
 
   rooms       MeasurementRoom[]
   master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([masterId, status])
   @@index([masterId, createdAt])
+  @@index([clientId])
 }
 
 model MeasurementRoom {
@@ -423,9 +437,11 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  master      Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
-  estimates   Estimate[]
-  events      ClientEvent[]
+  master       Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  estimates    Estimate[]
+  events       ClientEvent[]
+  measurements MeasurementObject[]
+  objectPhotos ObjectPhoto[]
 
   @@index([masterId, status])
   @@index([masterId, phone])
@@ -475,4 +491,38 @@ enum EventType {
   KP_CONFIRMED
   KP_REJECTED
   STATUS_CHANGE
+  CONTRACT_CREATED
+  CONTRACT_SIGNED
+  PHOTO_ADDED
+}
+
+// ============================================
+// OBJECT PHOTOS (фото с объекта — до/процесс/после)
+// ============================================
+
+model ObjectPhoto {
+  id         String   @id @default(uuid())
+  masterId   String
+  clientId   String?
+  estimateId String?
+  category   ObjectPhotoCategory @default(PROCESS)
+  blobUrl    String
+  caption    String?
+  takenAt    DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([masterId, clientId, createdAt])
+  @@index([clientId, category])
+}
+
+enum ObjectPhotoCategory {
+  BEFORE
+  PROCESS
+  AFTER
+  MEASUREMENT
+  DEMOLITION
+  OTHER
 }

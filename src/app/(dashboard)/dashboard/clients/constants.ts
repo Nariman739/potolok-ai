@@ -25,7 +25,10 @@ export type EventTypeKey =
   | "KP_VIEWED"
   | "KP_CONFIRMED"
   | "KP_REJECTED"
-  | "STATUS_CHANGE";
+  | "STATUS_CHANGE"
+  | "CONTRACT_CREATED"
+  | "CONTRACT_SIGNED"
+  | "PHOTO_ADDED";
 
 export const STATUS_LABELS: Record<DealStatusKey, string> = {
   NEW: "Новый",
@@ -66,6 +69,9 @@ export const EVENT_LABELS: Record<EventTypeKey, string> = {
   KP_CONFIRMED: "КП подтверждено",
   KP_REJECTED: "КП отклонено",
   STATUS_CHANGE: "Изменение статуса",
+  CONTRACT_CREATED: "Создан договор",
+  CONTRACT_SIGNED: "Договор подписан клиентом",
+  PHOTO_ADDED: "Добавлено фото",
 };
 
 export const MANUAL_EVENT_TYPES: { key: EventTypeKey; label: string }[] = [

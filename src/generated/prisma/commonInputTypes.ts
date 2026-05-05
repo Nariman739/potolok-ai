@@ -450,6 +450,23 @@ export type EnumEventTypeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumEventTypeFilter<$PrismaModel>
 }
 
+export type EnumObjectPhotoCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.ObjectPhotoCategory | Prisma.EnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel> | $Enums.ObjectPhotoCategory
+}
+
+export type EnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ObjectPhotoCategory | Prisma.EnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel> | $Enums.ObjectPhotoCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -832,6 +849,23 @@ export type NestedEnumEventTypeWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumEventTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumEventTypeFilter<$PrismaModel>
+}
+
+export type NestedEnumObjectPhotoCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.ObjectPhotoCategory | Prisma.EnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel> | $Enums.ObjectPhotoCategory
+}
+
+export type NestedEnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ObjectPhotoCategory | Prisma.EnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ObjectPhotoCategory[] | Prisma.ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel> | $Enums.ObjectPhotoCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
 }
 
 

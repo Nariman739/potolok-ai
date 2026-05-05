@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateClient } from "@/lib/clients";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,10 @@ export async function GET(request: NextRequest) {
         masterId: master.id,
         ...(status && { status }),
       },
-      include: { rooms: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        rooms: { orderBy: { sortOrder: "asc" } },
+        client: { select: { id: true, name: true, phone: true } },
+      },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -30,11 +34,14 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { address, status, rooms, latitude, longitude } = body as {
+    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone } = body as {
       address?: string;
       status?: string;
       latitude?: number;
       longitude?: number;
+      clientId?: string;
+      clientName?: string;
+      clientPhone?: string;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
     };
@@ -43,9 +50,29 @@ export async function POST(request: Request) {
       ? Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100
       : 0;
 
+    // Привязка к клиенту: явный clientId либо auto-create по имени/телефону
+    let linkedClientId: string | null = null;
+    if (clientId) {
+      const exists = await prisma.client.findFirst({
+        where: { id: clientId, masterId: master.id },
+        select: { id: true },
+      });
+      linkedClientId = exists?.id ?? null;
+    }
+    if (!linkedClientId && (clientName || clientPhone)) {
+      const auto = await getOrCreateClient({
+        masterId: master.id,
+        name: clientName || null,
+        phone: clientPhone || null,
+        address: address || null,
+      });
+      linkedClientId = auto?.id ?? null;
+    }
+
     const obj = await prisma.measurementObject.create({
       data: {
         masterId: master.id,
+        clientId: linkedClientId,
         address: address || "",
         status: status || "active",
         totalArea,

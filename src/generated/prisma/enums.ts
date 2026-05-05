@@ -88,7 +88,22 @@ export const EventType = {
   KP_VIEWED: 'KP_VIEWED',
   KP_CONFIRMED: 'KP_CONFIRMED',
   KP_REJECTED: 'KP_REJECTED',
-  STATUS_CHANGE: 'STATUS_CHANGE'
+  STATUS_CHANGE: 'STATUS_CHANGE',
+  CONTRACT_CREATED: 'CONTRACT_CREATED',
+  CONTRACT_SIGNED: 'CONTRACT_SIGNED',
+  PHOTO_ADDED: 'PHOTO_ADDED'
 } as const
 
 export type EventType = (typeof EventType)[keyof typeof EventType]
+
+
+export const ObjectPhotoCategory = {
+  BEFORE: 'BEFORE',
+  PROCESS: 'PROCESS',
+  AFTER: 'AFTER',
+  MEASUREMENT: 'MEASUREMENT',
+  DEMOLITION: 'DEMOLITION',
+  OTHER: 'OTHER'
+} as const
+
+export type ObjectPhotoCategory = (typeof ObjectPhotoCategory)[keyof typeof ObjectPhotoCategory]

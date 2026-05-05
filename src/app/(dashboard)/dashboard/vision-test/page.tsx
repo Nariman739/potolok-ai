@@ -10,6 +10,7 @@ import type { MultiAgentResult } from "@/lib/vision-agents";
 import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVertices } from "./room-designer";
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
+import { LinkClientButton } from "@/components/clients/link-client-button";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -511,6 +512,8 @@ interface SavedObject {
   updatedAt?: string;
   latitude?: number;
   longitude?: number;
+  clientId?: string | null;
+  client?: { id: string; name: string; phone: string | null } | null;
 }
 
 // ─────────────────────────────────────────────────────
@@ -1583,6 +1586,9 @@ export default function ZameryPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [objectName, setObjectName] = useState("");
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeClientName, setActiveClientName] = useState<string | null>(null);
+  const [activeClientPhone, setActiveClientPhone] = useState<string | null>(null);
   const [savedObjects, setSavedObjects] = useState<SavedObject[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [designingRoom, setDesigningRoom] = useState<Room | null>(null);
@@ -1668,6 +1674,13 @@ export default function ZameryPage() {
             const obj = activeList[0];
             setActiveObjectId(obj.id);
             setObjectName(obj.address || "");
+            if (obj.client) {
+              setActiveClientId(obj.client.id);
+              setActiveClientName(obj.client.name);
+              setActiveClientPhone(obj.client.phone ?? null);
+            } else if (obj.clientId) {
+              setActiveClientId(obj.clientId);
+            }
             setRooms(obj.rooms.map((r: Room & { objectId?: string; arcBulges?: number[]; columns?: RoomColumn[] }) => ({
               id: r.id,
               name: r.name,
@@ -1748,7 +1761,11 @@ export default function ZameryPage() {
     const res = await fetch("/api/measurements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: objectName, status: "active" }),
+      body: JSON.stringify({
+        address: objectName,
+        status: "active",
+        ...(activeClientId && { clientId: activeClientId }),
+      }),
     });
     if (!res.ok) throw new Error("Не удалось создать объект замера");
     const obj = await res.json();
@@ -1887,6 +1904,7 @@ export default function ZameryPage() {
           body: JSON.stringify({
             address: currentName,
             status: "saved",
+            ...(activeClientId && { clientId: activeClientId }),
             ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
             rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
           }),
@@ -1910,6 +1928,9 @@ export default function ZameryPage() {
       setObjectName("");
       setActiveObjectId(null);
       activeObjectIdRef.current = null;
+      setActiveClientId(null);
+      setActiveClientName(null);
+      setActiveClientPhone(null);
       try {
         localStorage.removeItem("zamery-rooms");
         localStorage.removeItem("zamery-object");
@@ -1936,6 +1957,15 @@ export default function ZameryPage() {
 
     setRooms(obj.rooms);
     setObjectName(obj.address);
+    if (obj.client) {
+      setActiveClientId(obj.client.id);
+      setActiveClientName(obj.client.name);
+      setActiveClientPhone(obj.client.phone ?? null);
+    } else {
+      setActiveClientId(obj.clientId ?? null);
+      setActiveClientName(null);
+      setActiveClientPhone(null);
+    }
     setSavedObjects(prev => prev.filter(o => o.id !== obj.id));
     setShowHistory(false);
 
@@ -2450,6 +2480,31 @@ export default function ZameryPage() {
           onChange={e => handleAddressChange(e.target.value)}
           placeholder="Адрес объекта (необязательно)"
           className="w-full rounded-xl border px-4 py-3 text-sm"
+        />
+
+        {/* Client link */}
+        <LinkClientButton
+          clientId={activeClientId}
+          clientName={activeClientName}
+          clientPhone={activeClientPhone}
+          onChange={async ({ id, name, phone }) => {
+            setActiveClientId(id);
+            setActiveClientName(name);
+            setActiveClientPhone(phone);
+            // Если объект уже создан — обновим его на сервере
+            const objId = activeObjectIdRef.current;
+            if (objId) {
+              try {
+                await fetch(`/api/measurements/${objId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ clientId: id }),
+                });
+              } catch {
+                // ignore
+              }
+            }
+          }}
         />
 
         {/* ADD ROOM BUTTONS — always visible at top */}

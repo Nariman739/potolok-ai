@@ -37,13 +37,26 @@ export async function PATCH(
     const master = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea, latitude, longitude } = body as {
+    const { address, status, totalArea, latitude, longitude, clientId } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
       latitude?: number;
       longitude?: number;
+      clientId?: string | null;
     };
+
+    // Если передан clientId — валидируем что клиент принадлежит мастеру
+    let safeClientId: string | null | undefined = undefined;
+    if (clientId === null) {
+      safeClientId = null;
+    } else if (typeof clientId === "string" && clientId) {
+      const exists = await prisma.client.findFirst({
+        where: { id: clientId, masterId: master.id },
+        select: { id: true },
+      });
+      safeClientId = exists?.id ?? null;
+    }
 
     const result = await prisma.measurementObject.updateMany({
       where: { id, masterId: master.id },
@@ -53,6 +66,7 @@ export async function PATCH(
         ...(totalArea !== undefined && { totalArea }),
         ...(latitude != null && { latitude }),
         ...(longitude != null && { longitude }),
+        ...(safeClientId !== undefined && { clientId: safeClientId }),
       },
     });
 

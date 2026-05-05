@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,12 @@ import {
   Plus,
   FileText,
   ExternalLink,
+  Ruler,
+  FileSignature,
+  Camera,
+  CheckCircle2,
+  Clock,
+  Copy,
 } from "lucide-react";
 import {
   STATUS_LABELS,
@@ -27,6 +34,7 @@ import {
   type ClientSourceKey,
   type EventTypeKey,
 } from "../constants";
+import { PhotoGallery, type ObjectPhoto, type PhotoCategoryKey } from "@/components/clients/photo-gallery";
 
 type Client = {
   id: string;
@@ -56,6 +64,26 @@ type Estimate = {
   createdAt: string;
 };
 
+type Measurement = {
+  id: string;
+  address: string;
+  totalArea: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  rooms: { id: string; name: string; area: number; photoUrls: string[] }[];
+};
+
+type Contract = {
+  estimateId: string;
+  publicId: string;
+  contractPublicId: string;
+  contractCreatedAt: string | null;
+  contractSignedAt: string | null;
+  contractSignerName: string | null;
+  total: number;
+};
+
 const STATUSES: DealStatusKey[] = [
   "NEW",
   "QUALIFIED",
@@ -76,6 +104,13 @@ function formatDateTime(iso: string) {
   );
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
 function formatMoney(n: number) {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
 }
@@ -93,10 +128,16 @@ export function ClientCard({
   client: initialClient,
   events: initialEvents,
   estimates,
+  measurements,
+  photos,
+  contracts,
 }: {
   client: Client;
   events: Event[];
   estimates: Estimate[];
+  measurements: Measurement[];
+  photos: ObjectPhoto[];
+  contracts: Contract[];
 }) {
   const router = useRouter();
   const [client, setClient] = useState<Client>(initialClient);
@@ -106,6 +147,7 @@ export function ClientCard({
   const [eventType, setEventType] = useState<EventTypeKey>("NOTE");
   const [eventContent, setEventContent] = useState("");
   const [eventBusy, setEventBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [draftName, setDraftName] = useState(client.name);
   const [draftPhone, setDraftPhone] = useState(client.phone ?? "");
@@ -114,6 +156,11 @@ export function ClientCard({
   const [draftSource, setDraftSource] = useState<ClientSourceKey | "">(
     client.source ?? "",
   );
+
+  const totalSum = estimates.reduce((s, e) => s + (e.total || 0), 0);
+  const signedContractsCount = contracts.filter((c) => c.contractSignedAt)
+    .length;
+  const lastEvent = events[0];
 
   async function changeStatus(status: DealStatusKey) {
     if (status === client.status) return;
@@ -130,8 +177,6 @@ export function ClientCard({
       setClient(initialClient);
     }
   }
-
-  const [saving, setSaving] = useState(false);
 
   async function saveEdit() {
     setSaving(true);
@@ -211,6 +256,12 @@ export function ClientCard({
         router.push("/dashboard/clients");
       }
     });
+  }
+
+  function copyContractLink(publicId: string) {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/contract/${publicId}`;
+    navigator.clipboard.writeText(url).catch(() => {});
   }
 
   return (
@@ -389,12 +440,66 @@ export function ClientCard({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="events">
-        <TabsList>
+      <Tabs defaultValue="overview">
+        <TabsList className="flex flex-wrap h-auto justify-start">
+          <TabsTrigger value="overview">Обзор</TabsTrigger>
           <TabsTrigger value="events">События ({events.length})</TabsTrigger>
+          <TabsTrigger value="measurements">
+            Замеры ({measurements.length})
+          </TabsTrigger>
           <TabsTrigger value="estimates">КП ({estimates.length})</TabsTrigger>
+          <TabsTrigger value="contracts">
+            Договор ({contracts.length})
+          </TabsTrigger>
+          <TabsTrigger value="photos">Фото ({photos.length})</TabsTrigger>
         </TabsList>
 
+        {/* OVERVIEW */}
+        <TabsContent value="overview" className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <SummaryCell label="КП" value={estimates.length} />
+            <SummaryCell label="Замеры" value={measurements.length} />
+            <SummaryCell label="Фото" value={photos.length} />
+            <SummaryCell
+              label="Договоры"
+              value={`${signedContractsCount}/${contracts.length}`}
+            />
+          </div>
+          {totalSum > 0 && (
+            <Card>
+              <CardContent className="p-4 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Сумма всех КП
+                </span>
+                <span className="text-lg font-bold">{formatMoney(totalSum)} ₸</span>
+              </CardContent>
+            </Card>
+          )}
+          {lastEvent && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Последнее событие
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="font-medium text-[#1e3a5f]">
+                      {EVENT_LABELS[lastEvent.type]}
+                    </span>
+                    {lastEvent.content && (
+                      <span className="truncate">— {lastEvent.content}</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {formatDateTime(lastEvent.createdAt)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* EVENTS */}
         <TabsContent value="events" className="space-y-3">
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -464,6 +569,69 @@ export function ClientCard({
           )}
         </TabsContent>
 
+        {/* MEASUREMENTS */}
+        <TabsContent value="measurements" className="space-y-3">
+          {measurements.length === 0 ? (
+            <div className="rounded-lg border border-dashed py-10 text-center">
+              <Ruler className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Замеров пока нет — создайте на вкладке «Замеры»
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3">
+                <Link href="/dashboard/vision-test">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Создать замер
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {measurements.map((m) => {
+                const allPhotos = m.rooms.flatMap((r) => r.photoUrls).slice(0, 4);
+                return (
+                  <Card key={m.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {m.address || "Без адреса"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {m.rooms.length} комнат · {m.totalArea.toFixed(1)} м² · {formatDate(m.updatedAt)}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {m.status === "saved" ? "сохранён" : "активен"}
+                        </Badge>
+                      </div>
+                      {allPhotos.length > 0 && (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {allPhotos.map((url, i) => (
+                            <div
+                              key={i}
+                              className="relative aspect-square rounded-md overflow-hidden bg-muted"
+                            >
+                              <Image
+                                src={url}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                                unoptimized
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ESTIMATES */}
         <TabsContent value="estimates" className="space-y-3">
           <div className="flex justify-end">
             <Button
@@ -522,7 +690,112 @@ export function ClientCard({
             </div>
           )}
         </TabsContent>
+
+        {/* CONTRACTS */}
+        <TabsContent value="contracts" className="space-y-3">
+          {contracts.length === 0 ? (
+            <div className="rounded-lg border border-dashed py-10 text-center">
+              <FileSignature className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Договоров пока нет. Создайте договор на странице КП.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {contracts.map((c) => {
+                const signed = !!c.contractSignedAt;
+                return (
+                  <Card
+                    key={c.estimateId}
+                    className={signed ? "border-emerald-300" : ""}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <FileSignature className="h-4 w-4 text-[#1e3a5f]" />
+                            <span className="font-medium">
+                              {formatMoney(c.total)} ₸
+                            </span>
+                            {signed ? (
+                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" variant="secondary">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Подписан
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Ожидает подписи
+                              </Badge>
+                            )}
+                          </div>
+                          {signed && c.contractSignerName && (
+                            <p className="text-xs mt-1">
+                              <strong>{c.contractSignerName}</strong> ·{" "}
+                              {c.contractSignedAt &&
+                                formatDateTime(c.contractSignedAt)}
+                            </p>
+                          )}
+                          {!signed && c.contractCreatedAt && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Создан {formatDateTime(c.contractCreatedAt)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyContractLink(c.contractPublicId)}
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1.5" />
+                          Скопировать ссылку
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={`/contract/${c.contractPublicId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            Открыть
+                          </a>
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dashboard/estimates/${c.estimateId}`}>
+                            КП →
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* PHOTOS */}
+        <TabsContent value="photos">
+          <PhotoGallery clientId={client.id} initialPhotos={photos} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="rounded-lg border bg-white p-3">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-xl font-bold">{value}</p>
     </div>
   );
 }
