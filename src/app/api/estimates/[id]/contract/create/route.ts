@@ -4,13 +4,56 @@ import { prisma } from "@/lib/prisma";
 import { addClientEvent } from "@/lib/clients";
 import crypto from "crypto";
 
+type PaymentStage = {
+  name: string;
+  percent: number;
+  when: string;
+};
+
+const ALLOWED_WHEN = [
+  "before_start",
+  "on_start_day",
+  "on_delivery",
+  "after_install",
+  "after_act",
+] as const;
+
+function validatePaymentSchedule(raw: unknown): PaymentStage[] | null {
+  if (!Array.isArray(raw)) return null;
+  const stages: PaymentStage[] = [];
+  let totalPercent = 0;
+  for (const item of raw) {
+    if (!item || typeof item !== "object") return null;
+    const i = item as Record<string, unknown>;
+    const name = typeof i.name === "string" ? i.name.trim() : "";
+    const percent = Number(i.percent);
+    const when = typeof i.when === "string" ? i.when : "";
+    if (!name || !Number.isFinite(percent) || percent < 0 || percent > 100) return null;
+    if (!(ALLOWED_WHEN as readonly string[]).includes(when)) return null;
+    totalPercent += percent;
+    stages.push({ name, percent, when });
+  }
+  if (Math.round(totalPercent) !== 100) return null;
+  return stages;
+}
+
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const master = await requireAuth();
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const {
+      workStartDate,
+      workDurationDays,
+      paymentSchedule,
+    } = body as {
+      workStartDate?: string;
+      workDurationDays?: number;
+      paymentSchedule?: unknown;
+    };
 
     const estimate = await prisma.estimate.findFirst({
       where: { id, masterId: master.id },
@@ -46,8 +89,36 @@ export async function POST(
       return NextResponse.json({ error: "КП не найдено" }, { status: 404 });
     }
 
-    // Идемпотентность — если уже создан, просто возвращаем существующий
+    // Условия договора
+    const validatedSchedule = paymentSchedule
+      ? validatePaymentSchedule(paymentSchedule)
+      : null;
+    if (paymentSchedule && !validatedSchedule) {
+      return NextResponse.json(
+        { error: "Сумма этапов оплаты должна быть 100%, и каждый этап с правильным «когда»." },
+        { status: 400 },
+      );
+    }
+    const startDate = workStartDate ? new Date(workStartDate) : null;
+    const duration =
+      typeof workDurationDays === "number" && workDurationDays > 0
+        ? Math.round(workDurationDays)
+        : null;
+
+    // Идемпотентность — если уже создан, обновляем условия (но не publicId/snapshot)
     if (estimate.contractPublicId) {
+      if (startDate || duration || validatedSchedule) {
+        await prisma.estimate.update({
+          where: { id },
+          data: {
+            ...(startDate && { workStartDate: startDate }),
+            ...(duration && { workDurationDays: duration }),
+            ...(validatedSchedule && {
+              paymentSchedule: validatedSchedule as unknown as object,
+            }),
+          },
+        });
+      }
       return NextResponse.json({
         contractPublicId: estimate.contractPublicId,
         contractCreatedAt: estimate.contractCreatedAt,
@@ -67,7 +138,12 @@ export async function POST(
         createdAt: estimate.createdAt,
         validUntil: estimate.validUntil,
       },
-      version: 1,
+      terms: {
+        workStartDate: startDate?.toISOString() ?? null,
+        workDurationDays: duration,
+        paymentSchedule: validatedSchedule,
+      },
+      version: 2,
       createdAt: new Date().toISOString(),
     };
 
@@ -77,6 +153,11 @@ export async function POST(
         contractPublicId,
         contractCreatedAt: new Date(),
         contractTextSnapshot: snapshot as unknown as object,
+        ...(startDate && { workStartDate: startDate }),
+        ...(duration && { workDurationDays: duration }),
+        ...(validatedSchedule && {
+          paymentSchedule: validatedSchedule as unknown as object,
+        }),
       },
     });
 

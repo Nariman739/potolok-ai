@@ -89,8 +89,6 @@ export async function GET(
     const dateStr = new Date(estimate.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
     const city = master.contractCity || "_______________";
     const total = estimate.total || estimate.standardTotal || 0;
-    const prepayment = Math.round(total * ((master.prepaymentPercent || 50) / 100));
-    const remainder = total - prepayment;
     const masterName = master.legalName || master.companyName || `${master.firstName} ${master.lastName || ""}`.trim();
     const masterPhone = master.whatsappPhone || master.phone || "";
     const clientName = estimate.clientName || "___________________________";
@@ -175,12 +173,58 @@ export async function GET(
     // 2. Оплата
     section("2", "СТОИМОСТЬ И ОПЛАТА");
     para(`2.1. Общая стоимость: ${fmtPrice(total)} (${numberToWords(total)}).`);
-    para(`2.2. Предоплата ${master.prepaymentPercent || 50}% — ${fmtPrice(prepayment)} — до начала работ. Остаток ${fmtPrice(remainder)} — после подписания Акта.`);
+    const WHEN_LABELS_PDF: Record<string, string> = {
+      before_start: "до начала выполнения работ",
+      on_start_day: "в день начала работ",
+      on_delivery: "при поставке материалов",
+      after_install: "после завершения монтажа",
+      after_act: "после подписания Акта выполненных работ",
+    };
+    const stages: { name: string; percent: number; when: string }[] = Array.isArray(
+      estimate.paymentSchedule,
+    )
+      ? (estimate.paymentSchedule as unknown as {
+          name: string;
+          percent: number;
+          when: string;
+        }[])
+      : (() => {
+          const prep = master.prepaymentPercent || 50;
+          if (prep === 0) return [{ name: "Оплата по факту", percent: 100, when: "after_act" }];
+          if (prep === 100) return [{ name: "Полная предоплата", percent: 100, when: "before_start" }];
+          return [
+            { name: "Предоплата", percent: prep, when: "before_start" },
+            { name: "Окончательный расчёт", percent: 100 - prep, when: "after_act" },
+          ];
+        })();
+    stages.forEach((s, i) => {
+      const sum = Math.round((total * s.percent) / 100);
+      para(
+        `2.${i + 2}. ${s.name} — ${s.percent}% — ${fmtPrice(sum)} — ${WHEN_LABELS_PDF[s.when] ?? s.when}.`,
+      );
+    });
 
     // 3. Сроки
     section("3", "СРОКИ");
-    para("3.1. Дата начала работ: «____» ____________ 20___ г.");
-    para("3.2. Срок выполнения: ______ рабочих дней.");
+    const startDateStr = estimate.workStartDate
+      ? new Date(estimate.workStartDate).toLocaleDateString("ru-RU", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : "по согласованию Сторон";
+    const dur = estimate.workDurationDays;
+    const durStr = dur
+      ? `${dur} ${
+          dur % 10 === 1 && dur % 100 !== 11
+            ? "рабочий день"
+            : [2, 3, 4].includes(dur % 10) && ![12, 13, 14].includes(dur % 100)
+              ? "рабочих дня"
+              : "рабочих дней"
+        }`
+      : "по согласованию Сторон";
+    para(`3.1. Дата начала работ: ${startDateStr}.`);
+    para(`3.2. Срок выполнения: ${durStr} с момента начала работ.`);
 
     // 4. Гарантия
     section("4", "ГАРАНТИЯ");

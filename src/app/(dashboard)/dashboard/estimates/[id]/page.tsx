@@ -135,6 +135,7 @@ export default async function EstimateDetailPage({
         contractSignerName={estimate.contractSignerName}
         clientPhone={estimate.clientPhone}
         contractConfigured={!!master.contractType && master.contractType !== "none"}
+        defaultPrepaymentPercent={master.prepaymentPercent ?? 50}
       />
 
       {/* Total summary */}

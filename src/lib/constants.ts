@@ -182,3 +182,9 @@ export const SMM_LIMITS = {
   PRO: 10,
   PROPLUS: 15,
 } as const;
+
+export const LOGO_LIMITS = {
+  FREE: 3,
+  PRO: Infinity,
+  PROPLUS: Infinity,
+} as const;

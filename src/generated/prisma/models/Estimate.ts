@@ -27,6 +27,7 @@ export type AggregateEstimate = {
 }
 
 export type EstimateAvgAggregateOutputType = {
+  workDurationDays: number | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -36,6 +37,7 @@ export type EstimateAvgAggregateOutputType = {
 }
 
 export type EstimateSumAggregateOutputType = {
+  workDurationDays: number | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -59,6 +61,8 @@ export type EstimateMinAggregateOutputType = {
   contractSignerPassport: string | null
   contractSignerIp: string | null
   contractSignerUserAgent: string | null
+  workStartDate: Date | null
+  workDurationDays: number | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -90,6 +94,8 @@ export type EstimateMaxAggregateOutputType = {
   contractSignerPassport: string | null
   contractSignerIp: string | null
   contractSignerUserAgent: string | null
+  workStartDate: Date | null
+  workDurationDays: number | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -122,6 +128,9 @@ export type EstimateCountAggregateOutputType = {
   contractSignerPassport: number
   contractSignerIp: number
   contractSignerUserAgent: number
+  workStartDate: number
+  workDurationDays: number
+  paymentSchedule: number
   roomsData: number
   calculationData: number
   totalArea: number
@@ -143,6 +152,7 @@ export type EstimateCountAggregateOutputType = {
 
 
 export type EstimateAvgAggregateInputType = {
+  workDurationDays?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -152,6 +162,7 @@ export type EstimateAvgAggregateInputType = {
 }
 
 export type EstimateSumAggregateInputType = {
+  workDurationDays?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -175,6 +186,8 @@ export type EstimateMinAggregateInputType = {
   contractSignerPassport?: true
   contractSignerIp?: true
   contractSignerUserAgent?: true
+  workStartDate?: true
+  workDurationDays?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -206,6 +219,8 @@ export type EstimateMaxAggregateInputType = {
   contractSignerPassport?: true
   contractSignerIp?: true
   contractSignerUserAgent?: true
+  workStartDate?: true
+  workDurationDays?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -238,6 +253,9 @@ export type EstimateCountAggregateInputType = {
   contractSignerPassport?: true
   contractSignerIp?: true
   contractSignerUserAgent?: true
+  workStartDate?: true
+  workDurationDays?: true
+  paymentSchedule?: true
   roomsData?: true
   calculationData?: true
   totalArea?: true
@@ -359,6 +377,9 @@ export type EstimateGroupByOutputType = {
   contractSignerPassport: string | null
   contractSignerIp: string | null
   contractSignerUserAgent: string | null
+  workStartDate: Date | null
+  workDurationDays: number | null
+  paymentSchedule: runtime.JsonValue | null
   roomsData: runtime.JsonValue
   calculationData: runtime.JsonValue
   totalArea: number
@@ -416,6 +437,9 @@ export type EstimateWhereInput = {
   contractSignerPassport?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerIp?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerUserAgent?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  workStartDate?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
+  workDurationDays?: Prisma.IntNullableFilter<"Estimate"> | number | null
+  paymentSchedule?: Prisma.JsonNullableFilter<"Estimate">
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -453,6 +477,9 @@ export type EstimateOrderByWithRelationInput = {
   contractSignerPassport?: Prisma.SortOrderInput | Prisma.SortOrder
   contractSignerIp?: Prisma.SortOrderInput | Prisma.SortOrder
   contractSignerUserAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  workStartDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  workDurationDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentSchedule?: Prisma.SortOrderInput | Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -493,6 +520,9 @@ export type EstimateWhereUniqueInput = Prisma.AtLeast<{
   contractSignerPassport?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerIp?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerUserAgent?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  workStartDate?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
+  workDurationDays?: Prisma.IntNullableFilter<"Estimate"> | number | null
+  paymentSchedule?: Prisma.JsonNullableFilter<"Estimate">
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -530,6 +560,9 @@ export type EstimateOrderByWithAggregationInput = {
   contractSignerPassport?: Prisma.SortOrderInput | Prisma.SortOrder
   contractSignerIp?: Prisma.SortOrderInput | Prisma.SortOrder
   contractSignerUserAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  workStartDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  workDurationDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentSchedule?: Prisma.SortOrderInput | Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -572,6 +605,9 @@ export type EstimateScalarWhereWithAggregatesInput = {
   contractSignerPassport?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   contractSignerIp?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   contractSignerUserAgent?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
+  workStartDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Estimate"> | Date | string | null
+  workDurationDays?: Prisma.IntNullableWithAggregatesFilter<"Estimate"> | number | null
+  paymentSchedule?: Prisma.JsonNullableWithAggregatesFilter<"Estimate">
   roomsData?: Prisma.JsonWithAggregatesFilter<"Estimate">
   calculationData?: Prisma.JsonWithAggregatesFilter<"Estimate">
   totalArea?: Prisma.FloatWithAggregatesFilter<"Estimate"> | number
@@ -604,6 +640,9 @@ export type EstimateCreateInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -641,6 +680,9 @@ export type EstimateUncheckedCreateInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -674,6 +716,9 @@ export type EstimateUpdateInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -711,6 +756,9 @@ export type EstimateUncheckedUpdateInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -746,6 +794,9 @@ export type EstimateCreateManyInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -778,6 +829,9 @@ export type EstimateUpdateManyMutationInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -812,6 +866,9 @@ export type EstimateUncheckedUpdateManyInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -856,6 +913,9 @@ export type EstimateCountOrderByAggregateInput = {
   contractSignerPassport?: Prisma.SortOrder
   contractSignerIp?: Prisma.SortOrder
   contractSignerUserAgent?: Prisma.SortOrder
+  workStartDate?: Prisma.SortOrder
+  workDurationDays?: Prisma.SortOrder
+  paymentSchedule?: Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -875,6 +935,7 @@ export type EstimateCountOrderByAggregateInput = {
 }
 
 export type EstimateAvgOrderByAggregateInput = {
+  workDurationDays?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -898,6 +959,8 @@ export type EstimateMaxOrderByAggregateInput = {
   contractSignerPassport?: Prisma.SortOrder
   contractSignerIp?: Prisma.SortOrder
   contractSignerUserAgent?: Prisma.SortOrder
+  workStartDate?: Prisma.SortOrder
+  workDurationDays?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -929,6 +992,8 @@ export type EstimateMinOrderByAggregateInput = {
   contractSignerPassport?: Prisma.SortOrder
   contractSignerIp?: Prisma.SortOrder
   contractSignerUserAgent?: Prisma.SortOrder
+  workStartDate?: Prisma.SortOrder
+  workDurationDays?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -946,6 +1011,7 @@ export type EstimateMinOrderByAggregateInput = {
 }
 
 export type EstimateSumOrderByAggregateInput = {
+  workDurationDays?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -999,6 +1065,14 @@ export type EstimateUncheckedUpdateManyWithoutMasterNestedInput = {
   update?: Prisma.EstimateUpdateWithWhereUniqueWithoutMasterInput | Prisma.EstimateUpdateWithWhereUniqueWithoutMasterInput[]
   updateMany?: Prisma.EstimateUpdateManyWithWhereWithoutMasterInput | Prisma.EstimateUpdateManyWithWhereWithoutMasterInput[]
   deleteMany?: Prisma.EstimateScalarWhereInput | Prisma.EstimateScalarWhereInput[]
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type NullableFloatFieldUpdateOperationsInput = {
@@ -1085,6 +1159,9 @@ export type EstimateCreateWithoutMasterInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1120,6 +1197,9 @@ export type EstimateUncheckedCreateWithoutMasterInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1184,6 +1264,9 @@ export type EstimateScalarWhereInput = {
   contractSignerPassport?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerIp?: Prisma.StringNullableFilter<"Estimate"> | string | null
   contractSignerUserAgent?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  workStartDate?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
+  workDurationDays?: Prisma.IntNullableFilter<"Estimate"> | number | null
+  paymentSchedule?: Prisma.JsonNullableFilter<"Estimate">
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -1216,6 +1299,9 @@ export type EstimateCreateWithoutChatSessionInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1252,6 +1338,9 @@ export type EstimateUncheckedCreateWithoutChatSessionInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1300,6 +1389,9 @@ export type EstimateUpdateWithoutChatSessionInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1336,6 +1428,9 @@ export type EstimateUncheckedUpdateWithoutChatSessionInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1368,6 +1463,9 @@ export type EstimateCreateWithoutClientInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1403,6 +1501,9 @@ export type EstimateUncheckedCreateWithoutClientInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1463,6 +1564,9 @@ export type EstimateCreateManyMasterInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1495,6 +1599,9 @@ export type EstimateUpdateWithoutMasterInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1530,6 +1637,9 @@ export type EstimateUncheckedUpdateWithoutMasterInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1564,6 +1674,9 @@ export type EstimateUncheckedUpdateManyWithoutMasterInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1597,6 +1710,9 @@ export type EstimateCreateManyClientInput = {
   contractSignerPassport?: string | null
   contractSignerIp?: string | null
   contractSignerUserAgent?: string | null
+  workStartDate?: Date | string | null
+  workDurationDays?: number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1629,6 +1745,9 @@ export type EstimateUpdateWithoutClientInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1664,6 +1783,9 @@ export type EstimateUncheckedUpdateWithoutClientInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1698,6 +1820,9 @@ export type EstimateUncheckedUpdateManyWithoutClientInput = {
   contractSignerPassport?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contractSignerUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  workStartDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  workDurationDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  paymentSchedule?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1734,6 +1859,9 @@ export type EstimateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   contractSignerPassport?: boolean
   contractSignerIp?: boolean
   contractSignerUserAgent?: boolean
+  workStartDate?: boolean
+  workDurationDays?: boolean
+  paymentSchedule?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1771,6 +1899,9 @@ export type EstimateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   contractSignerPassport?: boolean
   contractSignerIp?: boolean
   contractSignerUserAgent?: boolean
+  workStartDate?: boolean
+  workDurationDays?: boolean
+  paymentSchedule?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1807,6 +1938,9 @@ export type EstimateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   contractSignerPassport?: boolean
   contractSignerIp?: boolean
   contractSignerUserAgent?: boolean
+  workStartDate?: boolean
+  workDurationDays?: boolean
+  paymentSchedule?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1843,6 +1977,9 @@ export type EstimateSelectScalar = {
   contractSignerPassport?: boolean
   contractSignerIp?: boolean
   contractSignerUserAgent?: boolean
+  workStartDate?: boolean
+  workDurationDays?: boolean
+  paymentSchedule?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1861,7 +1998,7 @@ export type EstimateSelectScalar = {
   updatedAt?: boolean
 }
 
-export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "clientId" | "contractPublicId" | "contractTextSnapshot" | "contractCreatedAt" | "contractSignedAt" | "contractSignerName" | "contractSignerPassport" | "contractSignerIp" | "contractSignerUserAgent" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
+export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "clientId" | "contractPublicId" | "contractTextSnapshot" | "contractCreatedAt" | "contractSignedAt" | "contractSignerName" | "contractSignerPassport" | "contractSignerIp" | "contractSignerUserAgent" | "workStartDate" | "workDurationDays" | "paymentSchedule" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
 export type EstimateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
@@ -1899,6 +2036,9 @@ export type $EstimatePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     contractSignerPassport: string | null
     contractSignerIp: string | null
     contractSignerUserAgent: string | null
+    workStartDate: Date | null
+    workDurationDays: number | null
+    paymentSchedule: runtime.JsonValue | null
     roomsData: runtime.JsonValue
     calculationData: runtime.JsonValue
     totalArea: number
@@ -2356,6 +2496,9 @@ export interface EstimateFieldRefs {
   readonly contractSignerPassport: Prisma.FieldRef<"Estimate", 'String'>
   readonly contractSignerIp: Prisma.FieldRef<"Estimate", 'String'>
   readonly contractSignerUserAgent: Prisma.FieldRef<"Estimate", 'String'>
+  readonly workStartDate: Prisma.FieldRef<"Estimate", 'DateTime'>
+  readonly workDurationDays: Prisma.FieldRef<"Estimate", 'Int'>
+  readonly paymentSchedule: Prisma.FieldRef<"Estimate", 'Json'>
   readonly roomsData: Prisma.FieldRef<"Estimate", 'Json'>
   readonly calculationData: Prisma.FieldRef<"Estimate", 'Json'>
   readonly totalArea: Prisma.FieldRef<"Estimate", 'Float'>

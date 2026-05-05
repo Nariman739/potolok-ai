@@ -13,6 +13,10 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import {
+  ContractTermsDialog,
+  type ContractTermsPayload,
+} from "./contract-terms-dialog";
 
 type Props = {
   estimateId: string;
@@ -22,6 +26,7 @@ type Props = {
   contractSignerName: string | null;
   clientPhone: string | null;
   contractConfigured: boolean;
+  defaultPrepaymentPercent: number;
 };
 
 export function ContractSection({
@@ -32,22 +37,29 @@ export function ContractSection({
   contractSignerName,
   clientPhone,
   contractConfigured,
+  defaultPrepaymentPercent,
 }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function createContract() {
+  async function createContract(payload: ContractTermsPayload) {
     setCreating(true);
     setError(null);
     try {
       const res = await fetch(
         `/api/estimates/${estimateId}/contract/create`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Ошибка");
+      setTermsOpen(false);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
@@ -118,7 +130,7 @@ export function ContractSection({
           </p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
-            onClick={createContract}
+            onClick={() => setTermsOpen(true)}
             disabled={creating}
             className="bg-[#1e3a5f] hover:bg-[#152d4a]"
           >
@@ -133,6 +145,13 @@ export function ContractSection({
             )}
           </Button>
         </CardContent>
+        <ContractTermsDialog
+          open={termsOpen}
+          onOpenChange={setTermsOpen}
+          onConfirm={createContract}
+          saving={creating}
+          defaultPrepaymentPercent={defaultPrepaymentPercent}
+        />
       </Card>
     );
   }

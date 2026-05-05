@@ -30,6 +30,38 @@ interface EstimateData {
   clientAddress?: string | null;
   total: number;
   createdAt: Date;
+  workStartDate?: Date | string | null;
+  workDurationDays?: number | null;
+  paymentSchedule?: PaymentStage[] | null;
+}
+
+export type PaymentStage = {
+  name: string;
+  percent: number;
+  when: string; // before_start | on_start_day | on_delivery | after_install | after_act
+};
+
+const WHEN_LABELS: Record<string, string> = {
+  before_start: "до начала выполнения работ",
+  on_start_day: "в день начала работ",
+  on_delivery: "при поставке материалов",
+  after_install: "после завершения монтажа",
+  after_act: "после подписания Акта выполненных работ",
+};
+
+function defaultPaymentSchedule(prepaymentPercent: number): PaymentStage[] {
+  const prep = Math.max(0, Math.min(100, prepaymentPercent || 50));
+  const rest = 100 - prep;
+  if (prep === 0) {
+    return [{ name: "Оплата по факту", percent: 100, when: "after_act" }];
+  }
+  if (prep === 100) {
+    return [{ name: "Полная предоплата", percent: 100, when: "before_start" }];
+  }
+  return [
+    { name: "Предоплата", percent: prep, when: "before_start" },
+    { name: "Окончательный расчёт", percent: rest, when: "after_act" },
+  ];
 }
 
 function esc(s: string | null | undefined): string {
@@ -121,10 +153,27 @@ export function generateContractHtml(
   const date = fmtDate(estimate.createdAt);
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
-  const prepayment = Math.round(total * (master.prepaymentPercent / 100));
-  const remainder = total - prepayment;
   const roomResults = getRoomResults(calc);
   const worksRows = buildWorksTable(roomResults);
+
+  // Условия договора (даты + схема оплаты)
+  const schedule: PaymentStage[] =
+    estimate.paymentSchedule && estimate.paymentSchedule.length > 0
+      ? estimate.paymentSchedule
+      : defaultPaymentSchedule(master.prepaymentPercent);
+  const startDateStr = estimate.workStartDate
+    ? fmtDate(new Date(estimate.workStartDate))
+    : "по согласованию Сторон";
+  const durationStr = estimate.workDurationDays
+    ? `${estimate.workDurationDays} ${
+        estimate.workDurationDays % 10 === 1 && estimate.workDurationDays % 100 !== 11
+          ? "рабочий день"
+          : [2, 3, 4].includes(estimate.workDurationDays % 10) &&
+              ![12, 13, 14].includes(estimate.workDurationDays % 100)
+            ? "рабочих дня"
+            : "рабочих дней"
+      }`
+    : "по согласованию Сторон";
 
   const title = isIp
     ? "ДОГОВОР НА ОКАЗАНИЕ УСЛУГ"
@@ -233,17 +282,18 @@ export function generateContractHtml(
     <p>2.1. Общая стоимость работ по настоящему ${isIp ? "Договору" : "Соглашению"} составляет:
     <strong>${fmtPrice(total)}</strong> (${numberToWordsKz(total)}).</p>
     <p>2.2. Оплата производится в следующем порядке:</p>
-    <p>&nbsp;&nbsp;&nbsp;а) Предоплата в размере ${master.prepaymentPercent}% — <strong>${fmtPrice(prepayment)}</strong> —
-    вносится до начала выполнения работ;</p>
-    <p>&nbsp;&nbsp;&nbsp;б) Оставшаяся сумма в размере <strong>${fmtPrice(remainder)}</strong> — оплачивается
-    после завершения работ и подписания Акта выполненных работ.</p>
+    ${schedule
+      .map(
+        (s, i) => `<p>&nbsp;&nbsp;&nbsp;${String.fromCharCode(0x430 + i)}) ${esc(s.name)} — ${s.percent}% — <strong>${fmtPrice(Math.round((total * s.percent) / 100))}</strong> — ${WHEN_LABELS[s.when] ?? esc(s.when)};</p>`,
+      )
+      .join("\n    ")}
     <p>2.3. Оплата производится наличными или переводом на ${isIp ? "расчётный счёт Исполнителя" : "карту Исполнителя"}.</p>
   </div>
 
   <h2>3. СРОКИ ВЫПОЛНЕНИЯ РАБОТ</h2>
   <div class="section">
-    <p>3.1. Дата начала работ: «____» ____________ 20___ г.</p>
-    <p>3.2. Срок выполнения работ: ______ рабочих дней с момента начала работ.</p>
+    <p>3.1. Дата начала работ: ${startDateStr}</p>
+    <p>3.2. Срок выполнения работ: ${durationStr} с момента начала работ.</p>
     <p>3.3. Сроки могут быть скорректированы по взаимному согласию Сторон.</p>
   </div>
 

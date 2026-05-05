@@ -68,6 +68,11 @@ model Master {
   // SMM usage (Instagram auto-posting)
   smmPostsThisMonth  Int      @default(0)
   smmMonthReset      DateTime @default(now())
+
+  // Logo generation usage (AI logos)
+  logoGenerationsThisMonth Int      @default(0)
+  logoMonthReset           DateTime @default(now())
+  logoBrief                Json?    // последний бриф (ответы на наводящие вопросы)
   smmProfile         Json?    // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   onboardingCompleted Boolean @default(false)
@@ -169,6 +174,10 @@ model Estimate {
   contractSignerPassport  String?
   contractSignerIp        String?
   contractSignerUserAgent String?
+  // Условия договора (даты + схема оплаты)
+  workStartDate           DateTime?
+  workDurationDays        Int?
+  paymentSchedule         Json?      // [{ name: string, percent: number, when: string }]
 
   // Data (JSON)
   roomsData       Json

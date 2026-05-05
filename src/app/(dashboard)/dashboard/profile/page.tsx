@@ -14,8 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw } from "lucide-react";
+import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import Image from "next/image";
 import type { MasterProfile } from "@/lib/types";
+import { LogoGeneratorDialog } from "@/components/logo/logo-generator-dialog";
 
 const BOT_USERNAME = "potolokaiBot";
 
@@ -38,6 +40,9 @@ export default function ProfilePage() {
   const [instagramUrl, setInstagramUrl] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [removingLogo, setRemovingLogo] = useState(false);
 
   // Contract settings state
   const [contractType, setContractType] = useState("");
@@ -68,6 +73,7 @@ export default function ProfilePage() {
         setInstagramUrl(data.instagramUrl || "");
         setWhatsappPhone(data.whatsappPhone || "");
         setAddress(data.address || "");
+        setLogoUrl(data.logoUrl || null);
         // Contract
         setContractType(data.contractType || "");
         setBin(data.bin || "");
@@ -290,6 +296,68 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2">
+            <Label>Логотип</Label>
+            <div className="flex items-center gap-3 flex-wrap">
+              {logoUrl ? (
+                <div className="relative h-20 w-20 rounded-lg border bg-white overflow-hidden flex-shrink-0">
+                  <Image
+                    src={logoUrl}
+                    alt="Logo"
+                    fill
+                    className="object-contain"
+                    sizes="80px"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <div className="h-20 w-20 rounded-lg border-2 border-dashed bg-muted/30 flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">
+                  пусто
+                </div>
+              )}
+              <div className="flex-1 min-w-[150px] space-y-2">
+                <Button
+                  type="button"
+                  onClick={() => setLogoDialogOpen(true)}
+                  className="bg-[#1e3a5f] hover:bg-[#152d4a] w-full sm:w-auto"
+                  size="sm"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {logoUrl ? "Создать новый с AI" : "Создать с AI"}
+                </Button>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      if (!confirm("Удалить логотип?")) return;
+                      setRemovingLogo(true);
+                      try {
+                        const res = await fetch("/api/logo/save", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ url: "" }),
+                        });
+                        if (res.ok) setLogoUrl(null);
+                      } finally {
+                        setRemovingLogo(false);
+                      }
+                    }}
+                    disabled={removingLogo}
+                    className="w-full sm:w-auto"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Удалить
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  AI задаст пару вопросов о вашей компании и нарисует логотип
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label>Цвет бренда</Label>
             <div className="flex flex-wrap items-center gap-3">
               <input
@@ -494,6 +562,16 @@ export default function ProfilePage() {
           </>
         )}
       </Button>
+
+      <LogoGeneratorDialog
+        open={logoDialogOpen}
+        onOpenChange={setLogoDialogOpen}
+        onSaved={(url) => {
+          setLogoUrl(url);
+          setLogoDialogOpen(false);
+          toast.success("Логотип сохранён");
+        }}
+      />
     </div>
   );
 }
