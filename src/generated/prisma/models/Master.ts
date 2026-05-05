@@ -588,6 +588,7 @@ export type MasterWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   portfolioSlug?: Prisma.StringNullableFilter<"Master"> | string | null
   portfolioBio?: Prisma.StringNullableFilter<"Master"> | string | null
+  logoHistory?: Prisma.LogoGenerationListRelationFilter
   prices?: Prisma.MasterPriceListRelationFilter
   estimates?: Prisma.EstimateListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
@@ -652,6 +653,7 @@ export type MasterOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrderInput | Prisma.SortOrder
   portfolioBio?: Prisma.SortOrderInput | Prisma.SortOrder
+  logoHistory?: Prisma.LogoGenerationOrderByRelationAggregateInput
   prices?: Prisma.MasterPriceOrderByRelationAggregateInput
   estimates?: Prisma.EstimateOrderByRelationAggregateInput
   sessions?: Prisma.SessionOrderByRelationAggregateInput
@@ -719,6 +721,7 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   portfolioBio?: Prisma.StringNullableFilter<"Master"> | string | null
+  logoHistory?: Prisma.LogoGenerationListRelationFilter
   prices?: Prisma.MasterPriceListRelationFilter
   estimates?: Prisma.EstimateListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
@@ -897,6 +900,7 @@ export type MasterCreateInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -961,6 +965,7 @@ export type MasterUncheckedCreateInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -1025,6 +1030,7 @@ export type MasterUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -1089,6 +1095,7 @@ export type MasterUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -1625,6 +1632,20 @@ export type MasterUpdateOneRequiredWithoutObjectPhotosNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutObjectPhotosInput, Prisma.MasterUpdateWithoutObjectPhotosInput>, Prisma.MasterUncheckedUpdateWithoutObjectPhotosInput>
 }
 
+export type MasterCreateNestedOneWithoutLogoHistoryInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutLogoHistoryInput, Prisma.MasterUncheckedCreateWithoutLogoHistoryInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutLogoHistoryInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutLogoHistoryNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutLogoHistoryInput, Prisma.MasterUncheckedCreateWithoutLogoHistoryInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutLogoHistoryInput
+  upsert?: Prisma.MasterUpsertWithoutLogoHistoryInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutLogoHistoryInput, Prisma.MasterUpdateWithoutLogoHistoryInput>, Prisma.MasterUncheckedUpdateWithoutLogoHistoryInput>
+}
+
 export type MasterCreateWithoutSessionsInput = {
   id?: string
   phone: string
@@ -1676,6 +1697,7 @@ export type MasterCreateWithoutSessionsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
@@ -1739,6 +1761,7 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
@@ -1818,6 +1841,7 @@ export type MasterUpdateWithoutSessionsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
@@ -1881,6 +1905,7 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -1944,6 +1969,7 @@ export type MasterCreateWithoutPricesInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
@@ -2007,6 +2033,7 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
@@ -2086,6 +2113,7 @@ export type MasterUpdateWithoutPricesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
@@ -2149,6 +2177,7 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -2212,6 +2241,7 @@ export type MasterCreateWithoutCustomItemsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -2275,6 +2305,7 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -2354,6 +2385,7 @@ export type MasterUpdateWithoutCustomItemsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -2417,6 +2449,7 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -2480,6 +2513,7 @@ export type MasterCreateWithoutEstimatesInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
@@ -2543,6 +2577,7 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
@@ -2622,6 +2657,7 @@ export type MasterUpdateWithoutEstimatesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
@@ -2685,6 +2721,7 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -2748,6 +2785,7 @@ export type MasterCreateWithoutChatSessionsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -2811,6 +2849,7 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -2890,6 +2929,7 @@ export type MasterUpdateWithoutChatSessionsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -2953,6 +2993,7 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -3016,6 +3057,7 @@ export type MasterCreateWithoutMeasurementsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -3079,6 +3121,7 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -3158,6 +3201,7 @@ export type MasterUpdateWithoutMeasurementsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -3221,6 +3265,7 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -3284,6 +3329,7 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -3347,6 +3393,7 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -3426,6 +3473,7 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -3489,6 +3537,7 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -3552,6 +3601,7 @@ export type MasterCreateWithoutInstagramAccountInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -3615,6 +3665,7 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -3694,6 +3745,7 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -3757,6 +3809,7 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -3820,6 +3873,7 @@ export type MasterCreateWithoutInstagramSessionInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -3883,6 +3937,7 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -3962,6 +4017,7 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -4025,6 +4081,7 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -4088,6 +4145,7 @@ export type MasterCreateWithoutClientsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -4151,6 +4209,7 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -4230,6 +4289,7 @@ export type MasterUpdateWithoutClientsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -4293,6 +4353,7 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -4356,6 +4417,7 @@ export type MasterCreateWithoutObjectPhotosInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
@@ -4419,6 +4481,7 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   updatedAt?: Date | string
   portfolioSlug?: string | null
   portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
@@ -4498,6 +4561,7 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
@@ -4561,6 +4625,7 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
@@ -4573,12 +4638,285 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
+export type MasterCreateWithoutLogoHistoryInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutLogoHistoryInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutLogoHistoryInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutLogoHistoryInput, Prisma.MasterUncheckedCreateWithoutLogoHistoryInput>
+}
+
+export type MasterUpsertWithoutLogoHistoryInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutLogoHistoryInput, Prisma.MasterUncheckedUpdateWithoutLogoHistoryInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutLogoHistoryInput, Prisma.MasterUncheckedCreateWithoutLogoHistoryInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutLogoHistoryInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutLogoHistoryInput, Prisma.MasterUncheckedUpdateWithoutLogoHistoryInput>
+}
+
+export type MasterUpdateWithoutLogoHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+}
+
 
 /**
  * Count Type MasterCountOutputType
  */
 
 export type MasterCountOutputType = {
+  logoHistory: number
   prices: number
   estimates: number
   sessions: number
@@ -4591,6 +4929,7 @@ export type MasterCountOutputType = {
 }
 
 export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  logoHistory?: boolean | MasterCountOutputTypeCountLogoHistoryArgs
   prices?: boolean | MasterCountOutputTypeCountPricesArgs
   estimates?: boolean | MasterCountOutputTypeCountEstimatesArgs
   sessions?: boolean | MasterCountOutputTypeCountSessionsArgs
@@ -4610,6 +4949,13 @@ export type MasterCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exten
    * Select specific fields to fetch from the MasterCountOutputType
    */
   select?: Prisma.MasterCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * MasterCountOutputType without action
+ */
+export type MasterCountOutputTypeCountLogoHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LogoGenerationWhereInput
 }
 
 /**
@@ -4727,6 +5073,7 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   updatedAt?: boolean
   portfolioSlug?: boolean
   portfolioBio?: boolean
+  logoHistory?: boolean | Prisma.Master$logoHistoryArgs<ExtArgs>
   prices?: boolean | Prisma.Master$pricesArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
   sessions?: boolean | Prisma.Master$sessionsArgs<ExtArgs>
@@ -4902,6 +5249,7 @@ export type MasterSelectScalar = {
 
 export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "paidUntil" | "billingNotes" | "isOwner" | "notifyDealWon" | "notifyDealLost" | "smmPostsThisMonth" | "smmMonthReset" | "logoGenerationsThisMonth" | "logoMonthReset" | "logoBrief" | "smmProfile" | "onboardingCompleted" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
 export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  logoHistory?: boolean | Prisma.Master$logoHistoryArgs<ExtArgs>
   prices?: boolean | Prisma.Master$pricesArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
   sessions?: boolean | Prisma.Master$sessionsArgs<ExtArgs>
@@ -4921,6 +5269,7 @@ export type MasterIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Master"
   objects: {
+    logoHistory: Prisma.$LogoGenerationPayload<ExtArgs>[]
     prices: Prisma.$MasterPricePayload<ExtArgs>[]
     estimates: Prisma.$EstimatePayload<ExtArgs>[]
     sessions: Prisma.$SessionPayload<ExtArgs>[]
@@ -5378,6 +5727,7 @@ readonly fields: MasterFieldRefs;
  */
 export interface Prisma__MasterClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  logoHistory<T extends Prisma.Master$logoHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$logoHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LogoGenerationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   prices<T extends Prisma.Master$pricesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$pricesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MasterPricePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   estimates<T extends Prisma.Master$estimatesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$estimatesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EstimatePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   sessions<T extends Prisma.Master$sessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5853,6 +6203,30 @@ export type MasterDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Limit how many Masters to delete.
    */
   limit?: number
+}
+
+/**
+ * Master.logoHistory
+ */
+export type Master$logoHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the LogoGeneration
+   */
+  select?: Prisma.LogoGenerationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the LogoGeneration
+   */
+  omit?: Prisma.LogoGenerationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.LogoGenerationInclude<ExtArgs> | null
+  where?: Prisma.LogoGenerationWhereInput
+  orderBy?: Prisma.LogoGenerationOrderByWithRelationInput | Prisma.LogoGenerationOrderByWithRelationInput[]
+  cursor?: Prisma.LogoGenerationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.LogoGenerationScalarFieldEnum | Prisma.LogoGenerationScalarFieldEnum[]
 }
 
 /**

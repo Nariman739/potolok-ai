@@ -66,7 +66,8 @@ export const ModelName = {
   InstagramSession: 'InstagramSession',
   Client: 'Client',
   ClientEvent: 'ClientEvent',
-  ObjectPhoto: 'ObjectPhoto'
+  ObjectPhoto: 'ObjectPhoto',
+  LogoGeneration: 'LogoGeneration'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -395,6 +396,19 @@ export const ObjectPhotoScalarFieldEnum = {
 } as const
 
 export type ObjectPhotoScalarFieldEnum = (typeof ObjectPhotoScalarFieldEnum)[keyof typeof ObjectPhotoScalarFieldEnum]
+
+
+export const LogoGenerationScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  blobUrl: 'blobUrl',
+  promptUsed: 'promptUsed',
+  brief: 'brief',
+  isCurrent: 'isCurrent',
+  createdAt: 'createdAt'
+} as const
+
+export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
 
 
 export const SortOrder = {

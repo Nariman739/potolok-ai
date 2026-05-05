@@ -73,6 +73,7 @@ model Master {
   logoGenerationsThisMonth Int      @default(0)
   logoMonthReset           DateTime @default(now())
   logoBrief                Json?    // последний бриф (ответы на наводящие вопросы)
+  logoHistory              LogoGeneration[]
   smmProfile         Json?    // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   onboardingCompleted Boolean @default(false)
@@ -534,4 +535,22 @@ enum ObjectPhotoCategory {
   MEASUREMENT
   DEMOLITION
   OTHER
+}
+
+// ============================================
+// LOGO GENERATIONS (история сгенерированных AI-логотипов)
+// ============================================
+
+model LogoGeneration {
+  id         String   @id @default(uuid())
+  masterId   String
+  blobUrl    String
+  promptUsed String
+  brief      Json?
+  isCurrent  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId, createdAt])
 }

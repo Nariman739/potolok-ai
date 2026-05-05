@@ -97,3 +97,8 @@ export type ClientEvent = Prisma.ClientEventModel
  * 
  */
 export type ObjectPhoto = Prisma.ObjectPhotoModel
+/**
+ * Model LogoGeneration
+ * 
+ */
+export type LogoGeneration = Prisma.LogoGenerationModel

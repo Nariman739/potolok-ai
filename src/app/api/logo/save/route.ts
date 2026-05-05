@@ -12,6 +12,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "url обязателен" }, { status: 400 });
     }
 
+    // Снимаем флаг isCurrent со всех старых, ставим на новый (если есть)
+    await prisma.logoGeneration.updateMany({
+      where: { masterId: master.id, isCurrent: true },
+      data: { isCurrent: false },
+    });
+    if (url) {
+      await prisma.logoGeneration.updateMany({
+        where: { masterId: master.id, blobUrl: url },
+        data: { isCurrent: true },
+      });
+    }
+
     await prisma.master.update({
       where: { id: master.id },
       data: { logoUrl: url || null },

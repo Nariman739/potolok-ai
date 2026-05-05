@@ -399,7 +399,8 @@ export const ModelName = {
   InstagramSession: 'InstagramSession',
   Client: 'Client',
   ClientEvent: 'ClientEvent',
-  ObjectPhoto: 'ObjectPhoto'
+  ObjectPhoto: 'ObjectPhoto',
+  LogoGeneration: 'LogoGeneration'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "logoGeneration"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1603,6 +1604,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LogoGeneration: {
+      payload: Prisma.$LogoGenerationPayload<ExtArgs>
+      fields: Prisma.LogoGenerationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LogoGenerationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LogoGenerationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        findFirst: {
+          args: Prisma.LogoGenerationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LogoGenerationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        findMany: {
+          args: Prisma.LogoGenerationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        create: {
+          args: Prisma.LogoGenerationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        createMany: {
+          args: Prisma.LogoGenerationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LogoGenerationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        delete: {
+          args: Prisma.LogoGenerationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        update: {
+          args: Prisma.LogoGenerationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        deleteMany: {
+          args: Prisma.LogoGenerationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LogoGenerationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LogoGenerationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        upsert: {
+          args: Prisma.LogoGenerationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        aggregate: {
+          args: Prisma.LogoGenerationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLogoGeneration>
+        }
+        groupBy: {
+          args: Prisma.LogoGenerationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LogoGenerationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LogoGenerationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LogoGenerationCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1952,6 +2027,19 @@ export const ObjectPhotoScalarFieldEnum = {
 } as const
 
 export type ObjectPhotoScalarFieldEnum = (typeof ObjectPhotoScalarFieldEnum)[keyof typeof ObjectPhotoScalarFieldEnum]
+
+
+export const LogoGenerationScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  blobUrl: 'blobUrl',
+  promptUsed: 'promptUsed',
+  brief: 'brief',
+  isCurrent: 'isCurrent',
+  createdAt: 'createdAt'
+} as const
+
+export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2307,6 +2395,7 @@ export type GlobalOmitConfig = {
   client?: Prisma.ClientOmit
   clientEvent?: Prisma.ClientEventOmit
   objectPhoto?: Prisma.ObjectPhotoOmit
+  logoGeneration?: Prisma.LogoGenerationOmit
 }
 
 /* Types for Logging */

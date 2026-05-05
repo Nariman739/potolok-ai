@@ -59,6 +59,17 @@ export async function POST(request: Request) {
 
     const { url, promptUsed } = await generateLogo(promptEnglish, masterAuth.id);
 
+    // Сохраняем в историю
+    const generation = await prisma.logoGeneration.create({
+      data: {
+        masterId: masterAuth.id,
+        blobUrl: url,
+        promptUsed,
+        ...(brief && { brief: brief as unknown as object }),
+        isCurrent: false,
+      },
+    });
+
     await prisma.master.update({
       where: { id: masterAuth.id },
       data: {
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ url, promptUsed });
+    return NextResponse.json({ id: generation.id, url, promptUsed });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
