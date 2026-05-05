@@ -72,6 +72,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   // Если HDR не грузится в Safari — переключаемся в low автоматически через Suspense fallback
   const [envFailed, setEnvFailed] = useState(false);
 
+  // AI-рендер из 3D-сцены через Flux Kontext Pro
+  const [aiTrigger, setAiTrigger] = useState(0);
+  const [aiState, setAiState] = useState<"idle" | "generating" | "result" | "error">("idle");
+  const [aiResultUrl, setAiResultUrl] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("potolok3d.finish", ceilingFinish);
@@ -157,6 +163,36 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       window.setTimeout(() => setShotMessage(null), 3500);
     }
   }, [onScreenshot]);
+
+  // AI-рендер: тот же snapshot отправляется в Flux Kontext Pro через /api/ai-render-scene
+  const handleAiCapture = useCallback(async (dataUrl: string) => {
+    setAiState("generating");
+    setAiError(null);
+    setAiResultUrl(null);
+    try {
+      const colorEntry = CEILING_COLORS.find((c) => c.id === ceilingColorId);
+      const res = await fetch("/api/ai-render-scene", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageDataUrl: dataUrl,
+          finish: ceilingFinish,
+          colorHex: colorEntry?.hex ?? "#FFFFFF",
+          colorName: colorEntry?.label ?? "белый",
+        }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      const { url } = (await res.json()) as { url: string };
+      setAiResultUrl(url);
+      setAiState("result");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
+      setAiState("error");
+    }
+  }, [ceilingFinish, ceilingColorId]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
@@ -412,16 +448,26 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         <LookAroundControls ref={lookRef} />
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
+        <ScreenshotCapture trigger={aiTrigger} onCapture={handleAiCapture} />
       </Canvas>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
+        {!readOnly && (
+          <button
+            onClick={() => setAiTrigger((t) => t + 1)}
+            disabled={aiState === "generating"}
+            className="h-10 px-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold text-white hover:opacity-90 active:scale-95 disabled:opacity-60"
+          >
+            {aiState === "generating" ? "AI рисует…" : "✨ AI-фото"}
+          </button>
+        )}
         {!readOnly && (
           <button
             onClick={() => setScreenshotTrigger((t) => t + 1)}
             disabled={savingShot}
             className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
           >
-            {savingShot ? "Сохраняю…" : "📸 Снимок для КП"}
+            {savingShot ? "Сохраняю…" : "📸 Снимок"}
           </button>
         )}
         <button
@@ -493,6 +539,83 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
         v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
       </div>
+
+      {/* AI-рендер: прогресс и результат */}
+      {aiState === "generating" && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl px-6 py-5 max-w-[280px] text-center">
+            <div className="text-3xl mb-2 animate-pulse">✨</div>
+            <div className="text-sm font-bold text-gray-800 mb-1">AI рисует фото</div>
+            <div className="text-xs text-gray-500">10-30 секунд</div>
+          </div>
+        </div>
+      )}
+
+      {aiState === "result" && aiResultUrl && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-[600px] w-full max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="text-sm font-bold text-gray-800">✨ Фотореалистичный кадр</div>
+              <button
+                onClick={() => setAiState("idle")}
+                className="text-gray-400 hover:text-gray-700 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={aiResultUrl} alt="AI-рендер" className="w-full" />
+            <div className="p-3 grid grid-cols-2 gap-2">
+              <a
+                href={aiResultUrl}
+                download={`potolok-ai-${Date.now()}.jpg`}
+                className="text-center px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold text-xs hover:bg-gray-200"
+              >
+                ⬇ Скачать
+              </a>
+              <button
+                onClick={() => {
+                  if (aiResultUrl) onScreenshot?.(aiResultUrl);
+                  setAiState("idle");
+                }}
+                className="px-3 py-2.5 rounded-xl bg-[#1e3a5f] text-white font-semibold text-xs active:scale-95"
+              >
+                Использовать в КП
+              </button>
+              <button
+                onClick={() => setAiTrigger((t) => t + 1)}
+                className="col-span-2 px-3 py-2.5 rounded-xl bg-purple-100 text-purple-700 font-semibold text-xs hover:bg-purple-200"
+              >
+                🔄 Перегенерировать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aiState === "error" && aiError && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 backdrop-blur-sm p-3">
+          <div className="bg-white rounded-2xl shadow-2xl px-5 py-4 max-w-[320px] text-center">
+            <div className="text-2xl mb-1">⚠️</div>
+            <div className="text-sm font-bold text-red-700 mb-1">Не удалось сгенерировать</div>
+            <div className="text-xs text-gray-600 mb-3">{aiError}</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAiState("idle")}
+                className="flex-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold"
+              >
+                Закрыть
+              </button>
+              <button
+                onClick={() => setAiTrigger((t) => t + 1)}
+                className="flex-1 px-3 py-2 rounded-xl bg-[#1e3a5f] text-white text-xs font-semibold"
+              >
+                Повторить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
