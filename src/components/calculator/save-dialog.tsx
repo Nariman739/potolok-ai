@@ -10,22 +10,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ClientPicker } from "@/components/clients/client-picker";
+
+export type SaveDialogPayload = {
+  clientId: string | null;
+  clientName: string;
+  clientPhone: string;
+  clientAddress: string;
+};
 
 interface SaveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (clientName: string, clientPhone: string) => void;
+  onSave: (payload: SaveDialogPayload) => void;
   saving: boolean;
 }
 
 export function SaveDialog({ open, onOpenChange, onSave, saving }: SaveDialogProps) {
+  const [clientId, setClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
 
   function handleSave() {
-    onSave(clientName, clientPhone);
+    onSave({ clientId, clientName, clientPhone, clientAddress });
   }
 
   return (
@@ -34,29 +42,20 @@ export function SaveDialog({ open, onOpenChange, onSave, saving }: SaveDialogPro
         <DialogHeader>
           <DialogTitle>Сохранить КП</DialogTitle>
           <DialogDescription>
-            Введите данные клиента (необязательно)
+            Выберите клиента из CRM или введите данные нового
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="clientName">Имя клиента</Label>
-            <Input
-              id="clientName"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Иван Иванов"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="clientPhone">Телефон</Label>
-            <Input
-              id="clientPhone"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="+7 700 123 4567"
-            />
-          </div>
+        <div className="py-2">
+          <ClientPicker
+            value={{ clientId, clientName, clientPhone, clientAddress }}
+            onChange={(v) => {
+              setClientId(v.clientId);
+              setClientName(v.clientName);
+              setClientPhone(v.clientPhone);
+              setClientAddress(v.clientAddress);
+            }}
+          />
         </div>
 
         <DialogFooter>

@@ -51,6 +51,7 @@ export type EstimateMinAggregateOutputType = {
   clientName: string | null
   clientPhone: string | null
   clientAddress: string | null
+  clientId: string | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -74,6 +75,7 @@ export type EstimateMaxAggregateOutputType = {
   clientName: string | null
   clientPhone: string | null
   clientAddress: string | null
+  clientId: string | null
   totalArea: number | null
   total: number | null
   discountPercent: number | null
@@ -97,6 +99,7 @@ export type EstimateCountAggregateOutputType = {
   clientName: number
   clientPhone: number
   clientAddress: number
+  clientId: number
   roomsData: number
   calculationData: number
   totalArea: number
@@ -142,6 +145,7 @@ export type EstimateMinAggregateInputType = {
   clientName?: true
   clientPhone?: true
   clientAddress?: true
+  clientId?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -165,6 +169,7 @@ export type EstimateMaxAggregateInputType = {
   clientName?: true
   clientPhone?: true
   clientAddress?: true
+  clientId?: true
   totalArea?: true
   total?: true
   discountPercent?: true
@@ -188,6 +193,7 @@ export type EstimateCountAggregateInputType = {
   clientName?: true
   clientPhone?: true
   clientAddress?: true
+  clientId?: true
   roomsData?: true
   calculationData?: true
   totalArea?: true
@@ -300,6 +306,7 @@ export type EstimateGroupByOutputType = {
   clientName: string | null
   clientPhone: string | null
   clientAddress: string | null
+  clientId: string | null
   roomsData: runtime.JsonValue
   calculationData: runtime.JsonValue
   totalArea: number
@@ -348,6 +355,7 @@ export type EstimateWhereInput = {
   clientName?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientPhone?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientAddress?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  clientId?: Prisma.StringNullableFilter<"Estimate"> | string | null
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -364,6 +372,7 @@ export type EstimateWhereInput = {
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
+  client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
   chatSession?: Prisma.XOR<Prisma.ChatSessionNullableScalarRelationFilter, Prisma.ChatSessionWhereInput> | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }
@@ -375,6 +384,7 @@ export type EstimateOrderByWithRelationInput = {
   clientName?: Prisma.SortOrderInput | Prisma.SortOrder
   clientPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   clientAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  clientId?: Prisma.SortOrderInput | Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -391,6 +401,7 @@ export type EstimateOrderByWithRelationInput = {
   validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  client?: Prisma.ClientOrderByWithRelationInput
   chatSession?: Prisma.ChatSessionOrderByWithRelationInput
   master?: Prisma.MasterOrderByWithRelationInput
 }
@@ -405,6 +416,7 @@ export type EstimateWhereUniqueInput = Prisma.AtLeast<{
   clientName?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientPhone?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientAddress?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  clientId?: Prisma.StringNullableFilter<"Estimate"> | string | null
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -421,6 +433,7 @@ export type EstimateWhereUniqueInput = Prisma.AtLeast<{
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
+  client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
   chatSession?: Prisma.XOR<Prisma.ChatSessionNullableScalarRelationFilter, Prisma.ChatSessionWhereInput> | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }, "id" | "publicId">
@@ -432,6 +445,7 @@ export type EstimateOrderByWithAggregationInput = {
   clientName?: Prisma.SortOrderInput | Prisma.SortOrder
   clientPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   clientAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  clientId?: Prisma.SortOrderInput | Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -465,6 +479,7 @@ export type EstimateScalarWhereWithAggregatesInput = {
   clientName?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   clientPhone?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   clientAddress?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
+  clientId?: Prisma.StringNullableWithAggregatesFilter<"Estimate"> | string | null
   roomsData?: Prisma.JsonWithAggregatesFilter<"Estimate">
   calculationData?: Prisma.JsonWithAggregatesFilter<"Estimate">
   totalArea?: Prisma.FloatWithAggregatesFilter<"Estimate"> | number
@@ -505,6 +520,7 @@ export type EstimateCreateInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
   master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
 }
@@ -516,6 +532,7 @@ export type EstimateUncheckedCreateInput = {
   clientName?: string | null
   clientPhone?: string | null
   clientAddress?: string | null
+  clientId?: string | null
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -557,6 +574,7 @@ export type EstimateUpdateInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
 }
@@ -568,6 +586,7 @@ export type EstimateUncheckedUpdateInput = {
   clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -594,6 +613,7 @@ export type EstimateCreateManyInput = {
   clientName?: string | null
   clientPhone?: string | null
   clientAddress?: string | null
+  clientId?: string | null
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -643,6 +663,7 @@ export type EstimateUncheckedUpdateManyInput = {
   clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -678,6 +699,7 @@ export type EstimateCountOrderByAggregateInput = {
   clientName?: Prisma.SortOrder
   clientPhone?: Prisma.SortOrder
   clientAddress?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   roomsData?: Prisma.SortOrder
   calculationData?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
@@ -712,6 +734,7 @@ export type EstimateMaxOrderByAggregateInput = {
   clientName?: Prisma.SortOrder
   clientPhone?: Prisma.SortOrder
   clientAddress?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -735,6 +758,7 @@ export type EstimateMinOrderByAggregateInput = {
   clientName?: Prisma.SortOrder
   clientPhone?: Prisma.SortOrder
   clientAddress?: Prisma.SortOrder
+  clientId?: Prisma.SortOrder
   totalArea?: Prisma.SortOrder
   total?: Prisma.SortOrder
   discountPercent?: Prisma.SortOrder
@@ -835,6 +859,48 @@ export type EstimateUpdateOneWithoutChatSessionNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.EstimateUpdateToOneWithWhereWithoutChatSessionInput, Prisma.EstimateUpdateWithoutChatSessionInput>, Prisma.EstimateUncheckedUpdateWithoutChatSessionInput>
 }
 
+export type EstimateCreateNestedManyWithoutClientInput = {
+  create?: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput> | Prisma.EstimateCreateWithoutClientInput[] | Prisma.EstimateUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.EstimateCreateOrConnectWithoutClientInput | Prisma.EstimateCreateOrConnectWithoutClientInput[]
+  createMany?: Prisma.EstimateCreateManyClientInputEnvelope
+  connect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+}
+
+export type EstimateUncheckedCreateNestedManyWithoutClientInput = {
+  create?: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput> | Prisma.EstimateCreateWithoutClientInput[] | Prisma.EstimateUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.EstimateCreateOrConnectWithoutClientInput | Prisma.EstimateCreateOrConnectWithoutClientInput[]
+  createMany?: Prisma.EstimateCreateManyClientInputEnvelope
+  connect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+}
+
+export type EstimateUpdateManyWithoutClientNestedInput = {
+  create?: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput> | Prisma.EstimateCreateWithoutClientInput[] | Prisma.EstimateUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.EstimateCreateOrConnectWithoutClientInput | Prisma.EstimateCreateOrConnectWithoutClientInput[]
+  upsert?: Prisma.EstimateUpsertWithWhereUniqueWithoutClientInput | Prisma.EstimateUpsertWithWhereUniqueWithoutClientInput[]
+  createMany?: Prisma.EstimateCreateManyClientInputEnvelope
+  set?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  disconnect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  delete?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  connect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  update?: Prisma.EstimateUpdateWithWhereUniqueWithoutClientInput | Prisma.EstimateUpdateWithWhereUniqueWithoutClientInput[]
+  updateMany?: Prisma.EstimateUpdateManyWithWhereWithoutClientInput | Prisma.EstimateUpdateManyWithWhereWithoutClientInput[]
+  deleteMany?: Prisma.EstimateScalarWhereInput | Prisma.EstimateScalarWhereInput[]
+}
+
+export type EstimateUncheckedUpdateManyWithoutClientNestedInput = {
+  create?: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput> | Prisma.EstimateCreateWithoutClientInput[] | Prisma.EstimateUncheckedCreateWithoutClientInput[]
+  connectOrCreate?: Prisma.EstimateCreateOrConnectWithoutClientInput | Prisma.EstimateCreateOrConnectWithoutClientInput[]
+  upsert?: Prisma.EstimateUpsertWithWhereUniqueWithoutClientInput | Prisma.EstimateUpsertWithWhereUniqueWithoutClientInput[]
+  createMany?: Prisma.EstimateCreateManyClientInputEnvelope
+  set?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  disconnect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  delete?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  connect?: Prisma.EstimateWhereUniqueInput | Prisma.EstimateWhereUniqueInput[]
+  update?: Prisma.EstimateUpdateWithWhereUniqueWithoutClientInput | Prisma.EstimateUpdateWithWhereUniqueWithoutClientInput[]
+  updateMany?: Prisma.EstimateUpdateManyWithWhereWithoutClientInput | Prisma.EstimateUpdateManyWithWhereWithoutClientInput[]
+  deleteMany?: Prisma.EstimateScalarWhereInput | Prisma.EstimateScalarWhereInput[]
+}
+
 export type EstimateCreateWithoutMasterInput = {
   id?: string
   publicId?: string
@@ -857,6 +923,7 @@ export type EstimateCreateWithoutMasterInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
 }
 
@@ -866,6 +933,7 @@ export type EstimateUncheckedCreateWithoutMasterInput = {
   clientName?: string | null
   clientPhone?: string | null
   clientAddress?: string | null
+  clientId?: string | null
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -921,6 +989,7 @@ export type EstimateScalarWhereInput = {
   clientName?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientPhone?: Prisma.StringNullableFilter<"Estimate"> | string | null
   clientAddress?: Prisma.StringNullableFilter<"Estimate"> | string | null
+  clientId?: Prisma.StringNullableFilter<"Estimate"> | string | null
   roomsData?: Prisma.JsonFilter<"Estimate">
   calculationData?: Prisma.JsonFilter<"Estimate">
   totalArea?: Prisma.FloatFilter<"Estimate"> | number
@@ -961,6 +1030,7 @@ export type EstimateCreateWithoutChatSessionInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
 }
 
@@ -971,6 +1041,7 @@ export type EstimateUncheckedCreateWithoutChatSessionInput = {
   clientName?: string | null
   clientPhone?: string | null
   clientAddress?: string | null
+  clientId?: string | null
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1027,6 +1098,7 @@ export type EstimateUpdateWithoutChatSessionInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
 }
 
@@ -1037,6 +1109,7 @@ export type EstimateUncheckedUpdateWithoutChatSessionInput = {
   clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1055,12 +1128,91 @@ export type EstimateUncheckedUpdateWithoutChatSessionInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type EstimateCreateWithoutClientInput = {
+  id?: string
+  publicId?: string
+  clientName?: string | null
+  clientPhone?: string | null
+  clientAddress?: string | null
+  roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea: number
+  total?: number
+  discountPercent?: number
+  economyTotal?: number | null
+  standardTotal?: number | null
+  premiumTotal?: number | null
+  status?: $Enums.EstimateStatus
+  recommendedVariant?: string | null
+  confirmedVariant?: string | null
+  pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
+  validUntil?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
+  master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
+}
+
+export type EstimateUncheckedCreateWithoutClientInput = {
+  id?: string
+  publicId?: string
+  masterId: string
+  clientName?: string | null
+  clientPhone?: string | null
+  clientAddress?: string | null
+  roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea: number
+  total?: number
+  discountPercent?: number
+  economyTotal?: number | null
+  standardTotal?: number | null
+  premiumTotal?: number | null
+  status?: $Enums.EstimateStatus
+  recommendedVariant?: string | null
+  confirmedVariant?: string | null
+  pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
+  validUntil?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  chatSession?: Prisma.ChatSessionUncheckedCreateNestedOneWithoutEstimateInput
+}
+
+export type EstimateCreateOrConnectWithoutClientInput = {
+  where: Prisma.EstimateWhereUniqueInput
+  create: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput>
+}
+
+export type EstimateCreateManyClientInputEnvelope = {
+  data: Prisma.EstimateCreateManyClientInput | Prisma.EstimateCreateManyClientInput[]
+  skipDuplicates?: boolean
+}
+
+export type EstimateUpsertWithWhereUniqueWithoutClientInput = {
+  where: Prisma.EstimateWhereUniqueInput
+  update: Prisma.XOR<Prisma.EstimateUpdateWithoutClientInput, Prisma.EstimateUncheckedUpdateWithoutClientInput>
+  create: Prisma.XOR<Prisma.EstimateCreateWithoutClientInput, Prisma.EstimateUncheckedCreateWithoutClientInput>
+}
+
+export type EstimateUpdateWithWhereUniqueWithoutClientInput = {
+  where: Prisma.EstimateWhereUniqueInput
+  data: Prisma.XOR<Prisma.EstimateUpdateWithoutClientInput, Prisma.EstimateUncheckedUpdateWithoutClientInput>
+}
+
+export type EstimateUpdateManyWithWhereWithoutClientInput = {
+  where: Prisma.EstimateScalarWhereInput
+  data: Prisma.XOR<Prisma.EstimateUpdateManyMutationInput, Prisma.EstimateUncheckedUpdateManyWithoutClientInput>
+}
+
 export type EstimateCreateManyMasterInput = {
   id?: string
   publicId?: string
   clientName?: string | null
   clientPhone?: string | null
   clientAddress?: string | null
+  clientId?: string | null
   roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea: number
@@ -1101,6 +1253,7 @@ export type EstimateUpdateWithoutMasterInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
 }
 
@@ -1110,6 +1263,7 @@ export type EstimateUncheckedUpdateWithoutMasterInput = {
   clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1132,6 +1286,109 @@ export type EstimateUncheckedUpdateWithoutMasterInput = {
 export type EstimateUncheckedUpdateManyWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   publicId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  total?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  economyTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  standardTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  premiumTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  status?: Prisma.EnumEstimateStatusFieldUpdateOperationsInput | $Enums.EstimateStatus
+  recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type EstimateCreateManyClientInput = {
+  id?: string
+  publicId?: string
+  masterId: string
+  clientName?: string | null
+  clientPhone?: string | null
+  clientAddress?: string | null
+  roomsData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea: number
+  total?: number
+  discountPercent?: number
+  economyTotal?: number | null
+  standardTotal?: number | null
+  premiumTotal?: number | null
+  status?: $Enums.EstimateStatus
+  recommendedVariant?: string | null
+  confirmedVariant?: string | null
+  pdfUrl?: string | null
+  room3dPreviewUrl?: string | null
+  validUntil?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type EstimateUpdateWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  publicId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  total?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  economyTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  standardTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  premiumTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  status?: Prisma.EnumEstimateStatusFieldUpdateOperationsInput | $Enums.EstimateStatus
+  recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
+  master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
+}
+
+export type EstimateUncheckedUpdateWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  publicId?: Prisma.StringFieldUpdateOperationsInput | string
+  masterId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roomsData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  calculationData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  totalArea?: Prisma.FloatFieldUpdateOperationsInput | number
+  total?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  economyTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  standardTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  premiumTotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  status?: Prisma.EnumEstimateStatusFieldUpdateOperationsInput | $Enums.EstimateStatus
+  recommendedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmedVariant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pdfUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  room3dPreviewUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  chatSession?: Prisma.ChatSessionUncheckedUpdateOneWithoutEstimateNestedInput
+}
+
+export type EstimateUncheckedUpdateManyWithoutClientInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  publicId?: Prisma.StringFieldUpdateOperationsInput | string
+  masterId?: Prisma.StringFieldUpdateOperationsInput | string
   clientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clientAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1162,6 +1419,7 @@ export type EstimateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   clientName?: boolean
   clientPhone?: boolean
   clientAddress?: boolean
+  clientId?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1178,6 +1436,7 @@ export type EstimateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["estimate"]>
@@ -1189,6 +1448,7 @@ export type EstimateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   clientName?: boolean
   clientPhone?: boolean
   clientAddress?: boolean
+  clientId?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1205,6 +1465,7 @@ export type EstimateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["estimate"]>
 
@@ -1215,6 +1476,7 @@ export type EstimateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   clientName?: boolean
   clientPhone?: boolean
   clientAddress?: boolean
+  clientId?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1231,6 +1493,7 @@ export type EstimateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["estimate"]>
 
@@ -1241,6 +1504,7 @@ export type EstimateSelectScalar = {
   clientName?: boolean
   clientPhone?: boolean
   clientAddress?: boolean
+  clientId?: boolean
   roomsData?: boolean
   calculationData?: boolean
   totalArea?: boolean
@@ -1259,21 +1523,25 @@ export type EstimateSelectScalar = {
   updatedAt?: boolean
 }
 
-export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
+export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "clientId" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
 export type EstimateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
 export type EstimateIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
 export type EstimateIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
 
 export type $EstimatePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Estimate"
   objects: {
+    client: Prisma.$ClientPayload<ExtArgs> | null
     chatSession: Prisma.$ChatSessionPayload<ExtArgs> | null
     master: Prisma.$MasterPayload<ExtArgs>
   }
@@ -1284,6 +1552,7 @@ export type $EstimatePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     clientName: string | null
     clientPhone: string | null
     clientAddress: string | null
+    clientId: string | null
     roomsData: runtime.JsonValue
     calculationData: runtime.JsonValue
     totalArea: number
@@ -1694,6 +1963,7 @@ readonly fields: EstimateFieldRefs;
  */
 export interface Prisma__EstimateClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  client<T extends Prisma.Estimate$clientArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Estimate$clientArgs<ExtArgs>>): Prisma.Prisma__ClientClient<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   chatSession<T extends Prisma.Estimate$chatSessionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Estimate$chatSessionArgs<ExtArgs>>): Prisma.Prisma__ChatSessionClient<runtime.Types.Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   master<T extends Prisma.MasterDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MasterDefaultArgs<ExtArgs>>): Prisma.Prisma__MasterClient<runtime.Types.Result.GetResult<Prisma.$MasterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
@@ -1731,6 +2001,7 @@ export interface EstimateFieldRefs {
   readonly clientName: Prisma.FieldRef<"Estimate", 'String'>
   readonly clientPhone: Prisma.FieldRef<"Estimate", 'String'>
   readonly clientAddress: Prisma.FieldRef<"Estimate", 'String'>
+  readonly clientId: Prisma.FieldRef<"Estimate", 'String'>
   readonly roomsData: Prisma.FieldRef<"Estimate", 'Json'>
   readonly calculationData: Prisma.FieldRef<"Estimate", 'Json'>
   readonly totalArea: Prisma.FieldRef<"Estimate", 'Float'>
@@ -2140,6 +2411,25 @@ export type EstimateDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Limit how many Estimates to delete.
    */
   limit?: number
+}
+
+/**
+ * Estimate.client
+ */
+export type Estimate$clientArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Client
+   */
+  select?: Prisma.ClientSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Client
+   */
+  omit?: Prisma.ClientOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClientInclude<ExtArgs> | null
+  where?: Prisma.ClientWhereInput
 }
 
 /**

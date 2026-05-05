@@ -76,6 +76,11 @@ export type MasterMinAggregateOutputType = {
   subscriptionTier: $Enums.SubscriptionTier | null
   kpGeneratedThisMonth: number | null
   kpMonthReset: Date | null
+  paidUntil: Date | null
+  billingNotes: string | null
+  isOwner: boolean | null
+  notifyDealWon: boolean | null
+  notifyDealLost: boolean | null
   smmPostsThisMonth: number | null
   smmMonthReset: Date | null
   onboardingCompleted: boolean | null
@@ -120,6 +125,11 @@ export type MasterMaxAggregateOutputType = {
   subscriptionTier: $Enums.SubscriptionTier | null
   kpGeneratedThisMonth: number | null
   kpMonthReset: Date | null
+  paidUntil: Date | null
+  billingNotes: string | null
+  isOwner: boolean | null
+  notifyDealWon: boolean | null
+  notifyDealLost: boolean | null
   smmPostsThisMonth: number | null
   smmMonthReset: Date | null
   onboardingCompleted: boolean | null
@@ -164,6 +174,11 @@ export type MasterCountAggregateOutputType = {
   subscriptionTier: number
   kpGeneratedThisMonth: number
   kpMonthReset: number
+  paidUntil: number
+  billingNotes: number
+  isOwner: number
+  notifyDealWon: number
+  notifyDealLost: number
   smmPostsThisMonth: number
   smmMonthReset: number
   smmProfile: number
@@ -227,6 +242,11 @@ export type MasterMinAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  paidUntil?: true
+  billingNotes?: true
+  isOwner?: true
+  notifyDealWon?: true
+  notifyDealLost?: true
   smmPostsThisMonth?: true
   smmMonthReset?: true
   onboardingCompleted?: true
@@ -271,6 +291,11 @@ export type MasterMaxAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  paidUntil?: true
+  billingNotes?: true
+  isOwner?: true
+  notifyDealWon?: true
+  notifyDealLost?: true
   smmPostsThisMonth?: true
   smmMonthReset?: true
   onboardingCompleted?: true
@@ -315,6 +340,11 @@ export type MasterCountAggregateInputType = {
   subscriptionTier?: true
   kpGeneratedThisMonth?: true
   kpMonthReset?: true
+  paidUntil?: true
+  billingNotes?: true
+  isOwner?: true
+  notifyDealWon?: true
+  notifyDealLost?: true
   smmPostsThisMonth?: true
   smmMonthReset?: true
   smmProfile?: true
@@ -447,6 +477,11 @@ export type MasterGroupByOutputType = {
   subscriptionTier: $Enums.SubscriptionTier
   kpGeneratedThisMonth: number
   kpMonthReset: Date
+  paidUntil: Date | null
+  billingNotes: string | null
+  isOwner: boolean
+  notifyDealWon: boolean
+  notifyDealLost: boolean
   smmPostsThisMonth: number
   smmMonthReset: Date
   smmProfile: runtime.JsonValue | null
@@ -515,6 +550,11 @@ export type MasterWhereInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  paidUntil?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
+  billingNotes?: Prisma.StringNullableFilter<"Master"> | string | null
+  isOwner?: Prisma.BoolFilter<"Master"> | boolean
+  notifyDealWon?: Prisma.BoolFilter<"Master"> | boolean
+  notifyDealLost?: Prisma.BoolFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   smmProfile?: Prisma.JsonNullableFilter<"Master">
@@ -533,6 +573,7 @@ export type MasterWhereInput = {
   measurements?: Prisma.MeasurementObjectListRelationFilter
   instagramAccount?: Prisma.XOR<Prisma.InstagramAccountNullableScalarRelationFilter, Prisma.InstagramAccountWhereInput> | null
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
+  clients?: Prisma.ClientListRelationFilter
 }
 
 export type MasterOrderByWithRelationInput = {
@@ -569,6 +610,11 @@ export type MasterOrderByWithRelationInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  paidUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  billingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
+  isOwner?: Prisma.SortOrder
+  notifyDealWon?: Prisma.SortOrder
+  notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
   smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -587,6 +633,7 @@ export type MasterOrderByWithRelationInput = {
   measurements?: Prisma.MeasurementObjectOrderByRelationAggregateInput
   instagramAccount?: Prisma.InstagramAccountOrderByWithRelationInput
   instagramSession?: Prisma.InstagramSessionOrderByWithRelationInput
+  clients?: Prisma.ClientOrderByRelationAggregateInput
 }
 
 export type MasterWhereUniqueInput = Prisma.AtLeast<{
@@ -627,6 +674,11 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   subscriptionTier?: Prisma.EnumSubscriptionTierFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
+  paidUntil?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
+  billingNotes?: Prisma.StringNullableFilter<"Master"> | string | null
+  isOwner?: Prisma.BoolFilter<"Master"> | boolean
+  notifyDealWon?: Prisma.BoolFilter<"Master"> | boolean
+  notifyDealLost?: Prisma.BoolFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   smmProfile?: Prisma.JsonNullableFilter<"Master">
@@ -644,6 +696,7 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   measurements?: Prisma.MeasurementObjectListRelationFilter
   instagramAccount?: Prisma.XOR<Prisma.InstagramAccountNullableScalarRelationFilter, Prisma.InstagramAccountWhereInput> | null
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
+  clients?: Prisma.ClientListRelationFilter
 }, "id" | "phone" | "email" | "telegramChatId" | "telegramLinkCode" | "portfolioSlug">
 
 export type MasterOrderByWithAggregationInput = {
@@ -680,6 +733,11 @@ export type MasterOrderByWithAggregationInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  paidUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  billingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
+  isOwner?: Prisma.SortOrder
+  notifyDealWon?: Prisma.SortOrder
+  notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
   smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -733,6 +791,11 @@ export type MasterScalarWhereWithAggregatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierWithAggregatesFilter<"Master"> | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   kpMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
+  paidUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"Master"> | Date | string | null
+  billingNotes?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
+  isOwner?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
+  notifyDealWon?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
+  notifyDealLost?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   smmMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   smmProfile?: Prisma.JsonNullableWithAggregatesFilter<"Master">
@@ -778,6 +841,11 @@ export type MasterCreateInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -796,6 +864,7 @@ export type MasterCreateInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateInput = {
@@ -832,6 +901,11 @@ export type MasterUncheckedCreateInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -850,6 +924,7 @@ export type MasterUncheckedCreateInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUpdateInput = {
@@ -886,6 +961,11 @@ export type MasterUpdateInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -904,6 +984,7 @@ export type MasterUpdateInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateInput = {
@@ -940,6 +1021,11 @@ export type MasterUncheckedUpdateInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -958,6 +1044,7 @@ export type MasterUncheckedUpdateInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateManyInput = {
@@ -994,6 +1081,11 @@ export type MasterCreateManyInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1039,6 +1131,11 @@ export type MasterUpdateManyMutationInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1084,6 +1181,11 @@ export type MasterUncheckedUpdateManyInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1129,6 +1231,11 @@ export type MasterCountOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  paidUntil?: Prisma.SortOrder
+  billingNotes?: Prisma.SortOrder
+  isOwner?: Prisma.SortOrder
+  notifyDealWon?: Prisma.SortOrder
+  notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
   smmProfile?: Prisma.SortOrder
@@ -1182,6 +1289,11 @@ export type MasterMaxOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  paidUntil?: Prisma.SortOrder
+  billingNotes?: Prisma.SortOrder
+  isOwner?: Prisma.SortOrder
+  notifyDealWon?: Prisma.SortOrder
+  notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
   onboardingCompleted?: Prisma.SortOrder
@@ -1226,6 +1338,11 @@ export type MasterMinOrderByAggregateInput = {
   subscriptionTier?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
   kpMonthReset?: Prisma.SortOrder
+  paidUntil?: Prisma.SortOrder
+  billingNotes?: Prisma.SortOrder
+  isOwner?: Prisma.SortOrder
+  notifyDealWon?: Prisma.SortOrder
+  notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   smmMonthReset?: Prisma.SortOrder
   onboardingCompleted?: Prisma.SortOrder
@@ -1407,6 +1524,20 @@ export type MasterUpdateOneRequiredWithoutInstagramSessionNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutInstagramSessionInput, Prisma.MasterUpdateWithoutInstagramSessionInput>, Prisma.MasterUncheckedUpdateWithoutInstagramSessionInput>
 }
 
+export type MasterCreateNestedOneWithoutClientsInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutClientsInput, Prisma.MasterUncheckedCreateWithoutClientsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutClientsInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutClientsNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutClientsInput, Prisma.MasterUncheckedCreateWithoutClientsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutClientsInput
+  upsert?: Prisma.MasterUpsertWithoutClientsInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutClientsInput, Prisma.MasterUpdateWithoutClientsInput>, Prisma.MasterUncheckedUpdateWithoutClientsInput>
+}
+
 export type MasterCreateWithoutSessionsInput = {
   id?: string
   phone: string
@@ -1441,6 +1572,11 @@ export type MasterCreateWithoutSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1458,6 +1594,7 @@ export type MasterCreateWithoutSessionsInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutSessionsInput = {
@@ -1494,6 +1631,11 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1511,6 +1653,7 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutSessionsInput = {
@@ -1563,6 +1706,11 @@ export type MasterUpdateWithoutSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1580,6 +1728,7 @@ export type MasterUpdateWithoutSessionsInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutSessionsInput = {
@@ -1616,6 +1765,11 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1633,6 +1787,7 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutPricesInput = {
@@ -1669,6 +1824,11 @@ export type MasterCreateWithoutPricesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1686,6 +1846,7 @@ export type MasterCreateWithoutPricesInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutPricesInput = {
@@ -1722,6 +1883,11 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1739,6 +1905,7 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutPricesInput = {
@@ -1791,6 +1958,11 @@ export type MasterUpdateWithoutPricesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1808,6 +1980,7 @@ export type MasterUpdateWithoutPricesInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPricesInput = {
@@ -1844,6 +2017,11 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1861,6 +2039,7 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutCustomItemsInput = {
@@ -1897,6 +2076,11 @@ export type MasterCreateWithoutCustomItemsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1914,6 +2098,7 @@ export type MasterCreateWithoutCustomItemsInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutCustomItemsInput = {
@@ -1950,6 +2135,11 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1967,6 +2157,7 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutCustomItemsInput = {
@@ -2019,6 +2210,11 @@ export type MasterUpdateWithoutCustomItemsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2036,6 +2232,7 @@ export type MasterUpdateWithoutCustomItemsInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutCustomItemsInput = {
@@ -2072,6 +2269,11 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2089,6 +2291,7 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutEstimatesInput = {
@@ -2125,6 +2328,11 @@ export type MasterCreateWithoutEstimatesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2142,6 +2350,7 @@ export type MasterCreateWithoutEstimatesInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutEstimatesInput = {
@@ -2178,6 +2387,11 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2195,6 +2409,7 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutEstimatesInput = {
@@ -2247,6 +2462,11 @@ export type MasterUpdateWithoutEstimatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2264,6 +2484,7 @@ export type MasterUpdateWithoutEstimatesInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutEstimatesInput = {
@@ -2300,6 +2521,11 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2317,6 +2543,7 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutChatSessionsInput = {
@@ -2353,6 +2580,11 @@ export type MasterCreateWithoutChatSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2370,6 +2602,7 @@ export type MasterCreateWithoutChatSessionsInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutChatSessionsInput = {
@@ -2406,6 +2639,11 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2423,6 +2661,7 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutChatSessionsInput = {
@@ -2475,6 +2714,11 @@ export type MasterUpdateWithoutChatSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2492,6 +2736,7 @@ export type MasterUpdateWithoutChatSessionsInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutChatSessionsInput = {
@@ -2528,6 +2773,11 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2545,6 +2795,7 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutMeasurementsInput = {
@@ -2581,6 +2832,11 @@ export type MasterCreateWithoutMeasurementsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2598,6 +2854,7 @@ export type MasterCreateWithoutMeasurementsInput = {
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutMeasurementsInput = {
@@ -2634,6 +2891,11 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2651,6 +2913,7 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutMeasurementsInput = {
@@ -2703,6 +2966,11 @@ export type MasterUpdateWithoutMeasurementsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2720,6 +2988,7 @@ export type MasterUpdateWithoutMeasurementsInput = {
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutMeasurementsInput = {
@@ -2756,6 +3025,11 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2773,6 +3047,7 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutPortfolioWorksInput = {
@@ -2809,6 +3084,11 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2826,6 +3106,7 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
@@ -2862,6 +3143,11 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2879,6 +3165,7 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutPortfolioWorksInput = {
@@ -2931,6 +3218,11 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -2948,6 +3240,7 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
@@ -2984,6 +3277,11 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3001,6 +3299,7 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutInstagramAccountInput = {
@@ -3037,6 +3336,11 @@ export type MasterCreateWithoutInstagramAccountInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3054,6 +3358,7 @@ export type MasterCreateWithoutInstagramAccountInput = {
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramAccountInput = {
@@ -3090,6 +3395,11 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3107,6 +3417,7 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramAccountInput = {
@@ -3159,6 +3470,11 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3176,6 +3492,7 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
@@ -3212,6 +3529,11 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3229,6 +3551,7 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutInstagramSessionInput = {
@@ -3265,6 +3588,11 @@ export type MasterCreateWithoutInstagramSessionInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3282,6 +3610,7 @@ export type MasterCreateWithoutInstagramSessionInput = {
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramSessionInput = {
@@ -3318,6 +3647,11 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   subscriptionTier?: $Enums.SubscriptionTier
   kpGeneratedThisMonth?: number
   kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: number
   smmMonthReset?: Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3335,6 +3669,7 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramSessionInput = {
@@ -3387,6 +3722,11 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3404,6 +3744,7 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
@@ -3440,6 +3781,11 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
   kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -3457,6 +3803,259 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterCreateWithoutClientsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutClientsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutClientsInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutClientsInput, Prisma.MasterUncheckedCreateWithoutClientsInput>
+}
+
+export type MasterUpsertWithoutClientsInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutClientsInput, Prisma.MasterUncheckedUpdateWithoutClientsInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutClientsInput, Prisma.MasterUncheckedCreateWithoutClientsInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutClientsInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutClientsInput, Prisma.MasterUncheckedUpdateWithoutClientsInput>
+}
+
+export type MasterUpdateWithoutClientsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutClientsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
 }
 
 
@@ -3472,6 +4071,7 @@ export type MasterCountOutputType = {
   customItems: number
   portfolioWorks: number
   measurements: number
+  clients: number
 }
 
 export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3482,6 +4082,7 @@ export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   customItems?: boolean | MasterCountOutputTypeCountCustomItemsArgs
   portfolioWorks?: boolean | MasterCountOutputTypeCountPortfolioWorksArgs
   measurements?: boolean | MasterCountOutputTypeCountMeasurementsArgs
+  clients?: boolean | MasterCountOutputTypeCountClientsArgs
 }
 
 /**
@@ -3543,6 +4144,13 @@ export type MasterCountOutputTypeCountMeasurementsArgs<ExtArgs extends runtime.T
   where?: Prisma.MeasurementObjectWhereInput
 }
 
+/**
+ * MasterCountOutputType without action
+ */
+export type MasterCountOutputTypeCountClientsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ClientWhereInput
+}
+
 
 export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3578,6 +4186,11 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  paidUntil?: boolean
+  billingNotes?: boolean
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
   smmProfile?: boolean
@@ -3596,6 +4209,7 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   measurements?: boolean | Prisma.Master$measurementsArgs<ExtArgs>
   instagramAccount?: boolean | Prisma.Master$instagramAccountArgs<ExtArgs>
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
+  clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["master"]>
 
@@ -3633,6 +4247,11 @@ export type MasterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  paidUntil?: boolean
+  billingNotes?: boolean
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
   smmProfile?: boolean
@@ -3678,6 +4297,11 @@ export type MasterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  paidUntil?: boolean
+  billingNotes?: boolean
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
   smmProfile?: boolean
@@ -3723,6 +4347,11 @@ export type MasterSelectScalar = {
   subscriptionTier?: boolean
   kpGeneratedThisMonth?: boolean
   kpMonthReset?: boolean
+  paidUntil?: boolean
+  billingNotes?: boolean
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
   smmMonthReset?: boolean
   smmProfile?: boolean
@@ -3734,7 +4363,7 @@ export type MasterSelectScalar = {
   portfolioBio?: boolean
 }
 
-export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "smmPostsThisMonth" | "smmMonthReset" | "smmProfile" | "onboardingCompleted" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
+export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "paidUntil" | "billingNotes" | "isOwner" | "notifyDealWon" | "notifyDealLost" | "smmPostsThisMonth" | "smmMonthReset" | "smmProfile" | "onboardingCompleted" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
 export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   prices?: boolean | Prisma.Master$pricesArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
@@ -3745,6 +4374,7 @@ export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   measurements?: boolean | Prisma.Master$measurementsArgs<ExtArgs>
   instagramAccount?: boolean | Prisma.Master$instagramAccountArgs<ExtArgs>
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
+  clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MasterIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -3762,6 +4392,7 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     measurements: Prisma.$MeasurementObjectPayload<ExtArgs>[]
     instagramAccount: Prisma.$InstagramAccountPayload<ExtArgs> | null
     instagramSession: Prisma.$InstagramSessionPayload<ExtArgs> | null
+    clients: Prisma.$ClientPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3797,6 +4428,11 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     subscriptionTier: $Enums.SubscriptionTier
     kpGeneratedThisMonth: number
     kpMonthReset: Date
+    paidUntil: Date | null
+    billingNotes: string | null
+    isOwner: boolean
+    notifyDealWon: boolean
+    notifyDealLost: boolean
     smmPostsThisMonth: number
     smmMonthReset: Date
     smmProfile: runtime.JsonValue | null
@@ -4209,6 +4845,7 @@ export interface Prisma__MasterClient<T, Null = never, ExtArgs extends runtime.T
   measurements<T extends Prisma.Master$measurementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$measurementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MeasurementObjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   instagramAccount<T extends Prisma.Master$instagramAccountArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$instagramAccountArgs<ExtArgs>>): Prisma.Prisma__InstagramAccountClient<runtime.Types.Result.GetResult<Prisma.$InstagramAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   instagramSession<T extends Prisma.Master$instagramSessionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$instagramSessionArgs<ExtArgs>>): Prisma.Prisma__InstagramSessionClient<runtime.Types.Result.GetResult<Prisma.$InstagramSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  clients<T extends Prisma.Master$clientsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$clientsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4271,6 +4908,11 @@ export interface MasterFieldRefs {
   readonly subscriptionTier: Prisma.FieldRef<"Master", 'SubscriptionTier'>
   readonly kpGeneratedThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly kpMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly paidUntil: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly billingNotes: Prisma.FieldRef<"Master", 'String'>
+  readonly isOwner: Prisma.FieldRef<"Master", 'Boolean'>
+  readonly notifyDealWon: Prisma.FieldRef<"Master", 'Boolean'>
+  readonly notifyDealLost: Prisma.FieldRef<"Master", 'Boolean'>
   readonly smmPostsThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly smmMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
   readonly smmProfile: Prisma.FieldRef<"Master", 'Json'>
@@ -4871,6 +5513,30 @@ export type Master$instagramSessionArgs<ExtArgs extends runtime.Types.Extensions
    */
   include?: Prisma.InstagramSessionInclude<ExtArgs> | null
   where?: Prisma.InstagramSessionWhereInput
+}
+
+/**
+ * Master.clients
+ */
+export type Master$clientsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Client
+   */
+  select?: Prisma.ClientSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Client
+   */
+  omit?: Prisma.ClientOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClientInclude<ExtArgs> | null
+  where?: Prisma.ClientWhereInput
+  orderBy?: Prisma.ClientOrderByWithRelationInput | Prisma.ClientOrderByWithRelationInput[]
+  cursor?: Prisma.ClientWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ClientScalarFieldEnum | Prisma.ClientScalarFieldEnum[]
 }
 
 /**

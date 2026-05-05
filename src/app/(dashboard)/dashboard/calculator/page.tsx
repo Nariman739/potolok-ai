@@ -8,7 +8,7 @@ import { RoomForm } from "@/components/calculator/room-form";
 import { RoomCard } from "@/components/calculator/room-card";
 import { CalculationResults } from "@/components/calculator/calculation-results";
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
-import { SaveDialog } from "@/components/calculator/save-dialog";
+import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
 import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
@@ -159,7 +159,7 @@ function CalculatorContent() {
       .catch(() => {});
   }, []);
 
-  async function handleSave(clientName: string, clientPhone: string) {
+  async function handleSave(payload: SaveDialogPayload) {
     if (!result) return;
     setSaving(true);
 
@@ -177,8 +177,10 @@ function CalculatorContent() {
           totalArea: result.totalArea,
           total: finalTotal,
           discountPercent,
-          clientName: clientName || undefined,
-          clientPhone: clientPhone || undefined,
+          clientName: payload.clientName?.trim() || undefined,
+          clientPhone: payload.clientPhone?.trim() || undefined,
+          clientAddress: payload.clientAddress?.trim() || undefined,
+          clientId: payload.clientId || undefined,
         }),
       });
 

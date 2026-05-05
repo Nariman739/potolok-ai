@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { KP_LIMITS } from "@/lib/constants";
+import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 
 export async function GET() {
   try {
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
       clientName,
       clientPhone,
       clientAddress,
+      clientId: providedClientId,
     } = body;
 
     if (!roomsData || !calculationData) {
@@ -97,6 +99,25 @@ export async function POST(request: Request) {
         ? (roomsData.find((r: { previewUrl3d?: string }) => r?.previewUrl3d)?.previewUrl3d ?? null)
         : null;
 
+    // CRM: link with existing client by id, or get-or-create by name/phone
+    let linkedClientId: string | null = null;
+    if (providedClientId) {
+      const existing = await prisma.client.findFirst({
+        where: { id: providedClientId, masterId: master.id },
+        select: { id: true },
+      });
+      linkedClientId = existing?.id ?? null;
+    }
+    if (!linkedClientId && (clientName || clientPhone)) {
+      const auto = await getOrCreateClient({
+        masterId: master.id,
+        name: clientName || null,
+        phone: clientPhone || null,
+        address: clientAddress || null,
+      });
+      linkedClientId = auto?.id ?? null;
+    }
+
     const estimate = await prisma.estimate.create({
       data: {
         masterId: master.id,
@@ -108,10 +129,21 @@ export async function POST(request: Request) {
         clientName: clientName || null,
         clientPhone: clientPhone || null,
         clientAddress: clientAddress || null,
+        clientId: linkedClientId,
         validUntil,
         room3dPreviewUrl,
       },
     });
+
+    // CRM: log KP_CREATED event
+    if (linkedClientId) {
+      addClientEvent({
+        clientId: linkedClientId,
+        type: "KP_CREATED",
+        content: total ? `Сумма: ${Math.round(total)} ₸` : null,
+        metadata: { estimateId: estimate.id },
+      }).catch(() => {});
+    }
 
     // Increment KP counter
     await prisma.master.update({

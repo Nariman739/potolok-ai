@@ -57,6 +57,13 @@ model Master {
   subscriptionTier SubscriptionTier @default(FREE)
   kpGeneratedThisMonth Int  @default(0)
   kpMonthReset    DateTime @default(now())
+  paidUntil       DateTime?            // до какой даты оплачено (PRO/PROPLUS)
+  billingNotes    String?              // ручные заметки админа (например, «Kaspi 5к на 3 мес»)
+  isOwner         Boolean  @default(false)  // доступ к /admin (true только для владельца)
+
+  // CRM notifications (Telegram)
+  notifyDealWon   Boolean  @default(true)
+  notifyDealLost  Boolean  @default(false)
 
   // SMM usage (Instagram auto-posting)
   smmPostsThisMonth  Int      @default(0)
@@ -77,6 +84,7 @@ model Master {
   measurements    MeasurementObject[]
   instagramAccount InstagramAccount?
   instagramSession InstagramSession?
+  clients         Client[]
 
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
@@ -144,10 +152,12 @@ model Estimate {
   publicId        String   @unique @default(uuid())
   masterId        String
 
-  // Client info
+  // Client info (legacy + new CRM link)
   clientName      String?
   clientPhone     String?
   clientAddress   String?
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   // Data (JSON)
   roomsData       Json
@@ -182,6 +192,8 @@ model Estimate {
   chatSession     ChatSession?
 
   master          Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
 }
 
 enum EstimateStatus {
@@ -392,4 +404,75 @@ model InstagramSession {
   updatedAt   DateTime @updatedAt
 
   master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// CRM (Clients + Deal Status + Event Journal)
+// ============================================
+
+model Client {
+  id          String   @id @default(uuid())
+  masterId    String
+  name        String
+  phone       String?
+  address     String?
+  source      ClientSource?
+  status      DealStatus    @default(NEW)
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  master      Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  estimates   Estimate[]
+  events      ClientEvent[]
+
+  @@index([masterId, status])
+  @@index([masterId, phone])
+  @@index([masterId, createdAt])
+}
+
+model ClientEvent {
+  id        String     @id @default(uuid())
+  clientId  String
+  type      EventType
+  content   String?
+  metadata  Json?
+  createdAt DateTime   @default(now())
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+}
+
+enum ClientSource {
+  INSTAGRAM
+  WHATSAPP
+  REFERRAL
+  SITE
+  KASPI
+  OTHER
+}
+
+enum DealStatus {
+  NEW
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATING
+  WON
+  LOST
+}
+
+enum EventType {
+  NOTE
+  CALL
+  MEETING
+  WHATSAPP
+  MEASUREMENT
+  INSTALL
+  KP_CREATED
+  KP_VIEWED
+  KP_CONFIRMED
+  KP_REJECTED
+  STATUS_CHANGE
 }

@@ -63,7 +63,9 @@ export const ModelName = {
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
-  InstagramSession: 'InstagramSession'
+  InstagramSession: 'InstagramSession',
+  Client: 'Client',
+  ClientEvent: 'ClientEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -116,6 +118,11 @@ export const MasterScalarFieldEnum = {
   subscriptionTier: 'subscriptionTier',
   kpGeneratedThisMonth: 'kpGeneratedThisMonth',
   kpMonthReset: 'kpMonthReset',
+  paidUntil: 'paidUntil',
+  billingNotes: 'billingNotes',
+  isOwner: 'isOwner',
+  notifyDealWon: 'notifyDealWon',
+  notifyDealLost: 'notifyDealLost',
   smmPostsThisMonth: 'smmPostsThisMonth',
   smmMonthReset: 'smmMonthReset',
   smmProfile: 'smmProfile',
@@ -173,6 +180,7 @@ export const EstimateScalarFieldEnum = {
   clientName: 'clientName',
   clientPhone: 'clientPhone',
   clientAddress: 'clientAddress',
+  clientId: 'clientId',
   roomsData: 'roomsData',
   calculationData: 'calculationData',
   totalArea: 'totalArea',
@@ -328,6 +336,34 @@ export const InstagramSessionScalarFieldEnum = {
 } as const
 
 export type InstagramSessionScalarFieldEnum = (typeof InstagramSessionScalarFieldEnum)[keyof typeof InstagramSessionScalarFieldEnum]
+
+
+export const ClientScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  name: 'name',
+  phone: 'phone',
+  address: 'address',
+  source: 'source',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]
+
+
+export const ClientEventScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  type: 'type',
+  content: 'content',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientEventScalarFieldEnum = (typeof ClientEventScalarFieldEnum)[keyof typeof ClientEventScalarFieldEnum]
 
 
 export const SortOrder = {

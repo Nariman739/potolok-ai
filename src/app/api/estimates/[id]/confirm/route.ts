@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatPrice } from "@/lib/format";
+import { changeClientStatus, addClientEvent } from "@/lib/clients";
 
 export async function POST(
   request: Request,
@@ -19,8 +20,9 @@ export async function POST(
         clientName: true,
         total: true,
         standardTotal: true,
+        clientId: true,
         master: {
-          select: { telegramChatId: true },
+          select: { telegramChatId: true, notifyDealWon: true },
         },
       },
     });
@@ -41,10 +43,27 @@ export async function POST(
       data: { status: "CONFIRMED" },
     });
 
+    const price = estimate.total || estimate.standardTotal || 0;
+
+    // CRM: log KP_CONFIRMED event + transition deal to WON (best-effort)
+    if (estimate.clientId) {
+      addClientEvent({
+        clientId: estimate.clientId,
+        type: "KP_CONFIRMED",
+        content: price ? `Сумма: ${formatPrice(price)}` : null,
+        metadata: { estimateId: id },
+      }).catch(() => {});
+      changeClientStatus(estimate.clientId, "WON", "КП подтверждено клиентом").catch(
+        () => {},
+      );
+    }
+
     // Telegram notification to master (non-blocking)
-    if (estimate.master?.telegramChatId) {
+    if (
+      estimate.master?.telegramChatId &&
+      estimate.master.notifyDealWon !== false
+    ) {
       const clientStr = estimate.clientName || "Клиент";
-      const price = estimate.total || estimate.standardTotal || 0;
 
       const text =
         `✅ <b>${clientStr} принял КП!</b>\n\n` +

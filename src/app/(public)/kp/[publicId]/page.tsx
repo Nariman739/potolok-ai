@@ -80,6 +80,20 @@ export default async function PublicKpPage({
             `\n<i>Ожидаем подтверждение от клиента.</i>`;
           sendTelegramMessage(estimate.master.telegramChatId, text);
         }
+
+        // CRM: log KP_VIEWED event for the linked client (best-effort)
+        if (estimate.clientId) {
+          prisma.clientEvent
+            .create({
+              data: {
+                clientId: estimate.clientId,
+                type: "KP_VIEWED",
+                content: null,
+                metadata: { estimateId: estimate.id } as unknown as object,
+              },
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }

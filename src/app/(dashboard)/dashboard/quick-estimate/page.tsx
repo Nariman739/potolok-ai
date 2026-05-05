@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Sparkles,
 } from "lucide-react";
+import { ClientPicker } from "@/components/clients/client-picker";
 
 interface WorkItem {
   id: string;
@@ -27,16 +28,41 @@ function genId() {
 }
 
 export default function QuickEstimatePage() {
+  return (
+    <Suspense fallback={null}>
+      <QuickEstimateInner />
+    </Suspense>
+  );
+}
+
+function QuickEstimateInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialClientId = searchParams.get("clientId") ?? undefined;
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [items, setItems] = useState<WorkItem[]>([]);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientAddress, setClientAddress] = useState("");
   const [discount, setDiscount] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!initialClientId) return;
+    fetch(`/api/clients/${initialClientId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (!c) return;
+        setClientId(c.id);
+        setClientName(c.name ?? "");
+        setClientPhone(c.phone ?? "");
+        setClientAddress(c.address ?? "");
+      })
+      .catch(() => {});
+  }, [initialClientId]);
 
   const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const discountNum = parseFloat(discount) || 0;
@@ -149,6 +175,7 @@ export default function QuickEstimatePage() {
           clientName: clientName.trim() || null,
           clientPhone: clientPhone.trim() || null,
           clientAddress: clientAddress.trim() || null,
+          clientId: clientId || undefined,
         }),
       });
 
@@ -342,25 +369,22 @@ export default function QuickEstimatePage() {
             <span className="text-sm font-medium text-gray-700">
               Клиент (необязательно)
             </span>
-            <input
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Имя клиента"
-              className="w-full rounded-lg border px-3 py-2.5 text-sm"
+            <ClientPicker
+              value={{
+                clientId,
+                clientName,
+                clientPhone,
+                clientAddress,
+              }}
+              onChange={(v) => {
+                setClientId(v.clientId);
+                setClientName(v.clientName);
+                setClientPhone(v.clientPhone);
+                setClientAddress(v.clientAddress);
+              }}
+              initialClientId={initialClientId}
             />
-            <input
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="Телефон"
-              className="w-full rounded-lg border px-3 py-2.5 text-sm"
-            />
-            <input
-              value={clientAddress}
-              onChange={(e) => setClientAddress(e.target.value)}
-              placeholder="Адрес объекта"
-              className="w-full rounded-lg border px-3 py-2.5 text-sm"
-            />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-2">
               <label className="text-sm text-gray-500 shrink-0">Скидка %</label>
               <input
                 type="number"

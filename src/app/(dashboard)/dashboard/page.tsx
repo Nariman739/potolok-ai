@@ -24,6 +24,7 @@ import { formatPrice, formatDateShort } from "@/lib/format";
 import { KP_LIMITS } from "@/lib/constants";
 import { FeedbackButton } from "@/components/feedback-button";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 
 export const metadata = {
   title: "Дашборд",
@@ -53,6 +54,8 @@ export default async function DashboardPage() {
     confirmedCount,
     confirmedSum,
     measurementsCount,
+    clientsCount,
+    masterFull,
   ] = await Promise.all([
     prisma.estimate.count({ where: { masterId: master.id } }),
     prisma.estimate.aggregate({
@@ -88,7 +91,25 @@ export default async function DashboardPage() {
     prisma.measurementObject.count({
       where: { masterId: master.id },
     }),
+    prisma.client.count({ where: { masterId: master.id } }),
+    prisma.master.findUnique({
+      where: { id: master.id },
+      select: {
+        companyName: true,
+        contractType: true,
+        bin: true,
+        iin: true,
+        logoUrl: true,
+      },
+    }),
   ]);
+
+  const hasProfile = !!(
+    masterFull?.companyName &&
+    masterFull?.contractType &&
+    (masterFull?.bin || masterFull?.iin)
+  );
+  const hasLogo = !!masterFull?.logoUrl;
 
   const isPro = master.subscriptionTier === "PRO";
   const kpLimit = KP_LIMITS[master.subscriptionTier];
@@ -113,6 +134,13 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{master.companyName}</p>
         )}
       </div>
+
+      <OnboardingChecklist
+        hasProfile={hasProfile}
+        hasLogo={hasLogo}
+        hasFirstEstimate={estimatesCount > 0}
+        hasClient={clientsCount > 0}
+      />
 
       {/* Quick Actions — always visible */}
       <div className="grid grid-cols-2 gap-3">

@@ -396,7 +396,9 @@ export const ModelName = {
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
-  InstagramSession: 'InstagramSession'
+  InstagramSession: 'InstagramSession',
+  Client: 'Client',
+  ClientEvent: 'ClientEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -412,7 +414,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1378,6 +1380,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Client: {
+      payload: Prisma.$ClientPayload<ExtArgs>
+      fields: Prisma.ClientFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClientFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClientFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        findFirst: {
+          args: Prisma.ClientFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClientFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        findMany: {
+          args: Prisma.ClientFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>[]
+        }
+        create: {
+          args: Prisma.ClientCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        createMany: {
+          args: Prisma.ClientCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClientCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>[]
+        }
+        delete: {
+          args: Prisma.ClientDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        update: {
+          args: Prisma.ClientUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClientDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClientUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClientUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClientUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientPayload>
+        }
+        aggregate: {
+          args: Prisma.ClientAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClient>
+        }
+        groupBy: {
+          args: Prisma.ClientGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClientCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientCountAggregateOutputType> | number
+        }
+      }
+    }
+    ClientEvent: {
+      payload: Prisma.$ClientEventPayload<ExtArgs>
+      fields: Prisma.ClientEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClientEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClientEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        findFirst: {
+          args: Prisma.ClientEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClientEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        findMany: {
+          args: Prisma.ClientEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>[]
+        }
+        create: {
+          args: Prisma.ClientEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        createMany: {
+          args: Prisma.ClientEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClientEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>[]
+        }
+        delete: {
+          args: Prisma.ClientEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        update: {
+          args: Prisma.ClientEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClientEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClientEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClientEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClientEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientEventPayload>
+        }
+        aggregate: {
+          args: Prisma.ClientEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClientEvent>
+        }
+        groupBy: {
+          args: Prisma.ClientEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClientEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientEventCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1451,6 +1601,11 @@ export const MasterScalarFieldEnum = {
   subscriptionTier: 'subscriptionTier',
   kpGeneratedThisMonth: 'kpGeneratedThisMonth',
   kpMonthReset: 'kpMonthReset',
+  paidUntil: 'paidUntil',
+  billingNotes: 'billingNotes',
+  isOwner: 'isOwner',
+  notifyDealWon: 'notifyDealWon',
+  notifyDealLost: 'notifyDealLost',
   smmPostsThisMonth: 'smmPostsThisMonth',
   smmMonthReset: 'smmMonthReset',
   smmProfile: 'smmProfile',
@@ -1508,6 +1663,7 @@ export const EstimateScalarFieldEnum = {
   clientName: 'clientName',
   clientPhone: 'clientPhone',
   clientAddress: 'clientAddress',
+  clientId: 'clientId',
   roomsData: 'roomsData',
   calculationData: 'calculationData',
   totalArea: 'totalArea',
@@ -1665,6 +1821,34 @@ export const InstagramSessionScalarFieldEnum = {
 export type InstagramSessionScalarFieldEnum = (typeof InstagramSessionScalarFieldEnum)[keyof typeof InstagramSessionScalarFieldEnum]
 
 
+export const ClientScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  name: 'name',
+  phone: 'phone',
+  address: 'address',
+  source: 'source',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]
+
+
+export const ClientEventScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  type: 'type',
+  content: 'content',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientEventScalarFieldEnum = (typeof ClientEventScalarFieldEnum)[keyof typeof ClientEventScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1776,6 +1960,13 @@ export type ListEnumSubscriptionTierFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -1786,13 +1977,6 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-    
-
-
-/**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -1849,6 +2033,48 @@ export type EnumInstagramPostStatusFieldRefInput<$PrismaModel> = FieldRefInputTy
  * Reference to a field of type 'InstagramPostStatus[]'
  */
 export type ListEnumInstagramPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InstagramPostStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ClientSource'
+ */
+export type EnumClientSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ClientSource'>
+    
+
+
+/**
+ * Reference to a field of type 'ClientSource[]'
+ */
+export type ListEnumClientSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ClientSource[]'>
+    
+
+
+/**
+ * Reference to a field of type 'DealStatus'
+ */
+export type EnumDealStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DealStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'DealStatus[]'
+ */
+export type ListEnumDealStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DealStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'EventType'
+ */
+export type EnumEventTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventType'>
+    
+
+
+/**
+ * Reference to a field of type 'EventType[]'
+ */
+export type ListEnumEventTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventType[]'>
     
 
 /**
@@ -1959,6 +2185,8 @@ export type GlobalOmitConfig = {
   instagramAccount?: Prisma.InstagramAccountOmit
   instagramPost?: Prisma.InstagramPostOmit
   instagramSession?: Prisma.InstagramSessionOmit
+  client?: Prisma.ClientOmit
+  clientEvent?: Prisma.ClientEventOmit
 }
 
 /* Types for Logging */

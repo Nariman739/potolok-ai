@@ -7,16 +7,16 @@ import {
   LayoutDashboard,
   FileText,
   MessageSquare,
-  ImageIcon,
+  Users,
   Ruler,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
-  { href: "/dashboard/assistant", label: "AI", icon: MessageSquare },
+  { href: "/dashboard/clients", label: "Клиенты", icon: Users },
   { href: "/dashboard/vision-test", label: "Замеры", icon: Ruler },
   { href: "/dashboard/estimates", label: "КП", icon: FileText },
-  { href: "/dashboard/portfolio", label: "Работы", icon: ImageIcon },
+  { href: "/dashboard/assistant", label: "AI", icon: MessageSquare },
 ];
 
 export function MobileNav() {

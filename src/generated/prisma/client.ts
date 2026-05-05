@@ -104,3 +104,13 @@ export type InstagramPost = Prisma.InstagramPostModel
  * 
  */
 export type InstagramSession = Prisma.InstagramSessionModel
+/**
+ * Model Client
+ * 
+ */
+export type Client = Prisma.ClientModel
+/**
+ * Model ClientEvent
+ * 
+ */
+export type ClientEvent = Prisma.ClientEventModel

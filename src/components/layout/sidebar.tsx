@@ -14,6 +14,8 @@ import {
   Ruler,
   ImageIcon,
   Zap,
+  Users,
+  Crown,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -21,6 +23,7 @@ import { Logo } from "@/components/logo";
 const navItems = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/dashboard/assistant", label: "Ассистент", icon: MessageSquare },
+  { href: "/dashboard/clients", label: "Клиенты", icon: Users },
   { href: "/dashboard/vision-test", label: "Замеры", icon: Ruler },
   { href: "/dashboard/calculator", label: "Калькулятор", icon: Calculator },
   { href: "/dashboard/estimates", label: "Расчёты", icon: FileText },
@@ -30,8 +33,15 @@ const navItems = [
   { href: "/dashboard/profile", label: "Профиль", icon: User },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
   const pathname = usePathname();
+
+  const items = isOwner
+    ? [
+        ...navItems,
+        { href: "/dashboard/admin", label: "Админ", icon: Crown },
+      ]
+    : navItems;
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-white">
@@ -40,7 +50,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"

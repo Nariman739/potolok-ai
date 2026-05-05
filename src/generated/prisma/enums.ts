@@ -51,3 +51,44 @@ export const InstagramPostStatus = {
 } as const
 
 export type InstagramPostStatus = (typeof InstagramPostStatus)[keyof typeof InstagramPostStatus]
+
+
+export const ClientSource = {
+  INSTAGRAM: 'INSTAGRAM',
+  WHATSAPP: 'WHATSAPP',
+  REFERRAL: 'REFERRAL',
+  SITE: 'SITE',
+  KASPI: 'KASPI',
+  OTHER: 'OTHER'
+} as const
+
+export type ClientSource = (typeof ClientSource)[keyof typeof ClientSource]
+
+
+export const DealStatus = {
+  NEW: 'NEW',
+  QUALIFIED: 'QUALIFIED',
+  PROPOSAL_SENT: 'PROPOSAL_SENT',
+  NEGOTIATING: 'NEGOTIATING',
+  WON: 'WON',
+  LOST: 'LOST'
+} as const
+
+export type DealStatus = (typeof DealStatus)[keyof typeof DealStatus]
+
+
+export const EventType = {
+  NOTE: 'NOTE',
+  CALL: 'CALL',
+  MEETING: 'MEETING',
+  WHATSAPP: 'WHATSAPP',
+  MEASUREMENT: 'MEASUREMENT',
+  INSTALL: 'INSTALL',
+  KP_CREATED: 'KP_CREATED',
+  KP_VIEWED: 'KP_VIEWED',
+  KP_CONFIRMED: 'KP_CONFIRMED',
+  KP_REJECTED: 'KP_REJECTED',
+  STATUS_CHANGE: 'STATUS_CHANGE'
+} as const
+
+export type EventType = (typeof EventType)[keyof typeof EventType]
