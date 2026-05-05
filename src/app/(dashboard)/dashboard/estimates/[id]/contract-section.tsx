@@ -16,7 +16,9 @@ import {
 import {
   ContractTermsDialog,
   type ContractTermsPayload,
+  type PaymentStage,
 } from "./contract-terms-dialog";
+import { Pencil } from "lucide-react";
 
 type Props = {
   estimateId: string;
@@ -27,6 +29,9 @@ type Props = {
   clientPhone: string | null;
   contractConfigured: boolean;
   defaultPrepaymentPercent: number;
+  workStartDate: string | null;
+  workDurationDays: number | null;
+  paymentSchedule: PaymentStage[] | null;
 };
 
 export function ContractSection({
@@ -38,6 +43,9 @@ export function ContractSection({
   clientPhone,
   contractConfigured,
   defaultPrepaymentPercent,
+  workStartDate,
+  workDurationDays,
+  paymentSchedule,
 }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -227,8 +235,29 @@ export function ContractSection({
               PDF
             </a>
           </Button>
+          {!isSigned && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTermsOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Изменить условия
+            </Button>
+          )}
         </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </CardContent>
+      <ContractTermsDialog
+        open={termsOpen}
+        onOpenChange={setTermsOpen}
+        onConfirm={createContract}
+        saving={creating}
+        defaultPrepaymentPercent={defaultPrepaymentPercent}
+        initialWorkStartDate={workStartDate}
+        initialWorkDurationDays={workDurationDays}
+        initialPaymentSchedule={paymentSchedule}
+      />
     </Card>
   );
 }

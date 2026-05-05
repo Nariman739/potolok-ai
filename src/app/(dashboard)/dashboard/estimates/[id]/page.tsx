@@ -12,6 +12,7 @@ import type { CalculationResult } from "@/lib/types";
 import { computeArea } from "@/lib/room-geometry";
 import { EstimateActions } from "./estimate-actions";
 import { ContractSection } from "./contract-section";
+import { ActSection } from "./act-section";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   DRAFT: { label: "Черновик", variant: "secondary" },
@@ -136,6 +137,25 @@ export default async function EstimateDetailPage({
         clientPhone={estimate.clientPhone}
         contractConfigured={!!master.contractType && master.contractType !== "none"}
         defaultPrepaymentPercent={master.prepaymentPercent ?? 50}
+        workStartDate={estimate.workStartDate ? estimate.workStartDate.toISOString() : null}
+        workDurationDays={estimate.workDurationDays}
+        paymentSchedule={
+          Array.isArray(estimate.paymentSchedule)
+            ? (estimate.paymentSchedule as unknown as { name: string; percent: number; when: string }[])
+            : null
+        }
+      />
+
+      <ActSection
+        estimateId={estimate.id}
+        actPublicId={estimate.actPublicId}
+        actCreatedAt={estimate.actCreatedAt ? estimate.actCreatedAt.toISOString() : null}
+        actSignedAt={estimate.actSignedAt ? estimate.actSignedAt.toISOString() : null}
+        actSignerName={estimate.actSignerName}
+        actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
+        clientPhone={estimate.clientPhone}
+        estimateStatus={estimate.status}
+        contractConfigured={!!master.contractType && master.contractType !== "none"}
       />
 
       {/* Total summary */}

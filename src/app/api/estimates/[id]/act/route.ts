@@ -82,12 +82,13 @@ export async function GET(
 
     const calc = estimate.calculationData as unknown as CalculationResult;
     const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
-    const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+    const completionDate = estimate.actCompletionDate ?? new Date();
+    const today = completionDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
     const city = master.contractCity || "_______________";
     const total = estimate.total || estimate.standardTotal || 0;
     const masterName = master.legalName || master.companyName || `${master.firstName} ${master.lastName || ""}`.trim();
     const masterPhone = master.whatsappPhone || master.phone || "";
-    const clientName = estimate.clientName || "___________________________";
+    const clientName = estimate.actSignerName || estimate.clientName || "___________________________";
     const clientPhone = estimate.clientPhone || "_______________";
     const roomResults = getRoomResults(calc);
 
@@ -176,8 +177,38 @@ export async function GET(
     doc.font("Sans").fontSize(9);
     doc.text(clientName, colR, sigY + 14, { width: halfW });
     doc.text(`Тел: ${clientPhone}`, colR, sigY + 28, { width: halfW });
-    doc.text("Подпись ________________", colR, sigY + 60, { width: halfW });
-    doc.text("Дата: _______________", colR, sigY + 76, { width: halfW });
+    if (estimate.actSignedAt) {
+      doc.text(
+        `Дата: ${new Date(estimate.actSignedAt).toLocaleDateString("ru-RU")}`,
+        colR,
+        sigY + 60,
+        { width: halfW },
+      );
+      doc.font("Sans-Bold").fontSize(9).fillColor("#059669");
+      doc.text("Подпись: подписано электронно ✓", colR, sigY + 76, { width: halfW });
+      doc.fillColor("#000");
+    } else {
+      doc.text("Подпись ________________", colR, sigY + 60, { width: halfW });
+      doc.text("Дата: _______________", colR, sigY + 76, { width: halfW });
+    }
+
+    // Штамп электронной подписи
+    if (estimate.actSignedAt) {
+      doc.font("Sans").fontSize(7).fillColor("#666");
+      const stampY = Math.max(doc.y + 30, sigY + 120);
+      const ts = new Date(estimate.actSignedAt).toLocaleString("ru-RU");
+      doc.text(
+        `── Электронно подписано ──\n` +
+          `Подписант: ${estimate.actSignerName ?? clientName}` +
+          `\nДата и время: ${ts}` +
+          (estimate.actSignerIp ? `\nIP: ${estimate.actSignerIp}` : "") +
+          `\nАкт к Договору № ${contractNum}`,
+        L,
+        stampY,
+        { width: CW, align: "center" },
+      );
+      doc.fillColor("#000");
+    }
 
     doc.end();
     const buf = await promise;

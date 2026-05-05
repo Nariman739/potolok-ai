@@ -28,6 +28,8 @@ export type EventTypeKey =
   | "STATUS_CHANGE"
   | "CONTRACT_CREATED"
   | "CONTRACT_SIGNED"
+  | "ACT_CREATED"
+  | "ACT_SIGNED"
   | "PHOTO_ADDED";
 
 export const STATUS_LABELS: Record<DealStatusKey, string> = {
@@ -71,6 +73,8 @@ export const EVENT_LABELS: Record<EventTypeKey, string> = {
   STATUS_CHANGE: "Изменение статуса",
   CONTRACT_CREATED: "Создан договор",
   CONTRACT_SIGNED: "Договор подписан клиентом",
+  ACT_CREATED: "Создан акт выполненных работ",
+  ACT_SIGNED: "Акт подписан клиентом",
   PHOTO_ADDED: "Добавлено фото",
 };
 

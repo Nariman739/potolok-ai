@@ -97,12 +97,18 @@ export function ContractTermsDialog({
   onConfirm,
   saving,
   defaultPrepaymentPercent,
+  initialWorkStartDate,
+  initialWorkDurationDays,
+  initialPaymentSchedule,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onConfirm: (payload: ContractTermsPayload) => void;
   saving: boolean;
   defaultPrepaymentPercent: number;
+  initialWorkStartDate?: string | null;
+  initialWorkDurationDays?: number | null;
+  initialPaymentSchedule?: PaymentStage[] | null;
 }) {
   // Подбираем дефолтный пресет по prepaymentPercent профиля
   const initialPreset = useMemo(() => {
@@ -112,16 +118,35 @@ export function ContractTermsDialog({
     return "50_50";
   }, [defaultPrepaymentPercent]);
 
-  const [preset, setPreset] = useState<string>(initialPreset);
+  // Если переданы initialPaymentSchedule — используем их (это «Изменить условия»)
+  const [preset, setPreset] = useState<string>(
+    initialPaymentSchedule && initialPaymentSchedule.length > 0
+      ? "custom"
+      : initialPreset,
+  );
   const [stages, setStages] = useState<PaymentStage[]>(() => {
+    if (initialPaymentSchedule && initialPaymentSchedule.length > 0) {
+      return initialPaymentSchedule.map((s) => ({ ...s }));
+    }
     const found = PRESETS.find((p) => p.key === initialPreset);
     return found ? [...found.stages] : PRESETS[0].stages;
   });
-  const [startDate, setStartDate] = useState<string>(todayPlusDays(3));
-  const [duration, setDuration] = useState<number>(5);
+  const [startDate, setStartDate] = useState<string>(
+    initialWorkStartDate
+      ? new Date(initialWorkStartDate).toISOString().slice(0, 10)
+      : todayPlusDays(3),
+  );
+  const [duration, setDuration] = useState<string>(
+    initialWorkDurationDays ? String(initialWorkDurationDays) : "5",
+  );
 
   const totalPercent = stages.reduce((s, x) => s + (Number(x.percent) || 0), 0);
-  const valid = Math.round(totalPercent) === 100 && stages.length > 0;
+  const durationNum = Number(duration);
+  const valid =
+    Math.round(totalPercent) === 100 &&
+    stages.length > 0 &&
+    Number.isFinite(durationNum) &&
+    durationNum >= 1;
 
   function applyPreset(key: string) {
     setPreset(key);
@@ -154,7 +179,7 @@ export function ContractTermsDialog({
     if (!valid) return;
     onConfirm({
       workStartDate: new Date(startDate).toISOString(),
-      workDurationDays: duration,
+      workDurationDays: Math.max(1, Math.round(durationNum)),
       paymentSchedule: stages,
     });
   }
@@ -191,7 +216,8 @@ export function ContractTermsDialog({
                   min={1}
                   max={365}
                   value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value) || 1)}
+                  onChange={(e) => setDuration(e.target.value)}
+                  inputMode="numeric"
                 />
               </div>
             </div>

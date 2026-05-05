@@ -180,6 +180,15 @@ model Estimate {
   workDurationDays        Int?
   paymentSchedule         Json?      // [{ name: string, percent: number, when: string }]
 
+  // Электронный Акт выполненных работ
+  actPublicId        String?   @unique
+  actCreatedAt       DateTime?
+  actSignedAt        DateTime?
+  actSignerName      String?
+  actSignerIp        String?
+  actSignerUserAgent String?
+  actCompletionDate  DateTime?  // когда работы фактически выполнены
+
   // Data (JSON)
   roomsData       Json
   calculationData Json
@@ -503,6 +512,8 @@ enum EventType {
   STATUS_CHANGE
   CONTRACT_CREATED
   CONTRACT_SIGNED
+  ACT_CREATED
+  ACT_SIGNED
   PHOTO_ADDED
 }
 
