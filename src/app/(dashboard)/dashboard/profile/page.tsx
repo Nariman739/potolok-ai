@@ -322,7 +322,22 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label>WhatsApp</Label>
-              <Input value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)} placeholder="+77001234567" />
+              <Input
+                value={whatsappPhone}
+                onChange={(e) => {
+                  let v = e.target.value;
+                  if (!v.startsWith("+7")) {
+                    const digits = v.replace(/\D/g, "");
+                    v = "+7" + (digits.startsWith("7") ? digits.slice(1) : digits);
+                  }
+                  setWhatsappPhone(v);
+                }}
+                onFocus={() => {
+                  if (!whatsappPhone) setWhatsappPhone("+7");
+                }}
+                placeholder="+7 700 123 45 67"
+                inputMode="tel"
+              />
             </div>
           </div>
         </CardContent>
