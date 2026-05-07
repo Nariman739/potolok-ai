@@ -376,11 +376,15 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   function svgCoords(clientX: number, clientY: number) {
     const svg = svgRef.current;
     if (!svg) return null;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return null;
-    const inv = ctm.inverse();
-    const pt = new DOMPoint(clientX, clientY).matrixTransform(inv);
-    return { x: pt.x, y: pt.y };
+    // Считаем координаты вручную через getBoundingClientRect + viewBox.
+    // getScreenCTM() на iOS Safari иногда возвращает устаревшую матрицу
+    // после изменения viewport (скрытие/показ URL-бара, появление клавиатуры) —
+    // это давало эффект «нажимаешь ниже, попадает выше» при долгой работе.
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+    const localX = ((clientX - rect.left) / rect.width) * vbW + vbX;
+    const localY = ((clientY - rect.top) / rect.height) * vbH + vbY;
+    return { x: localX, y: localY };
   }
 
   // ── Is the active type a furniture type? ──
