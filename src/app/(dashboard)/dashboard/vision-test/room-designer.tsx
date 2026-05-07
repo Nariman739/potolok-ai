@@ -46,6 +46,7 @@ type ToolbarTab = "light" | "walls" | "furniture";
 
 const LIGHT_ELEMENTS: { type: ElementType; label: string; icon: string; color: string; category: "point" | "wall" | "perimeter" }[] = [
   { type: "spot",        label: "Софит",       icon: "💡", color: "#F59E0B", category: "point" },
+  { type: "pendant",     label: "Подвесной",   icon: "💡", color: "#3B82F6", category: "point" },
   { type: "chandelier",  label: "Люстра",      icon: "🔆", color: "#8B5CF6", category: "point" },
   { type: "curtain",     label: "Гардина",     icon: "📏", color: "#10B981", category: "wall" },
   { type: "subcurtain",  label: "Подшторник",   icon: "📐", color: "#06B6D4", category: "wall" },
@@ -219,6 +220,26 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
   return best;
 }
 
+/** Смещения софитов в группе относительно точки клика (см). */
+function computeSpotGroupOffsets(
+  group: "1" | "2h" | "2v" | "3h" | "3v",
+  stepCm: number
+): { dx: number; dy: number }[] {
+  switch (group) {
+    case "2h":
+      return [{ dx: -stepCm / 2, dy: 0 }, { dx: stepCm / 2, dy: 0 }];
+    case "2v":
+      return [{ dx: 0, dy: -stepCm / 2 }, { dx: 0, dy: stepCm / 2 }];
+    case "3h":
+      return [{ dx: -stepCm, dy: 0 }, { dx: 0, dy: 0 }, { dx: stepCm, dy: 0 }];
+    case "3v":
+      return [{ dx: 0, dy: -stepCm }, { dx: 0, dy: 0 }, { dx: 0, dy: stepCm }];
+    case "1":
+    default:
+      return [{ dx: 0, dy: 0 }];
+  }
+}
+
 function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
   const dx = b.x - a.x, dy = b.y - a.y;
   const len2 = dx * dx + dy * dy;
@@ -239,6 +260,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [elements, setElements] = useState<RoomElement[]>(room.elements || []);
   const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
   const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
+  // Группа софитов: 1 / 2-горизонт / 2-вертикаль / 3-горизонт / 3-вертикаль.
+  // Применяется при одиночном клике, когда activeType === "spot".
+  const [spotGroup, setSpotGroup] = useState<"1" | "2h" | "2v" | "3h" | "3v">("1");
   const [toolbarTab, setToolbarTab] = useState<ToolbarTab>("light");
   const [lengthInput, setLengthInput] = useState<{ wallIndex: number; extraDepth?: string } | null>(null);
   const [lengthValue, setLengthValue] = useState("");
@@ -372,7 +396,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     if (!coords) return;
     // Snap during drag for spots/chandeliers
     const dragEl = elements.find(el => el.id === ds.id);
-    if (dragEl && (dragEl.type === "spot" || dragEl.type === "chandelier")) {
+    if (dragEl && (dragEl.type === "spot" || dragEl.type === "pendant" || dragEl.type === "chandelier")) {
       setDragPos({ x: snapToGrid(coords.x), y: snapToGrid(coords.y) });
     } else {
       setDragPos(coords);
@@ -389,8 +413,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         if (dropPos) {
           const el = elements.find(el => el.id === ds.id);
           if (el) {
-            if (el.type === "spot" || el.type === "chandelier" || el.type === "furniture") {
-              const useSnap = el.type === "spot" || el.type === "chandelier";
+            if (el.type === "spot" || el.type === "pendant" || el.type === "chandelier" || el.type === "furniture") {
+              const useSnap = el.type === "spot" || el.type === "pendant" || el.type === "chandelier";
               const baseX = useSnap ? snapToGrid(dropPos.x) : dropPos.x;
               const baseY = useSnap ? snapToGrid(dropPos.y) : dropPos.y;
               // Для мебели — попытка snap к стене и соседним блокам
@@ -508,6 +532,24 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
     if (config.category === "point") {
       const hasVariant = activeType === "spot";
+      // Двойные/тройные софиты одним кликом — расставляются с фиксированным
+      // шагом вокруг точки клика. Применяется только к "spot".
+      if (activeType === "spot" && spotGroup !== "1") {
+        const stepCm = 25;
+        const offsets = computeSpotGroupOffsets(spotGroup, stepCm);
+        const cx = snapToGrid(coords.x), cy = snapToGrid(coords.y);
+        setElements(prev => [
+          ...prev,
+          ...offsets.map((off) => ({
+            id: crypto.randomUUID(),
+            type: "spot" as ElementType,
+            x: cx + off.dx,
+            y: cy + off.dy,
+            variant: activeVariant,
+          })),
+        ]);
+        return;
+      }
       setElements(prev => [...prev, {
         id: crypto.randomUUID(),
         type: activeType as ElementType,
@@ -1044,17 +1086,21 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       lp2 = { x: el.points![last].x + offX, y: el.points![last].y + offY };
     }
 
-    const wallDists: { dist: number; proj: Vertex; edgePt: Vertex }[] = [];
+    const wallDists: { dist: number; proj: Vertex; edgePt: Vertex; nx: number; ny: number }[] = [];
     for (let i = 0; i < vertices.length - 1; i++) {
       const a = vertices[i], b = vertices[i + 1];
+      const wdx = b.x - a.x, wdy = b.y - a.y;
+      const wlen = Math.hypot(wdx, wdy) || 1;
+      // Нормаль к стене (для группировки расстояний по направлениям)
+      const nrmX = -wdy / wlen, nrmY = wdx / wlen;
 
       if (isFreeformLine && lp1 && lp2) {
         const proj1 = projectOnWall(lp1.x, lp1.y, a, b);
         const proj2 = projectOnWall(lp2.x, lp2.y, a, b);
         const d1 = Math.hypot(lp1.x - proj1.x, lp1.y - proj1.y);
         const d2 = Math.hypot(lp2.x - proj2.x, lp2.y - proj2.y);
-        if (d1 <= d2) wallDists.push({ dist: d1, proj: proj1, edgePt: lp1 });
-        else wallDists.push({ dist: d2, proj: proj2, edgePt: lp2 });
+        if (d1 <= d2) wallDists.push({ dist: d1, proj: proj1, edgePt: lp1, nx: nrmX, ny: nrmY });
+        else wallDists.push({ dist: d2, proj: proj2, edgePt: lp2, nx: nrmX, ny: nrmY });
         continue;
       }
 
@@ -1074,12 +1120,20 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         edgePt = { x: el.x! + dirX * edgeDist, y: el.y! + dirY * edgeDist };
       }
       const edgeToWall = Math.hypot(edgePt.x - proj.x, edgePt.y - proj.y);
-      wallDists.push({ dist: edgeToWall, proj, edgePt });
+      wallDists.push({ dist: edgeToWall, proj, edgePt, nx: nrmX, ny: nrmY });
     }
     wallDists.sort((a, b) => a.dist - b.dist);
-    for (let i = 0; i < Math.min(2, wallDists.length); i++) {
-      const wd = wallDists[i];
-      if (wd.dist > 5) dims.push({ x1: wd.proj.x, y1: wd.proj.y, x2: wd.edgePt.x, y2: wd.edgePt.y, label: `${Math.round(wd.dist)}`, color: "#94A3B8" });
+    // Берём до 4 стен с РАЗНЫМИ направлениями нормалей (cos > 0.85 = почти параллельны).
+    // Это даёт расстояния по всем сторонам (лево, право, верх, низ) для прямоугольной комнаты,
+    // не дублируя сонаправленные.
+    const taken: { nx: number; ny: number }[] = [];
+    for (const wd of wallDists) {
+      if (taken.length >= 4) break;
+      if (wd.dist <= 5) continue;
+      const sameDir = taken.some(t => Math.abs(t.nx * wd.nx + t.ny * wd.ny) > 0.85);
+      if (sameDir) continue;
+      dims.push({ x1: wd.proj.x, y1: wd.proj.y, x2: wd.edgePt.x, y2: wd.edgePt.y, label: `${Math.round(wd.dist)}`, color: "#94A3B8" });
+      taken.push({ nx: wd.nx, ny: wd.ny });
     }
   }
 
@@ -1660,8 +1714,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const isClient = el.variant === "client";
     const fillColor = isClient ? "#6B7280" : "#F59E0B";
-    const glowColor = isClient ? "#E5E7EB" : "#FEF3C7";
-    const strokeColor = isClient ? "#4B5563" : "#D97706";
     const isSel = selectedId === el.id;
     return (
       <g key={el.id}
@@ -1675,6 +1727,27 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         {isClient && (
           <text x={pos.x} y={pos.y + spotR * 3.5} textAnchor="middle" fontSize={labelSize * 0.6} fill="#6B7280">кл.</text>
         )}
+      </g>
+    );
+  }
+
+  function pendantCircle(el: RoomElement) {
+    const pos = getElPos(el);
+    const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const fillColor = "#3B82F6";
+    const isSel = selectedId === el.id;
+    // Подвесной светильник — кружок поменьше софита (~60% от софита).
+    const r = spotR * 0.45;
+    return (
+      <g key={el.id}
+        onPointerDown={(e) => handleElementPointerDown(el.id, e)}
+        className="cursor-grab active:cursor-grabbing"
+        opacity={isDragging ? 0.7 : 1}
+      >
+        <circle cx={pos.x} cy={pos.y} r={spotR * 3} fill="transparent" />
+        {isSel && <circle cx={pos.x} cy={pos.y} r={r * 1.8} fill="none" stroke={fillColor} strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.4},${spotR * 0.25}`} />}
+        <circle cx={pos.x} cy={pos.y} r={r} fill={fillColor} />
+        <circle cx={pos.x} cy={pos.y} r={r * 0.4} fill="#fff" />
       </g>
     );
   }
@@ -2002,7 +2075,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const roundedCount = (room.cornerRadii || []).filter(r => r > 0).length;
     if (roundedCount > 0) cost += roundedCount * (p.corner_rounded || 5000);
     // Уголки обхода мебели до потолка
-    if (fcStats.extraCorners > 0) cost += fcStats.extraCorners * (p.corner_furniture_bypass || 1500);
+    if (fcStats.bypassPerimeterCm > 0) cost += (fcStats.bypassPerimeterCm / 100) * (p.corner_furniture_bypass || 2000);
     if (fcStats.plannedCorners > 0) cost += fcStats.plannedCorners * (p.corner_furniture_planned || 1500);
     return Math.round(cost);
   }
@@ -2408,6 +2481,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           {/* Spots */}
           {elements.filter(e => e.type === "spot").map(spotCircle)}
 
+          {/* Pendant lights (подвесной / бра) — меньше софита */}
+          {elements.filter(e => e.type === "pendant").map(pendantCircle)}
+
           {/* Chandeliers */}
           {elements.filter(e => e.type === "chandelier").map(chandelierIcon)}
 
@@ -2463,28 +2539,54 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
       {/* Variant toggle — only for spots */}
       {activeType === "spot" && (
-        <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex items-center justify-center gap-2">
-          <span className="text-xs text-amber-800 font-medium">Софиты:</span>
-          <button
-            onClick={() => setActiveVariant("ours")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              activeVariant === "ours"
-                ? "bg-[#1e3a5f] text-white"
-                : "bg-white border border-amber-300 text-amber-700"
-            }`}
-          >
-            Наши (с материалом)
-          </button>
-          <button
-            onClick={() => setActiveVariant("client")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              activeVariant === "client"
-                ? "bg-gray-600 text-white"
-                : "bg-white border border-amber-300 text-amber-700"
-            }`}
-          >
-            Клиентские
-          </button>
+        <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex flex-col gap-1.5">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs text-amber-800 font-medium">Софиты:</span>
+            <button
+              onClick={() => setActiveVariant("ours")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                activeVariant === "ours"
+                  ? "bg-[#1e3a5f] text-white"
+                  : "bg-white border border-amber-300 text-amber-700"
+              }`}
+            >
+              Наши (с материалом)
+            </button>
+            <button
+              onClick={() => setActiveVariant("client")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                activeVariant === "client"
+                  ? "bg-gray-600 text-white"
+                  : "bg-white border border-amber-300 text-amber-700"
+              }`}
+            >
+              Клиентские
+            </button>
+          </div>
+          {/* Группа: ставит сразу 2-3 софита одним кликом */}
+          <div className="flex items-center justify-center gap-1 flex-wrap">
+            <span className="text-[10px] text-amber-800/80">Группа:</span>
+            {([
+              ["1", "1", null],
+              ["2h", "●●", "горизонт"],
+              ["2v", "●\n●", "верт"],
+              ["3h", "●●●", "горизонт"],
+              ["3v", "●\n●\n●", "верт"],
+            ] as const).map(([key, glyph, hint]) => (
+              <button
+                key={key}
+                onClick={() => setSpotGroup(key)}
+                title={hint || "Одиночный"}
+                className={`min-w-[36px] px-2 py-0.5 rounded text-[11px] font-semibold transition-all whitespace-pre leading-tight ${
+                  spotGroup === key
+                    ? "bg-amber-600 text-white"
+                    : "bg-white border border-amber-300 text-amber-700"
+                }`}
+              >
+                {glyph}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

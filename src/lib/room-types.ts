@@ -4,6 +4,7 @@
 
 export type ElementType =
   | "spot"
+  | "pendant"
   | "chandelier"
   | "curtain"
   | "subcurtain"

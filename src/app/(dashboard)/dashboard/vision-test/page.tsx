@@ -2247,6 +2247,7 @@ export default function ZameryPage() {
       const spotsOurs = els.filter(e => e.type === "spot" && e.variant !== "client").length;
       const spotsClient = els.filter(e => e.type === "spot" && e.variant === "client").length;
       const spotsCount = spotsOurs + spotsClient;
+      const pendantCount = els.filter(e => e.type === "pendant").length;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
       const trackMagneticLength = Math.round(
         els.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0)
@@ -2260,6 +2261,9 @@ export default function ZameryPage() {
       const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
       const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(els)) / 100;
       const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
+      // Если на сцене есть парящий профиль — комната оформляется им (а не пластик+вставка).
+      const hasFloating = els.some(e => e.type === "floating");
+      const profileTypeForRoom: string | undefined = hasFloating ? "profile_floating" : undefined;
       // Мебель «до потолка» влияет на площадь и периметр профиля
       const fcStats = furnitureCeilingStats(
         els as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
@@ -2275,10 +2279,12 @@ export default function ZameryPage() {
         width: Math.round(w * 100) / 100,
         ceilingHeight: 2.7,
         canvasType: "matte" as CanvasType,
+        profileType: profileTypeForRoom,
         spotsCount,
         spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined,
         chandelierCount,
         chandelierInstallCount: chandelierCount,
+        pendantCount,
         trackMagneticLength,
         lightLineLength,
         curtainRodLength: 0,
@@ -2291,6 +2297,7 @@ export default function ZameryPage() {
         roundedCornersCount,
         furnitureCeilingArea,
         furnitureCeilingPerimeterDelta,
+        furnitureCeilingBypassM: Math.round(fcStats.bypassPerimeterCm) / 100,
         furnitureCeilingCorners: fcStats.extraCorners,
         furniturePlannedCorners: fcStats.plannedCorners,
         furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
@@ -2364,6 +2371,8 @@ export default function ZameryPage() {
               );
               const furnitureCeilingArea = Math.round(fcStatsCalc.areaToSubtractCm2 / 100) / 100;
               const furnitureCeilingPerimeterDelta = Math.round(fcStatsCalc.perimeterDeltaCm) / 100;
+              const hasFloating = elements.some(e => e.type === "floating");
+              const profileTypeForRoom: string | undefined = hasFloating ? "profile_floating" : undefined;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),
@@ -2372,6 +2381,7 @@ export default function ZameryPage() {
                 width: Math.min(...room.walls) / 100 || 4,
                 ceilingHeight: 3,
                 canvasType: "mat" as CanvasType,
+                profileType: profileTypeForRoom,
                 spotsCount: spotsOurs + spotsClient,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 chandelierCount,
@@ -2388,6 +2398,7 @@ export default function ZameryPage() {
                 roundedCornersCount,
                 furnitureCeilingArea,
                 furnitureCeilingPerimeterDelta,
+                furnitureCeilingBypassM: Math.round(fcStatsCalc.bypassPerimeterCm) / 100,
                 furnitureCeilingCorners: fcStatsCalc.extraCorners,
                 furniturePlannedCorners: fcStatsCalc.plannedCorners,
                 furniturePlannedArea: Math.round(fcStatsCalc.plannedAreaCm2 / 100) / 100,

@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Users,
   Ruler,
+  DollarSign,
 } from "lucide-react";
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { href: "/dashboard/clients", label: "Клиенты", icon: Users },
   { href: "/dashboard/vision-test", label: "Замеры", icon: Ruler },
   { href: "/dashboard/estimates", label: "КП", icon: FileText },
+  { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
   { href: "/dashboard/assistant", label: "AI", icon: MessageSquare },
 ];
 

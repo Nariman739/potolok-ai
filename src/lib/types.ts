@@ -67,6 +67,8 @@ export interface RoomInput {
   spotsCount: number;
   chandelierCount: number;
   chandelierInstallCount: number;
+  /** Подвесные светильники / бра — закладная + установка как у люстр, но дешевле. */
+  pendantCount?: number;
   trackMagneticLength: number;
   lightLineLength: number;
   curtainRodLength: number;
@@ -99,8 +101,10 @@ export interface RoomInput {
   /** Изменение периметра профиля от обхода мебели до потолка (м, может быть отрицательным).
    *  perimeterDelta = (длина граней мебели «в комнату») − (длина граней «у стены»). */
   furnitureCeilingPerimeterDelta?: number;
-  /** Углы профиля для обхода мебели до потолка — отдельная позиция в КП. */
+  /** Углы профиля для обхода мебели до потолка — устаревшее (до 2026-05-07 считалось как штуки). Сохранено для совместимости. */
   furnitureCeilingCorners?: number;
+  /** Длина обвода мебели до потолка (м.п.) — отдельная позиция в КП. */
+  furnitureCeilingBypassM?: number;
   /** Углы под будущую мебель (planned) — отдельная позиция в КП. */
   furniturePlannedCorners?: number;
   /** Площадь planned мебели (м²) — для информации в КП (зарезервировано). */

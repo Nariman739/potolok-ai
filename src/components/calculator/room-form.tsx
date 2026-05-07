@@ -744,7 +744,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       {/* Gardina + Podshtornik inputs */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="gardina">Гардина встр. (см)</Label>
+          <Label htmlFor="gardina">Гардина (см)</Label>
           <Input
             id="gardina"
             type="number"

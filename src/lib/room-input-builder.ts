@@ -1,0 +1,160 @@
+/**
+ * Перевод данных дизайнера комнаты (walls + elements) в RoomInput
+ * для расчёта КП. Используется в:
+ *   - /dashboard/vision-test (сохранение замера)
+ *   - /api/estimates/[id]/recalc-room (правка чертежа из КП)
+ */
+
+import type { RoomInput } from "@/lib/types";
+import type { CanvasType } from "@/lib/constants";
+import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
+import {
+  getVertices,
+  totalSubcurtainLengthCm,
+  subcurtainOnWallLengthCm,
+} from "@/app/(dashboard)/dashboard/vision-test/room-designer";
+
+interface DesignerRoom {
+  id?: string;
+  name?: string;
+  walls: number[];
+  normalCorners: boolean[];
+  angles?: number[];
+  cornerRadii?: number[];
+  area: number;
+  perimeter: number;
+  elements: DesignerElement[];
+  previewUrl3d?: string;
+}
+
+interface DesignerElement {
+  type: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  length?: number;
+  variant?: "ours" | "client";
+  ceilingMode?: "decor" | "to-ceiling" | "planned";
+}
+
+/**
+ * Построить RoomInput из чертежа. Поля выбора (canvasType и т.п.) подставляются
+ * либо из existing (если правка), либо дефолтные.
+ */
+export function buildRoomInputFromDesigner(
+  room: DesignerRoom,
+  existing?: Partial<RoomInput>
+): RoomInput {
+  const els = room.elements || [];
+  const spotsOurs = els.filter(
+    (e) => e.type === "spot" && e.variant !== "client"
+  ).length;
+  const spotsClient = els.filter(
+    (e) => e.type === "spot" && e.variant === "client"
+  ).length;
+  const spotsCount = spotsOurs + spotsClient;
+  const chandelierCount = els.filter((e) => e.type === "chandelier").length;
+  const pendantCount = els.filter((e) => e.type === "pendant").length;
+  const trackMagneticLength =
+    Math.round(
+      els
+        .filter((e) => e.type === "track")
+        .reduce((s, e) => s + (e.length || 0), 0)
+    ) / 100;
+  const lightLineLength =
+    Math.round(
+      els
+        .filter((e) => e.type === "lightline")
+        .reduce((s, e) => s + (e.length || 0), 0)
+    ) / 100;
+  const gardinaLength =
+    Math.round(
+      els
+        .filter((e) => e.type === "curtain")
+        .reduce((s, e) => s + (e.length || 0), 0)
+    ) / 100;
+  const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
+  const podshtornikOnWallLength =
+    Math.round(subcurtainOnWallLengthCm(els)) / 100;
+  const roundedCornersCount = (room.cornerRadii || []).filter((r) => r > 0)
+    .length;
+
+  const fcStats = furnitureCeilingStats(
+    els as Parameters<typeof furnitureCeilingStats>[0],
+    getVertices(room.walls, room.normalCorners, room.angles)
+  );
+  const furnitureCeilingArea =
+    Math.round(fcStats.areaToSubtractCm2 / 100) / 100;
+  const furnitureCeilingPerimeterDelta =
+    Math.round(fcStats.perimeterDeltaCm) / 100;
+  const furnitureCeilingBypassM =
+    Math.round(fcStats.bypassPerimeterCm) / 100;
+
+  const hasFloating = els.some((e) => e.type === "floating");
+  const profileTypeForRoom: string | undefined = hasFloating
+    ? "profile_floating"
+    : existing?.profileType;
+
+  const longest = Math.max(...room.walls);
+  const shortest = Math.min(...room.walls);
+  const length = (longest || 500) / 100;
+  const width = (shortest || 400) / 100;
+
+  return {
+    id: existing?.id ?? room.id ?? crypto.randomUUID(),
+    name: existing?.name ?? room.name ?? "Помещение",
+    length: Math.round(length * 100) / 100,
+    width: Math.round(width * 100) / 100,
+    ceilingHeight: existing?.ceilingHeight ?? 2.7,
+    canvasType: (existing?.canvasType ?? "matte") as CanvasType,
+    profileType: profileTypeForRoom,
+    spotsCount,
+    spotType:
+      existing?.spotType ??
+      (spotsClient > 0 && spotsOurs === 0
+        ? "spot_client"
+        : spotsOurs > 0
+          ? "spot_ours"
+          : undefined),
+    chandelierCount,
+    chandelierInstallCount:
+      existing?.chandelierInstallCount ?? chandelierCount,
+    pendantCount,
+    trackMagneticLength,
+    lightLineLength,
+    curtainRodLength: existing?.curtainRodLength ?? 0,
+    pipeBypasses: existing?.pipeBypasses ?? 0,
+    cornersCount: room.walls.length,
+    eurobrusCount: existing?.eurobrusCount ?? 0,
+    gardinaLength,
+    gardinaType: existing?.gardinaType,
+    podshtornikLength,
+    podshtornikOnWallLength,
+    podshtornikType: existing?.podshtornikType,
+    roundedCornersCount,
+    furnitureCeilingArea,
+    furnitureCeilingPerimeterDelta,
+    furnitureCeilingBypassM,
+    furnitureCeilingCorners: fcStats.extraCorners,
+    furniturePlannedCorners: fcStats.plannedCorners,
+    furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
+    transformerCount: existing?.transformerCount,
+    customItems: existing?.customItems,
+    oneOffItems: existing?.oneOffItems,
+    shape:
+      room.walls.length === 4 ? ("rectangle" as const) : existing?.shape,
+    previewUrl3d: room.previewUrl3d ?? existing?.previewUrl3d,
+    designerData: {
+      walls: room.walls,
+      angles: room.angles ?? [],
+      normalCorners: room.normalCorners,
+      area: room.area,
+      perimeter: room.perimeter,
+      elements: room.elements as unknown[],
+      arcBulges: existing?.designerData?.arcBulges,
+      columns: existing?.designerData?.columns,
+    },
+  };
+}

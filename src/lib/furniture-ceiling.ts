@@ -38,6 +38,8 @@ export interface FurnitureCeilingStats {
   /** Изменение периметра профиля (см). Может быть отрицательным.
    *  perimeterDelta = (длина граней «в комнату») − (длина граней «у стены»). */
   perimeterDeltaCm: number;
+  /** Длина граней обвода мебели «в комнату» (см) — позиция в КП за м.п. */
+  bypassPerimeterCm: number;
   /** Количество доп. углов профиля для обхода to-ceiling мебели. */
   extraCorners: number;
   /** Площадь planned мебели (см²) — для информации в КП (зарезервировано). */
@@ -308,6 +310,7 @@ export function furnitureCeilingStats(
   const stats: FurnitureCeilingStats = {
     areaToSubtractCm2: 0,
     perimeterDeltaCm: 0,
+    bypassPerimeterCm: 0,
     extraCorners: 0,
     plannedAreaCm2: 0,
     plannedCorners: 0,
@@ -329,7 +332,10 @@ export function furnitureCeilingStats(
       for (let i = 0; i < corners.length; i++) {
         const len = edgeLen(corners, i);
         if (atWall[i]) stats.perimeterDeltaCm -= len;
-        else stats.perimeterDeltaCm += len;
+        else {
+          stats.perimeterDeltaCm += len;
+          stats.bypassPerimeterCm += len;
+        }
       }
     } else {
       // planned

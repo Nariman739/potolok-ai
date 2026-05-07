@@ -61,19 +61,19 @@ export function OnboardingWizard({ firstName, phone }: OnboardingWizardProps) {
       });
       if (!profileRes.ok) throw new Error("profile");
 
-      // Save prices
-      const priceUpdates: Record<string, number> = {};
+      // Save prices (only those user actually changed)
+      const priceItems: { itemCode: string; price: number }[] = [];
       for (const item of KEY_PRICES) {
         const val = parseFloat(prices[item.code]);
         if (!isNaN(val) && val !== item.default) {
-          priceUpdates[item.code] = val;
+          priceItems.push({ itemCode: item.code, price: val });
         }
       }
-      if (Object.keys(priceUpdates).length > 0) {
+      if (priceItems.length > 0) {
         const pricesRes = await fetch("/api/prices", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prices: priceUpdates }),
+          body: JSON.stringify({ items: priceItems }),
         });
         if (!pricesRes.ok) throw new Error("prices");
       }

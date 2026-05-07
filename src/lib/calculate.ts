@@ -125,6 +125,15 @@ function calculateRoom(
     if (installItem) items.push(installItem);
   }
 
+  // Pendant lights — закладная + установка отдельной позицией.
+  const pendantCount = room.pendantCount ?? 0;
+  if (pendantCount > 0) {
+    const pendantItem = makeLineItem("pendant", pendantCount, prices);
+    if (pendantItem) items.push(pendantItem);
+    const pendantInstallItem = makeLineItem("pendant_install", pendantCount, prices);
+    if (pendantInstallItem) items.push(pendantInstallItem);
+  }
+
   // Track magnetic
   if (room.trackMagneticLength > 0) {
     const trackItem = makeLineItem("track_magnetic", room.trackMagneticLength, prices);
@@ -162,7 +171,7 @@ function calculateRoom(
     if (eurobrusItem) items.push(eurobrusItem);
   }
 
-  // Gardina (встроенная гардина)
+  // Gardina (пластиковая на потолок / встроенная в потолок)
   if ((room.gardinaLength ?? 0) > 0) {
     const gardinaCode = room.gardinaType || "gardina_plastic";
     const gardinaItem = makeLineItem(gardinaCode, room.gardinaLength, prices);
@@ -183,9 +192,11 @@ function calculateRoom(
     if (roundedItem) items.push(roundedItem);
   }
 
-  // Уголки обхода мебели до потолка — отдельная позиция, чтобы было видно почему дороже.
-  if ((room.furnitureCeilingCorners ?? 0) > 0) {
-    const item = makeLineItem("corner_furniture_bypass", room.furnitureCeilingCorners ?? 0, prices);
+  // Обвод мебели до потолка (м.п.) — отдельная позиция, чтобы было видно почему дороже.
+  // Backwards compat: если есть только furnitureCeilingCorners (старые расчёты), считаем как количество м.п.
+  const bypassM = room.furnitureCeilingBypassM ?? room.furnitureCeilingCorners ?? 0;
+  if (bypassM > 0) {
+    const item = makeLineItem("corner_furniture_bypass", bypassM, prices);
     if (item) items.push(item);
   }
   // Уголки под будущую мебель — отдельная позиция, помечает резерв под последующую установку.

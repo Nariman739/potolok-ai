@@ -13,6 +13,7 @@ import { computeArea } from "@/lib/room-geometry";
 import { EstimateActions } from "./estimate-actions";
 import { ContractSection } from "./contract-section";
 import { ActSection } from "./act-section";
+import { ItemsEditor } from "./items-editor";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   DRAFT: { label: "Черновик", variant: "secondary" },
@@ -176,42 +177,24 @@ export default async function EstimateDetailPage({
         // Support both new (roomResults) and old (variants) format
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const roomResults = calc?.roomResults ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
-        if (!roomResults.length && !calc?.rooms?.length) return null;
+        const extraItems = calc?.extraItems ?? [];
+        if (roomResults.length > 0) {
+          return (
+            <ItemsEditor
+              estimateId={estimate.id}
+              initialRoomResults={roomResults}
+              initialExtraItems={extraItems}
+            />
+          );
+        }
+        if (!calc?.rooms?.length) return null;
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                {estimate.totalArea > 0
-                  ? `Детализация (${calc.rooms?.length ?? roomResults.length} помещений)`
-                  : "Детализация работ"}
-              </CardTitle>
+              <CardTitle className="text-base">Детализация работ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {roomResults.length > 0 ? roomResults.map((rr: { roomId?: string; roomName: string; area: number; items: { itemName: string; quantity: number; unit: string; unitPrice: number; total: number }[]; heightMultiplied?: boolean; subtotalAfterHeight: number }, i: number) => (
-                <div key={rr.roomId ?? i} className="space-y-1">
-                  <div className="flex justify-between items-baseline">
-                    <p className="text-sm font-semibold">
-                      {rr.roomName}
-                      {rr.area > 0 && <span className="text-muted-foreground font-normal ml-1">({rr.area.toFixed(1)} м²)</span>}
-                    </p>
-                    <p className="text-sm font-bold">{formatPrice(rr.subtotalAfterHeight)}</p>
-                  </div>
-                  {rr.items.map((item, j) => (
-                    <div key={j} className="flex justify-between text-xs text-muted-foreground">
-                      <span>
-                        {item.itemName}
-                        <span className="ml-1 text-muted-foreground/60">
-                          {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
-                        </span>
-                      </span>
-                      <span className="font-medium text-foreground">{formatPrice(item.total)}</span>
-                    </div>
-                  ))}
-                  {rr.heightMultiplied && (
-                    <p className="text-xs text-amber-600">× 1.3 (высота &gt; 3м)</p>
-                  )}
-                </div>
-              )) : calc.rooms?.map((room, i) => (
+              {calc.rooms.map((room, i) => (
                 <div key={i} className="flex justify-between text-sm border-b last:border-0 pb-2 last:pb-0">
                   <span>
                     {room.name} — {(room.shape === "l-shape" || room.shape === "t-shape")
