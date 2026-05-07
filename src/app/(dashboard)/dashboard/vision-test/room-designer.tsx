@@ -695,9 +695,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 }
               }
             } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend") {
-              // Перенос всей линии прямого подшторника — сохраняем длину,
-              // обновляем стену + позицию. Линия рисуется ровно по стене (offset=0),
-              // depth для рендера не используется. Auto-span сбрасывается.
+              // Перенос всей линии прямого подшторника:
+              // - вдоль стены → меняем wallPosition (длина сохраняется)
+              // - перпендикулярно стене внутрь комнаты → меняем depth (отступ)
+              // Auto-span сбрасывается, длина сохраняется.
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               const wallLenCm = editableWalls[nearest.wallIndex] || 0;
               if (wallLenCm > 0) {
@@ -705,12 +706,15 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 const newLen = Math.min(curLen, wallLenCm);
                 const halfRatio = newLen / 2 / wallLenCm;
                 const clampedT = Math.max(halfRatio, Math.min(1 - halfRatio, nearest.t));
+                // depth = перпендикулярное расстояние от drop-точки до стены в см
+                const newDepth = Math.max(0, Math.min(80, Math.round(nearest.dist)));
                 setElements(prev => prev.map(e =>
                   e.id === ds.id ? {
                     ...e,
                     wallIndex: nearest.wallIndex,
                     wallPosition: clampedT,
                     length: newLen,
+                    depth: newDepth,
                     spanFromVertex: undefined,
                     spanToVertex: undefined,
                   } : e
@@ -1604,12 +1608,25 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const elLen = isSpan ? wallLen : Math.min(el.length ?? 0, wallLen);
     const pos = isSpan ? 0.5 : (el.wallPosition ?? 0.5);
     const startT = isSpan ? 0 : Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
-    // Прямой подшторник (включая span через выступы) — РОВНО ПО СТЕНЕ,
-    // без отступа. Линия идёт прямо параллельно стене даже если в стене
-    // выступы (через выступы — straight projection на anchor-стену).
-    // Регулировка длины — через ручки на концах.
+    // Прямой подшторник: offset рассчитывается из depth (см) через единый
+    // cm/svg ratio комнаты (любая стена даёт одинаковый scale, т.к. SVG viewport
+    // рендерит всё пропорционально). depth=0 → линия на стене, depth>0 → линия
+    // отодвинута перпендикулярно стене внутрь комнаты на нужное число см.
+    // Для span-подшторника та же формула — рендер уже использует anchor-стену
+    // direction для (a, b), а перпендикулярный сдвиг работает в любом направлении.
+    const cmToSvg = (() => {
+      const refIdx = el.wallIndex ?? 0;
+      const va = vertices[refIdx], vb = vertices[refIdx + 1];
+      if (!va || !vb) return 0;
+      const sLen = Math.hypot(vb.x - va.x, vb.y - va.y);
+      const cLen = editableWalls[refIdx] || 0;
+      if (sLen <= 0 || cLen <= 0) return 0;
+      return sLen / cLen;
+    })();
     const offset = el.type === "subcurtain"
-        ? (el.shape === "u-niche" || el.shape === "l-bend" ? wallOffset * 0.15 : 0)
+        ? (el.shape === "u-niche" || el.shape === "l-bend"
+            ? wallOffset * 0.15
+            : (el.depth ?? 0) * cmToSvg)
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
@@ -1668,12 +1685,24 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         const dwLen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
         const dnx = ddx / dwLen, dny = ddy / dwLen;
         drawPerpX = -dny; drawPerpY = dnx;
-        drawX1 = dragPos.x - dnx * halfLen + drawPerpX * offset;
-        drawY1 = dragPos.y - dny * halfLen + drawPerpY * offset;
-        drawX2 = dragPos.x + dnx * halfLen + drawPerpX * offset;
-        drawY2 = dragPos.y + dny * halfLen + drawPerpY * offset;
-        drawMidX = dragPos.x + drawPerpX * offset;
-        drawMidY = dragPos.y + drawPerpY * offset;
+        // Для прямого подшторника линию ставим точно туда, где палец —
+        // palец уже задаёт позицию вдоль стены и отступ (depth) одновременно.
+        // Для остальных wall-элементов сохраняем старое поведение с offset.
+        if (isStraightSub) {
+          drawX1 = dragPos.x - dnx * halfLen;
+          drawY1 = dragPos.y - dny * halfLen;
+          drawX2 = dragPos.x + dnx * halfLen;
+          drawY2 = dragPos.y + dny * halfLen;
+          drawMidX = dragPos.x;
+          drawMidY = dragPos.y;
+        } else {
+          drawX1 = dragPos.x - dnx * halfLen + drawPerpX * offset;
+          drawY1 = dragPos.y - dny * halfLen + drawPerpY * offset;
+          drawX2 = dragPos.x + dnx * halfLen + drawPerpX * offset;
+          drawY2 = dragPos.y + dny * halfLen + drawPerpY * offset;
+          drawMidX = dragPos.x + drawPerpX * offset;
+          drawMidY = dragPos.y + drawPerpY * offset;
+        }
       }
     }
 
@@ -1737,8 +1766,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               pointerEvents="none" />
           </>
         )}
-        {/* Distance from wall edges when selected/dragging */}
-        {(selectedId === el.id || isDragging) && !isDragging && (() => {
+        {/* Distance from wall edges — НЕ показываем для прямого подшторника
+            (пользователь сказал «убери привязку к стене»). Для остальных
+            wall-элементов (гардина, трек, свет.линия) оставляем. */}
+        {!isStraightSub && (selectedId === el.id || isDragging) && !isDragging && (() => {
           const distFromEdge = Math.round(startT);
           const distFromEnd = Math.round(wallLen - (startT + elLen));
           const outPX = -ny, outPY = nx;
@@ -1767,6 +1798,25 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 </text>
               )}
             </>
+          );
+        })()}
+        {/* Подпись отступа от стены (depth) — видно сколько см мы отвели
+            подшторник от стены. Показываем только когда отступ есть и линия
+            выделена/перетаскивается. Подпись СНАРУЖИ линии (со стороны стены),
+            чтобы не пересекалась с подписью длины. */}
+        {isStraightSub && (selectedId === el.id || isDragging) && (el.depth ?? 0) > 0 && (() => {
+          const dpX = -drawPerpX, dpY = -drawPerpY; // от линии в сторону стены
+          const lblX = drawMidX + dpX * labelSize * 1.2;
+          const lblY = drawMidY + dpY * labelSize * 1.2;
+          let dpAng = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (dpAng > 90 || dpAng <= -90) dpAng += 180;
+          return (
+            <text x={lblX} y={lblY}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={labelSize * 0.6} fill="#64748B" fontWeight="600"
+              transform={`rotate(${dpAng}, ${lblX}, ${lblY})`}>
+              ↕ {el.depth} см
+            </text>
           );
         })()}
       </g>
@@ -3366,23 +3416,48 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         const close = () => setSubcurtainShapeChoice(null);
         const pickStraight = () => {
           setSubcurtainShapeChoice(null);
-          // Прямой подшторник создаётся сразу на всю «сторону» комнаты
-          // (с auto-span через выступы / параллельные стены). Длину
-          // потом регулирует пользователь, перетаскивая ручки на концах.
+          // Прямой подшторник создаётся прижатым к стене (depth=0),
+          // длина — на всю «сторону» (с auto-span через выступы).
+          // Длина считается как реальная проекция span'а на anchor-стену в см
+          // (не длина одной anchor-стены, иначе для span короче чем должно).
           if (wallLen <= 0) return;
           const N = editableWalls.length;
           const span = computeSubcurtainSpan(wallIdx, vertices, N, editableWalls);
           const hasExtension = span.leftWall !== wallIdx || span.rightWall !== wallIdx;
+          let createLen = Math.round(wallLen);
+          if (hasExtension) {
+            // anchor = самая длинная стена внутри span'а
+            let anchorIdx = wallIdx;
+            let bestLen = editableWalls[wallIdx] || 0;
+            let cur = span.leftWall;
+            for (let k = 0; k < N; k++) {
+              if (cur === (span.rightWall + 1) % N) break;
+              const wl = editableWalls[cur] || 0;
+              if (wl > bestLen) { bestLen = wl; anchorIdx = cur; }
+              cur = (cur + 1) % N;
+            }
+            const va = vertices[span.leftWall];
+            const vb = vertices[(span.rightWall + 1) % N];
+            const av1 = vertices[anchorIdx], av2 = vertices[anchorIdx + 1];
+            if (va && vb && av1 && av2) {
+              const ax = av2.x - av1.x, ay = av2.y - av1.y;
+              const aSvg = Math.hypot(ax, ay) || 1;
+              const aCm = editableWalls[anchorIdx] || 1;
+              const anx = ax / aSvg, any = ay / aSvg;
+              const tA = (va.x - av1.x) * anx + (va.y - av1.y) * any;
+              const tB = (vb.x - av1.x) * anx + (vb.y - av1.y) * any;
+              const projSvg = Math.abs(tB - tA);
+              createLen = Math.round(projSvg * (aCm / aSvg));
+            }
+          }
           const newId = crypto.randomUUID();
           setElements(prev => [...prev, {
             id: newId,
             type: "subcurtain",
             wallIndex: wallIdx,
             wallPosition: 0.5,
-            length: Math.round(wallLen),
+            length: createLen,
             shape: "straight",
-            // Без автоматического отступа от стены — линия по самой стене.
-            // Пользователь сам тянет линию вглубь комнаты, чтобы задать отступ.
             depth: 0,
             ...(hasExtension && {
               spanFromVertex: span.leftWall,
