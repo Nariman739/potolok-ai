@@ -31,12 +31,13 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
 
   async function handleDone(
     elements: RoomElement[],
-    updates?: { walls: number[]; area: number; perimeter: number }
+    updates?: { walls: number[]; area: number; perimeter: number; name?: string }
   ) {
     setSaving(true);
     const walls = updates?.walls ?? room.walls;
     const area = updates?.area ?? room.area;
     const perimeter = updates?.perimeter ?? room.perimeter;
+    const name = updates?.name ?? room.name;
     // normalCorners привязан к стенам — если стену удалили, отрезаем хвост.
     const normalCorners =
       walls.length === room.normalCorners.length
@@ -61,6 +62,7 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
             perimeter,
             elements,
             previewUrl3d: room.previewUrl3d,
+            name,
           },
         }),
       }

@@ -15,6 +15,7 @@ interface DesignerPayload {
   perimeter: number;
   elements: Parameters<typeof buildRoomInputFromDesigner>[0]["elements"];
   previewUrl3d?: string;
+  name?: string;
 }
 
 /**
@@ -62,10 +63,11 @@ export async function POST(
 
     // Собираем обновлённый RoomInput, опираясь на старый (чтобы сохранить ручные настройки).
     const existingRoom = roomsData[idx];
+    const newName = body.designer.name?.trim() || existingRoom.name;
     const updatedRoom = buildRoomInputFromDesigner(
       {
         id: existingRoom.id,
-        name: existingRoom.name,
+        name: newName,
         walls: body.designer.walls,
         normalCorners: body.designer.normalCorners,
         angles: body.designer.angles,
@@ -75,7 +77,7 @@ export async function POST(
         elements: body.designer.elements,
         previewUrl3d: body.designer.previewUrl3d,
       },
-      existingRoom
+      { ...existingRoom, name: newName }
     );
 
     const newRoomsData = roomsData.map((r, i) => (i === idx ? updatedRoom : r));

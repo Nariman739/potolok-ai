@@ -2348,11 +2348,12 @@ export default function ZameryPage() {
             }
           }}
           onDone={(elements, updates) => {
-            // Если в редакторе изменились размеры стен — забираем обновлённые walls/area/perimeter.
+            // Если в редакторе изменились размеры стен/имя — забираем обновления.
             const roomWithElements: Room = {
               ...designingRoom,
               elements,
-              ...(updates && {
+              ...(updates?.name && { name: updates.name }),
+              ...(updates && updates.walls && {
                 walls: updates.walls,
                 area: updates.area,
                 perimeter: updates.perimeter,

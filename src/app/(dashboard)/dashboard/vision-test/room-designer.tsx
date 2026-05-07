@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square } from "lucide-react";
+import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square, Pencil } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
@@ -253,7 +253,7 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }: {
   room: Room;
-  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number }) => void;
+  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string }) => void;
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
 }) {
@@ -263,6 +263,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [editableWalls, setEditableWalls] = useState<number[]>(room.walls);
   // Индекс стены, у которой открыт инлайн-инпут редактирования размера.
   const [wallSizeEdit, setWallSizeEdit] = useState<{ index: number; value: string } | null>(null);
+  // Название комнаты — редактируется по тапу на заголовок.
+  const [editableName, setEditableName] = useState<string>(room.name || "Помещение");
+  const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
   const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
   // Группа софитов: 1 / 2-горизонт / 2-вертикаль / 3-горизонт / 3-вертикаль.
@@ -1124,72 +1127,66 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
   function addWallDims(el: RoomElement, dims: { x1: number; y1: number; x2: number; y2: number; label: string; color: string }[]) {
     const isFreeformLine = el.shape === "freeform" && el.points && el.points.length >= 2;
-    // Для freeform-линий (свет.линия, трек) считаем от ближайшего к стене КОНЦА линии,
-    // а не от центра — иначе размер до перпендикулярной стены показывает расстояние
-    // до середины (вводит в заблуждение).
     if (!isFreeformLine && (el.x === undefined || el.y === undefined)) return;
     const isFurn = el.type === "furniture" && el.width && el.height;
 
-    let lp1: Vertex | null = null, lp2: Vertex | null = null;
+    // Ортогональные расстояния по 4 осям (как на технических чертежах) —
+    // строго горизонтальные и вертикальные линии, без диагоналей.
+    // Точка отсчёта — центр элемента (или центр freeform-линии).
+    let cx: number, cy: number;
     if (isFreeformLine) {
-      const cx = el.points!.reduce((s, p) => s + p.x, 0) / el.points!.length;
-      const cy = el.points!.reduce((s, p) => s + p.y, 0) / el.points!.length;
-      const offX = el.x !== undefined ? el.x - cx : 0;
-      const offY = el.y !== undefined ? el.y - cy : 0;
-      const last = el.points!.length - 1;
-      lp1 = { x: el.points![0].x + offX, y: el.points![0].y + offY };
-      lp2 = { x: el.points![last].x + offX, y: el.points![last].y + offY };
+      cx = el.points!.reduce((s, p) => s + p.x, 0) / el.points!.length;
+      cy = el.points!.reduce((s, p) => s + p.y, 0) / el.points!.length;
+    } else {
+      cx = el.x!;
+      cy = el.y!;
     }
 
-    const wallDists: { dist: number; proj: Vertex; edgePt: Vertex; nx: number; ny: number }[] = [];
+    // Для мебели — крайние точки прямоугольника по горизонтали/вертикали.
+    let halfW = 0, halfH = 0;
+    if (isFurn) {
+      const rot = ((el.rotation || 0) * Math.PI) / 180;
+      const w = el.width! / 2, h = el.height! / 2;
+      // Bounding box после поворота
+      halfW = Math.abs(w * Math.cos(rot)) + Math.abs(h * Math.sin(rot));
+      halfH = Math.abs(w * Math.sin(rot)) + Math.abs(h * Math.cos(rot));
+    }
+
+    // Лучи по 4 направлениям. Для каждого — ближайшее пересечение со стеной.
+    let leftX = -Infinity, rightX = Infinity, topY = -Infinity, bottomY = Infinity;
     for (let i = 0; i < vertices.length - 1; i++) {
       const a = vertices[i], b = vertices[i + 1];
-      const wdx = b.x - a.x, wdy = b.y - a.y;
-      const wlen = Math.hypot(wdx, wdy) || 1;
-      // Нормаль к стене (для группировки расстояний по направлениям)
-      const nrmX = -wdy / wlen, nrmY = wdx / wlen;
-
-      if (isFreeformLine && lp1 && lp2) {
-        const proj1 = projectOnWall(lp1.x, lp1.y, a, b);
-        const proj2 = projectOnWall(lp2.x, lp2.y, a, b);
-        const d1 = Math.hypot(lp1.x - proj1.x, lp1.y - proj1.y);
-        const d2 = Math.hypot(lp2.x - proj2.x, lp2.y - proj2.y);
-        if (d1 <= d2) wallDists.push({ dist: d1, proj: proj1, edgePt: lp1, nx: nrmX, ny: nrmY });
-        else wallDists.push({ dist: d2, proj: proj2, edgePt: lp2, nx: nrmX, ny: nrmY });
-        continue;
+      // Горизонтальный луч y=cy, ищем пересечение с отрезком ab по x.
+      if ((a.y - cy) * (b.y - cy) <= 0 && a.y !== b.y) {
+        const t = (cy - a.y) / (b.y - a.y);
+        const xi = a.x + t * (b.x - a.x);
+        if (xi < cx - 0.01 && xi > leftX) leftX = xi;
+        if (xi > cx + 0.01 && xi < rightX) rightX = xi;
       }
-
-      const proj = projectOnWall(el.x!, el.y!, a, b);
-      const dist = Math.hypot(el.x! - proj.x, el.y! - proj.y);
-      let edgePt: Vertex = { x: el.x!, y: el.y! };
-      if (isFurn && dist > 0.01) {
-        const dirX = (proj.x - el.x!) / dist;
-        const dirY = (proj.y - el.y!) / dist;
-        const rot = (el.rotation || 0) * Math.PI / 180;
-        const localDirX = dirX * Math.cos(-rot) - dirY * Math.sin(-rot);
-        const localDirY = dirX * Math.sin(-rot) + dirY * Math.cos(-rot);
-        const halfW = el.width! / 2, halfH = el.height! / 2;
-        const scaleX = Math.abs(localDirX) > 0.001 ? halfW / Math.abs(localDirX) : Infinity;
-        const scaleY = Math.abs(localDirY) > 0.001 ? halfH / Math.abs(localDirY) : Infinity;
-        const edgeDist = Math.min(scaleX, scaleY);
-        edgePt = { x: el.x! + dirX * edgeDist, y: el.y! + dirY * edgeDist };
+      // Вертикальный луч x=cx, ищем пересечение с отрезком ab по y.
+      if ((a.x - cx) * (b.x - cx) <= 0 && a.x !== b.x) {
+        const t = (cx - a.x) / (b.x - a.x);
+        const yi = a.y + t * (b.y - a.y);
+        if (yi < cy - 0.01 && yi > topY) topY = yi;
+        if (yi > cy + 0.01 && yi < bottomY) bottomY = yi;
       }
-      const edgeToWall = Math.hypot(edgePt.x - proj.x, edgePt.y - proj.y);
-      wallDists.push({ dist: edgeToWall, proj, edgePt, nx: nrmX, ny: nrmY });
     }
-    wallDists.sort((a, b) => a.dist - b.dist);
-    // Берём до 4 стен с РАЗНЫМИ направлениями (cos > 0.85 = смотрят в одну сторону).
-    // Без abs — встречные нормали (← и →) считаются разными направлениями,
-    // чтобы показать расстояния и слева, и справа, и сверху, и снизу.
-    const taken: { nx: number; ny: number }[] = [];
-    for (const wd of wallDists) {
-      if (taken.length >= 4) break;
-      if (wd.dist <= 5) continue;
-      const sameDir = taken.some(t => (t.nx * wd.nx + t.ny * wd.ny) > 0.85);
-      if (sameDir) continue;
-      dims.push({ x1: wd.proj.x, y1: wd.proj.y, x2: wd.edgePt.x, y2: wd.edgePt.y, label: `${Math.round(wd.dist)}`, color: "#94A3B8" });
-      taken.push({ nx: wd.nx, ny: wd.ny });
-    }
+
+    // Точка элемента (с учётом размера для мебели) — откуда рисуем линию.
+    const fromLeft = isFurn ? cx - halfW : cx;
+    const fromRight = isFurn ? cx + halfW : cx;
+    const fromTop = isFurn ? cy - halfH : cy;
+    const fromBottom = isFurn ? cy + halfH : cy;
+
+    const push = (x1: number, y1: number, x2: number, y2: number, value: number) => {
+      const v = Math.round(value);
+      if (v <= 5) return;
+      dims.push({ x1, y1, x2, y2, label: `${v}`, color: "#94A3B8" });
+    };
+    if (Number.isFinite(leftX)) push(leftX, cy, fromLeft, cy, fromLeft - leftX);
+    if (Number.isFinite(rightX)) push(fromRight, cy, rightX, cy, rightX - fromRight);
+    if (Number.isFinite(topY)) push(cx, topY, cx, fromTop, fromTop - topY);
+    if (Number.isFinite(bottomY)) push(cx, fromBottom, cx, bottomY, bottomY - fromBottom);
   }
 
   const dimLines = computeDimLines();
@@ -2193,10 +2190,15 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         <button onClick={onCancel} className="p-1 -ml-1 text-muted-foreground">
           <X className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold">
-          {room.name || "Дизайн"} · {computedArea.toFixed(2)} м²
-        </span>
-        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter })}
+        <button
+          onClick={() => setNameEdit(editableName)}
+          className="text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted active:bg-muted"
+          title="Тап — переименовать"
+        >
+          {editableName} · {computedArea.toFixed(2)} м²
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName })}
           className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
@@ -2570,6 +2572,56 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             />
           )}
         </svg>
+        {/* Popup редактирования названия комнаты. */}
+        {nameEdit !== null && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/30 z-30"
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setNameEdit(null);
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-2xl p-4 w-72 space-y-3">
+              <p className="text-sm font-semibold">Название комнаты</p>
+              <input
+                type="text"
+                autoFocus
+                value={nameEdit}
+                onChange={(e) => setNameEdit(e.target.value)}
+                placeholder="Кухня, гостиная, спальня…"
+                className="w-full px-3 py-2 border rounded-lg text-base"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {["Кухня", "Гостиная", "Спальня", "Прихожая", "Ванная", "Детская", "Кабинет"].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => setNameEdit(preset)}
+                    className="px-2 py-1 text-xs rounded-full border hover:bg-muted"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setNameEdit(null)}
+                  className="flex-1 py-2 rounded-lg border text-sm font-medium hover:bg-muted"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    const name = (nameEdit ?? "").trim() || "Помещение";
+                    setEditableName(name);
+                    setNameEdit(null);
+                  }}
+                  className="flex-1 py-2 rounded-lg bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#152d4a]"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Popup редактирования размера стены — поверх SVG. */}
         {wallSizeEdit && (
           <div
