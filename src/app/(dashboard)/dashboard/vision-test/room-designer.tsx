@@ -424,9 +424,25 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 const snapped = snapFurnitureToWallAndNeighbors(moved, vertices, elements);
                 if (snapped) finalPatch = { x: snapped.x, y: snapped.y, rotation: snapped.rotation };
               }
-              setElements(prev => prev.map(e =>
-                e.id === ds.id ? { ...e, ...finalPatch } : e
-              ));
+              // Если spot/pendant в группе — двигаем всю группу на тот же delta.
+              const draggedX = el.x ?? baseX;
+              const draggedY = el.y ?? baseY;
+              const dx = baseX - draggedX;
+              const dy = baseY - draggedY;
+              if (el.groupId && (el.type === "spot" || el.type === "pendant")) {
+                const gid = el.groupId;
+                setElements(prev => prev.map(e =>
+                  e.id === ds.id
+                    ? { ...e, ...finalPatch }
+                    : e.groupId === gid && e.x !== undefined && e.y !== undefined
+                      ? { ...e, x: e.x + dx, y: e.y + dy }
+                      : e
+                ));
+              } else {
+                setElements(prev => prev.map(e =>
+                  e.id === ds.id ? { ...e, ...finalPatch } : e
+                ));
+              }
             } else if (el.shape === "freeform" && el.points) {
               // Freeform-элемент (свет.линия, трек) — двигаем все точки на offset.
               const cx = el.points.reduce((s, p) => s + p.x, 0) / el.points.length;
@@ -538,6 +554,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         const stepCm = 25;
         const offsets = computeSpotGroupOffsets(spotGroup, stepCm);
         const cx = snapToGrid(coords.x), cy = snapToGrid(coords.y);
+        const groupId = crypto.randomUUID();
         setElements(prev => [
           ...prev,
           ...offsets.map((off) => ({
@@ -546,6 +563,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             x: cx + off.dx,
             y: cy + off.dy,
             variant: activeVariant,
+            groupId,
           })),
         ]);
         return;
@@ -699,6 +717,26 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   function getElPos(el: RoomElement): { x: number; y: number } {
     if (dragId === el.id && dragPos && dragStartRef.current?.moved) {
       return dragPos;
+    }
+    // Если двигают одного из группы — тащим всю группу с тем же delta.
+    if (
+      dragId &&
+      el.groupId &&
+      dragPos &&
+      dragStartRef.current?.moved &&
+      el.id !== dragId
+    ) {
+      const dragged = elements.find((e) => e.id === dragId);
+      if (
+        dragged &&
+        dragged.groupId === el.groupId &&
+        dragged.x !== undefined &&
+        dragged.y !== undefined
+      ) {
+        const dx = dragPos.x - dragged.x;
+        const dy = dragPos.y - dragged.y;
+        return { x: (el.x ?? 0) + dx, y: (el.y ?? 0) + dy };
+      }
     }
     return { x: el.x ?? 0, y: el.y ?? 0 };
   }
@@ -1123,14 +1161,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       wallDists.push({ dist: edgeToWall, proj, edgePt, nx: nrmX, ny: nrmY });
     }
     wallDists.sort((a, b) => a.dist - b.dist);
-    // Берём до 4 стен с РАЗНЫМИ направлениями нормалей (cos > 0.85 = почти параллельны).
-    // Это даёт расстояния по всем сторонам (лево, право, верх, низ) для прямоугольной комнаты,
-    // не дублируя сонаправленные.
+    // Берём до 4 стен с РАЗНЫМИ направлениями (cos > 0.85 = смотрят в одну сторону).
+    // Без abs — встречные нормали (← и →) считаются разными направлениями,
+    // чтобы показать расстояния и слева, и справа, и сверху, и снизу.
     const taken: { nx: number; ny: number }[] = [];
     for (const wd of wallDists) {
       if (taken.length >= 4) break;
       if (wd.dist <= 5) continue;
-      const sameDir = taken.some(t => Math.abs(t.nx * wd.nx + t.ny * wd.ny) > 0.85);
+      const sameDir = taken.some(t => (t.nx * wd.nx + t.ny * wd.ny) > 0.85);
       if (sameDir) continue;
       dims.push({ x1: wd.proj.x, y1: wd.proj.y, x2: wd.edgePt.x, y2: wd.edgePt.y, label: `${Math.round(wd.dist)}`, color: "#94A3B8" });
       taken.push({ nx: wd.nx, ny: wd.ny });

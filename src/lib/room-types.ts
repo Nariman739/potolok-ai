@@ -55,6 +55,8 @@ export interface RoomElement {
   edgeIndex?: number;
   furnitureShape?: "rect" | "custom";
   polygonPoints?: { x: number; y: number }[];
+  /** ID группы (для софитов в паре/тройке) — при drag двигаются вместе. */
+  groupId?: string;
 }
 
 export interface Vertex2D {
