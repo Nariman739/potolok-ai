@@ -276,9 +276,30 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
 function computeSubcurtainSpan(
   startWallIdx: number,
   vertices: Vertex[],
-  N: number
+  N: number,
+  walls?: number[]
 ): { leftWall: number; rightWall: number } {
-  const v1 = vertices[startWallIdx], v2 = vertices[startWallIdx + 1];
+  // Если стартовая стена очень короткая (выступ), берём её соседку
+  // подлиннее как опорную — иначе нормаль будет от выступа,
+  // и соседние длинные стены не пройдут по `sameSide`.
+  let anchorIdx = startWallIdx;
+  if (walls && (walls[startWallIdx] || 0) < 50) {
+    const candidates = [
+      (startWallIdx - 1 + N) % N,
+      (startWallIdx + 1) % N,
+      (startWallIdx - 2 + N) % N,
+      (startWallIdx + 2) % N,
+    ];
+    let bestLen = walls[startWallIdx] || 0;
+    for (const c of candidates) {
+      const cl = walls[c] || 0;
+      if (cl > bestLen) {
+        bestLen = cl;
+        anchorIdx = c;
+      }
+    }
+  }
+  const v1 = vertices[anchorIdx], v2 = vertices[anchorIdx + 1];
   if (!v1 || !v2) return { leftWall: startWallIdx, rightWall: startWallIdx };
   const dx = v2.x - v1.x, dy = v2.y - v1.y;
   const len = Math.hypot(dx, dy) || 1;
@@ -297,17 +318,19 @@ function computeSubcurtainSpan(
     return Math.abs(proj - startProj) < THRESHOLD_CM;
   }
 
-  let leftWall = startWallIdx;
+  // Расширяем от опоры (anchor), а не от точки клика — иначе короткий выступ
+  // может оборвать расширение на одну сторону.
+  let leftWall = anchorIdx;
   for (let k = 0; k < N; k++) {
     const prev = (leftWall - 1 + N) % N;
-    if (prev === startWallIdx) break;
+    if (prev === anchorIdx) break;
     if (sameSide(prev)) leftWall = prev;
     else break;
   }
-  let rightWall = startWallIdx;
+  let rightWall = anchorIdx;
   for (let k = 0; k < N; k++) {
     const next = (rightWall + 1) % N;
-    if (next === startWallIdx) break;
+    if (next === anchorIdx) break;
     if (sameSide(next)) rightWall = next;
     else break;
   }
@@ -611,7 +634,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               if (wallLenCm > 0) {
                 const newDepth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
                 const N = editableWalls.length;
-                const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N);
+                const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N, editableWalls);
                 const hasExtension =
                   span.leftWall !== nearest.wallIndex || span.rightWall !== nearest.wallIndex;
                 setElements(prev => prev.map(e =>
@@ -1394,7 +1417,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
     const N = editableWalls.length;
     if (N === 0) return null;
-    const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N);
+    const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N, editableWalls);
     const fromV = span.leftWall;
     const toV = (span.rightWall + 1) % N;
     const a = vertices[fromV], b = vertices[toV];
@@ -2515,7 +2538,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                       return;
                     }
                     const N = editableWalls.length;
-                    const span = computeSubcurtainSpan(selEl.wallIndex!, vertices, N);
+                    const span = computeSubcurtainSpan(selEl.wallIndex!, vertices, N, editableWalls);
                     if (span.leftWall === selEl.wallIndex && span.rightWall === selEl.wallIndex) {
                       toast.error("Не нашёл соседних стен для расширения");
                       return;
