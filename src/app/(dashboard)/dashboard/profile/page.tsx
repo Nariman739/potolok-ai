@@ -23,9 +23,11 @@ import { LogoGeneratorDialog } from "@/components/logo/logo-generator-dialog";
 const BOT_USERNAME = "potolokaiBot";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [master, setMaster] = useState<MasterProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Telegram linking state
   const [tgLinked, setTgLinked] = useState(false);
@@ -99,6 +101,28 @@ export default function ProfilePage() {
       .then((data) => setTgLinked(data.linked ?? false))
       .catch(() => {});
   }, []);
+
+  async function handleDeleteAccount() {
+    const first = window.confirm(
+      "Удалить аккаунт?\n\nБудут удалены навсегда: профиль, цены, КП, договоры, акты, замеры, фото объектов, портфолио и все клиенты. Это действие необратимо."
+    );
+    if (!first) return;
+    const second = window.confirm(
+      "Точно удалить?\n\nПодтвердите ещё раз. Все данные исчезнут безвозвратно. Восстановить будет невозможно."
+    );
+    if (!second) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/account", { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Аккаунт удалён");
+      router.push("/auth/login");
+    } catch {
+      toast.error("Не удалось удалить аккаунт. Попробуйте позже.");
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -573,6 +597,36 @@ export default function ProfilePage() {
           toast.success("Логотип сохранён");
         }}
       />
+
+      <Card className="border-red-300">
+        <CardHeader>
+          <CardTitle className="text-red-700">Опасная зона</CardTitle>
+          <CardDescription>
+            Удаление аккаунта необратимо. Будут безвозвратно удалены: профиль, цены, КП, договоры,
+            акты, замеры, фото, портфолио и все клиенты.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="border-red-400 text-red-700 hover:bg-red-50 hover:text-red-700"
+          >
+            {deleting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Удаление...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить аккаунт
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
