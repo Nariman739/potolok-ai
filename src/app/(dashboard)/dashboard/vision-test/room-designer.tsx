@@ -1304,13 +1304,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   // ── Render helpers ──
 
   function wallLine(el: RoomElement) {
-    if (el.wallIndex === undefined || !el.length) return null;
     // Подшторник «через выступы»: вместо стены — прямая между двумя углами.
     // Длина и геометрия берутся из spanFromVertex / spanToVertex.
     const isSpan =
       el.type === "subcurtain" &&
       el.spanFromVertex !== undefined &&
       el.spanToVertex !== undefined;
+    // Для не-span проверяем wallIndex и length; для span они не нужны.
+    if (!isSpan && (el.wallIndex === undefined || !el.length)) return null;
     let a: Vertex, b: Vertex;
     if (isSpan) {
       const va = vertices[el.spanFromVertex!];
@@ -1318,8 +1319,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       if (!va || !vb) return null;
       a = va; b = vb;
     } else {
-      const va = vertices[el.wallIndex];
-      const vb = vertices[el.wallIndex + 1];
+      const va = vertices[el.wallIndex!];
+      const vb = vertices[el.wallIndex! + 1];
       if (!va || !vb) return null;
       a = va; b = vb;
     }
@@ -1332,7 +1333,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const perpX = -ny, perpY = nx;
 
     // Для span-подшторника длина = вся прямая, без startT.
-    const elLen = isSpan ? wallLen : Math.min(el.length, wallLen);
+    const elLen = isSpan ? wallLen : Math.min(el.length ?? 0, wallLen);
     const pos = isSpan ? 0.5 : (el.wallPosition ?? 0.5);
     const startT = isSpan ? 0 : Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
     const offset = el.type === "subcurtain"
@@ -1340,7 +1341,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             ? wallOffset * 0.15
             : isSpan
               ? wallOffset * 0.5
-              : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex] || 1)))
+              : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex!] || 1)))
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
