@@ -7,7 +7,7 @@ import { PinchZoom } from "@/components/ui/pinch-zoom";
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import type { MultiAgentResult } from "@/lib/vision-agents";
-import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVertices } from "./room-designer";
+import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVertices, computeSubcurtainStats } from "./room-designer";
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
@@ -2258,8 +2258,14 @@ export default function ZameryPage() {
       const gardinaLength = Math.round(
         els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
       ) / 100;
-      const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
-      const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(els)) / 100;
+      const subStats = computeSubcurtainStats(
+        els,
+        getVertices(room.walls, room.normalCorners, room.angles),
+        room.walls.length
+      );
+      const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
+      const podshtornikOnWallLength = Math.round(subStats.onWallLengthCm) / 100;
+      const visibleCornersCount = Math.max(0, room.walls.length - subStats.coveredCorners);
       const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
       // Если на сцене есть парящий профиль — комната оформляется им (а не пластик+вставка).
       const hasFloating = els.some(e => e.type === "floating");
@@ -2289,7 +2295,7 @@ export default function ZameryPage() {
         lightLineLength,
         curtainRodLength: 0,
         pipeBypasses: 0,
-        cornersCount: room.walls.length,
+        cornersCount: visibleCornersCount,
         eurobrusCount: 0,
         gardinaLength,
         podshtornikLength,
@@ -2375,8 +2381,14 @@ export default function ZameryPage() {
               const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
               const gardinaEls = elements.filter(e => e.type === "curtain");
               const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const podshtornikLength = Math.round(totalSubcurtainLengthCm(elements)) / 100;
-              const podshtornikOnWallLength = Math.round(subcurtainOnWallLengthCm(elements)) / 100;
+              const subStatsCalc = computeSubcurtainStats(
+                elements,
+                getVertices(room.walls, room.normalCorners, room.angles),
+                room.walls.length
+              );
+              const podshtornikLength = Math.round(subStatsCalc.totalLengthCm) / 100;
+              const podshtornikOnWallLength = Math.round(subStatsCalc.onWallLengthCm) / 100;
+              const visibleCornersCountCalc = Math.max(0, room.walls.length - subStatsCalc.coveredCorners);
               const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
               const fcStatsCalc = furnitureCeilingStats(
                 elements as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
@@ -2403,7 +2415,7 @@ export default function ZameryPage() {
                 lightLineLength,
                 curtainRodLength: 0,
                 pipeBypasses: 0,
-                cornersCount: room.walls.length,
+                cornersCount: visibleCornersCountCalc,
                 eurobrusCount: 0,
                 gardinaLength,
                 podshtornikLength,

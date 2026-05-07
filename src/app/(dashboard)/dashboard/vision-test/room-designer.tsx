@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
+import { toast } from "sonner";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square, Pencil } from "lucide-react";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
@@ -115,6 +116,49 @@ export function subcurtainOnWallLengthCm(elements: { type: string; length?: numb
   return elements
     .filter(e => e.type === "subcurtain")
     .reduce((s, e) => s + (e.length || 0), 0);
+}
+
+/**
+ * Расширенная статистика по подшторникам с учётом «через выступы» (span).
+ * Для span-подшторника берётся прямая между двумя углами (а не длина стены),
+ * и считается, сколько углов «съедено» (число стенок в спане − 1).
+ */
+export function computeSubcurtainStats(
+  elements: { type: string; length?: number; shape?: string; depth?: number; spanFromVertex?: number; spanToVertex?: number; wallIndex?: number }[],
+  vertices: { x: number; y: number }[],
+  wallsCount: number
+): { totalLengthCm: number; onWallLengthCm: number; coveredCorners: number } {
+  let totalLengthCm = 0;
+  let onWallLengthCm = 0;
+  let coveredCorners = 0;
+  for (const e of elements) {
+    if (e.type !== "subcurtain") continue;
+    const fromV = e.spanFromVertex;
+    const toV = e.spanToVertex;
+    if (fromV !== undefined && toV !== undefined && vertices[fromV] && vertices[toV]) {
+      const a = vertices[fromV], b = vertices[toV];
+      const span = Math.hypot(b.x - a.x, b.y - a.y);
+      totalLengthCm += span;
+      onWallLengthCm += span;
+      // Считаем, сколько углов между from и to по периметру.
+      let walked = 0;
+      let cur = fromV;
+      while (cur !== toV && walked < wallsCount) {
+        cur = (cur + 1) % wallsCount;
+        walked++;
+      }
+      // walked — число стенок в спане; углов «внутри» спана = walked − 1.
+      coveredCorners += Math.max(0, walked - 1);
+    } else {
+      // Обычный подшторник на одной стене.
+      const len = e.length || 0;
+      onWallLengthCm += len;
+      if (e.shape === "u-niche" && e.depth) totalLengthCm += len + 2 * e.depth;
+      else if (e.shape === "l-bend" && e.depth) totalLengthCm += len + e.depth;
+      else totalLengthCm += len;
+    }
+  }
+  return { totalLengthCm, onWallLengthCm, coveredCorners };
 }
 
 const HINTS: Record<string, string> = {
@@ -1261,8 +1305,24 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
   function wallLine(el: RoomElement) {
     if (el.wallIndex === undefined || !el.length) return null;
-    const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
-    if (!a || !b) return null;
+    // Подшторник «через выступы»: вместо стены — прямая между двумя углами.
+    // Длина и геометрия берутся из spanFromVertex / spanToVertex.
+    const isSpan =
+      el.type === "subcurtain" &&
+      el.spanFromVertex !== undefined &&
+      el.spanToVertex !== undefined;
+    let a: Vertex, b: Vertex;
+    if (isSpan) {
+      const va = vertices[el.spanFromVertex!];
+      const vb = vertices[el.spanToVertex!];
+      if (!va || !vb) return null;
+      a = va; b = vb;
+    } else {
+      const va = vertices[el.wallIndex];
+      const vb = vertices[el.wallIndex + 1];
+      if (!va || !vb) return null;
+      a = va; b = vb;
+    }
 
     const dx = b.x - a.x, dy = b.y - a.y;
     const wallLen = Math.sqrt(dx * dx + dy * dy);
@@ -1271,13 +1331,16 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const nx = dx / wallLen, ny = dy / wallLen;
     const perpX = -ny, perpY = nx;
 
-    const elLen = Math.min(el.length, wallLen);
-    const pos = el.wallPosition ?? 0.5;
-    const startT = Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
+    // Для span-подшторника длина = вся прямая, без startT.
+    const elLen = isSpan ? wallLen : Math.min(el.length, wallLen);
+    const pos = isSpan ? 0.5 : (el.wallPosition ?? 0.5);
+    const startT = isSpan ? 0 : Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
     const offset = el.type === "subcurtain"
         ? (el.shape === "u-niche" || el.shape === "l-bend"
             ? wallOffset * 0.15
-            : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex] || 1)))
+            : isSpan
+              ? wallOffset * 0.5
+              : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex] || 1)))
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
@@ -2328,6 +2391,56 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                   className="px-3 py-2 rounded-xl bg-cyan-100 text-cyan-700 text-xs font-semibold hover:bg-cyan-200 active:scale-95 shadow-sm"
                   title="Размер">
                   📏 Размер
+                </button>
+              );
+            })()}
+            {/* Подшторник «Через выступы» — соединяет соседние короткие стенки прямой. */}
+            {(() => {
+              const selEl = elements.find(e => e.id === selectedId);
+              if (!selEl || selEl.type !== "subcurtain" || selEl.wallIndex === undefined) return null;
+              const isSpan = selEl.spanFromVertex !== undefined && selEl.spanToVertex !== undefined;
+              return (
+                <button
+                  onClick={() => {
+                    if (isSpan) {
+                      // Сбросить span — вернуться к одной стене.
+                      setElements(prev => prev.map(e => e.id === selectedId ? { ...e, spanFromVertex: undefined, spanToVertex: undefined } : e));
+                      return;
+                    }
+                    // Расширяем подшторник на соседние выступы (короткие стены < 60 см).
+                    const N = editableWalls.length;
+                    const SHORT_CM = 60;
+                    let leftWall = selEl.wallIndex!;
+                    while ((editableWalls[(leftWall - 1 + N) % N] || 0) < SHORT_CM) {
+                      leftWall = (leftWall - 1 + N) % N;
+                      if (leftWall === selEl.wallIndex) break;
+                    }
+                    let rightWall = selEl.wallIndex!;
+                    while ((editableWalls[(rightWall + 1) % N] || 0) < SHORT_CM) {
+                      rightWall = (rightWall + 1) % N;
+                      if (rightWall === selEl.wallIndex) break;
+                    }
+                    // Проверяем что есть хотя бы один выступ для расширения.
+                    if (leftWall === selEl.wallIndex && rightWall === selEl.wallIndex) {
+                      toast.error("Рядом нет коротких стенок (< 60 см) для расширения");
+                      return;
+                    }
+                    const fromVertex = leftWall;
+                    const toVertex = (rightWall + 1) % N;
+                    setElements(prev => prev.map(e => e.id === selectedId ? {
+                      ...e,
+                      spanFromVertex: fromVertex,
+                      spanToVertex: toVertex,
+                    } : e));
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 shadow-sm ${
+                    isSpan
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                  }`}
+                  title={isSpan ? "Отменить «через выступы»" : "Растянуть от стены до стены через выступы"}
+                >
+                  {isSpan ? "✓ Через выступы" : "↔ Через выступы"}
                 </button>
               );
             })()}

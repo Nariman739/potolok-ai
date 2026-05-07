@@ -10,8 +10,7 @@ import type { CanvasType } from "@/lib/constants";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import {
   getVertices,
-  totalSubcurtainLengthCm,
-  subcurtainOnWallLengthCm,
+  computeSubcurtainStats,
 } from "@/app/(dashboard)/dashboard/vision-test/room-designer";
 
 interface DesignerRoom {
@@ -75,15 +74,18 @@ export function buildRoomInputFromDesigner(
         .filter((e) => e.type === "curtain")
         .reduce((s, e) => s + (e.length || 0), 0)
     ) / 100;
-  const podshtornikLength = Math.round(totalSubcurtainLengthCm(els)) / 100;
-  const podshtornikOnWallLength =
-    Math.round(subcurtainOnWallLengthCm(els)) / 100;
+  const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
+  const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length);
+  const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
+  const podshtornikOnWallLength = Math.round(subStats.onWallLengthCm) / 100;
+  // Углы стен, скрытые подшторником «через выступы», не считаются в КП.
+  const visibleCornersCount = Math.max(0, room.walls.length - subStats.coveredCorners);
   const roundedCornersCount = (room.cornerRadii || []).filter((r) => r > 0)
     .length;
 
   const fcStats = furnitureCeilingStats(
     els as Parameters<typeof furnitureCeilingStats>[0],
-    getVertices(room.walls, room.normalCorners, room.angles)
+    verticesForRoom
   );
   const furnitureCeilingArea =
     Math.round(fcStats.areaToSubtractCm2 / 100) / 100;
@@ -126,7 +128,7 @@ export function buildRoomInputFromDesigner(
     lightLineLength,
     curtainRodLength: existing?.curtainRodLength ?? 0,
     pipeBypasses: existing?.pipeBypasses ?? 0,
-    cornersCount: room.walls.length,
+    cornersCount: visibleCornersCount,
     eurobrusCount: existing?.eurobrusCount ?? 0,
     gardinaLength,
     gardinaType: existing?.gardinaType,
