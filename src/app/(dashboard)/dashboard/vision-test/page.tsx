@@ -2237,10 +2237,16 @@ export default function ZameryPage() {
 
   function handleCreateEstimate() {
     const roomInputs: RoomInput[] = rooms.map(room => {
-      const l = room.walls.length === 4 ? room.walls[0] / 100 : Math.sqrt(room.area);
-      const w = room.walls.length === 4
-        ? room.walls[1] / 100
-        : Math.round((room.area / Math.max(l, 0.1)) * 100) / 100;
+      // Реальные размеры — bbox по вершинам полигона. Это критично для
+      // выбора ширины полотна (320 / 550 см) — sqrt(area) завышает
+      // короткую сторону для Г/П-образных комнат.
+      const verticesForBbox = getVertices(room.walls, room.normalCorners, room.angles);
+      const xsBb = verticesForBbox.map(v => v.x);
+      const ysBb = verticesForBbox.map(v => v.y);
+      const bboxW = (Math.max(...xsBb) - Math.min(...xsBb)) / 100;
+      const bboxH = (Math.max(...ysBb) - Math.min(...ysBb)) / 100;
+      const l = Math.max(bboxW, bboxH);
+      const w = Math.min(bboxW, bboxH);
 
       // Auto-fill from designer elements
       const els = room.elements || [];
@@ -2267,9 +2273,12 @@ export default function ZameryPage() {
       const podshtornikOnWallLength = Math.round(subStats.onWallLengthCm) / 100;
       const visibleCornersCount = Math.max(0, room.walls.length - subStats.coveredCorners);
       const roundedCornersCount = (room.cornerRadii || []).filter(r => r > 0).length;
-      // Если на сцене есть парящий профиль — комната оформляется им (а не пластик+вставка).
-      const hasFloating = els.some(e => e.type === "floating");
-      const profileTypeForRoom: string | undefined = hasFloating ? "profile_floating" : undefined;
+      // Парящий профиль — отдельной позицией. Считаем суммарную длину
+      // floating элементов и оставляем основной профиль как обычно
+      // (пластик+вставка вычтется из периметра автоматически).
+      const floatingLength =
+        Math.round(els.filter(e => e.type === "floating").reduce((s, e) => s + (e.length || 0), 0)) / 100;
+      const profileTypeForRoom: string | undefined = undefined;
       // Мебель «до потолка» влияет на площадь и периметр профиля
       const fcStats = furnitureCeilingStats(
         els as { type: string; x?: number; y?: number; width?: number; height?: number; rotation?: number; ceilingMode?: "decor" | "to-ceiling" | "planned" }[],
@@ -2291,6 +2300,7 @@ export default function ZameryPage() {
         chandelierCount,
         chandelierInstallCount: chandelierCount,
         pendantCount,
+        floatingLength,
         trackMagneticLength,
         lightLineLength,
         curtainRodLength: 0,
@@ -2396,8 +2406,9 @@ export default function ZameryPage() {
               );
               const furnitureCeilingArea = Math.round(fcStatsCalc.areaToSubtractCm2 / 100) / 100;
               const furnitureCeilingPerimeterDelta = Math.round(fcStatsCalc.perimeterDeltaCm) / 100;
-              const hasFloating = elements.some(e => e.type === "floating");
-              const profileTypeForRoom: string | undefined = hasFloating ? "profile_floating" : undefined;
+              const floatingLengthCalc =
+                Math.round(elements.filter(e => e.type === "floating").reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const profileTypeForRoom: string | undefined = undefined;
 
               const roomInput: RoomInput = {
                 id: crypto.randomUUID(),
@@ -2411,6 +2422,7 @@ export default function ZameryPage() {
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 chandelierCount,
                 chandelierInstallCount: chandelierCount,
+                floatingLength: floatingLengthCalc,
                 trackMagneticLength,
                 lightLineLength,
                 curtainRodLength: 0,

@@ -69,6 +69,9 @@ export interface RoomInput {
   chandelierInstallCount: number;
   /** Подвесные светильники / бра — закладная + установка как у люстр, но дешевле. */
   pendantCount?: number;
+  /** Длина парящего профиля (м.п.) на отдельных стенах. Идёт отдельной
+   *  позицией в КП и вычитается из периметра обычного профиля. */
+  floatingLength?: number;
   trackMagneticLength: number;
   lightLineLength: number;
   curtainRodLength: number;

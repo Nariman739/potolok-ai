@@ -99,10 +99,15 @@ export function buildRoomInputFromDesigner(
     ? "profile_floating"
     : existing?.profileType;
 
-  const longest = Math.max(...room.walls);
-  const shortest = Math.min(...room.walls);
-  const length = (longest || 500) / 100;
-  const width = (shortest || 400) / 100;
+  // Реальные размеры комнаты — bounding box по вершинам полигона.
+  // Это критично для выбора ширины полотна (320см / 550см / больше) —
+  // иначе sqrt(area) завышает «короткую сторону».
+  const xs = verticesForRoom.map((v) => v.x);
+  const ys = verticesForRoom.map((v) => v.y);
+  const bboxW = (Math.max(...xs) - Math.min(...xs)) / 100;
+  const bboxH = (Math.max(...ys) - Math.min(...ys)) / 100;
+  const length = Math.max(bboxW, bboxH) || 5;
+  const width = Math.min(bboxW, bboxH) || 4;
 
   return {
     id: existing?.id ?? room.id ?? crypto.randomUUID(),

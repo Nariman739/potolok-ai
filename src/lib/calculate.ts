@@ -74,6 +74,10 @@ function calculateRoom(
   const podOnWallM = room.podshtornikOnWallLength ?? room.podshtornikLength ?? 0;
   const furniturePerimDelta = room.furnitureCeilingPerimeterDelta ?? 0;
   const profilePerimeter = Math.max(0, perimeter - podOnWallM + furniturePerimDelta);
+  // Парящий профиль идёт отдельной позицией и вычитается из периметра
+  // обычного профиля (плacтик/вставка), чтобы не было двойного счёта.
+  const floatingLen = Math.min(room.floatingLength ?? 0, profilePerimeter);
+  const baseProfileLen = Math.max(0, profilePerimeter - floatingLen);
 
   // Canvas
   const canvasCode = getCanvasCode(room);
@@ -84,18 +88,29 @@ function calculateRoom(
   const profileCode = room.profileType || "profile_insert";
   if (profileCode === "profile_galtel") {
     // Plastic profile only (galtel installed by others)
-    const plasticItem = makeLineItem("profile_plastic", profilePerimeter, prices);
+    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
     if (plasticItem) items.push(plasticItem);
   } else if (profileCode === "profile_insert") {
     // Plastic profile + insert strip (2 line items)
-    const plasticItem = makeLineItem("profile_plastic", profilePerimeter, prices);
+    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
     if (plasticItem) items.push(plasticItem);
-    const insertItem = makeLineItem("insert", profilePerimeter, prices);
+    const insertItem = makeLineItem("insert", baseProfileLen, prices);
     if (insertItem) items.push(insertItem);
   } else {
-    // Shadow or floating — single aluminum profile
+    // Shadow or floating — single aluminum profile.
+    // Если у комнаты явно указан profile_floating, по периметру весь парящий.
     const profileItem = makeLineItem(profileCode, profilePerimeter, prices);
     if (profileItem) items.push(profileItem);
+  }
+
+  // Отдельная позиция «Парящий профиль» — только если он не основной
+  // (для basic-профилей плacтик/вставка/галтель/теневой).
+  if (
+    floatingLen > 0 &&
+    profileCode !== "profile_floating"
+  ) {
+    const fpItem = makeLineItem("profile_floating", floatingLen, prices);
+    if (fpItem) items.push(fpItem);
   }
 
   // Spots — master's choice or default
