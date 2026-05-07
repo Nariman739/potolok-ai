@@ -173,11 +173,18 @@ function calculateRoom(
     if (lightItem) items.push(lightItem);
   }
 
-  // Corners — auto-determined by profile type
-  const cornersCount = room.cornersCount > 0 ? room.cornersCount : 4;
-  const cornerCode = PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
-  const cornerItem = makeLineItem(cornerCode, cornersCount, prices);
-  if (cornerItem) items.push(cornerItem);
+  // Corners — в КП попадают только ДОПОЛНИТЕЛЬНЫЕ углы (сверх стандартных 4).
+  // Прямоугольная комната = 4 угла = 0 в КП (входит в базовый периметр).
+  // Г/П/нестандартная = больше 4 → разница = доп. углы по цене из каталога.
+  // Цена зависит от профиля: вставка/галтель → corner_plastic (1000 ₸),
+  // парящий/теневой → corner_aluminum (5000 ₸).
+  const cornersTotal = room.cornersCount > 0 ? room.cornersCount : 4;
+  const extraCorners = Math.max(0, cornersTotal - 4);
+  if (extraCorners > 0) {
+    const cornerCode = PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
+    const cornerItem = makeLineItem(cornerCode, extraCorners, prices);
+    if (cornerItem) items.push(cornerItem);
+  }
 
   // Curtain rod — master's choice or default
   if (room.curtainRodLength > 0) {
