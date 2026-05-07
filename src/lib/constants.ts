@@ -43,7 +43,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "spot_pair", name: "Софиты двойные (пара)", unit: "пара", defaultPrice: 9000, category: "spot", description: "2 софита рядом — отдельная цена за пару" },
   { code: "spot_triple", name: "Софиты тройные", unit: "шт.", defaultPrice: 13000, category: "spot", description: "3 софита рядом — отдельная цена за тройку" },
   // Подвесной светильник / бра — отдельная категория (меньше люстры)
-  { code: "pendant", name: "Подвесной светильник", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под подвесной светильник" },
+  { code: "pendant", name: "Закладная под подвесной светильник", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под подвесной светильник / бра" },
   { code: "pendant_install", name: "Установка подвесного светильника", unit: "шт.", defaultPrice: 3000, category: "spot", description: "Монтаж подвесного светильника / бра" },
 
   // Люстры
