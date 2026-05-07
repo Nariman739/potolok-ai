@@ -444,7 +444,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [fixtureEditor, setFixtureEditor] = useState<{ elId: string; width: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const pointerHandled = useRef(false);
-  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
+  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean; handle?: "start" | "end" } | null>(null);
 
   const vertices = getVertices(editableWalls, room.normalCorners, room.angles);
 
@@ -520,6 +520,16 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false };
+    setDragId(id);
+  }
+
+  // Drag handle на конце прямого подшторника — тянем за круглую ручку,
+  // чтобы вручную сужать длину (другой конец остаётся на месте).
+  function handleSubcurtainHandlePointerDown(id: string, end: "start" | "end", e: React.PointerEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, handle: end };
     setDragId(id);
   }
 
@@ -623,29 +633,86 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                   ));
                 }
               }
+            } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend" && ds.handle) {
+              // Resize прямого подшторника через endpoint handle:
+              // тянем один конец, второй остаётся на месте.
+              // Для span-подшторника конвертируем в обычный на anchor-стене.
+              let wallIdx = el.wallIndex;
+              if (wallIdx !== undefined) {
+                const isSpanEl = el.spanFromVertex !== undefined && el.spanToVertex !== undefined;
+                if (isSpanEl) {
+                  const N = editableWalls.length;
+                  let bestLen = editableWalls[wallIdx] || 0;
+                  let cur = el.spanFromVertex!;
+                  for (let k = 0; k < N; k++) {
+                    if (cur === el.spanToVertex) break;
+                    const wl = editableWalls[cur] || 0;
+                    if (wl > bestLen) { bestLen = wl; wallIdx = cur; }
+                    cur = (cur + 1) % N;
+                  }
+                }
+                const aV = vertices[wallIdx], bV = vertices[wallIdx + 1];
+                const wallLenCmH = editableWalls[wallIdx] || 0;
+                if (aV && bV && wallLenCmH > 0) {
+                  const dxw = bV.x - aV.x, dyw = bV.y - aV.y;
+                  const wL = Math.hypot(dxw, dyw);
+                  if (wL > 0) {
+                    const wnx = dxw / wL, wny = dyw / wL;
+                    const tDrop = Math.max(0, Math.min(1, ((dropPos.x - aV.x) * wnx + (dropPos.y - aV.y) * wny) / wL));
+                    let curStart: number, curEnd: number;
+                    if (isSpanEl) {
+                      const projT = (v: Vertex) => ((v.x - aV.x) * wnx + (v.y - aV.y) * wny) / wL;
+                      const tA = projT(vertices[el.spanFromVertex!]);
+                      const tB = projT(vertices[el.spanToVertex!]);
+                      curStart = Math.min(tA, tB);
+                      curEnd = Math.max(tA, tB);
+                    } else {
+                      const curLen = el.length || 0;
+                      const curPos = el.wallPosition ?? 0.5;
+                      curStart = curPos - curLen / 2 / wallLenCmH;
+                      curEnd = curPos + curLen / 2 / wallLenCmH;
+                    }
+                    let newStart = curStart, newEnd = curEnd;
+                    if (ds.handle === "start") newStart = tDrop;
+                    else newEnd = tDrop;
+                    if (newEnd < newStart) [newStart, newEnd] = [newEnd, newStart];
+                    newStart = Math.max(0, newStart);
+                    newEnd = Math.min(1, newEnd);
+                    const newLenCm = Math.max(20, Math.min(wallLenCmH, Math.round((newEnd - newStart) * wallLenCmH)));
+                    const newPos = (newStart + newEnd) / 2;
+                    const finalIdx = wallIdx;
+                    setElements(prev => prev.map(e =>
+                      e.id === ds.id ? {
+                        ...e,
+                        wallIndex: finalIdx,
+                        length: newLenCm,
+                        wallPosition: newPos,
+                        spanFromVertex: undefined,
+                        spanToVertex: undefined,
+                      } : e
+                    ));
+                  }
+                }
+              }
             } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend") {
-              // Подшторник: drag «как мебель» — встаёт на всю «сторону» комнаты.
-              // Расширяет span на соседние стены, которые смотрят в ту же сторону
-              // (близкая нормаль) — даже если они длинные. Это покрывает случай:
-              // правая сторона = выступ 14 + 28 + основная 134 + выступ 14 + 131 →
-              // подшторник идёт от верхнего правого угла до нижнего правого угла.
+              // Перенос всей линии прямого подшторника — сохраняем длину,
+              // обновляем стену + позицию. Линия рисуется ровно по стене (offset=0),
+              // depth для рендера не используется. Auto-span сбрасывается.
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               const wallLenCm = editableWalls[nearest.wallIndex] || 0;
               if (wallLenCm > 0) {
-                const newDepth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
-                const N = editableWalls.length;
-                const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N, editableWalls);
-                const hasExtension =
-                  span.leftWall !== nearest.wallIndex || span.rightWall !== nearest.wallIndex;
+                const curLen = el.length || wallLenCm;
+                const newLen = Math.min(curLen, wallLenCm);
+                const halfRatio = newLen / 2 / wallLenCm;
+                const clampedT = Math.max(halfRatio, Math.min(1 - halfRatio, nearest.t));
                 setElements(prev => prev.map(e =>
                   e.id === ds.id ? {
                     ...e,
                     wallIndex: nearest.wallIndex,
-                    wallPosition: 0.5,
-                    length: wallLenCm,
-                    depth: newDepth,
-                    spanFromVertex: hasExtension ? span.leftWall : undefined,
-                    spanToVertex: hasExtension ? (span.rightWall + 1) % N : undefined,
+                    wallPosition: clampedT,
+                    length: newLen,
+                    spanFromVertex: undefined,
+                    spanToVertex: undefined,
                   } : e
                 ));
               }
@@ -1537,12 +1604,12 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const elLen = isSpan ? wallLen : Math.min(el.length ?? 0, wallLen);
     const pos = isSpan ? 0.5 : (el.wallPosition ?? 0.5);
     const startT = isSpan ? 0 : Math.max(0, Math.min(wallLen - elLen, (pos * wallLen) - elLen / 2));
+    // Прямой подшторник (включая span через выступы) — РОВНО ПО СТЕНЕ,
+    // без отступа. Линия идёт прямо параллельно стене даже если в стене
+    // выступы (через выступы — straight projection на anchor-стену).
+    // Регулировка длины — через ручки на концах.
     const offset = el.type === "subcurtain"
-        ? (el.shape === "u-niche" || el.shape === "l-bend"
-            ? wallOffset * 0.15
-            : isSpan
-              ? wallOffset * 0.5
-              : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex!] || 1)))
+        ? (el.shape === "u-niche" || el.shape === "l-bend" ? wallOffset * 0.15 : 0)
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
@@ -1556,12 +1623,43 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
 
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
+    const dragHandle = (dragId === el.id && dragStartRef.current?.handle) || null;
+    const isResizing = isDragging && !!dragHandle;
+    const isMoving = isDragging && !dragHandle;
+    const isStraightSub = el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend";
 
     let drawX1 = x1, drawY1 = y1, drawX2 = x2, drawY2 = y2;
     let drawMidX = midX, drawMidY = midY;
     let drawPerpX = perpX, drawPerpY = perpY;
+    let displayLen = el.length || 0;
 
-    if (isDragging && dragPos) {
+    if (isResizing && dragPos && isStraightSub && !isSpan) {
+      // Live preview ресайза прямого подшторника: один конец двигается
+      // за пальцем, второй остаётся на месте.
+      const wallLenCm = editableWalls[el.wallIndex!] || 0;
+      if (wallLen > 0 && wallLenCm > 0) {
+        const tt = Math.max(0, Math.min(1, ((dragPos.x - a.x) * nx + (dragPos.y - a.y) * ny) / wallLen));
+        const curLen = el.length || 0;
+        const curPos = el.wallPosition ?? 0.5;
+        const curStart = curPos - curLen / 2 / wallLenCm;
+        const curEnd = curPos + curLen / 2 / wallLenCm;
+        let newStart = curStart, newEnd = curEnd;
+        if (dragHandle === "start") newStart = tt;
+        else newEnd = tt;
+        if (newEnd < newStart) [newStart, newEnd] = [newEnd, newStart];
+        newStart = Math.max(0, newStart);
+        newEnd = Math.min(1, newEnd);
+        const newStartT = newStart * wallLen;
+        const newEndT = newEnd * wallLen;
+        drawX1 = a.x + nx * newStartT + perpX * offset;
+        drawY1 = a.y + ny * newStartT + perpY * offset;
+        drawX2 = a.x + nx * newEndT + perpX * offset;
+        drawY2 = a.y + ny * newEndT + perpY * offset;
+        drawMidX = (drawX1 + drawX2) / 2;
+        drawMidY = (drawY1 + drawY2) / 2;
+        displayLen = Math.max(20, Math.min(wallLenCm, Math.round((newEnd - newStart) * wallLenCm)));
+      }
+    } else if (isMoving && dragPos) {
       const halfLen = (el.length || 0) / 2;
       const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
       const da = vertices[nearest.wallIndex], db = vertices[nearest.wallIndex + 1];
@@ -1616,10 +1714,29 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               textAnchor="middle" dominantBaseline="central"
               fontSize={labelSize * 0.85} fill={strokeColor} fontWeight="600"
               transform={`rotate(${elAng}, ${elTx}, ${elTy})`}>
-              {el.length} см
+              {Math.round(displayLen)} см
             </text>
           );
         })()}
+        {/* Drag-ручки на концах прямого подшторника — пользователь тянет
+            за белый кружок, чтобы сужать длину (другой конец остаётся).
+            Для span-подшторника не показываем — сначала ↔ Через выступы выкл. */}
+        {isStraightSub && !isSpan && selectedId === el.id && (
+          <>
+            <circle cx={drawX1} cy={drawY1} r={strokeW * 3.5} fill="transparent"
+              onPointerDown={(e) => handleSubcurtainHandlePointerDown(el.id, "start", e)}
+              style={{ cursor: "ew-resize", touchAction: "none" }} />
+            <circle cx={drawX1} cy={drawY1} r={strokeW * 1.4} fill="white"
+              stroke={strokeColor} strokeWidth={strokeW * 0.5}
+              pointerEvents="none" />
+            <circle cx={drawX2} cy={drawY2} r={strokeW * 3.5} fill="transparent"
+              onPointerDown={(e) => handleSubcurtainHandlePointerDown(el.id, "end", e)}
+              style={{ cursor: "ew-resize", touchAction: "none" }} />
+            <circle cx={drawX2} cy={drawY2} r={strokeW * 1.4} fill="white"
+              stroke={strokeColor} strokeWidth={strokeW * 0.5}
+              pointerEvents="none" />
+          </>
+        )}
         {/* Distance from wall edges when selected/dragging */}
         {(selectedId === el.id || isDragging) && !isDragging && (() => {
           const distFromEdge = Math.round(startT);
@@ -3249,10 +3366,31 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         const close = () => setSubcurtainShapeChoice(null);
         const pickStraight = () => {
           setSubcurtainShapeChoice(null);
-          setLengthInput({ wallIndex: wallIdx, extraDepth: "20" });
-          setLengthValue(String(Math.round(wallLen)));
-          setLengthSide("center");
-          setLengthDepthValue("20");
+          // Прямой подшторник создаётся сразу на всю «сторону» комнаты
+          // (с auto-span через выступы / параллельные стены). Длину
+          // потом регулирует пользователь, перетаскивая ручки на концах.
+          if (wallLen <= 0) return;
+          const N = editableWalls.length;
+          const span = computeSubcurtainSpan(wallIdx, vertices, N, editableWalls);
+          const hasExtension = span.leftWall !== wallIdx || span.rightWall !== wallIdx;
+          const newId = crypto.randomUUID();
+          setElements(prev => [...prev, {
+            id: newId,
+            type: "subcurtain",
+            wallIndex: wallIdx,
+            wallPosition: 0.5,
+            length: Math.round(wallLen),
+            shape: "straight",
+            // Без автоматического отступа от стены — линия по самой стене.
+            // Пользователь сам тянет линию вглубь комнаты, чтобы задать отступ.
+            depth: 0,
+            ...(hasExtension && {
+              spanFromVertex: span.leftWall,
+              spanToVertex: (span.rightWall + 1) % N,
+            }),
+          }]);
+          setSelectedId(newId);
+          setActiveType(null);
         };
         const pickShape = (shape: "u-niche" | "l-bend") => {
           setSubcurtainShapeChoice(null);
