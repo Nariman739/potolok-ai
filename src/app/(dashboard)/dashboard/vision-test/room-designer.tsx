@@ -264,6 +264,56 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
   return best;
 }
 
+/**
+ * Определяет «сторону» комнаты для подшторника при drag-drop / превью / кнопке
+ * «Через выступы». Расширяет span влево и вправо от стартовой стены, пока
+ * соседняя стена смотрит примерно в ту же сторону, что и стартовая (центр
+ * соседней по проекции на нормаль стартовой ≤ THRESHOLD_CM).
+ *
+ * Это работает и для коротких выступов, и для длинных параллельных стен:
+ *   правая сторона = 14 + 28 + 134 + 14 + 131 → span от верхнего угла до нижнего.
+ */
+function computeSubcurtainSpan(
+  startWallIdx: number,
+  vertices: Vertex[],
+  N: number
+): { leftWall: number; rightWall: number } {
+  const v1 = vertices[startWallIdx], v2 = vertices[startWallIdx + 1];
+  if (!v1 || !v2) return { leftWall: startWallIdx, rightWall: startWallIdx };
+  const dx = v2.x - v1.x, dy = v2.y - v1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nrmX = -dy / len, nrmY = dx / len;
+  const startMidX = (v1.x + v2.x) / 2;
+  const startMidY = (v1.y + v2.y) / 2;
+  const startProj = startMidX * nrmX + startMidY * nrmY;
+  const THRESHOLD_CM = 100;
+
+  function sameSide(idx: number): boolean {
+    const a = vertices[idx], b = vertices[idx + 1];
+    if (!a || !b) return false;
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const proj = mx * nrmX + my * nrmY;
+    return Math.abs(proj - startProj) < THRESHOLD_CM;
+  }
+
+  let leftWall = startWallIdx;
+  for (let k = 0; k < N; k++) {
+    const prev = (leftWall - 1 + N) % N;
+    if (prev === startWallIdx) break;
+    if (sameSide(prev)) leftWall = prev;
+    else break;
+  }
+  let rightWall = startWallIdx;
+  for (let k = 0; k < N; k++) {
+    const next = (rightWall + 1) % N;
+    if (next === startWallIdx) break;
+    if (sameSide(next)) rightWall = next;
+    else break;
+  }
+  return { leftWall, rightWall };
+}
+
 /** Смещения софитов в группе относительно точки клика (см). */
 function computeSpotGroupOffsets(
   group: "1" | "2h" | "2v" | "3h" | "3v",
@@ -551,32 +601,19 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 }
               }
             } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend") {
-              // Подшторник: drag «как мебель» — встаёт на всю «сторону» комнаты,
-              // автоматически растягиваясь через соседние короткие выступы (стенки <60см).
-              // Отступ от стены = расстоянию от точки drop'а.
+              // Подшторник: drag «как мебель» — встаёт на всю «сторону» комнаты.
+              // Расширяет span на соседние стены, которые смотрят в ту же сторону
+              // (близкая нормаль) — даже если они длинные. Это покрывает случай:
+              // правая сторона = выступ 14 + 28 + основная 134 + выступ 14 + 131 →
+              // подшторник идёт от верхнего правого угла до нижнего правого угла.
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               const wallLenCm = editableWalls[nearest.wallIndex] || 0;
               if (wallLenCm > 0) {
                 const newDepth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
                 const N = editableWalls.length;
-                const SHORT_CM = 60;
-                // Расширяем влево через короткие стены до длинной.
-                let leftWall = nearest.wallIndex;
-                for (let k = 0; k < N; k++) {
-                  const prev = (leftWall - 1 + N) % N;
-                  if ((editableWalls[prev] || 0) < SHORT_CM) {
-                    leftWall = prev;
-                  } else break;
-                }
-                // Расширяем вправо.
-                let rightWall = nearest.wallIndex;
-                for (let k = 0; k < N; k++) {
-                  const next = (rightWall + 1) % N;
-                  if ((editableWalls[next] || 0) < SHORT_CM) {
-                    rightWall = next;
-                  } else break;
-                }
-                const hasExtension = leftWall !== nearest.wallIndex || rightWall !== nearest.wallIndex;
+                const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N);
+                const hasExtension =
+                  span.leftWall !== nearest.wallIndex || span.rightWall !== nearest.wallIndex;
                 setElements(prev => prev.map(e =>
                   e.id === ds.id ? {
                     ...e,
@@ -584,9 +621,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                     wallPosition: 0.5,
                     length: wallLenCm,
                     depth: newDepth,
-                    // Если рядом есть выступы — автоматически делаем span до основных углов.
-                    spanFromVertex: hasExtension ? leftWall : undefined,
-                    spanToVertex: hasExtension ? (rightWall + 1) % N : undefined,
+                    spanFromVertex: hasExtension ? span.leftWall : undefined,
+                    spanToVertex: hasExtension ? (span.rightWall + 1) % N : undefined,
                   } : e
                 ));
               }
@@ -1358,21 +1394,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
     const N = editableWalls.length;
     if (N === 0) return null;
-    const SHORT_CM = 60;
-    let leftWall = nearest.wallIndex;
-    for (let k = 0; k < N; k++) {
-      const prev = (leftWall - 1 + N) % N;
-      if ((editableWalls[prev] || 0) < SHORT_CM) leftWall = prev;
-      else break;
-    }
-    let rightWall = nearest.wallIndex;
-    for (let k = 0; k < N; k++) {
-      const next = (rightWall + 1) % N;
-      if ((editableWalls[next] || 0) < SHORT_CM) rightWall = next;
-      else break;
-    }
-    const fromV = leftWall;
-    const toV = (rightWall + 1) % N;
+    const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N);
+    const fromV = span.leftWall;
+    const toV = (span.rightWall + 1) % N;
     const a = vertices[fromV], b = vertices[toV];
     if (!a || !b) return null;
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -2490,26 +2514,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                       setElements(prev => prev.map(e => e.id === selectedId ? { ...e, spanFromVertex: undefined, spanToVertex: undefined } : e));
                       return;
                     }
-                    // Расширяем подшторник на соседние выступы (короткие стены < 60 см).
                     const N = editableWalls.length;
-                    const SHORT_CM = 60;
-                    let leftWall = selEl.wallIndex!;
-                    while ((editableWalls[(leftWall - 1 + N) % N] || 0) < SHORT_CM) {
-                      leftWall = (leftWall - 1 + N) % N;
-                      if (leftWall === selEl.wallIndex) break;
-                    }
-                    let rightWall = selEl.wallIndex!;
-                    while ((editableWalls[(rightWall + 1) % N] || 0) < SHORT_CM) {
-                      rightWall = (rightWall + 1) % N;
-                      if (rightWall === selEl.wallIndex) break;
-                    }
-                    // Проверяем что есть хотя бы один выступ для расширения.
-                    if (leftWall === selEl.wallIndex && rightWall === selEl.wallIndex) {
-                      toast.error("Рядом нет коротких стенок (< 60 см) для расширения");
+                    const span = computeSubcurtainSpan(selEl.wallIndex!, vertices, N);
+                    if (span.leftWall === selEl.wallIndex && span.rightWall === selEl.wallIndex) {
+                      toast.error("Не нашёл соседних стен для расширения");
                       return;
                     }
-                    const fromVertex = leftWall;
-                    const toVertex = (rightWall + 1) % N;
+                    const fromVertex = span.leftWall;
+                    const toVertex = (span.rightWall + 1) % N;
                     setElements(prev => prev.map(e => e.id === selectedId ? {
                       ...e,
                       spanFromVertex: fromVertex,
