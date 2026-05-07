@@ -72,6 +72,10 @@ export interface RoomInput {
   /** Длина парящего профиля (м.п.) на отдельных стенах. Идёт отдельной
    *  позицией в КП и вычитается из периметра обычного профиля. */
   floatingLength?: number;
+  /** Кол-во пар софитов (двойных групп) — отдельной позицией в КП. */
+  spotPairsCount?: number;
+  /** Кол-во троек софитов — отдельной позицией в КП. */
+  spotTriplesCount?: number;
   trackMagneticLength: number;
   lightLineLength: number;
   curtainRodLength: number;

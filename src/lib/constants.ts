@@ -40,6 +40,8 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "spot_swivel", name: "Споты поворотные", unit: "шт.", defaultPrice: 7000, category: "spot", description: "С регулировкой угла" },
   { code: "spot_overhead", name: "Споты накладные", unit: "шт.", defaultPrice: 5500, category: "spot", description: "Накладные на потолок" },
   { code: "spot_double", name: "Споты двойные LED", unit: "шт.", defaultPrice: 6000, category: "spot", description: "Двойные LED-споты" },
+  { code: "spot_pair", name: "Софиты двойные (пара)", unit: "пара", defaultPrice: 9000, category: "spot", description: "2 софита рядом — отдельная цена за пару" },
+  { code: "spot_triple", name: "Софиты тройные", unit: "шт.", defaultPrice: 13000, category: "spot", description: "3 софита рядом — отдельная цена за тройку" },
   // Подвесной светильник / бра — отдельная категория (меньше люстры)
   { code: "pendant", name: "Подвесной светильник", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под подвесной светильник" },
   { code: "pendant_install", name: "Установка подвесного светильника", unit: "шт.", defaultPrice: 3000, category: "spot", description: "Монтаж подвесного светильника / бра" },

@@ -2250,8 +2250,22 @@ export default function ZameryPage() {
 
       // Auto-fill from designer elements
       const els = room.elements || [];
-      const spotsOurs = els.filter(e => e.type === "spot" && e.variant !== "client").length;
-      const spotsClient = els.filter(e => e.type === "spot" && e.variant === "client").length;
+      // Группируем спoты: одиночные → штуки, пары/тройки (groupId) → отдельные позиции.
+      const allSpotEls = els.filter(e => e.type === "spot");
+      const groupCounts = new Map<string, number>();
+      for (const s of allSpotEls) {
+        const gid = (s as { groupId?: string }).groupId;
+        if (gid) groupCounts.set(gid, (groupCounts.get(gid) ?? 0) + 1);
+      }
+      let spotPairsCount = 0;
+      let spotTriplesCount = 0;
+      for (const sz of groupCounts.values()) {
+        if (sz === 2) spotPairsCount++;
+        else if (sz >= 3) spotTriplesCount++;
+      }
+      const singleSpotEls = allSpotEls.filter(s => !(s as { groupId?: string }).groupId);
+      const spotsOurs = singleSpotEls.filter(e => e.variant !== "client").length;
+      const spotsClient = singleSpotEls.filter(e => e.variant === "client").length;
       const spotsCount = spotsOurs + spotsClient;
       const pendantCount = els.filter(e => e.type === "pendant").length;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
@@ -2300,6 +2314,8 @@ export default function ZameryPage() {
         chandelierCount,
         chandelierInstallCount: chandelierCount,
         pendantCount,
+        spotPairsCount,
+        spotTriplesCount,
         floatingLength,
         trackMagneticLength,
         lightLineLength,
@@ -2382,8 +2398,21 @@ export default function ZameryPage() {
             // Calculator mode: save room and redirect to calculator
             if (isCalculatorMode) {
               const room = roomWithElements;
-              const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
-              const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
+              const allSpotElsCalc = elements.filter(e => e.type === "spot");
+              const groupCountsCalc = new Map<string, number>();
+              for (const s of allSpotElsCalc) {
+                const gid = (s as { groupId?: string }).groupId;
+                if (gid) groupCountsCalc.set(gid, (groupCountsCalc.get(gid) ?? 0) + 1);
+              }
+              let spotPairsCalc = 0;
+              let spotTriplesCalc = 0;
+              for (const sz of groupCountsCalc.values()) {
+                if (sz === 2) spotPairsCalc++;
+                else if (sz >= 3) spotTriplesCalc++;
+              }
+              const singleSpotElsCalc = allSpotElsCalc.filter(s => !(s as { groupId?: string }).groupId);
+              const spotsOurs = singleSpotElsCalc.filter(e => e.variant !== "client").length;
+              const spotsClient = singleSpotElsCalc.filter(e => e.variant === "client").length;
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
               const trackEls = elements.filter(e => e.type === "track");
               const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
@@ -2420,6 +2449,8 @@ export default function ZameryPage() {
                 profileType: profileTypeForRoom,
                 spotsCount: spotsOurs + spotsClient,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
+                spotPairsCount: spotPairsCalc,
+                spotTriplesCount: spotTriplesCalc,
                 chandelierCount,
                 chandelierInstallCount: chandelierCount,
                 floatingLength: floatingLengthCalc,

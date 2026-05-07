@@ -47,12 +47,24 @@ export function buildRoomInputFromDesigner(
   existing?: Partial<RoomInput>
 ): RoomInput {
   const els = room.elements || [];
-  const spotsOurs = els.filter(
-    (e) => e.type === "spot" && e.variant !== "client"
-  ).length;
-  const spotsClient = els.filter(
-    (e) => e.type === "spot" && e.variant === "client"
-  ).length;
+  // Группируем спoты: одиночные (без groupId) идут как обычные «штуки»,
+  // двойные/тройные (с groupId) — как пары/тройки в КП.
+  const allSpots = els.filter((e) => e.type === "spot");
+  const groupSizeMap = new Map<string, number>();
+  for (const s of allSpots) {
+    const gid = (s as { groupId?: string }).groupId;
+    if (!gid) continue;
+    groupSizeMap.set(gid, (groupSizeMap.get(gid) ?? 0) + 1);
+  }
+  let spotPairsCount = 0;
+  let spotTriplesCount = 0;
+  for (const size of groupSizeMap.values()) {
+    if (size === 2) spotPairsCount++;
+    else if (size >= 3) spotTriplesCount++;
+  }
+  const singleSpots = allSpots.filter((s) => !(s as { groupId?: string }).groupId);
+  const spotsOurs = singleSpots.filter((e) => e.variant !== "client").length;
+  const spotsClient = singleSpots.filter((e) => e.variant === "client").length;
   const spotsCount = spotsOurs + spotsClient;
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
@@ -129,6 +141,8 @@ export function buildRoomInputFromDesigner(
     chandelierInstallCount:
       existing?.chandelierInstallCount ?? chandelierCount,
     pendantCount,
+    spotPairsCount,
+    spotTriplesCount,
     trackMagneticLength,
     lightLineLength,
     curtainRodLength: existing?.curtainRodLength ?? 0,

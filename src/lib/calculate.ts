@@ -113,11 +113,23 @@ function calculateRoom(
     if (fpItem) items.push(fpItem);
   }
 
-  // Spots — master's choice or default
+  // Spots — одиночные считаются по spotType. Двойные и тройные — отдельные
+  // позиции (пара = 1 шт «Софиты двойные», тройка = 1 шт «Софиты тройные»),
+  // чтобы в КП мастер видел реальную единицу учёта (не 2/3 спота за пару).
   if (room.spotsCount > 0) {
     const spotCode = room.spotType || "spot_ours";
     const spotItem = makeLineItem(spotCode, room.spotsCount, prices);
     if (spotItem) items.push(spotItem);
+  }
+  const spotPairs = room.spotPairsCount ?? 0;
+  if (spotPairs > 0) {
+    const pairItem = makeLineItem("spot_pair", spotPairs, prices);
+    if (pairItem) items.push(pairItem);
+  }
+  const spotTriples = room.spotTriplesCount ?? 0;
+  if (spotTriples > 0) {
+    const tripleItem = makeLineItem("spot_triple", spotTriples, prices);
+    if (tripleItem) items.push(tripleItem);
   }
 
   // Chandeliers (закладные)

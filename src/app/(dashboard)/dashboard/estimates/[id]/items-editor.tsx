@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -339,6 +339,17 @@ interface ItemRowProps {
 
 function ItemRow({ item, editing, onChange, onDelete }: ItemRowProps) {
   const [showSwap, setShowSwap] = useState(false);
+  // Локальные строковые значения — чтобы пользователь мог стереть всё
+  // и набрать заново, без залипания на «0».
+  const [qtyStr, setQtyStr] = useState<string>(String(item.quantity ?? ""));
+  const [priceStr, setPriceStr] = useState<string>(String(item.unitPrice ?? ""));
+  // Если item обновился извне (после Сохранить → router.refresh) — синхронизируем.
+  useEffect(() => {
+    setQtyStr(String(item.quantity ?? ""));
+  }, [item.quantity]);
+  useEffect(() => {
+    setPriceStr(String(item.unitPrice ?? ""));
+  }, [item.unitPrice]);
 
   if (!editing) {
     return (
@@ -437,12 +448,17 @@ function ItemRow({ item, editing, onChange, onDelete }: ItemRowProps) {
           </label>
           <Input
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0"
-            value={item.quantity}
-            onChange={(e) =>
-              onChange({ quantity: parseFloat(e.target.value) || 0 })
-            }
+            value={qtyStr}
+            onChange={(e) => {
+              const v = e.target.value;
+              setQtyStr(v);
+              const num = parseFloat(v);
+              onChange({ quantity: Number.isFinite(num) ? num : 0 });
+            }}
+            onFocus={(e) => e.target.select()}
             className="h-8 text-xs"
           />
         </div>
@@ -452,12 +468,17 @@ function ItemRow({ item, editing, onChange, onDelete }: ItemRowProps) {
           </label>
           <Input
             type="number"
+            inputMode="numeric"
             step="1"
             min="0"
-            value={item.unitPrice}
-            onChange={(e) =>
-              onChange({ unitPrice: parseFloat(e.target.value) || 0 })
-            }
+            value={priceStr}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPriceStr(v);
+              const num = parseFloat(v);
+              onChange({ unitPrice: Number.isFinite(num) ? num : 0 });
+            }}
+            onFocus={(e) => e.target.select()}
             className="h-8 text-xs"
           />
         </div>
