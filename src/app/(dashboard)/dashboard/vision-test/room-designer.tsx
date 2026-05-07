@@ -1341,6 +1341,48 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
   const dimLines = computeDimLines();
 
+  // Превью места, куда встанет подшторник при drop'е (зелёная полоса).
+  // Считается ровно так же, как в handleSVGPointerUp: ближайшая стена + авто-span
+  // через короткие выступы.
+  function computeSubcurtainPreview(): {
+    a: Vertex;
+    b: Vertex;
+    perpX: number;
+    perpY: number;
+    depth: number;
+  } | null {
+    if (!dragId || !dragPos || !dragStartRef.current?.moved) return null;
+    const dragEl = elements.find((e) => e.id === dragId);
+    if (!dragEl || dragEl.type !== "subcurtain") return null;
+    if (dragEl.shape === "u-niche" || dragEl.shape === "l-bend") return null;
+    const nearest = nearestWall(dragPos.x, dragPos.y, vertices);
+    const N = editableWalls.length;
+    if (N === 0) return null;
+    const SHORT_CM = 60;
+    let leftWall = nearest.wallIndex;
+    for (let k = 0; k < N; k++) {
+      const prev = (leftWall - 1 + N) % N;
+      if ((editableWalls[prev] || 0) < SHORT_CM) leftWall = prev;
+      else break;
+    }
+    let rightWall = nearest.wallIndex;
+    for (let k = 0; k < N; k++) {
+      const next = (rightWall + 1) % N;
+      if ((editableWalls[next] || 0) < SHORT_CM) rightWall = next;
+      else break;
+    }
+    const fromV = leftWall;
+    const toV = (rightWall + 1) % N;
+    const a = vertices[fromV], b = vertices[toV];
+    if (!a || !b) return null;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const wlen = Math.hypot(dx, dy) || 1;
+    const perpX = -dy / wlen, perpY = dx / wlen;
+    const depth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
+    return { a, b, perpX, perpY, depth };
+  }
+  const subcurtainPreview = computeSubcurtainPreview();
+
   // ── Render helpers ──
 
   function wallLine(el: RoomElement) {
@@ -2772,6 +2814,25 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
           {/* Chandeliers */}
           {elements.filter(e => e.type === "chandelier").map(chandelierIcon)}
+
+          {/* Превью «куда встанет подшторник» — пунктирная зелёная линия. */}
+          {subcurtainPreview && (() => {
+            const { a, b, perpX, perpY } = subcurtainPreview;
+            const offset = wallOffset * 0.5;
+            const x1 = a.x + perpX * offset, y1 = a.y + perpY * offset;
+            const x2 = b.x + perpX * offset, y2 = b.y + perpY * offset;
+            return (
+              <line
+                x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#10b981"
+                strokeWidth={strokeW * 1.6}
+                strokeDasharray={`${strokeW * 1.5} ${strokeW * 1}`}
+                opacity={0.85}
+                strokeLinecap="round"
+                pointerEvents="none"
+              />
+            );
+          })()}
 
           {/* Dimension lines */}
           {dimLines.map((d, i) => (
