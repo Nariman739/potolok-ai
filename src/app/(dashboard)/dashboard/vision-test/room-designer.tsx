@@ -1441,8 +1441,32 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const span = computeSubcurtainSpan(nearest.wallIndex, vertices, N, editableWalls);
     const fromV = span.leftWall;
     const toV = (span.rightWall + 1) % N;
-    const a = vertices[fromV], b = vertices[toV];
-    if (!a || !b) return null;
+    const va = vertices[fromV], vb = vertices[toV];
+    if (!va || !vb) return null;
+    // Anchor = самая длинная стена в span'е → линия будет параллельна ей,
+    // а не диагональ через выступы.
+    let anchorIdx = nearest.wallIndex;
+    let bestLen = editableWalls[anchorIdx] || 0;
+    let cur = fromV;
+    for (let k = 0; k < N; k++) {
+      if (cur === toV) break;
+      const wl = editableWalls[cur] || 0;
+      if (wl > bestLen) { bestLen = wl; anchorIdx = cur; }
+      cur = (cur + 1) % N;
+    }
+    const av1 = vertices[anchorIdx], av2 = vertices[anchorIdx + 1];
+    let a: Vertex = va, b: Vertex = vb;
+    if (av1 && av2) {
+      const projOn = (p: Vertex): Vertex => {
+        const ddx = av2.x - av1.x, ddy = av2.y - av1.y;
+        const len2 = ddx * ddx + ddy * ddy;
+        if (len2 === 0) return p;
+        const t = ((p.x - av1.x) * ddx + (p.y - av1.y) * ddy) / len2;
+        return { x: av1.x + t * ddx, y: av1.y + t * ddy };
+      };
+      a = projOn(va);
+      b = projOn(vb);
+    }
     const dx = b.x - a.x, dy = b.y - a.y;
     const wlen = Math.hypot(dx, dy) || 1;
     const perpX = -dy / wlen, perpY = dx / wlen;
@@ -1467,7 +1491,34 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       const va = vertices[el.spanFromVertex!];
       const vb = vertices[el.spanToVertex!];
       if (!va || !vb) return null;
-      a = va; b = vb;
+      // Чтобы линия была строго параллельна основной стене (а не шла
+      // диагонально из-за выступов), берём anchor = самая длинная стена
+      // внутри span'а и проецируем va/vb на прямую этой стены.
+      const N = editableWalls.length;
+      let anchorIdx = el.wallIndex ?? el.spanFromVertex!;
+      let bestLen = editableWalls[anchorIdx] || 0;
+      // Идём от spanFromVertex к spanToVertex по периметру.
+      let cur = el.spanFromVertex!;
+      for (let k = 0; k < N; k++) {
+        if (cur === el.spanToVertex) break;
+        const wl = editableWalls[cur] || 0;
+        if (wl > bestLen) { bestLen = wl; anchorIdx = cur; }
+        cur = (cur + 1) % N;
+      }
+      const av1 = vertices[anchorIdx], av2 = vertices[anchorIdx + 1];
+      if (av1 && av2) {
+        const projOn = (p: Vertex): Vertex => {
+          const dx = av2.x - av1.x, dy = av2.y - av1.y;
+          const len2 = dx * dx + dy * dy;
+          if (len2 === 0) return p;
+          const t = ((p.x - av1.x) * dx + (p.y - av1.y) * dy) / len2;
+          return { x: av1.x + t * dx, y: av1.y + t * dy };
+        };
+        a = projOn(va);
+        b = projOn(vb);
+      } else {
+        a = va; b = vb;
+      }
     } else {
       const va = vertices[el.wallIndex!];
       const vb = vertices[el.wallIndex! + 1];
