@@ -1035,27 +1035,89 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   function alignSpots(axis: "row" | "col") {
     const spotEls = elements.filter(e => e.type === "spot" && e.x !== undefined && e.y !== undefined);
     if (spotEls.length < 2) return;
-    if (axis === "row") {
-      const avgY = spotEls.reduce((s, e) => s + (e.y || 0), 0) / spotEls.length;
-      const sorted = [...spotEls].sort((a, b) => (a.x || 0) - (b.x || 0));
-      const minX = sorted[0].x!, maxX = sorted[sorted.length - 1].x!;
-      const step = spotEls.length > 1 ? (maxX - minX) / (spotEls.length - 1) : 0;
-      setElements(prev => prev.map(el => {
-        const idx = sorted.findIndex(s => s.id === el.id);
-        if (idx === -1) return el;
-        return { ...el, x: minX + step * idx, y: avgY };
-      }));
-    } else {
-      const avgX = spotEls.reduce((s, e) => s + (e.x || 0), 0) / spotEls.length;
-      const sorted = [...spotEls].sort((a, b) => (a.y || 0) - (b.y || 0));
-      const minY = sorted[0].y!, maxY = sorted[sorted.length - 1].y!;
-      const step = spotEls.length > 1 ? (maxY - minY) / (spotEls.length - 1) : 0;
-      setElements(prev => prev.map(el => {
-        const idx = sorted.findIndex(s => s.id === el.id);
-        if (idx === -1) return el;
-        return { ...el, y: minY + step * idx, x: avgX };
-      }));
+
+    // Группируем софиты: каждая группа (groupId) — одна "точка-центр",
+    // одиночные спoты — сами себе группа. При выравнивании двигаем центры,
+    // а внутренние смещения софитов в группе сохраняем — двойные/тройные
+    // не разваливаются.
+    type Cluster = { ids: string[]; cx: number; cy: number };
+    const clusters: Cluster[] = [];
+    const groupMap = new Map<string, Cluster>();
+    for (const e of spotEls) {
+      if (e.groupId) {
+        let c = groupMap.get(e.groupId);
+        if (!c) {
+          c = { ids: [], cx: 0, cy: 0 };
+          groupMap.set(e.groupId, c);
+          clusters.push(c);
+        }
+        c.ids.push(e.id);
+      } else {
+        clusters.push({ ids: [e.id], cx: e.x!, cy: e.y! });
+      }
     }
+    // Считаем центры групп.
+    for (const c of clusters) {
+      if (c.ids.length === 1) continue; // одиночка — центр уже выставлен
+      let sx = 0, sy = 0;
+      for (const id of c.ids) {
+        const el = elements.find(x => x.id === id)!;
+        sx += el.x || 0; sy += el.y || 0;
+      }
+      c.cx = sx / c.ids.length;
+      c.cy = sy / c.ids.length;
+    }
+    if (clusters.length < 2) return;
+
+    let newCenters: { id: string; cx: number; cy: number }[] = [];
+    if (axis === "row") {
+      const avgY = clusters.reduce((s, c) => s + c.cy, 0) / clusters.length;
+      const sorted = [...clusters].sort((a, b) => a.cx - b.cx);
+      const minX = sorted[0].cx, maxX = sorted[sorted.length - 1].cx;
+      const step = (maxX - minX) / (clusters.length - 1);
+      newCenters = sorted.map((c, i) => ({ id: c.ids[0], cx: minX + step * i, cy: avgY }));
+      // Сопоставим обратно с кластерами по первой id.
+      for (let i = 0; i < sorted.length; i++) {
+        sorted[i].cx = minX + step * i;
+        sorted[i].cy = avgY;
+      }
+    } else {
+      const avgX = clusters.reduce((s, c) => s + c.cx, 0) / clusters.length;
+      const sorted = [...clusters].sort((a, b) => a.cy - b.cy);
+      const minY = sorted[0].cy, maxY = sorted[sorted.length - 1].cy;
+      const step = (maxY - minY) / (clusters.length - 1);
+      newCenters = sorted.map((c, i) => ({ id: c.ids[0], cx: avgX, cy: minY + step * i }));
+      for (let i = 0; i < sorted.length; i++) {
+        sorted[i].cx = avgX;
+        sorted[i].cy = minY + step * i;
+      }
+    }
+    void newCenters;
+
+    // Применяем: для каждого софита вычисляем его новые координаты как
+    // (новый центр группы) + (исходное смещение от старого центра).
+    setElements(prev => prev.map(el => {
+      if (el.type !== "spot" || el.x === undefined || el.y === undefined) return el;
+      // Найдём кластер этого spot.
+      const cluster = clusters.find(c => c.ids.includes(el.id));
+      if (!cluster) return el;
+      // Сохранённый исходный центр для одиночек — это сам spot, оффсет = 0.
+      // Для групп — пересчитываем оффсет с прежнего центра.
+      const origin = cluster.ids.length === 1
+        ? { x: el.x, y: el.y } // одиночка — старая позиция = центр
+        : (() => {
+            // Восстанавливаем старый центр группы из исходного elements.
+            let sx = 0, sy = 0;
+            for (const id of cluster.ids) {
+              const orig = elements.find(x => x.id === id)!;
+              sx += orig.x || 0; sy += orig.y || 0;
+            }
+            return { x: sx / cluster.ids.length, y: sy / cluster.ids.length };
+          })();
+      const offX = el.x - origin.x;
+      const offY = el.y - origin.y;
+      return { ...el, x: cluster.cx + offX, y: cluster.cy + offY };
+    }));
     setAlignMode(false);
   }
 
