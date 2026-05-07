@@ -940,6 +940,23 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       const extraDepth = activeType === "subcurtain" && lengthInput.extraDepth !== undefined
         ? parseFloat(lengthDepthValue)
         : undefined;
+
+      // Подшторник «Прямой»: автоматически растягиваем на всю «сторону»
+      // комнаты через выступы / параллельные стены (как при drag-drop).
+      let autoSpanFrom: number | undefined;
+      let autoSpanTo: number | undefined;
+      if (activeType === "subcurtain") {
+        const N = editableWalls.length;
+        const span = computeSubcurtainSpan(lengthInput.wallIndex, vertices, N, editableWalls);
+        const hasExtension =
+          span.leftWall !== lengthInput.wallIndex ||
+          span.rightWall !== lengthInput.wallIndex;
+        if (hasExtension) {
+          autoSpanFrom = span.leftWall;
+          autoSpanTo = (span.rightWall + 1) % N;
+        }
+      }
+
       setElements(prev => [...prev, {
         id: newId,
         type: activeType as ElementType,
@@ -949,6 +966,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         shape: "straight",
         ...(hasVariant && { variant: activeVariant }),
         ...(extraDepth && extraDepth > 0 && { depth: extraDepth }),
+        ...(autoSpanFrom !== undefined && autoSpanTo !== undefined && {
+          spanFromVertex: autoSpanFrom,
+          spanToVertex: autoSpanTo,
+        }),
       }]);
     }
     setLengthInput(null);
