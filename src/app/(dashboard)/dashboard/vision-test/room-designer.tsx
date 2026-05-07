@@ -550,6 +550,26 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                   ));
                 }
               }
+            } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend") {
+              // Подшторник: drag «как мебель» — встаёт на всю длину ближайшей
+              // стены, отступ от стены = расстоянию от точки drop'а.
+              const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
+              const wallLenCm = editableWalls[nearest.wallIndex] || 0;
+              if (wallLenCm > 0) {
+                const newDepth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
+                setElements(prev => prev.map(e =>
+                  e.id === ds.id ? {
+                    ...e,
+                    wallIndex: nearest.wallIndex,
+                    wallPosition: 0.5,
+                    length: wallLenCm,
+                    depth: newDepth,
+                    // Сбрасываем span при ручном перетаскивании на новую стену.
+                    spanFromVertex: undefined,
+                    spanToVertex: undefined,
+                  } : e
+                ));
+              }
             } else {
               const config = ALL_ELEMENTS.find(c => c.type === el.type);
               if (config?.category === "wall") {
@@ -3355,6 +3375,15 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                         {d} см
                       </button>
                     ))}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      placeholder="свой"
+                      value={lengthDepthValue}
+                      onChange={(e) => setLengthDepthValue(e.target.value.replace(/[^\d]/g, ""))}
+                      className="w-16 px-2 py-1.5 text-xs rounded-lg border border-gray-300 text-center focus:outline-none focus:border-[#1e3a5f]"
+                    />
                   </div>
                 </div>
               )}
