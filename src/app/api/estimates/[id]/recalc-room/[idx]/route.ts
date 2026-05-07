@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculate, type CustomItemInfo } from "@/lib/calculate";
@@ -120,6 +121,10 @@ export async function POST(
         totalArea: newCalc.totalArea,
       },
     });
+
+    // Сбрасываем кеш RSC — иначе страница КП и редактор показывают старый snapshot.
+    revalidatePath(`/dashboard/estimates/${id}`);
+    revalidatePath(`/dashboard/estimates/${id}/edit-room/${idx}`);
 
     return NextResponse.json({ success: true, total: newCalc.total });
   } catch (error) {

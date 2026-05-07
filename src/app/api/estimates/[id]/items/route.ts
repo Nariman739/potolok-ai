@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
@@ -59,6 +60,8 @@ export async function PATCH(
         standardTotal: newTotal,
       },
     });
+
+    revalidatePath(`/dashboard/estimates/${id}`);
 
     return NextResponse.json({ success: true, total: newTotal });
   } catch (error) {
