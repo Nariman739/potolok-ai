@@ -253,11 +253,16 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }: {
   room: Room;
-  onDone: (elements: RoomElement[]) => void;
+  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number }) => void;
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
 }) {
   const [elements, setElements] = useState<RoomElement[]>(room.elements || []);
+  // Локальное редактирование размеров стен. Меняется через тап на цифру.
+  // При onDone передаём новые walls + пересчитанные area/perimeter родителю.
+  const [editableWalls, setEditableWalls] = useState<number[]>(room.walls);
+  // Индекс стены, у которой открыт инлайн-инпут редактирования размера.
+  const [wallSizeEdit, setWallSizeEdit] = useState<{ index: number; value: string } | null>(null);
   const [activeType, setActiveType] = useState<ElementType | FurnitureType | null>(null);
   const [activeVariant, setActiveVariant] = useState<"ours" | "client">("ours");
   // Группа софитов: 1 / 2-горизонт / 2-вертикаль / 3-горизонт / 3-вертикаль.
@@ -321,7 +326,19 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const pointerHandled = useRef(false);
   const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean } | null>(null);
 
-  const vertices = getVertices(room.walls, room.normalCorners, room.angles);
+  const vertices = getVertices(editableWalls, room.normalCorners, room.angles);
+
+  // Площадь полигона (см²) по формуле shoelace, м² для отображения.
+  const computedArea = (() => {
+    let s = 0;
+    const n = vertices.length - 1; // последняя вершина = первой
+    for (let i = 0; i < n; i++) {
+      const a = vertices[i], b = vertices[(i + 1) % n];
+      s += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(s) / 2 / 10000; // см² → м²
+  })();
+  const computedPerimeter = editableWalls.reduce((s, w) => s + w, 0) / 100; // см → м
 
   // Bounding box
   const xs = vertices.map(v => v.x), ys = vertices.map(v => v.y);
@@ -465,7 +482,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               if (a && b) {
                 const dxw = b.x - a.x, dyw = b.y - a.y;
                 const wL = Math.sqrt(dxw * dxw + dyw * dyw);
-                const wallLenCm = room.walls[el.wallIndex] || 0;
+                const wallLenCm = editableWalls[el.wallIndex] || 0;
                 if (wL > 0 && wallLenCm > 0) {
                   const wnx = dxw / wL, wny = dyw / wL;
                   // t = проекция drop-точки на стену в [0..1]
@@ -637,7 +654,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       }
 
       const nearest = nearestWall(coords.x, coords.y, vertices);
-      const wallCm = room.walls[nearest.wallIndex];
+      const wallCm = editableWalls[nearest.wallIndex];
       const tapCm = nearest.t * wallCm;
       const wallsCount = vertices.length - 1;
       // Считаем занятые подшторником/Г-нишой интервалы на этой стене (в см)
@@ -745,7 +762,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     if (!lengthInput) return;
     const len = parseFloat(lengthValue);
     if (!len || len <= 0) { setLengthInput(null); setEditingWallElId(null); return; }
-    const wallLen = room.walls[lengthInput.wallIndex] || 0;
+    const wallLen = editableWalls[lengthInput.wallIndex] || 0;
     const clampedLen = Math.min(len, wallLen);
     const pos = lengthSide === "left" ? clampedLen / 2 / wallLen
       : lengthSide === "right" ? 1 - clampedLen / 2 / wallLen
@@ -799,7 +816,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       setNicheInput(null);
       return;
     }
-    const wallLen = room.walls[nicheInput.wallIndex] || 0;
+    const wallLen = editableWalls[nicheInput.wallIndex] || 0;
     const clampedW = Math.min(w, wallLen);
     // Г-ниша всегда упирается одним концом в угол стены (anchor):
     // side="left" (загиб слева) → анкор на правом углу стены
@@ -1197,7 +1214,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const offset = el.type === "subcurtain"
         ? (el.shape === "u-niche" || el.shape === "l-bend"
             ? wallOffset * 0.15
-            : ((el.depth ?? 20) * wallLen / (room.walls[el.wallIndex] || 1)))
+            : ((el.depth ?? 20) * wallLen / (editableWalls[el.wallIndex] || 1)))
       : (el.type === "curtain" || el.type === "builtin_gardina" || el.type === "shower_curtain") ? wallOffset * 1.5
       : wallOffset;
 
@@ -1347,7 +1364,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const wLen = Math.sqrt(dx * dx + dy * dy);
     if (wLen === 0) return null;
     const nx = dx / wLen, ny = dy / wLen;
-    const wallCm = room.walls[el.wallIndex] || 0;
+    const wallCm = editableWalls[el.wallIndex] || 0;
     const n = vertices.length - 1;
 
     // Подшторник «съедает» край потолка — на этих участках парящий не рисуем.
@@ -1363,7 +1380,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         continue;
       }
       if (sub.shape === "l-bend" && sub.depth) {
-        const subWallCm = room.walls[sub.wallIndex] || 0;
+        const subWallCm = editableWalls[sub.wallIndex] || 0;
         if (subWallCm === 0) continue;
         const depthSvg = sub.depth * wLen / wallCm;
         if (sub.side === "left" && (sub.wallIndex - 1 + n) % n === el.wallIndex) {
@@ -1452,7 +1469,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const perpX = -ny, perpY = nx; // внутрь комнаты
 
     const isDraggingNiche = dragId === el.id && dragPos && dragStartRef.current?.moved;
-    const wallLenCm = room.walls[el.wallIndex] || 0;
+    const wallLenCm = editableWalls[el.wallIndex] || 0;
 
     // Живой preview Г-ниши при drag: длина пересчитывается из позиции пальца,
     // анкор остаётся на углу стены.
@@ -1720,7 +1737,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             if (t > 0.001 && s >= -0.001 && s <= 1.001 && t < bestT) {
               bestT = t;
               const wallLenSvg = Math.hypot(wdx, wdy);
-              const wallLenCm = room.walls[w] || wallLenSvg;
+              const wallLenCm = editableWalls[w] || wallLenSvg;
               bestScale = wallLenCm / wallLenSvg;
             }
           }
@@ -2091,7 +2108,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const profilePerim = Math.max(0, room.perimeter - podOnWallM + furnPerimDeltaM);
     cost += profilePerim * (p.profile_plastic || 500);
     cost += profilePerim * (p.insert || 1000);
-    cost += room.walls.length * (p.corner_plastic || 1000);
+    cost += editableWalls.length * (p.corner_plastic || 1000);
     const spotsOurs = elements.filter(e => e.type === "spot" && e.variant !== "client").length;
     const spotsClient = elements.filter(e => e.type === "spot" && e.variant === "client").length;
     cost += spotsOurs * (p.spot_ours || 5000);
@@ -2128,7 +2145,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   function handleShare() {
     const name = room.name || "Помещение";
     const lines = [`📐 ${name}: ${room.area} м², P = ${room.perimeter} м`];
-    lines.push(`Стены: ${room.walls.join(" · ")} см`);
+    lines.push(`Стены: ${editableWalls.join(" · ")} см`);
     if (spots > 0) lines.push(`💡 Софиты: ${spots} шт`);
     if (chands > 0) lines.push(`🔆 Люстры: ${chands} шт`);
     if (doors > 0) lines.push(`🚪 Двери: ${doors} шт`);
@@ -2176,8 +2193,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         <button onClick={onCancel} className="p-1 -ml-1 text-muted-foreground">
           <X className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold">{room.name || "Дизайн"} · {room.area} м²</span>
-        <button onClick={() => onDone(elements)}
+        <span className="text-sm font-semibold">
+          {room.name || "Дизайн"} · {computedArea.toFixed(2)} м²
+        </span>
+        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter })}
           className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
@@ -2230,7 +2249,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                     setEditingWallElId(selEl.id);
                     setLengthInput({ wallIndex: selEl.wallIndex });
                     setLengthValue(String(Math.round(selEl.length || 0)));
-                    const wallLen = room.walls[selEl.wallIndex] || 1;
+                    const wallLen = editableWalls[selEl.wallIndex] || 1;
                     const pos = selEl.wallPosition ?? 0.5;
                     const halfRatio = (selEl.length || 0) / 2 / wallLen;
                     if (pos <= halfRatio + 0.05) setLengthSide("left");
@@ -2330,7 +2349,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           <Scene3DBoundary>
             <Scene3D
               vertices={vertices}
-              walls={room.walls}
+              walls={editableWalls}
               ceilingHeight={room.ceilingHeight ?? DEFAULT_CEILING_HEIGHT_CM}
               elements={elements}
               onScreenshot={onPreviewSaved}
@@ -2386,7 +2405,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             const dx = b.x - a.x, dy = b.y - a.y;
             const wLen = Math.sqrt(dx * dx + dy * dy);
             if (wLen === 0) return null;
-            const realLen = room.walls[i] || 0;
+            const realLen = editableWalls[i] || 0;
             const isShort = realLen < 100;
             const isVeryShort = realLen < 60;
             const fontScale = isVeryShort ? 0.55 : isShort ? 0.65 : 0.75;
@@ -2412,7 +2431,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             const bgW = lenStr.length * fs * 0.55 + padX * 2;
             const bgH = fs * 1.15;
             return (
-              <g key={`dim-${i}`}>
+              <g key={`dim-${i}`}
+                className="cursor-pointer"
+                onPointerDown={(e) => {
+                  // Тап на цифру — открыть редактирование размера стены.
+                  e.stopPropagation();
+                  setWallSizeEdit({ index: i, value: String(realLen) });
+                }}
+              >
                 {/* Линия-выноска для коротких стен (от середины стены к подписи) */}
                 {isShort && (
                   <line x1={cx} y1={cy} x2={mx} y2={my}
@@ -2431,7 +2457,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 )}
                 {/* Подложка-плашка под текстом */}
                 <rect x={mx - bgW / 2} y={my - bgH / 2} width={bgW} height={bgH}
-                  rx={bgH * 0.25} fill="#ffffff" stroke="#e2e8f0" strokeWidth={strokeW * 0.1}
+                  rx={bgH * 0.25} fill="#ffffff" stroke="#1e3a5f" strokeWidth={strokeW * 0.18}
                   opacity={0.95}
                   transform={`rotate(${angle}, ${mx}, ${my})`} />
                 <text x={mx} y={my} textAnchor="middle" dominantBaseline="central"
@@ -2544,6 +2570,79 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
             />
           )}
         </svg>
+        {/* Popup редактирования размера стены — поверх SVG. */}
+        {wallSizeEdit && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/30 z-30"
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setWallSizeEdit(null);
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-2xl p-4 w-72 space-y-3">
+              <p className="text-sm font-semibold">
+                Стена #{wallSizeEdit.index + 1}
+              </p>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Длина (см)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  autoFocus
+                  min="1"
+                  step="1"
+                  value={wallSizeEdit.value}
+                  onChange={(e) =>
+                    setWallSizeEdit({ ...wallSizeEdit, value: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-lg text-base"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setWallSizeEdit(null)}
+                  className="flex-1 py-2 rounded-lg border text-sm font-medium hover:bg-muted"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    if (!wallSizeEdit) return;
+                    const v = parseFloat(wallSizeEdit.value);
+                    if (!isFinite(v) || v <= 0) {
+                      setWallSizeEdit(null);
+                      return;
+                    }
+                    setEditableWalls((prev) =>
+                      prev.map((w, j) => (j === wallSizeEdit.index ? Math.round(v) : w))
+                    );
+                    setWallSizeEdit(null);
+                  }}
+                  className="flex-1 py-2 rounded-lg bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#152d4a]"
+                >
+                  Сохранить
+                </button>
+              </div>
+              {editableWalls.length > 4 && editableWalls[wallSizeEdit.index] < 100 && (
+                <button
+                  onClick={() => {
+                    if (!wallSizeEdit) return;
+                    // Удаление выступа: убираем эту короткую стену из массива.
+                    // Это упрощает форму комнаты на одну сторону.
+                    setEditableWalls((prev) =>
+                      prev.filter((_, j) => j !== wallSizeEdit.index)
+                    );
+                    setWallSizeEdit(null);
+                  }}
+                  className="w-full py-2 rounded-lg border border-red-200 text-red-700 text-sm font-medium hover:bg-red-50"
+                >
+                  Удалить эту стенку (выступ)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary + Cost + Actions */}
@@ -2706,7 +2805,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       {/* Подшторник — выбор формы */}
       {subcurtainShapeChoice && (() => {
         const wallIdx = subcurtainShapeChoice.wallIndex;
-        const wallLen = room.walls[wallIdx] || 0;
+        const wallLen = editableWalls[wallIdx] || 0;
         const close = () => setSubcurtainShapeChoice(null);
         const pickStraight = () => {
           setSubcurtainShapeChoice(null);
@@ -2758,7 +2857,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
       {/* Подшторник — размеры П/Г-ниши */}
       {nicheInput && (() => {
-        const wallLen = room.walls[nicheInput.wallIndex] || 0;
+        const wallLen = editableWalls[nicheInput.wallIndex] || 0;
         const isU = nicheInput.shape === "u-niche";
         const close = () => setNicheInput(null);
         return (
@@ -2968,7 +3067,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
       {/* Length input with numpad */}
       {lengthInput && (() => {
-        const wallLen = room.walls[lengthInput.wallIndex] || 0;
+        const wallLen = editableWalls[lengthInput.wallIndex] || 0;
         const editEl = editingWallElId ? elements.find(e => e.id === editingWallElId) : null;
         const elConfig = ALL_ELEMENTS.find(e => e.type === (editEl?.type || activeType));
         const numDigit = (d: string) => setLengthValue(p => p === "0" ? d : p + d);

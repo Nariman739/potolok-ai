@@ -2347,8 +2347,20 @@ export default function ZameryPage() {
               }
             }
           }}
-          onDone={elements => {
-            const roomWithElements: Room = { ...designingRoom, elements };
+          onDone={(elements, updates) => {
+            // Если в редакторе изменились размеры стен — забираем обновлённые walls/area/perimeter.
+            const roomWithElements: Room = {
+              ...designingRoom,
+              elements,
+              ...(updates && {
+                walls: updates.walls,
+                area: updates.area,
+                perimeter: updates.perimeter,
+                // Если убирали стены — обрезаем normalCorners/angles до новой длины.
+                normalCorners: designingRoom.normalCorners.slice(0, updates.walls.length),
+                angles: designingRoom.angles?.slice(0, updates.walls.length),
+              }),
+            };
 
             // Calculator mode: save room and redirect to calculator
             if (isCalculatorMode) {
