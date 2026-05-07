@@ -551,12 +551,32 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 }
               }
             } else if (el.type === "subcurtain" && el.shape !== "u-niche" && el.shape !== "l-bend") {
-              // Подшторник: drag «как мебель» — встаёт на всю длину ближайшей
-              // стены, отступ от стены = расстоянию от точки drop'а.
+              // Подшторник: drag «как мебель» — встаёт на всю «сторону» комнаты,
+              // автоматически растягиваясь через соседние короткие выступы (стенки <60см).
+              // Отступ от стены = расстоянию от точки drop'а.
               const nearest = nearestWall(dropPos.x, dropPos.y, vertices);
               const wallLenCm = editableWalls[nearest.wallIndex] || 0;
               if (wallLenCm > 0) {
                 const newDepth = Math.max(5, Math.min(60, Math.round(nearest.dist)));
+                const N = editableWalls.length;
+                const SHORT_CM = 60;
+                // Расширяем влево через короткие стены до длинной.
+                let leftWall = nearest.wallIndex;
+                for (let k = 0; k < N; k++) {
+                  const prev = (leftWall - 1 + N) % N;
+                  if ((editableWalls[prev] || 0) < SHORT_CM) {
+                    leftWall = prev;
+                  } else break;
+                }
+                // Расширяем вправо.
+                let rightWall = nearest.wallIndex;
+                for (let k = 0; k < N; k++) {
+                  const next = (rightWall + 1) % N;
+                  if ((editableWalls[next] || 0) < SHORT_CM) {
+                    rightWall = next;
+                  } else break;
+                }
+                const hasExtension = leftWall !== nearest.wallIndex || rightWall !== nearest.wallIndex;
                 setElements(prev => prev.map(e =>
                   e.id === ds.id ? {
                     ...e,
@@ -564,9 +584,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                     wallPosition: 0.5,
                     length: wallLenCm,
                     depth: newDepth,
-                    // Сбрасываем span при ручном перетаскивании на новую стену.
-                    spanFromVertex: undefined,
-                    spanToVertex: undefined,
+                    // Если рядом есть выступы — автоматически делаем span до основных углов.
+                    spanFromVertex: hasExtension ? leftWall : undefined,
+                    spanToVertex: hasExtension ? (rightWall + 1) % N : undefined,
                   } : e
                 ));
               }
