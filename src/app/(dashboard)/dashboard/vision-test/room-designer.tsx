@@ -3216,6 +3216,17 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                   </button>
                 ))}
               </div>
+              <div className="flex justify-center mt-2">
+                <button
+                  onClick={() => {
+                    setLengthValue(String(Math.round(wallLen)));
+                    setLengthSide("center");
+                  }}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold active:scale-95"
+                >
+                  По всей стене ({Math.round(wallLen)} см)
+                </button>
+              </div>
               {lengthInput.extraDepth !== undefined && (
                 <div className="mt-3">
                   <p className="text-xs text-muted-foreground text-center mb-1.5">Отступ от стены</p>
