@@ -285,7 +285,7 @@ export default async function DashboardPage() {
                   </div>
                   <p className="text-xl font-bold">{measurementsCount}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {isPro ? "PRO" : `КП: ${kpUsed}/${kpLeft != null && kpLeft <= 0 ? "лимит" : kpLimit}`}
+                    {isPro || !Number.isFinite(kpLimit as number) ? "PRO" : `КП: ${kpUsed}/${kpLeft != null && kpLeft <= 0 ? "лимит" : kpLimit}`}
                   </p>
                 </div>
               </div>

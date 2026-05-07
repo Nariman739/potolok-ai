@@ -183,7 +183,8 @@ export const ROOM_PRESETS = [
 ] as const;
 
 export const KP_LIMITS = {
-  FREE: 5,
+  // TEMP: лимит снят на период тестирования (вернуть 5 после оплаты тарифов).
+  FREE: Infinity,
   PRO: Infinity,
   PROPLUS: Infinity,
 } as const;
