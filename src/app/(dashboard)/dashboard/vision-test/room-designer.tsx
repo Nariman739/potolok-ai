@@ -549,6 +549,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  // Когда активен инструмент (parящий и т.п.) и юзер тапнул в зуме — ждём
+  // движения > 5px чтобы решить: pan или тап. Сохраняем pending старт.
+  const pendingPanStart = useRef<{ x: number; y: number; panX: number; panY: number; pointerId: number } | null>(null);
   // Align
   const [alignMode, setAlignMode] = useState(false);
   // Position editor
@@ -1405,22 +1408,52 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   }, []);
 
   function handlePanStart(e: React.PointerEvent) {
-    // Mouse: средняя кнопка или Ctrl+Left
+    // Mouse: средняя кнопка или Ctrl+Left — мгновенный pan
     const isMousePan = e.button === 1 || (e.button === 0 && e.ctrlKey);
-    // Touch: при увеличенном зуме палец на свободном месте — пэн
-    // (не пэним когда у мастера в руке инструмент или активна форма ввода)
-    const isTouchPan = e.pointerType === "touch" && zoom > 1.05 && !activeType
-      && !lengthInput && !nicheInput && !subcurtainShapeChoice
+    // Modal-формы блокируют pan
+    const modalsClosed = !lengthInput && !nicheInput && !subcurtainShapeChoice
       && !lightShapeChoice && !lightSpecInput;
-    if (isMousePan || isTouchPan) {
+    const isTouchInZoom = e.pointerType === "touch" && zoom > 1.05 && modalsClosed;
+
+    if (isMousePan) {
       e.preventDefault();
       setIsPanning(true);
       panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
       (e.target as Element).setPointerCapture?.(e.pointerId);
+      return;
+    }
+
+    if (isTouchInZoom) {
+      if (!activeType) {
+        // Без активного инструмента — pan мгновенно (как раньше)
+        e.preventDefault();
+        setIsPanning(true);
+        panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+      } else {
+        // С активным инструментом (Парящий и т.п.) — ждём движения > 5px,
+        // чтобы решить pan или тап. Не блокируем event — handleSVG... тоже
+        // должен получить pointerDown для возможного тапа.
+        pendingPanStart.current = {
+          x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, pointerId: e.pointerId,
+        };
+      }
     }
   }
 
   function handlePanMove(e: React.PointerEvent) {
+    // Pending pan: в зуме с активным инструментом ждём 5px движения
+    if (pendingPanStart.current && !isPanning) {
+      const dx = e.clientX - pendingPanStart.current.x;
+      const dy = e.clientY - pendingPanStart.current.y;
+      if (Math.hypot(dx, dy) > 5) {
+        // Активируем pan, захватываем pointer
+        setIsPanning(true);
+        panStart.current = { ...pendingPanStart.current };
+        (e.target as Element).setPointerCapture?.(pendingPanStart.current.pointerId);
+        pendingPanStart.current = null;
+      }
+    }
     if (!isPanning || !panStart.current) return;
     const svg = svgRef.current;
     if (!svg) return;
@@ -1432,6 +1465,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   }
 
   function handlePanEnd() {
+    pendingPanStart.current = null;
     if (isPanning) {
       setIsPanning(false);
       panStart.current = null;
