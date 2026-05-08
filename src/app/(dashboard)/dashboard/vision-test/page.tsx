@@ -2281,7 +2281,8 @@ export default function ZameryPage() {
       const subStats = computeSubcurtainStats(
         els,
         getVertices(room.walls, room.normalCorners, room.angles),
-        room.walls.length
+        room.walls.length,
+        room.walls
       );
       const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
       const podshtornikOnWallLength = Math.round(subStats.onWallLengthCm) / 100;
@@ -2423,7 +2424,8 @@ export default function ZameryPage() {
               const subStatsCalc = computeSubcurtainStats(
                 elements,
                 getVertices(room.walls, room.normalCorners, room.angles),
-                room.walls.length
+                room.walls.length,
+                room.walls
               );
               const podshtornikLength = Math.round(subStatsCalc.totalLengthCm) / 100;
               const podshtornikOnWallLength = Math.round(subStatsCalc.onWallLengthCm) / 100;

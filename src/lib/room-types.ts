@@ -57,10 +57,16 @@ export interface RoomElement {
   polygonPoints?: { x: number; y: number }[];
   /** ID группы (для софитов в паре/тройке) — при drag двигаются вместe. */
   groupId?: string;
-  /** Подшторник «через выступы»: индексы вершин полигона, между которыми
-   *  идёт прямая. Если заданы — длина и рендер считаются по этой прямой,
-   *  а съеденные углы (между from и to) вычитаются из периметра/углов. */
+  /**
+   * @deprecated Legacy-поля для подшторника «через выступы». Текущая
+   * single-anchor модель хранит сторону через `wallIndex` (anchor) +
+   * `wallPosition` (может выходить за [0..1]) + `length` (может превышать
+   * длину anchor-стены). Сохраняем поля только для backward-compat: при
+   * загрузке комнаты с DB старые подшторники мигрируются в canonical форму
+   * автоматически (см. normalizeStraightSubcurtain в room-designer.tsx).
+   */
   spanFromVertex?: number;
+  /** @deprecated см. spanFromVertex */
   spanToVertex?: number;
 }
 

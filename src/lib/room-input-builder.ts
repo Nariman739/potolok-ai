@@ -87,7 +87,7 @@ export function buildRoomInputFromDesigner(
         .reduce((s, e) => s + (e.length || 0), 0)
     ) / 100;
   const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
-  const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length);
+  const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length, room.walls);
   const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
   const podshtornikOnWallLength = Math.round(subStats.onWallLengthCm) / 100;
   // Углы стен, скрытые подшторником «через выступы», не считаются в КП.
