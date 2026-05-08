@@ -50,6 +50,11 @@ export interface FurnitureCeilingStats {
 
 /** Порог в см: грань мебели у стены если ОБЕ её точки на расстоянии < этого. */
 const AT_WALL_THRESHOLD_CM = 5;
+/** Порог в см: грань мебели у соседней мебели (для модульной кухни/шкафа из
+ *  нескольких блоков). Значение больше чем AT_WALL_THRESHOLD_CM — между
+ *  блоками часто оставляют небольшой зазор 10-25см который не должен
+ *  заставлять парящий «пробивать» внутрь сборки. */
+const AT_NEIGHBOR_THRESHOLD_CM = 30;
 
 /** Углы мебели в SVG-координатах после rotation вокруг центра.
  *  4 угла для rect (через width/height), произвольное N для custom (через polygonPoints). */
@@ -151,11 +156,14 @@ export function classifyEdges(
                 && n1.wallIdx === n2.wallIdx;
     let atNeighbor = false;
     if (!atWall && neighbors.length > 0) {
-      // Грань at-furniture если ОБА её угла близко к ОДНОЙ соседней мебели
+      // Грань at-furniture если ОБА её угла близко к ОДНОЙ соседней мебели.
+      // Используем расширенный AT_NEIGHBOR_THRESHOLD_CM (30см) — между блоками
+      // модульной кухни часто оставляют зазор для духовки/посудомойки/etc,
+      // парящий не должен пробивать в эти швы.
       for (const oc of neighbors) {
         const d1 = distPointToPolygon(p1, oc);
         const d2 = distPointToPolygon(p2, oc);
-        if (d1 < AT_WALL_THRESHOLD_CM && d2 < AT_WALL_THRESHOLD_CM) {
+        if (d1 < AT_NEIGHBOR_THRESHOLD_CM && d2 < AT_NEIGHBOR_THRESHOLD_CM) {
           atNeighbor = true;
           break;
         }
