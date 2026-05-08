@@ -1099,8 +1099,17 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         }
       }
       occupiedCm.sort((p, q) => p[0] - q[0]);
-      let gapStart = 0, gapEnd = wallCm;
+      // Объединяем близкие интервалы (<30см) — швы между блоками модульной
+      // мебели не должны считаться gap для парящего.
+      const MERGE_GAP_CM = 30;
+      const mergedCm: Array<[number, number]> = [];
       for (const [s, e] of occupiedCm) {
+        const last = mergedCm[mergedCm.length - 1];
+        if (last && s - last[1] <= MERGE_GAP_CM) last[1] = Math.max(last[1], e);
+        else mergedCm.push([s, e]);
+      }
+      let gapStart = 0, gapEnd = wallCm;
+      for (const [s, e] of mergedCm) {
         if (e <= tapCm) gapStart = Math.max(gapStart, e);
         if (s >= tapCm) { gapEnd = Math.min(gapEnd, s); break; }
       }
@@ -2116,9 +2125,25 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       }
     }
     occupied.sort((p, q) => p[0] - q[0]);
+    // Объединяем близкие интервалы — если между двумя occupied зазор меньше
+    // MERGE_GAP_CM, считаем что это «шов» между блоками модульной мебели
+    // (Г-кухня из 2 блоков и т.п.) и парящий не должен пробивать в эту щель.
+    // wLen — длина стены в SVG, wallCm — в см.
+    const MERGE_GAP_CM = 30;
+    const cmToSvg = wallCm > 0 ? wLen / wallCm : 1;
+    const mergeGapSvg = MERGE_GAP_CM * cmToSvg;
+    const merged: Array<[number, number]> = [];
+    for (const [s, e] of occupied) {
+      const last = merged[merged.length - 1];
+      if (last && s - last[1] <= mergeGapSvg) {
+        last[1] = Math.max(last[1], e);
+      } else {
+        merged.push([s, e]);
+      }
+    }
     let gaps: Array<[number, number]> = [];
     let cursor = 0;
-    for (const [s, e] of occupied) {
+    for (const [s, e] of merged) {
       if (s > cursor) gaps.push([cursor, Math.min(s, wLen)]);
       cursor = Math.max(cursor, e);
     }
