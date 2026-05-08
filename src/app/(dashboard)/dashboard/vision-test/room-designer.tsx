@@ -265,7 +265,11 @@ function getRoomPath(vertices: Vertex[], cornerRadii?: number[]): string {
 }
 
 function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: number; dist: number; wallLength: number; t: number } {
-  let best = { wallIndex: 0, dist: Infinity, wallLength: 0, t: 0.5 };
+  // Сначала собираем всех кандидатов, затем выбираем лучшую с приоритетом
+  // коротким стенам — иначе маленькие выступы 10-50см проигрывают длинным
+  // соседним при тапе на парящий по периметру.
+  type Cand = { wallIndex: number; dist: number; wallLength: number; t: number };
+  const cands: Cand[] = [];
   for (let i = 0; i < vertices.length - 1; i++) {
     const a = vertices[i], b = vertices[i + 1];
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -275,11 +279,16 @@ function nearestWall(px: number, py: number, vertices: Vertex[]): { wallIndex: n
     t = Math.max(0, Math.min(1, t));
     const projX = a.x + t * dx, projY = a.y + t * dy;
     const dist = Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
-    if (dist < best.dist) {
-      best = { wallIndex: i, dist, wallLength: Math.sqrt(len2), t };
-    }
+    cands.push({ wallIndex: i, dist, wallLength: Math.sqrt(len2), t });
   }
-  return best;
+  if (cands.length === 0) return { wallIndex: 0, dist: Infinity, wallLength: 0, t: 0.5 };
+  // Все кандидаты в радиусе 25см от минимального — равноправны.
+  // Из них выбираем самую короткую стену (приоритет выступам).
+  const minDist = Math.min(...cands.map((c) => c.dist));
+  const TOLERANCE = 25;
+  const close = cands.filter((c) => c.dist <= minDist + TOLERANCE);
+  close.sort((a, b) => a.wallLength - b.wallLength);
+  return close[0];
 }
 
 /**
@@ -2449,8 +2458,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const isDragging = dragId === el.id && dragStartRef.current?.moved;
     const fillColor = "#3B82F6";
     const isSel = selectedId === el.id;
-    // Подвесной светильник — кружок поменьше софита (~60% от софита).
-    const r = spotR * 0.45;
+    // Подвесной светильник — промежуточный размер между софитом и люстрой,
+    // как софит по диаметру + контур + заливка в центре для контраста.
+    const r = spotR * 1.0;
     return (
       <g key={el.id}
         onPointerDown={(e) => handleElementPointerDown(el.id, e)}
@@ -2459,8 +2469,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       >
         <circle cx={pos.x} cy={pos.y} r={spotR * 3} fill="transparent" />
         {isSel && <circle cx={pos.x} cy={pos.y} r={r * 1.8} fill="none" stroke={fillColor} strokeWidth={spotR * 0.2} strokeDasharray={`${spotR * 0.4},${spotR * 0.25}`} />}
-        <circle cx={pos.x} cy={pos.y} r={r} fill={fillColor} />
-        <circle cx={pos.x} cy={pos.y} r={r * 0.4} fill="#fff" />
+        <circle cx={pos.x} cy={pos.y} r={r} fill="none" stroke={fillColor} strokeWidth={spotR * 0.32} />
+        <circle cx={pos.x} cy={pos.y} r={spotR * 0.5} fill={fillColor} />
       </g>
     );
   }
