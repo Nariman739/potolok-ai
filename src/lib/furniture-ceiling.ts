@@ -216,10 +216,11 @@ export function snapFurnitureToWallAndNeighbors(
   el: FurnitureLikeElement,
   vertices: Vertex[],
   allFurniture: FurnitureLikeElement[],
-  opts?: { wallSnapCm?: number; neighborSnapCm?: number },
+  opts?: { wallSnapCm?: number; neighborSnapCm?: number; perpSnapCm?: number },
 ): { x: number; y: number; rotation: number } | null {
   const wallSnapCm = opts?.wallSnapCm ?? 30;
-  const neighborSnapCm = opts?.neighborSnapCm ?? 10;
+  const neighborSnapCm = opts?.neighborSnapCm ?? 40;  // ↑ с 10 до 40см — модульная сборка
+  const perpSnapCm = opts?.perpSnapCm ?? 35;          // магнит к боковой грани соседа
   if (el.x === undefined || el.y === undefined || !el.width || !el.height) return null;
 
   // Найти ближайшую стену по проекции центра furniture
@@ -245,7 +246,8 @@ export function snapFurnitureToWallAndNeighbors(
   const wallAngleDeg = (Math.atan2(wDy, wDx) * 180) / Math.PI;
   const widthIsLong = el.width >= el.height;
   const longSide = widthIsLong ? el.width : el.height;
-  const halfPerp = widthIsLong ? el.height / 2 : el.width / 2;
+  const shortSide = widthIsLong ? el.height : el.width;
+  const halfPerp = shortSide / 2;
   // Если furniture слишком далеко от стены (далее чем halfPerp + wallSnapCm) — не snap'им
   if (bestDist > halfPerp + wallSnapCm) return null;
 
@@ -284,7 +286,9 @@ export function snapFurnitureToWallAndNeighbors(
     const otherWidthIsLong = other.width >= other.height;
     const otherLong = otherWidthIsLong ? other.width : other.height;
     const otherHalfPerp = otherWidthIsLong ? other.height / 2 : other.width / 2;
-    if (otherDistToWall > otherHalfPerp + AT_WALL_THRESHOLD_CM * 2) continue;
+    // Сосед должен быть «у этой же стены» — допускаем зазор до 30см
+    // (для блоков с зазором для духовки/посудомойки и т.п.)
+    if (otherDistToWall > otherHalfPerp + 30) continue;
     // Проекция соседа на ось стены
     const otherT = (other.x - a.x) * wallNx + (other.y - a.y) * wallNy;
     const otherMin = otherT - otherLong / 2;
@@ -302,6 +306,65 @@ export function snapFurnitureToWallAndNeighbors(
   if (bestSnapAbs <= neighborSnapCm) {
     newX += wallNx * bestSnapDelta;
     newY += wallNy * bestSnapDelta;
+  }
+
+  // ── Snap PERPENDICULAR: магнит к боковой грани мебели на смежной стене ──
+  // Например: маленький блок 100x60 у верхней стены примагничивается боком
+  // к большому блоку у правой стены — образует Г-сборку без зазора.
+  // Проверяем bbox-перекрытие в системе координат (wallNx, inX) текущей стены.
+  {
+    const myCx = (newX - a.x) * wallNx + (newY - a.y) * wallNy; // вдоль стены
+    const myCp = (newX - a.x) * inX + (newY - a.y) * inY;       // в комнату
+    // Своя bbox в координатах (wall, perp): widthIsLong → длинная вдоль стены
+    const myMinT2 = myCx - longSide / 2;
+    const myMaxT2 = myCx + longSide / 2;
+    const myMinP2 = myCp - shortSide / 2;
+    const myMaxP2 = myCp + shortSide / 2;
+
+    let bestPerpDelta = 0, bestPerpAbs = perpSnapCm + 1;
+    let bestPerpAxis: "wall" | "perp" = "wall";
+    for (const other of allFurniture) {
+      if (other === el) continue;
+      if (other.type !== "furniture") continue;
+      if (other.ceilingMode !== "to-ceiling" && other.ceilingMode !== "planned") continue;
+      const oc = getFurnitureCorners(other);
+      if (!oc) continue;
+      let oMinT = Infinity, oMaxT = -Infinity, oMinP = Infinity, oMaxP = -Infinity;
+      for (const oCorner of oc) {
+        const ot = (oCorner.x - a.x) * wallNx + (oCorner.y - a.y) * wallNy;
+        const op = (oCorner.x - a.x) * inX + (oCorner.y - a.y) * inY;
+        if (ot < oMinT) oMinT = ot;
+        if (ot > oMaxT) oMaxT = ot;
+        if (op < oMinP) oMinP = op;
+        if (op > oMaxP) oMaxP = op;
+      }
+      const overlapT = !(myMaxT2 < oMinT - 0.1 || myMinT2 > oMaxT + 0.1);
+      const overlapP = !(myMaxP2 < oMinP - 0.1 || myMinP2 > oMaxP + 0.1);
+      if (overlapT && !overlapP) {
+        // Снимать по perp: подвинуть к ближайшей грани
+        const candA = oMaxP - myMinP2;
+        const candB = oMinP - myMaxP2;
+        for (const d of [candA, candB]) {
+          if (Math.abs(d) < bestPerpAbs) { bestPerpAbs = Math.abs(d); bestPerpDelta = d; bestPerpAxis = "perp"; }
+        }
+      } else if (overlapP && !overlapT) {
+        // Снимать по wall (parallel): подвинуть к ближайшей грани
+        const candA = oMaxT - myMinT2;
+        const candB = oMinT - myMaxT2;
+        for (const d of [candA, candB]) {
+          if (Math.abs(d) < bestPerpAbs) { bestPerpAbs = Math.abs(d); bestPerpDelta = d; bestPerpAxis = "wall"; }
+        }
+      }
+    }
+    if (bestPerpAbs <= perpSnapCm) {
+      if (bestPerpAxis === "perp") {
+        newX += inX * bestPerpDelta;
+        newY += inY * bestPerpDelta;
+      } else {
+        newX += wallNx * bestPerpDelta;
+        newY += wallNy * bestPerpDelta;
+      }
+    }
   }
 
   return { x: newX, y: newY, rotation: newRotation };
