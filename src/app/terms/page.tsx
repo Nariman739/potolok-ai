@@ -82,7 +82,7 @@ export default function TermsPage() {
 
         <Section title="9. Контакты">
           <p>
-            Разработчик: Нариман Жаминов
+            Разработчик: Нариман Джаминов
             <br />
             Сайт: potolok.ai
             <br />
