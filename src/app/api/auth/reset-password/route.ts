@@ -18,8 +18,14 @@ export async function POST(request: Request) {
     if (!phone) {
       return NextResponse.json({ error: "Неверный формат телефона" }, { status: 400 });
     }
-    if (!otp || !newPassword || newPassword.length < 6) {
-      return NextResponse.json({ error: "Введите код и новый пароль (мин. 6 символов)" }, { status: 400 });
+    if (!otp || !newPassword) {
+      return NextResponse.json({ error: "Введите код и новый пароль" }, { status: 400 });
+    }
+    if (newPassword.length < 8) {
+      return NextResponse.json({ error: "Пароль минимум 8 символов" }, { status: 400 });
+    }
+    if (!/\d/.test(newPassword)) {
+      return NextResponse.json({ error: "Пароль должен содержать хотя бы одну цифру" }, { status: 400 });
     }
 
     const master = await prisma.master.findUnique({

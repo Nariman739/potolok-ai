@@ -34,9 +34,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Пароль минимум 6 символов" },
+        { error: "Пароль минимум 8 символов" },
+        { status: 400 }
+      );
+    }
+    if (!/\d/.test(password)) {
+      return NextResponse.json(
+        { error: "Пароль должен содержать хотя бы одну цифру" },
         { status: 400 }
       );
     }

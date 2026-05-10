@@ -22,13 +22,28 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
 
     const formData = new FormData(e.currentTarget);
     const phone = "+7" + (formData.get("phone") as string).replace(/\D/g, "");
     const password = formData.get("password") as string;
+    const passwordConfirm = formData.get("passwordConfirm") as string;
     const firstName = formData.get("firstName") as string;
     const companyName = formData.get("companyName") as string;
+
+    if (password.length < 8) {
+      toast.error("Пароль минимум 8 символов");
+      return;
+    }
+    if (!/\d/.test(password)) {
+      toast.error("Пароль должен содержать хотя бы одну цифру");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      toast.error("Пароли не совпадают");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -106,9 +121,21 @@ export default function RegisterPage() {
               id="password"
               name="password"
               type="password"
-              placeholder="Минимум 6 символов"
+              placeholder="Минимум 8 символов, хотя бы 1 цифра"
               required
-              minLength={6}
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="passwordConfirm">Повторите пароль</Label>
+            <Input
+              id="passwordConfirm"
+              name="passwordConfirm"
+              type="password"
+              placeholder="Введите пароль ещё раз"
+              required
+              minLength={8}
               autoComplete="new-password"
             />
           </div>
