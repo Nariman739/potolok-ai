@@ -65,6 +65,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "podshtornik_plastic", name: "Подшторник пластиковый (брус)", unit: "м.п.", defaultPrice: 2500, category: "podshtornik" },
   { code: "podshtornik_ldsp", name: "Подшторник ЛДСП (под галтели)", unit: "м.п.", defaultPrice: 5500, category: "podshtornik" },
   { code: "podshtornik_aluminum", name: "Подшторник алюминиевый", unit: "м.п.", defaultPrice: 8000, category: "podshtornik" },
+  { code: "podshtornik_aluminum_led", name: "Подшторник алюминиевый с подсветкой", unit: "м.п.", defaultPrice: 14000, category: "podshtornik", description: "Алюминиевый профиль + LED-полоса в комплекте" },
 
   // Углы
   { code: "corner_plastic", name: "Угол пластик", unit: "шт.", defaultPrice: 1000, category: "corner", description: "Для галтели / вставки" },
