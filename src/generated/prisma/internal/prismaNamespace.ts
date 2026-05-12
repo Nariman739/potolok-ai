@@ -388,6 +388,7 @@ export const ModelName = {
   Session: 'Session',
   MasterPrice: 'MasterPrice',
   CustomItem: 'CustomItem',
+  PriceVariant: 'PriceVariant',
   Estimate: 'Estimate',
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "logoGeneration"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "logoGeneration"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -713,6 +714,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CustomItemCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CustomItemCountAggregateOutputType> | number
+        }
+      }
+    }
+    PriceVariant: {
+      payload: Prisma.$PriceVariantPayload<ExtArgs>
+      fields: Prisma.PriceVariantFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PriceVariantFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PriceVariantFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        findFirst: {
+          args: Prisma.PriceVariantFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PriceVariantFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        findMany: {
+          args: Prisma.PriceVariantFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>[]
+        }
+        create: {
+          args: Prisma.PriceVariantCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        createMany: {
+          args: Prisma.PriceVariantCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PriceVariantCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>[]
+        }
+        delete: {
+          args: Prisma.PriceVariantDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        update: {
+          args: Prisma.PriceVariantUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        deleteMany: {
+          args: Prisma.PriceVariantDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PriceVariantUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PriceVariantUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>[]
+        }
+        upsert: {
+          args: Prisma.PriceVariantUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PriceVariantPayload>
+        }
+        aggregate: {
+          args: Prisma.PriceVariantAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePriceVariant>
+        }
+        groupBy: {
+          args: Prisma.PriceVariantGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PriceVariantGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PriceVariantCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PriceVariantCountAggregateOutputType> | number
         }
       }
     }
@@ -1809,6 +1884,23 @@ export const CustomItemScalarFieldEnum = {
 export type CustomItemScalarFieldEnum = (typeof CustomItemScalarFieldEnum)[keyof typeof CustomItemScalarFieldEnum]
 
 
+export const PriceVariantScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  category: 'category',
+  baseCode: 'baseCode',
+  name: 'name',
+  unit: 'unit',
+  price: 'price',
+  photoUrl: 'photoUrl',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PriceVariantScalarFieldEnum = (typeof PriceVariantScalarFieldEnum)[keyof typeof PriceVariantScalarFieldEnum]
+
+
 export const EstimateScalarFieldEnum = {
   id: 'id',
   publicId: 'publicId',
@@ -2390,6 +2482,7 @@ export type GlobalOmitConfig = {
   session?: Prisma.SessionOmit
   masterPrice?: Prisma.MasterPriceOmit
   customItem?: Prisma.CustomItemOmit
+  priceVariant?: Prisma.PriceVariantOmit
   estimate?: Prisma.EstimateOmit
   chatSession?: Prisma.ChatSessionOmit
   measurementObject?: Prisma.MeasurementObjectOmit

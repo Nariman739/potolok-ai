@@ -38,6 +38,11 @@ export type MasterPrice = Prisma.MasterPriceModel
  */
 export type CustomItem = Prisma.CustomItemModel
 /**
+ * Model PriceVariant
+ * 
+ */
+export type PriceVariant = Prisma.PriceVariantModel
+/**
  * Model Estimate
  * 
  */

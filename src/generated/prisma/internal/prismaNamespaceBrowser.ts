@@ -55,6 +55,7 @@ export const ModelName = {
   Session: 'Session',
   MasterPrice: 'MasterPrice',
   CustomItem: 'CustomItem',
+  PriceVariant: 'PriceVariant',
   Estimate: 'Estimate',
   ChatSession: 'ChatSession',
   MeasurementObject: 'MeasurementObject',
@@ -176,6 +177,23 @@ export const CustomItemScalarFieldEnum = {
 } as const
 
 export type CustomItemScalarFieldEnum = (typeof CustomItemScalarFieldEnum)[keyof typeof CustomItemScalarFieldEnum]
+
+
+export const PriceVariantScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  category: 'category',
+  baseCode: 'baseCode',
+  name: 'name',
+  unit: 'unit',
+  price: 'price',
+  photoUrl: 'photoUrl',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PriceVariantScalarFieldEnum = (typeof PriceVariantScalarFieldEnum)[keyof typeof PriceVariantScalarFieldEnum]
 
 
 export const EstimateScalarFieldEnum = {

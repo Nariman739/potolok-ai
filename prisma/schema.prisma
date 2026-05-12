@@ -82,6 +82,7 @@ model Master {
   updatedAt       DateTime @updatedAt
 
   prices          MasterPrice[]
+  priceVariants   PriceVariant[]
   estimates       Estimate[]
   sessions        Session[]
   chatSessions    ChatSession[]
@@ -148,6 +149,33 @@ model CustomItem {
   master    Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@unique([masterId, code])
+}
+
+// ============================================
+// PRICE VARIANTS (варианты с фото — мастер сам создаёт)
+// ============================================
+// Под каждой категорией (полотно, профиль, софит, ...) мастер может создать
+// свои варианты с фото. Например, под "canvas" → "Pongs белый матовый 2500₸ + фото".
+// В КП каждая строка может быть привязана к конкретному variantId — если в категории
+// 2+ вариантов, строка тапается и открывается picker.
+
+model PriceVariant {
+  id         String   @id @default(uuid())
+  masterId   String
+  category   String   // canvas | profile | spot | chandelier | curtain | gardina | podshtornik | track | lightline
+  baseCode   String?  // опционально: маппинг на код из PRODUCT_ITEMS (canvas_320, profile_shadow, ...) — null = полностью своя позиция
+  name       String
+  unit       String
+  price      Float
+  photoUrl   String?  // Vercel Blob URL
+  sortOrder  Int      @default(0)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId, category])
 }
 
 // ============================================
