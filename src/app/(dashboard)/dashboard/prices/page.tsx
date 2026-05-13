@@ -23,6 +23,14 @@ import {
 import { toast } from "sonner";
 import { Save, Loader2, RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { CATEGORY_LABELS, type ProductCategory } from "@/lib/constants";
+import {
+  VariantList,
+  AddVariantButton,
+  VariantDialog,
+  PhotoLightbox,
+  type PriceVariant,
+  type VariantDialogState,
+} from "@/components/prices/VariantSection";
 
 interface PriceItem {
   code: string;
@@ -39,6 +47,7 @@ interface PriceItem {
 
 export default function PricesPage() {
   const [items, setItems] = useState<PriceItem[]>([]);
+  const [variants, setVariants] = useState<PriceVariant[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -49,10 +58,19 @@ export default function PricesPage() {
   const [newItemPrice, setNewItemPrice] = useState("");
   const [addingItem, setAddingItem] = useState(false);
 
+  // Variant dialog
+  const [variantDialog, setVariantDialog] = useState<VariantDialogState | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    fetch("/api/prices")
-      .then((r) => r.json())
-      .then(setItems)
+    Promise.all([
+      fetch("/api/prices").then((r) => r.json()),
+      fetch("/api/prices/variants").then((r) => r.json()).catch(() => []),
+    ])
+      .then(([its, vars]) => {
+        setItems(its);
+        setVariants(Array.isArray(vars) ? vars : []);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -214,16 +232,24 @@ export default function PricesPage() {
         </p>
       </div>
 
-      {grouped.map((group) => (
+      {grouped.map((group) => {
+        const categoryVariants = variants.filter((v) => v.category === group.category);
+        const supportsVariants = ["canvas", "profile", "spot", "chandelier", "gardina", "podshtornik", "curtain"].includes(group.category);
+        return (
         <Card key={group.category}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg">{group.label}</CardTitle>
-                <CardDescription>
+                <CardDescription className="flex items-center gap-2 mt-1">
                   {group.items.filter((i) => i.isCustom).length > 0 && (
-                    <Badge variant="secondary" className="text-xs mt-1">
-                      Есть кастомные цены
+                    <Badge variant="secondary" className="text-xs">
+                      Свои цены
+                    </Badge>
+                  )}
+                  {categoryVariants.length > 0 && (
+                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
+                      {categoryVariants.length} {categoryVariants.length === 1 ? "вариант" : "варианта(ов)"}
                     </Badge>
                   )}
                 </CardDescription>
@@ -271,9 +297,24 @@ export default function PricesPage() {
                 </div>
               ))}
             </div>
+
+            {/* Варианты с фото — только для категорий где это имеет смысл */}
+            {supportsVariants && (
+              <>
+                <VariantList
+                  variants={categoryVariants}
+                  onEdit={(v) => setVariantDialog({ mode: "edit", category: group.category, variant: v })}
+                  onPhotoClick={(url) => setLightboxUrl(url)}
+                />
+                <AddVariantButton
+                  onClick={() => setVariantDialog({ mode: "create", category: group.category })}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
 
       {/* Custom items section */}
       <Card>
@@ -397,6 +438,27 @@ export default function PricesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Variant dialog (create/edit/delete with photo upload) */}
+      <VariantDialog
+        state={variantDialog}
+        onClose={() => setVariantDialog(null)}
+        onSaved={(v, mode) => {
+          setVariants((prev) =>
+            mode === "create"
+              ? [...prev, v]
+              : prev.map((x) => (x.id === v.id ? v : x))
+          );
+          setVariantDialog(null);
+        }}
+        onDeleted={(id) => {
+          setVariants((prev) => prev.filter((v) => v.id !== id));
+          setVariantDialog(null);
+        }}
+      />
+
+      {/* Photo lightbox */}
+      <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   );
 }
