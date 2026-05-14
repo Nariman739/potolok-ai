@@ -48,6 +48,19 @@ export type VariantDialogState =
 
 const UNIT_OPTIONS = ["шт.", "м.п.", "м²", "пара"] as const;
 
+const CATEGORY_LABELS: Record<string, string> = {
+  canvas: "Полотно",
+  profile: "Профиль",
+  spot: "Софиты",
+  chandelier: "Люстры",
+  curtain: "Гардина",
+  gardina: "Гардина",
+  podshtornik: "Подшторник",
+  track: "Трек",
+  lightline: "Световая линия",
+};
+const CATEGORY_OPTIONS = ["canvas", "profile", "spot", "chandelier", "gardina", "podshtornik", "track", "lightline"] as const;
+
 function formatPrice(n: number): string {
   return n.toLocaleString("ru-KZ") + " ₸";
 }
@@ -154,6 +167,9 @@ export function VariantDialog({
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<string>("шт.");
   const [price, setPrice] = useState("");
+  // category в edit-режиме — позволяет исправить ошибочно выбранную при создании
+  // (например, мастер создал "Подшторник ЛДСП" в категории "Профиль").
+  const [category, setCategory] = useState<string>("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -170,6 +186,7 @@ export function VariantDialog({
       setPhotoPreview(state.variant.photoUrl);
       setPhotoFile(null);
       setRemovePhoto(false);
+      setCategory(state.variant.category);
     } else {
       setName("");
       const def =
@@ -181,6 +198,7 @@ export function VariantDialog({
       setPhotoPreview(null);
       setPhotoFile(null);
       setRemovePhoto(false);
+      setCategory(state.category);
     }
   }, [state]);
 
@@ -223,7 +241,8 @@ export function VariantDialog({
     setSaving(true);
     try {
       const form = new FormData();
-      form.append("category", state.category);
+      // create: используем категорию из state. edit: разрешаем сменить через select.
+      form.append("category", state.mode === "edit" ? category : state.category);
       form.append("name", name.trim());
       form.append("unit", unit);
       form.append("price", String(priceNum));
@@ -354,6 +373,28 @@ export function VariantDialog({
               autoFocus
             />
           </div>
+
+          {/* Category (только в edit-режиме — на случай ошибки при создании) */}
+          {state?.mode === "edit" && (
+            <div className="space-y-2">
+              <Label>Категория</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {category !== state.variant.category && (
+                <p className="text-xs text-orange-600">
+                  Категория изменена с «{CATEGORY_LABELS[state.variant.category] ?? state.variant.category}» на «{CATEGORY_LABELS[category] ?? category}»
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Price + Unit */}
           <div className="grid grid-cols-[1fr_auto] gap-3">

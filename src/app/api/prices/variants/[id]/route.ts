@@ -23,7 +23,20 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       price?: number;
       sortOrder?: number;
       photoUrl?: string | null;
+      category?: string;
     } = {};
+
+    const ALLOWED_CATEGORIES_SET = new Set([
+      "canvas",
+      "profile",
+      "spot",
+      "chandelier",
+      "curtain",
+      "gardina",
+      "podshtornik",
+      "track",
+      "lightline",
+    ]);
 
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
@@ -31,6 +44,13 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (form.has("unit")) updates.unit = String(form.get("unit") || "");
       if (form.has("price")) updates.price = parseFloat(String(form.get("price") || "0"));
       if (form.has("sortOrder")) updates.sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
+      if (form.has("category")) {
+        const cat = String(form.get("category") || "");
+        if (!ALLOWED_CATEGORIES_SET.has(cat)) {
+          return NextResponse.json({ error: "Неверная категория" }, { status: 400 });
+        }
+        updates.category = cat;
+      }
 
       const file = form.get("photo") as File | null;
       if (file && file.size > 0) {
@@ -56,6 +76,13 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (body.unit !== undefined) updates.unit = String(body.unit);
       if (body.price !== undefined) updates.price = parseFloat(String(body.price));
       if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
+      if (body.category !== undefined) {
+        const cat = String(body.category);
+        if (!ALLOWED_CATEGORIES_SET.has(cat)) {
+          return NextResponse.json({ error: "Неверная категория" }, { status: 400 });
+        }
+        updates.category = cat;
+      }
     }
 
     if (updates.price !== undefined && (!isFinite(updates.price) || updates.price < 0)) {
