@@ -131,6 +131,15 @@ export async function PUT(
   }
 }
 
+// PATCH = частичное обновление. Mobile использует его для смены статуса и
+// быстрого редактирования заметки. По смыслу совпадает с PUT — переиспользуем.
+export async function PATCH(
+  request: Request,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  return PUT(request, ctx);
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
