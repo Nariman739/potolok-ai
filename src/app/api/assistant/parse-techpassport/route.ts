@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { runVisionAgents } from "@/lib/vision-agents";
+import { runTechpassportVision } from "@/lib/techpassport-vision";
 
 /**
  * POST /api/assistant/parse-techpassport
  * Multipart: file (image of techpassport / floor plan)
  *
  * Распознаёт фото тех.паспорта квартиры → возвращает массив комнат с
- * размерами в см. Использует runVisionAgents — тот же pipeline что и
- * Telegram bot для распознавания фото замеров.
+ * размерами в см. Использует специализированный pipeline для печатных
+ * планов (БТИ / застройщик), а не runVisionAgents (тот для рукописных
+ * чертежей замеров мастера).
  *
  * Возврат: { rooms: [{ name, walls_cm, area, perimeter, corners }] }
  *
@@ -34,14 +35,14 @@ export async function POST(request: Request) {
     const mimeType = file.type || "image/jpeg";
     const imageBase64Url = `data:${mimeType};base64,${base64}`;
 
-    // Запускаем vision pipeline (re-use существующий код)
-    const result = await runVisionAgents(imageBase64Url);
+    // Специализированный pipeline для тех.паспортов (печатных планов)
+    const result = await runTechpassportVision(imageBase64Url);
 
     if (result.rooms.length === 0) {
       return NextResponse.json(
         {
           error:
-            "AI не распознал комнаты на фото. Проверь что план чёткий и размеры читаются. Попробуй ещё раз или введи замер вручную.",
+            "AI не распознал комнаты на плане. Проверь что:\n• Фото плана квартиры (БТИ / застройщик), а не рукописный замер\n• Подписи комнат и площади читаются\n• План не обрезан\n\nИли введи замер вручную в Конструкторе.",
         },
         { status: 422 },
       );
