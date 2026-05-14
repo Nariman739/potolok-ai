@@ -146,6 +146,10 @@ export interface LineItem {
   unit: string;
   unitPrice: number;
   total: number;
+  /** ID выбранного варианта (PriceVariant.id) — для tap-to-switch и фото в публичной КП */
+  variantId?: string;
+  /** Прямая ссылка на фото варианта, чтобы публичная страница не делала лишних запросов */
+  photoUrl?: string;
 }
 
 export interface RoomResult {

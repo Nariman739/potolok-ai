@@ -198,9 +198,25 @@ export function ConfirmSection({
                       {rr.items.map((item, i) => (
                         <div
                           key={i}
-                          className="flex justify-between items-start text-xs text-gray-600 py-0.5"
+                          className="flex justify-between items-start text-xs text-gray-600 py-1 gap-2"
                         >
-                          <div className="leading-tight">
+                          {item.photoUrl && (
+                            <a
+                              href={item.photoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 block w-12 h-12 rounded overflow-hidden bg-gray-100 border border-gray-200 hover:border-orange-400 transition-colors"
+                              aria-label={`Фото: ${item.itemName}`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.photoUrl}
+                                alt={item.itemName}
+                                className="w-full h-full object-cover"
+                              />
+                            </a>
+                          )}
+                          <div className="leading-tight flex-1 min-w-0">
                             <span className="text-gray-700">{item.itemName}</span>
                             <span className="text-gray-400 ml-1.5">
                               {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
