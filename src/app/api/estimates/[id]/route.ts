@@ -54,7 +54,19 @@ export async function PUT(
       );
     }
 
-    const { clientName, clientPhone, clientAddress, status, validUntil } = body;
+    const {
+      clientName,
+      clientPhone,
+      clientAddress,
+      status,
+      validUntil,
+      // Поля для редактирования расчёта (mobile КП editor 1.0.9)
+      roomsData,
+      calculationData,
+      totalArea,
+      total,
+      discountPercent,
+    } = body;
 
     // Validate status transitions that master can do
     const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED"];
@@ -73,6 +85,11 @@ export async function PUT(
         ...(clientAddress !== undefined && { clientAddress }),
         ...(status !== undefined && { status }),
         ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
+        ...(roomsData !== undefined && { roomsData }),
+        ...(calculationData !== undefined && { calculationData }),
+        ...(totalArea !== undefined && { totalArea: Number(totalArea) || 0 }),
+        ...(total !== undefined && { total: Number(total) || 0 }),
+        ...(discountPercent !== undefined && { discountPercent: Number(discountPercent) || 0 }),
       },
     });
 
