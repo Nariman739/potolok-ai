@@ -109,3 +109,13 @@ export const ObjectPhotoCategory = {
 } as const
 
 export type ObjectPhotoCategory = (typeof ObjectPhotoCategory)[keyof typeof ObjectPhotoCategory]
+
+
+export const RangefinderStatus = {
+  AVAILABLE: 'AVAILABLE',
+  RESERVED: 'RESERVED',
+  ACTIVATED: 'ACTIVATED',
+  SOLD: 'SOLD'
+} as const
+
+export type RangefinderStatus = (typeof RangefinderStatus)[keyof typeof RangefinderStatus]

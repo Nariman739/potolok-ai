@@ -494,6 +494,23 @@ export type EnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel = never> = 
   _max?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
 }
 
+export type EnumRangefinderStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.RangefinderStatus | Prisma.EnumRangefinderStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel> | $Enums.RangefinderStatus
+}
+
+export type EnumRangefinderStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RangefinderStatus | Prisma.EnumRangefinderStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRangefinderStatusWithAggregatesFilter<$PrismaModel> | $Enums.RangefinderStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -909,6 +926,23 @@ export type NestedEnumObjectPhotoCategoryWithAggregatesFilter<$PrismaModel = nev
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
   _max?: Prisma.NestedEnumObjectPhotoCategoryFilter<$PrismaModel>
+}
+
+export type NestedEnumRangefinderStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.RangefinderStatus | Prisma.EnumRangefinderStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel> | $Enums.RangefinderStatus
+}
+
+export type NestedEnumRangefinderStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RangefinderStatus | Prisma.EnumRangefinderStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RangefinderStatus[] | Prisma.ListEnumRangefinderStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRangefinderStatusWithAggregatesFilter<$PrismaModel> | $Enums.RangefinderStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRangefinderStatusFilter<$PrismaModel>
 }
 
 

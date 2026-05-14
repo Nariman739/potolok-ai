@@ -601,6 +601,7 @@ export type MasterWhereInput = {
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
   clients?: Prisma.ClientListRelationFilter
   objectPhotos?: Prisma.ObjectPhotoListRelationFilter
+  rangefinders?: Prisma.RangefinderListRelationFilter
 }
 
 export type MasterOrderByWithRelationInput = {
@@ -667,6 +668,7 @@ export type MasterOrderByWithRelationInput = {
   instagramSession?: Prisma.InstagramSessionOrderByWithRelationInput
   clients?: Prisma.ClientOrderByRelationAggregateInput
   objectPhotos?: Prisma.ObjectPhotoOrderByRelationAggregateInput
+  rangefinders?: Prisma.RangefinderOrderByRelationAggregateInput
 }
 
 export type MasterWhereUniqueInput = Prisma.AtLeast<{
@@ -736,6 +738,7 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
   clients?: Prisma.ClientListRelationFilter
   objectPhotos?: Prisma.ObjectPhotoListRelationFilter
+  rangefinders?: Prisma.RangefinderListRelationFilter
 }, "id" | "phone" | "email" | "telegramChatId" | "telegramLinkCode" | "portfolioSlug">
 
 export type MasterOrderByWithAggregationInput = {
@@ -916,6 +919,7 @@ export type MasterCreateInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateInput = {
@@ -982,6 +986,7 @@ export type MasterUncheckedCreateInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUpdateInput = {
@@ -1048,6 +1053,7 @@ export type MasterUpdateInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateInput = {
@@ -1114,6 +1120,7 @@ export type MasterUncheckedUpdateInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateManyInput = {
@@ -1453,6 +1460,11 @@ export type MasterScalarRelationFilter = {
   isNot?: Prisma.MasterWhereInput
 }
 
+export type MasterNullableScalarRelationFilter = {
+  is?: Prisma.MasterWhereInput | null
+  isNot?: Prisma.MasterWhereInput | null
+}
+
 export type StringFieldUpdateOperationsInput = {
   set?: string
 }
@@ -1653,6 +1665,22 @@ export type MasterUpdateOneRequiredWithoutObjectPhotosNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutObjectPhotosInput, Prisma.MasterUpdateWithoutObjectPhotosInput>, Prisma.MasterUncheckedUpdateWithoutObjectPhotosInput>
 }
 
+export type MasterCreateNestedOneWithoutRangefindersInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutRangefindersInput, Prisma.MasterUncheckedCreateWithoutRangefindersInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutRangefindersInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneWithoutRangefindersNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutRangefindersInput, Prisma.MasterUncheckedCreateWithoutRangefindersInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutRangefindersInput
+  upsert?: Prisma.MasterUpsertWithoutRangefindersInput
+  disconnect?: Prisma.MasterWhereInput | boolean
+  delete?: Prisma.MasterWhereInput | boolean
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutRangefindersInput, Prisma.MasterUpdateWithoutRangefindersInput>, Prisma.MasterUncheckedUpdateWithoutRangefindersInput>
+}
+
 export type MasterCreateNestedOneWithoutLogoHistoryInput = {
   create?: Prisma.XOR<Prisma.MasterCreateWithoutLogoHistoryInput, Prisma.MasterUncheckedCreateWithoutLogoHistoryInput>
   connectOrCreate?: Prisma.MasterCreateOrConnectWithoutLogoHistoryInput
@@ -1730,6 +1758,7 @@ export type MasterCreateWithoutSessionsInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutSessionsInput = {
@@ -1795,6 +1824,7 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutSessionsInput = {
@@ -1876,6 +1906,7 @@ export type MasterUpdateWithoutSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutSessionsInput = {
@@ -1941,6 +1972,7 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutPricesInput = {
@@ -2006,6 +2038,7 @@ export type MasterCreateWithoutPricesInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutPricesInput = {
@@ -2071,6 +2104,7 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutPricesInput = {
@@ -2152,6 +2186,7 @@ export type MasterUpdateWithoutPricesInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPricesInput = {
@@ -2217,6 +2252,7 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutCustomItemsInput = {
@@ -2282,6 +2318,7 @@ export type MasterCreateWithoutCustomItemsInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutCustomItemsInput = {
@@ -2347,6 +2384,7 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutCustomItemsInput = {
@@ -2428,6 +2466,7 @@ export type MasterUpdateWithoutCustomItemsInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutCustomItemsInput = {
@@ -2493,6 +2532,7 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutPriceVariantsInput = {
@@ -2558,6 +2598,7 @@ export type MasterCreateWithoutPriceVariantsInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutPriceVariantsInput = {
@@ -2623,6 +2664,7 @@ export type MasterUncheckedCreateWithoutPriceVariantsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutPriceVariantsInput = {
@@ -2704,6 +2746,7 @@ export type MasterUpdateWithoutPriceVariantsInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
@@ -2769,6 +2812,7 @@ export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutEstimatesInput = {
@@ -2834,6 +2878,7 @@ export type MasterCreateWithoutEstimatesInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutEstimatesInput = {
@@ -2899,6 +2944,7 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutEstimatesInput = {
@@ -2980,6 +3026,7 @@ export type MasterUpdateWithoutEstimatesInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutEstimatesInput = {
@@ -3045,6 +3092,7 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutChatSessionsInput = {
@@ -3110,6 +3158,7 @@ export type MasterCreateWithoutChatSessionsInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutChatSessionsInput = {
@@ -3175,6 +3224,7 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutChatSessionsInput = {
@@ -3256,6 +3306,7 @@ export type MasterUpdateWithoutChatSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutChatSessionsInput = {
@@ -3321,6 +3372,7 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutMeasurementsInput = {
@@ -3386,6 +3438,7 @@ export type MasterCreateWithoutMeasurementsInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutMeasurementsInput = {
@@ -3451,6 +3504,7 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutMeasurementsInput = {
@@ -3532,6 +3586,7 @@ export type MasterUpdateWithoutMeasurementsInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutMeasurementsInput = {
@@ -3597,6 +3652,7 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutPortfolioWorksInput = {
@@ -3662,6 +3718,7 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
@@ -3727,6 +3784,7 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutPortfolioWorksInput = {
@@ -3808,6 +3866,7 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
@@ -3873,6 +3932,7 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutInstagramAccountInput = {
@@ -3938,6 +3998,7 @@ export type MasterCreateWithoutInstagramAccountInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramAccountInput = {
@@ -4003,6 +4064,7 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramAccountInput = {
@@ -4084,6 +4146,7 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
@@ -4149,6 +4212,7 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutInstagramSessionInput = {
@@ -4214,6 +4278,7 @@ export type MasterCreateWithoutInstagramSessionInput = {
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramSessionInput = {
@@ -4279,6 +4344,7 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramSessionInput = {
@@ -4360,6 +4426,7 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
@@ -4425,6 +4492,7 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutClientsInput = {
@@ -4490,6 +4558,7 @@ export type MasterCreateWithoutClientsInput = {
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutClientsInput = {
@@ -4555,6 +4624,7 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutClientsInput = {
@@ -4636,6 +4706,7 @@ export type MasterUpdateWithoutClientsInput = {
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutClientsInput = {
@@ -4701,6 +4772,7 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterCreateWithoutObjectPhotosInput = {
@@ -4766,6 +4838,7 @@ export type MasterCreateWithoutObjectPhotosInput = {
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutObjectPhotosInput = {
@@ -4831,6 +4904,7 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutObjectPhotosInput = {
@@ -4912,6 +4986,7 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
@@ -4977,6 +5052,287 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+}
+
+export type MasterCreateWithoutRangefindersInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutRangefindersInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutRangefindersInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutRangefindersInput, Prisma.MasterUncheckedCreateWithoutRangefindersInput>
+}
+
+export type MasterUpsertWithoutRangefindersInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutRangefindersInput, Prisma.MasterUncheckedUpdateWithoutRangefindersInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutRangefindersInput, Prisma.MasterUncheckedCreateWithoutRangefindersInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutRangefindersInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutRangefindersInput, Prisma.MasterUncheckedUpdateWithoutRangefindersInput>
+}
+
+export type MasterUpdateWithoutRangefindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutRangefindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutLogoHistoryInput = {
@@ -5042,6 +5398,7 @@ export type MasterCreateWithoutLogoHistoryInput = {
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterUncheckedCreateWithoutLogoHistoryInput = {
@@ -5107,6 +5464,7 @@ export type MasterUncheckedCreateWithoutLogoHistoryInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type MasterCreateOrConnectWithoutLogoHistoryInput = {
@@ -5188,6 +5546,7 @@ export type MasterUpdateWithoutLogoHistoryInput = {
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
@@ -5253,6 +5612,7 @@ export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 
@@ -5272,6 +5632,7 @@ export type MasterCountOutputType = {
   measurements: number
   clients: number
   objectPhotos: number
+  rangefinders: number
 }
 
 export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -5286,6 +5647,7 @@ export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   measurements?: boolean | MasterCountOutputTypeCountMeasurementsArgs
   clients?: boolean | MasterCountOutputTypeCountClientsArgs
   objectPhotos?: boolean | MasterCountOutputTypeCountObjectPhotosArgs
+  rangefinders?: boolean | MasterCountOutputTypeCountRangefindersArgs
 }
 
 /**
@@ -5375,6 +5737,13 @@ export type MasterCountOutputTypeCountObjectPhotosArgs<ExtArgs extends runtime.T
   where?: Prisma.ObjectPhotoWhereInput
 }
 
+/**
+ * MasterCountOutputType without action
+ */
+export type MasterCountOutputTypeCountRangefindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RangefinderWhereInput
+}
+
 
 export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -5440,6 +5809,7 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
   clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   objectPhotos?: boolean | Prisma.Master$objectPhotosArgs<ExtArgs>
+  rangefinders?: boolean | Prisma.Master$rangefindersArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["master"]>
 
@@ -5617,6 +5987,7 @@ export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
   clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   objectPhotos?: boolean | Prisma.Master$objectPhotosArgs<ExtArgs>
+  rangefinders?: boolean | Prisma.Master$rangefindersArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MasterIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -5638,6 +6009,7 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     instagramSession: Prisma.$InstagramSessionPayload<ExtArgs> | null
     clients: Prisma.$ClientPayload<ExtArgs>[]
     objectPhotos: Prisma.$ObjectPhotoPayload<ExtArgs>[]
+    rangefinders: Prisma.$RangefinderPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -6097,6 +6469,7 @@ export interface Prisma__MasterClient<T, Null = never, ExtArgs extends runtime.T
   instagramSession<T extends Prisma.Master$instagramSessionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$instagramSessionArgs<ExtArgs>>): Prisma.Prisma__InstagramSessionClient<runtime.Types.Result.GetResult<Prisma.$InstagramSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   clients<T extends Prisma.Master$clientsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$clientsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   objectPhotos<T extends Prisma.Master$objectPhotosArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$objectPhotosArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectPhotoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  rangefinders<T extends Prisma.Master$rangefindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$rangefindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RangefinderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6863,6 +7236,30 @@ export type Master$objectPhotosArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.ObjectPhotoScalarFieldEnum | Prisma.ObjectPhotoScalarFieldEnum[]
+}
+
+/**
+ * Master.rangefinders
+ */
+export type Master$rangefindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Rangefinder
+   */
+  select?: Prisma.RangefinderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Rangefinder
+   */
+  omit?: Prisma.RangefinderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RangefinderInclude<ExtArgs> | null
+  where?: Prisma.RangefinderWhereInput
+  orderBy?: Prisma.RangefinderOrderByWithRelationInput | Prisma.RangefinderOrderByWithRelationInput[]
+  cursor?: Prisma.RangefinderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RangefinderScalarFieldEnum | Prisma.RangefinderScalarFieldEnum[]
 }
 
 /**

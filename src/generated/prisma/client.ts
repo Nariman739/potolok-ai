@@ -125,6 +125,11 @@ export type ClientEvent = Prisma.ClientEventModel
  */
 export type ObjectPhoto = Prisma.ObjectPhotoModel
 /**
+ * Model Rangefinder
+ * 
+ */
+export type Rangefinder = Prisma.RangefinderModel
+/**
  * Model LogoGeneration
  * 
  */

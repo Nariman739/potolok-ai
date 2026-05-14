@@ -401,6 +401,7 @@ export const ModelName = {
   Client: 'Client',
   ClientEvent: 'ClientEvent',
   ObjectPhoto: 'ObjectPhoto',
+  Rangefinder: 'Rangefinder',
   LogoGeneration: 'LogoGeneration'
 } as const
 
@@ -417,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "logoGeneration"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1679,6 +1680,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Rangefinder: {
+      payload: Prisma.$RangefinderPayload<ExtArgs>
+      fields: Prisma.RangefinderFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RangefinderFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RangefinderFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        findFirst: {
+          args: Prisma.RangefinderFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RangefinderFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        findMany: {
+          args: Prisma.RangefinderFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>[]
+        }
+        create: {
+          args: Prisma.RangefinderCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        createMany: {
+          args: Prisma.RangefinderCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RangefinderCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>[]
+        }
+        delete: {
+          args: Prisma.RangefinderDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        update: {
+          args: Prisma.RangefinderUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        deleteMany: {
+          args: Prisma.RangefinderDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RangefinderUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RangefinderUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>[]
+        }
+        upsert: {
+          args: Prisma.RangefinderUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RangefinderPayload>
+        }
+        aggregate: {
+          args: Prisma.RangefinderAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRangefinder>
+        }
+        groupBy: {
+          args: Prisma.RangefinderGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RangefinderGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RangefinderCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RangefinderCountAggregateOutputType> | number
+        }
+      }
+    }
     LogoGeneration: {
       payload: Prisma.$LogoGenerationPayload<ExtArgs>
       fields: Prisma.LogoGenerationFieldRefs
@@ -1863,7 +1938,9 @@ export const MasterPriceScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
   itemCode: 'itemCode',
-  price: 'price'
+  price: 'price',
+  photoUrl: 'photoUrl',
+  isHidden: 'isHidden'
 } as const
 
 export type MasterPriceScalarFieldEnum = (typeof MasterPriceScalarFieldEnum)[keyof typeof MasterPriceScalarFieldEnum]
@@ -2128,6 +2205,25 @@ export const ObjectPhotoScalarFieldEnum = {
 export type ObjectPhotoScalarFieldEnum = (typeof ObjectPhotoScalarFieldEnum)[keyof typeof ObjectPhotoScalarFieldEnum]
 
 
+export const RangefinderScalarFieldEnum = {
+  id: 'id',
+  serial: 'serial',
+  name: 'name',
+  mac: 'mac',
+  token: 'token',
+  bleKey: 'bleKey',
+  qrCode: 'qrCode',
+  status: 'status',
+  ownerId: 'ownerId',
+  note: 'note',
+  activatedAt: 'activatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RangefinderScalarFieldEnum = (typeof RangefinderScalarFieldEnum)[keyof typeof RangefinderScalarFieldEnum]
+
+
 export const LogoGenerationScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
@@ -2383,6 +2479,20 @@ export type EnumObjectPhotoCategoryFieldRefInput<$PrismaModel> = FieldRefInputTy
 export type ListEnumObjectPhotoCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ObjectPhotoCategory[]'>
     
 
+
+/**
+ * Reference to a field of type 'RangefinderStatus'
+ */
+export type EnumRangefinderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RangefinderStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'RangefinderStatus[]'
+ */
+export type ListEnumRangefinderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RangefinderStatus[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2495,6 +2605,7 @@ export type GlobalOmitConfig = {
   client?: Prisma.ClientOmit
   clientEvent?: Prisma.ClientEventOmit
   objectPhoto?: Prisma.ObjectPhotoOmit
+  rangefinder?: Prisma.RangefinderOmit
   logoGeneration?: Prisma.LogoGenerationOmit
 }
 

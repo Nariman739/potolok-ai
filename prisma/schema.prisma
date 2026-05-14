@@ -97,6 +97,8 @@ model Master {
   // Portfolio
   portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
   portfolioBio    String?            // Краткое описание мастера для публичной страницы
+
+  rangefinders   Rangefinder[]
 }
 
 model Session {
@@ -120,12 +122,14 @@ enum SubscriptionTier {
 // ============================================
 
 model MasterPrice {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   masterId    String
-  itemCode    String
+  itemCode    String  // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
   price       Float
+  photoUrl    String? // фото к дефолтной позиции (опционально)
+  isHidden    Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
 
-  master      Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master      Master  @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@unique([masterId, itemCode])
 }
@@ -574,6 +578,42 @@ enum ObjectPhotoCategory {
   MEASUREMENT
   DEMOLITION
   OTHER
+}
+
+// ============================================
+// RANGEFINDERS (BLE-рулетки Xiaomi BHR5596GL для pre-config и QR-онбординга)
+// ============================================
+// Каждая рулетка хранит token + MAC извлечённые через xiaomi-cloud-tokens-extractor.
+// status: AVAILABLE (на складе) → RESERVED (забронирована мастеру) →
+//   ACTIVATED (мастер ввёл token в app или сканировал QR) → SOLD (физически выдана).
+// qrCode — короткий 8-символьный код для QR-онбординга в 1.0.5 mobile.
+
+model Rangefinder {
+  id          String   @id @default(uuid())
+  serial      String?  @unique     // серийный номер на коробке (если есть)
+  name        String                // "Mi Smart Laser Measure" или кастомное
+  mac         String   @unique     // MAC адрес устройства (D4:43:8A:DA:26:D2)
+  token       String                // Mi Cloud token (24 hex)
+  bleKey      String?               // BLE key для MiBeacon advertisement (если извлекли)
+  qrCode      String?  @unique     // 8-символьный код для QR-онбординга (ABC12345)
+  status      RangefinderStatus @default(AVAILABLE)
+  ownerId     String?
+  note        String?               // заметки админа (партия, дата закупа, цена)
+  activatedAt DateTime?             // когда мастер активировал в app
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       Master?  @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+enum RangefinderStatus {
+  AVAILABLE
+  RESERVED
+  ACTIVATED
+  SOLD
 }
 
 // ============================================

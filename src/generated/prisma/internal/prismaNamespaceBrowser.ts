@@ -68,6 +68,7 @@ export const ModelName = {
   Client: 'Client',
   ClientEvent: 'ClientEvent',
   ObjectPhoto: 'ObjectPhoto',
+  Rangefinder: 'Rangefinder',
   LogoGeneration: 'LogoGeneration'
 } as const
 
@@ -158,7 +159,9 @@ export const MasterPriceScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
   itemCode: 'itemCode',
-  price: 'price'
+  price: 'price',
+  photoUrl: 'photoUrl',
+  isHidden: 'isHidden'
 } as const
 
 export type MasterPriceScalarFieldEnum = (typeof MasterPriceScalarFieldEnum)[keyof typeof MasterPriceScalarFieldEnum]
@@ -421,6 +424,25 @@ export const ObjectPhotoScalarFieldEnum = {
 } as const
 
 export type ObjectPhotoScalarFieldEnum = (typeof ObjectPhotoScalarFieldEnum)[keyof typeof ObjectPhotoScalarFieldEnum]
+
+
+export const RangefinderScalarFieldEnum = {
+  id: 'id',
+  serial: 'serial',
+  name: 'name',
+  mac: 'mac',
+  token: 'token',
+  bleKey: 'bleKey',
+  qrCode: 'qrCode',
+  status: 'status',
+  ownerId: 'ownerId',
+  note: 'note',
+  activatedAt: 'activatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RangefinderScalarFieldEnum = (typeof RangefinderScalarFieldEnum)[keyof typeof RangefinderScalarFieldEnum]
 
 
 export const LogoGenerationScalarFieldEnum = {

@@ -11,22 +11,31 @@ export async function GET() {
       where: { masterId: master.id },
     });
 
-    const priceMap: Record<string, number> = {};
+    const mpMap: Record<string, { price: number; photoUrl: string | null; isHidden: boolean }> = {};
     for (const mp of masterPrices) {
-      priceMap[mp.itemCode] = mp.price;
+      mpMap[mp.itemCode] = {
+        price: mp.price,
+        photoUrl: mp.photoUrl,
+        isHidden: mp.isHidden,
+      };
     }
 
-    // Return all items with master's price (or default)
-    const items = PRODUCT_ITEMS.map((item) => ({
-      code: item.code,
-      name: item.name,
-      unit: item.unit,
-      category: item.category,
-      description: item.description,
-      defaultPrice: item.defaultPrice,
-      price: priceMap[item.code] ?? item.defaultPrice,
-      isCustom: item.code in priceMap && priceMap[item.code] !== item.defaultPrice,
-    }));
+    // Return all items with master's overrides (price/photo/hidden)
+    const items = PRODUCT_ITEMS.map((item) => {
+      const mp = mpMap[item.code];
+      return {
+        code: item.code,
+        name: item.name,
+        unit: item.unit,
+        category: item.category,
+        description: item.description,
+        defaultPrice: item.defaultPrice,
+        price: mp?.price ?? item.defaultPrice,
+        photoUrl: mp?.photoUrl ?? null,
+        isHidden: mp?.isHidden ?? false,
+        isCustom: mp != null && mp.price !== item.defaultPrice,
+      };
+    });
 
     // Also load custom items and append them
     const customItems = await prisma.customItem.findMany({

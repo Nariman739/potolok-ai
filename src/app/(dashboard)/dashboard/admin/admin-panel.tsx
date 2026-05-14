@@ -90,9 +90,18 @@ export function AdminPanel({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <Crown className="h-5 w-5 text-amber-500" />
-        <h1 className="text-2xl font-bold">Админ-панель</h1>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Crown className="h-5 w-5 text-amber-500" />
+          <h1 className="text-2xl font-bold">Админ-панель</h1>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/dashboard/admin/rangefinders")}
+        >
+          📏 Рулетки
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

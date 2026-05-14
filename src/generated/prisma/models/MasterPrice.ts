@@ -39,6 +39,8 @@ export type MasterPriceMinAggregateOutputType = {
   masterId: string | null
   itemCode: string | null
   price: number | null
+  photoUrl: string | null
+  isHidden: boolean | null
 }
 
 export type MasterPriceMaxAggregateOutputType = {
@@ -46,6 +48,8 @@ export type MasterPriceMaxAggregateOutputType = {
   masterId: string | null
   itemCode: string | null
   price: number | null
+  photoUrl: string | null
+  isHidden: boolean | null
 }
 
 export type MasterPriceCountAggregateOutputType = {
@@ -53,6 +57,8 @@ export type MasterPriceCountAggregateOutputType = {
   masterId: number
   itemCode: number
   price: number
+  photoUrl: number
+  isHidden: number
   _all: number
 }
 
@@ -70,6 +76,8 @@ export type MasterPriceMinAggregateInputType = {
   masterId?: true
   itemCode?: true
   price?: true
+  photoUrl?: true
+  isHidden?: true
 }
 
 export type MasterPriceMaxAggregateInputType = {
@@ -77,6 +85,8 @@ export type MasterPriceMaxAggregateInputType = {
   masterId?: true
   itemCode?: true
   price?: true
+  photoUrl?: true
+  isHidden?: true
 }
 
 export type MasterPriceCountAggregateInputType = {
@@ -84,6 +94,8 @@ export type MasterPriceCountAggregateInputType = {
   masterId?: true
   itemCode?: true
   price?: true
+  photoUrl?: true
+  isHidden?: true
   _all?: true
 }
 
@@ -178,6 +190,8 @@ export type MasterPriceGroupByOutputType = {
   masterId: string
   itemCode: string
   price: number
+  photoUrl: string | null
+  isHidden: boolean
   _count: MasterPriceCountAggregateOutputType | null
   _avg: MasterPriceAvgAggregateOutputType | null
   _sum: MasterPriceSumAggregateOutputType | null
@@ -208,6 +222,8 @@ export type MasterPriceWhereInput = {
   masterId?: Prisma.StringFilter<"MasterPrice"> | string
   itemCode?: Prisma.StringFilter<"MasterPrice"> | string
   price?: Prisma.FloatFilter<"MasterPrice"> | number
+  photoUrl?: Prisma.StringNullableFilter<"MasterPrice"> | string | null
+  isHidden?: Prisma.BoolFilter<"MasterPrice"> | boolean
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }
 
@@ -216,6 +232,8 @@ export type MasterPriceOrderByWithRelationInput = {
   masterId?: Prisma.SortOrder
   itemCode?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  isHidden?: Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
 }
 
@@ -228,6 +246,8 @@ export type MasterPriceWhereUniqueInput = Prisma.AtLeast<{
   masterId?: Prisma.StringFilter<"MasterPrice"> | string
   itemCode?: Prisma.StringFilter<"MasterPrice"> | string
   price?: Prisma.FloatFilter<"MasterPrice"> | number
+  photoUrl?: Prisma.StringNullableFilter<"MasterPrice"> | string | null
+  isHidden?: Prisma.BoolFilter<"MasterPrice"> | boolean
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }, "id" | "masterId_itemCode">
 
@@ -236,6 +256,8 @@ export type MasterPriceOrderByWithAggregationInput = {
   masterId?: Prisma.SortOrder
   itemCode?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  isHidden?: Prisma.SortOrder
   _count?: Prisma.MasterPriceCountOrderByAggregateInput
   _avg?: Prisma.MasterPriceAvgOrderByAggregateInput
   _max?: Prisma.MasterPriceMaxOrderByAggregateInput
@@ -251,12 +273,16 @@ export type MasterPriceScalarWhereWithAggregatesInput = {
   masterId?: Prisma.StringWithAggregatesFilter<"MasterPrice"> | string
   itemCode?: Prisma.StringWithAggregatesFilter<"MasterPrice"> | string
   price?: Prisma.FloatWithAggregatesFilter<"MasterPrice"> | number
+  photoUrl?: Prisma.StringNullableWithAggregatesFilter<"MasterPrice"> | string | null
+  isHidden?: Prisma.BoolWithAggregatesFilter<"MasterPrice"> | boolean
 }
 
 export type MasterPriceCreateInput = {
   id?: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
   master: Prisma.MasterCreateNestedOneWithoutPricesInput
 }
 
@@ -265,12 +291,16 @@ export type MasterPriceUncheckedCreateInput = {
   masterId: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
 }
 
 export type MasterPriceUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
   master?: Prisma.MasterUpdateOneRequiredWithoutPricesNestedInput
 }
 
@@ -279,6 +309,8 @@ export type MasterPriceUncheckedUpdateInput = {
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type MasterPriceCreateManyInput = {
@@ -286,12 +318,16 @@ export type MasterPriceCreateManyInput = {
   masterId: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
 }
 
 export type MasterPriceUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type MasterPriceUncheckedUpdateManyInput = {
@@ -299,6 +335,8 @@ export type MasterPriceUncheckedUpdateManyInput = {
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type MasterPriceListRelationFilter = {
@@ -321,6 +359,8 @@ export type MasterPriceCountOrderByAggregateInput = {
   masterId?: Prisma.SortOrder
   itemCode?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  photoUrl?: Prisma.SortOrder
+  isHidden?: Prisma.SortOrder
 }
 
 export type MasterPriceAvgOrderByAggregateInput = {
@@ -332,6 +372,8 @@ export type MasterPriceMaxOrderByAggregateInput = {
   masterId?: Prisma.SortOrder
   itemCode?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  photoUrl?: Prisma.SortOrder
+  isHidden?: Prisma.SortOrder
 }
 
 export type MasterPriceMinOrderByAggregateInput = {
@@ -339,6 +381,8 @@ export type MasterPriceMinOrderByAggregateInput = {
   masterId?: Prisma.SortOrder
   itemCode?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  photoUrl?: Prisma.SortOrder
+  isHidden?: Prisma.SortOrder
 }
 
 export type MasterPriceSumOrderByAggregateInput = {
@@ -399,12 +443,16 @@ export type MasterPriceCreateWithoutMasterInput = {
   id?: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
 }
 
 export type MasterPriceUncheckedCreateWithoutMasterInput = {
   id?: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
 }
 
 export type MasterPriceCreateOrConnectWithoutMasterInput = {
@@ -441,30 +489,40 @@ export type MasterPriceScalarWhereInput = {
   masterId?: Prisma.StringFilter<"MasterPrice"> | string
   itemCode?: Prisma.StringFilter<"MasterPrice"> | string
   price?: Prisma.FloatFilter<"MasterPrice"> | number
+  photoUrl?: Prisma.StringNullableFilter<"MasterPrice"> | string | null
+  isHidden?: Prisma.BoolFilter<"MasterPrice"> | boolean
 }
 
 export type MasterPriceCreateManyMasterInput = {
   id?: string
   itemCode: string
   price: number
+  photoUrl?: string | null
+  isHidden?: boolean
 }
 
 export type MasterPriceUpdateWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type MasterPriceUncheckedUpdateWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type MasterPriceUncheckedUpdateManyWithoutMasterInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemCode?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isHidden?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 
@@ -474,6 +532,8 @@ export type MasterPriceSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   masterId?: boolean
   itemCode?: boolean
   price?: boolean
+  photoUrl?: boolean
+  isHidden?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["masterPrice"]>
 
@@ -482,6 +542,8 @@ export type MasterPriceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   masterId?: boolean
   itemCode?: boolean
   price?: boolean
+  photoUrl?: boolean
+  isHidden?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["masterPrice"]>
 
@@ -490,6 +552,8 @@ export type MasterPriceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   masterId?: boolean
   itemCode?: boolean
   price?: boolean
+  photoUrl?: boolean
+  isHidden?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["masterPrice"]>
 
@@ -498,9 +562,11 @@ export type MasterPriceSelectScalar = {
   masterId?: boolean
   itemCode?: boolean
   price?: boolean
+  photoUrl?: boolean
+  isHidden?: boolean
 }
 
-export type MasterPriceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "itemCode" | "price", ExtArgs["result"]["masterPrice"]>
+export type MasterPriceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "itemCode" | "price" | "photoUrl" | "isHidden", ExtArgs["result"]["masterPrice"]>
 export type MasterPriceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
@@ -521,6 +587,8 @@ export type $MasterPricePayload<ExtArgs extends runtime.Types.Extensions.Interna
     masterId: string
     itemCode: string
     price: number
+    photoUrl: string | null
+    isHidden: boolean
   }, ExtArgs["result"]["masterPrice"]>
   composites: {}
 }
@@ -949,6 +1017,8 @@ export interface MasterPriceFieldRefs {
   readonly masterId: Prisma.FieldRef<"MasterPrice", 'String'>
   readonly itemCode: Prisma.FieldRef<"MasterPrice", 'String'>
   readonly price: Prisma.FieldRef<"MasterPrice", 'Float'>
+  readonly photoUrl: Prisma.FieldRef<"MasterPrice", 'String'>
+  readonly isHidden: Prisma.FieldRef<"MasterPrice", 'Boolean'>
 }
     
 
