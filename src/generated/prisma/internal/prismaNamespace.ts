@@ -1970,6 +1970,7 @@ export const PriceVariantScalarFieldEnum = {
   unit: 'unit',
   price: 'price',
   photoUrl: 'photoUrl',
+  noInsert: 'noInsert',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -2168,6 +2169,8 @@ export const ClientScalarFieldEnum = {
   name: 'name',
   phone: 'phone',
   address: 'address',
+  latitude: 'latitude',
+  longitude: 'longitude',
   source: 'source',
   status: 'status',
   notes: 'notes',

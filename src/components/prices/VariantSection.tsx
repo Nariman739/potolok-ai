@@ -40,6 +40,7 @@ export interface PriceVariant {
   price: number;
   photoUrl: string | null;
   sortOrder: number;
+  noInsert?: boolean;
 }
 
 export type VariantDialogState =
@@ -173,6 +174,7 @@ export function VariantDialog({
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
+  const [noInsert, setNoInsert] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -187,6 +189,7 @@ export function VariantDialog({
       setPhotoFile(null);
       setRemovePhoto(false);
       setCategory(state.variant.category);
+      setNoInsert(!!state.variant.noInsert);
     } else {
       setName("");
       const def =
@@ -199,6 +202,7 @@ export function VariantDialog({
       setPhotoFile(null);
       setRemovePhoto(false);
       setCategory(state.category);
+      setNoInsert(false);
     }
   }, [state]);
 
@@ -246,6 +250,7 @@ export function VariantDialog({
       form.append("name", name.trim());
       form.append("unit", unit);
       form.append("price", String(priceNum));
+      form.append("noInsert", noInsert ? "1" : "0");
       if (photoFile) form.append("photo", photoFile);
       if (removePhoto && state.mode === "edit") form.append("removePhoto", "1");
 
@@ -425,6 +430,24 @@ export function VariantDialog({
               </Select>
             </div>
           </div>
+
+          {/* noInsert flag — только для профилей */}
+          {(state?.mode === "edit" ? category : state?.category) === "profile" && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={noInsert}
+                  onChange={(e) => setNoInsert(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-sm">Без вставки (для теневых и парящих профилей)</span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                В КП при выборе этого варианта позиция «Вставка» не будет добавлена.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">

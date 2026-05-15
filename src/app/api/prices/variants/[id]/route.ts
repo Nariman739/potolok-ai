@@ -24,6 +24,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       sortOrder?: number;
       photoUrl?: string | null;
       category?: string;
+      noInsert?: boolean;
     } = {};
 
     const ALLOWED_CATEGORIES_SET = new Set([
@@ -44,6 +45,10 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (form.has("unit")) updates.unit = String(form.get("unit") || "");
       if (form.has("price")) updates.price = parseFloat(String(form.get("price") || "0"));
       if (form.has("sortOrder")) updates.sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
+      if (form.has("noInsert")) {
+        const v = form.get("noInsert");
+        updates.noInsert = v === "1" || v === "true";
+      }
       if (form.has("category")) {
         const cat = String(form.get("category") || "");
         if (!ALLOWED_CATEGORIES_SET.has(cat)) {
@@ -76,6 +81,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (body.unit !== undefined) updates.unit = String(body.unit);
       if (body.price !== undefined) updates.price = parseFloat(String(body.price));
       if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
+      if (body.noInsert !== undefined) updates.noInsert = body.noInsert === true || body.noInsert === "true";
       if (body.category !== undefined) {
         const cat = String(body.category);
         if (!ALLOWED_CATEGORIES_SET.has(cat)) {

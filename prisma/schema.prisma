@@ -172,6 +172,7 @@ model PriceVariant {
   unit       String
   price      Float
   photoUrl   String?  // Vercel Blob URL
+  noInsert   Boolean  @default(false)  // флаг «вариант профиля без вставки» (теневые/парящие)
   sortOrder  Int      @default(0)
 
   createdAt  DateTime @default(now())
@@ -481,6 +482,8 @@ model Client {
   name        String
   phone       String?
   address     String?
+  latitude    Float?
+  longitude   Float?
   source      ClientSource?
   status      DealStatus    @default(NEW)
   notes       String?
