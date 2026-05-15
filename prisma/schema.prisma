@@ -503,16 +503,19 @@ model Client {
 }
 
 model ClientEvent {
-  id        String     @id @default(uuid())
-  clientId  String
-  type      EventType
-  content   String?
-  metadata  Json?
-  createdAt DateTime   @default(now())
+  id              String     @id @default(uuid())
+  clientId        String
+  type            EventType
+  content         String?
+  metadata        Json?
+  scheduledAt     DateTime?
+  reminderSentAt  DateTime?
+  createdAt       DateTime   @default(now())
 
   client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
+  @@index([scheduledAt, reminderSentAt])
 }
 
 enum ClientSource {

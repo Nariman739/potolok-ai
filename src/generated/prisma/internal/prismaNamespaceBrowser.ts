@@ -408,6 +408,8 @@ export const ClientEventScalarFieldEnum = {
   type: 'type',
   content: 'content',
   metadata: 'metadata',
+  scheduledAt: 'scheduledAt',
+  reminderSentAt: 'reminderSentAt',
   createdAt: 'createdAt'
 } as const
 
