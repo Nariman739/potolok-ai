@@ -40,15 +40,17 @@ export async function GET(request: Request) {
     }
 
     if (search) {
+      const digitsOnly = search.replace(/\D/g, "");
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search } },
+        ...(digitsOnly ? [{ phone: { contains: digitsOnly } }] : []),
       ];
     }
 
     const clients = await prisma.client.findMany({
       where,
       orderBy: { updatedAt: "desc" },
+      ...(search ? { take: 20 } : {}),
       select: {
         id: true,
         name: true,
