@@ -101,12 +101,12 @@ export async function PATCH(
     // замер только при добавлении новой комнаты).
     if (rooms && Array.isArray(rooms)) {
       await prisma.measurementRoom.deleteMany({
-        where: { measurementId: id },
+        where: { objectId: id },
       });
       if (rooms.length > 0) {
         await prisma.measurementRoom.createMany({
           data: rooms.map((r, i) => ({
-            measurementId: id,
+            objectId: id,
             name: r.name,
             walls: r.walls,
             normalCorners: r.normalCorners || r.walls.map(() => true),
