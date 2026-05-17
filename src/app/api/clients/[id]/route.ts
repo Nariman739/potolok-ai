@@ -57,7 +57,7 @@ export async function GET(
             latitude: true,
             longitude: true,
             createdAt: true,
-            _count: { select: { rooms: true } },
+            rooms: { select: { id: true } },
           },
         },
       },
@@ -182,15 +182,29 @@ export async function DELETE(
       );
     }
 
-    await prisma.client.delete({ where: { id } });
+    // Явное «обнуление» связанных таблиц до удаления клиента — раньше
+    // полагались только на onDelete:SetNull в schema, но в проде иногда
+    // ловили P2003 (foreign key constraint) при удалении. Транзакция
+    // гарантирует целостность: либо всё прошло, либо ничего не изменилось.
+    // ClientEvent удаляется (cascade в schema), photo/measurement/estimate —
+    // обнуляются (остаются у мастера в общем списке без привязки к клиенту).
+    await prisma.$transaction([
+      prisma.estimate.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.measurementObject.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.objectPhoto.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.clientEvent.deleteMany({ where: { clientId: id } }),
+      prisma.client.delete({ where: { id } }),
+    ]);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+    const msg = error instanceof Error ? error.message : "Ошибка удаления клиента";
     console.error("Delete client error:", error);
     return NextResponse.json(
-      { error: "Ошибка удаления клиента" },
+      { error: msg },
       { status: 500 },
     );
   }
