@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateClient } from "@/lib/clients";
 
 export async function GET(
   _request: Request,
@@ -37,18 +38,22 @@ export async function PATCH(
     const master = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea, latitude, longitude, clientId, rooms } = body as {
+    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
       latitude?: number;
       longitude?: number;
       clientId?: string | null;
+      clientName?: string;
+      clientPhone?: string;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
     };
 
-    // Если передан clientId — валидируем что клиент принадлежит мастеру
+    // Привязка клиента: явный clientId → валидируем; иначе auto-create по имени/телефону.
+    // Раньше PATCH принимал только clientId — поэтому при «Обновить» новый клиент не
+    // создавался и не появлялся в CRM (в отличие от POST, который создаёт сам).
     let safeClientId: string | null | undefined = undefined;
     if (clientId === null) {
       safeClientId = null;
@@ -58,6 +63,14 @@ export async function PATCH(
         select: { id: true },
       });
       safeClientId = exists?.id ?? null;
+    } else if (clientName || clientPhone) {
+      const auto = await getOrCreateClient({
+        masterId: master.id,
+        name: clientName || null,
+        phone: clientPhone || null,
+        address: address || null,
+      });
+      safeClientId = auto?.id ?? undefined;
     }
 
     // Проверяем что объект принадлежит мастеру
