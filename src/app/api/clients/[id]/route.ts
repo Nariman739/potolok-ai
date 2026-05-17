@@ -48,6 +48,18 @@ export async function GET(
             createdAt: true,
           },
         },
+        measurements: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            address: true,
+            totalArea: true,
+            latitude: true,
+            longitude: true,
+            createdAt: true,
+            _count: { select: { rooms: true } },
+          },
+        },
       },
     });
 
@@ -90,7 +102,7 @@ export async function PUT(
       );
     }
 
-    const { name, phone, address, source, notes, status } = body;
+    const { name, phone, address, latitude, longitude, source, notes, status } = body;
 
     let normalizedSource: ClientSource | null | undefined = undefined;
     if (source === null) normalizedSource = null;
@@ -98,12 +110,24 @@ export async function PUT(
       normalizedSource = source as ClientSource;
     }
 
+    const parseCoord = (v: unknown): number | null | undefined => {
+      if (v === undefined) return undefined;
+      if (v === null || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const lat = parseCoord(latitude);
+    const lng = parseCoord(longitude);
+
     const updated = await prisma.client.update({
       where: { id },
       data: {
         ...(name !== undefined && { name: name || existing.name }),
         ...(phone !== undefined && { phone: phone || null }),
         ...(address !== undefined && { address: address || null }),
+        ...(lat !== undefined && { latitude: lat }),
+        ...(lng !== undefined && { longitude: lng }),
         ...(notes !== undefined && { notes: notes || null }),
         ...(normalizedSource !== undefined && { source: normalizedSource }),
       },
