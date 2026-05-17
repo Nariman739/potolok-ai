@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/tg-reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
