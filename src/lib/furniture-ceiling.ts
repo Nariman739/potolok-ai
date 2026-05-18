@@ -370,6 +370,36 @@ export function snapFurnitureToWallAndNeighbors(
     }
   }
 
+  // ── Corner snap: если шкаф/кухня стоит у стены и его длинный конец
+  // близок к перпендикулярной стене (соседняя стена в углу комнаты) —
+  // подвинуть мебель вдоль стены так чтобы конец встал ровно в угол.
+  {
+    const myT = (newX - a.x) * wallNx + (newY - a.y) * wallNy;
+    const endLeftT = myT - longSide / 2;
+    const endRightT = myT + longSide / 2;
+    const cornerSnapCm = 30;
+    let bestCornerDelta = 0;
+    let bestCornerAbs = cornerSnapCm + 1;
+    for (let vi = 0; vi < vertices.length - 1; vi++) {
+      const v = vertices[vi];
+      const vT = (v.x - a.x) * wallNx + (v.y - a.y) * wallNy;
+      const dLeft = vT - endLeftT;
+      const dRight = vT - endRightT;
+      if (dLeft < 0 && -dLeft < bestCornerAbs) {
+        bestCornerAbs = -dLeft;
+        bestCornerDelta = dLeft;
+      }
+      if (dRight > 0 && dRight < bestCornerAbs) {
+        bestCornerAbs = dRight;
+        bestCornerDelta = dRight;
+      }
+    }
+    if (bestCornerAbs <= cornerSnapCm && bestCornerAbs > 0.1) {
+      newX += wallNx * bestCornerDelta;
+      newY += wallNy * bestCornerDelta;
+    }
+  }
+
   return { x: newX, y: newY, rotation: newRotation };
 }
 
