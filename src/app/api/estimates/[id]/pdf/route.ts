@@ -176,8 +176,6 @@ export async function GET(
       const stats = [
         { label: "Площадь", value: `${(calc.totalArea ?? 0).toFixed(1)} м²`, icon: "◻" },
         { label: "Комнат", value: `${roomResults.length}`, icon: "⌂" },
-        { label: "Цена за м²", value: fmtPrice(calc.pricePerM2 ?? 0), icon: "₸" },
-        { label: "Светильников", value: `${calc.totalSpots ?? 0}`, icon: "●" },
       ];
 
       const statW = contentW / stats.length;
