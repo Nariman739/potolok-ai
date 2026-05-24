@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { name, phone, address, source, notes } = body;
+    const { name, phone, address, latitude, longitude, source, notes } = body;
 
     if (!name && !phone) {
       return NextResponse.json(
@@ -123,11 +123,19 @@ export async function POST(request: Request) {
       normalizedSource = source as ClientSource;
     }
 
+    const toCoord = (v: unknown): number | null => {
+      if (v === undefined || v === null || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     const client = await getOrCreateClient({
       masterId: master.id,
       name: name || null,
       phone: phone || null,
       address: address || null,
+      latitude: toCoord(latitude),
+      longitude: toCoord(longitude),
       source: normalizedSource,
     });
 

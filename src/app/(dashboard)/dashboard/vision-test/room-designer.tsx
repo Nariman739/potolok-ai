@@ -2097,8 +2097,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       // Проекция концов подшторника на ось текущей стены (a, b, nx, ny).
       const tSubA = (subAx - a.x) * nx + (subAy - a.y) * ny;
       const tSubB = (subBx - a.x) * nx + (subBy - a.y) * ny;
-      let tLo = Math.max(0, Math.min(tSubA, tSubB));
-      let tHi = Math.min(wLen, Math.max(tSubA, tSubB));
+      const tLo = Math.max(0, Math.min(tSubA, tSubB));
+      const tHi = Math.min(wLen, Math.max(tSubA, tSubB));
       if (tHi - tLo > 0.5) occupied.push([tLo, tHi]);
     }
     // Мебель «до потолка», прилегающая к этой стене — закрывает свой кусок потолка

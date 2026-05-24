@@ -99,7 +99,7 @@ export async function GET(
     const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult;
     const company = estimate.master.companyName || estimate.master.firstName || "";
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const roomResults: RoomResult[] = calc?.roomResults
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms

@@ -17,6 +17,7 @@ import {
   handleSmmUspAnswer,
 } from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
+import { activateSubscription, rejectPayment, notifyUserAboutPaymentDecision } from "@/lib/payment";
 
 // Allow up to 60s for AI processing (vision + conversation)
 export const maxDuration = 60;
@@ -43,6 +44,63 @@ export async function POST(request: Request) {
 
       // Acknowledge the button press immediately
       await answerCallbackQuery(cbId);
+
+      // Handle payment approval/rejection callbacks (pay:approve:<id>, pay:reject:<id>)
+      if (cbData.startsWith("pay:")) {
+        try {
+          // Только владелец (isOwner) может одобрять оплаты
+          const admin = await prisma.master.findUnique({
+            where: { telegramChatId: cbChatId },
+            select: { id: true, isOwner: true },
+          });
+          if (!admin?.isOwner) {
+            await sendTelegramMessage(cbChatId, "❌ Нет прав на одобрение оплат");
+            return NextResponse.json({ ok: true });
+          }
+
+          const [, action, paymentId] = cbData.split(":");
+          if (!paymentId) {
+            return NextResponse.json({ ok: true });
+          }
+
+          if (action === "approve") {
+            const result = await activateSubscription({ paymentId, adminId: admin.id });
+            await sendTelegramMessage(
+              cbChatId,
+              `✅ Активировано: ${result.master.firstName} (+${result.payment.activatedDays ?? 30} дней)`,
+            );
+            try {
+              await notifyUserAboutPaymentDecision({
+                master: result.master,
+                payment: result.payment,
+                approved: true,
+                firstApproved: result.firstApproved,
+              });
+            } catch (err) {
+              console.error("notifyUserAboutPaymentDecision failed:", err);
+            }
+          } else if (action === "reject") {
+            const result = await rejectPayment({ paymentId, adminId: admin.id });
+            await sendTelegramMessage(
+              cbChatId,
+              `❌ Отклонено: ${result.master.firstName}`,
+            );
+            try {
+              await notifyUserAboutPaymentDecision({
+                master: result.master,
+                payment: result.payment,
+                approved: false,
+              });
+            } catch (err) {
+              console.error("notifyUserAboutPaymentDecision failed:", err);
+            }
+          }
+        } catch (err) {
+          console.error("Payment callback error:", err);
+          await sendTelegramMessage(cbChatId, "⚠️ Ошибка обработки оплаты");
+        }
+        return NextResponse.json({ ok: true });
+      }
 
       // Handle SMM onboarding callbacks (smm_tone:xxx, smm_aud:xxx)
       if (cbData.startsWith("smm_")) {

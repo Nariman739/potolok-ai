@@ -53,8 +53,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Apply security headers to all responses
-  const response = NextResponse.next();
+  // Apply security headers to all responses + expose pathname for server components
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
   }

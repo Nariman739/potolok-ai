@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { getCurrentMaster } from "@/lib/auth";
@@ -13,9 +15,20 @@ export default async function DashboardLayout({
   if (master) {
     const m = await prisma.master.findUnique({
       where: { id: master.id },
-      select: { isOwner: true },
+      select: { isOwner: true, paidUntil: true },
     });
     isOwner = !!m?.isOwner;
+
+    // Гейт подписки: если paidUntil истёк и юзер не owner → /pricing
+    // Исключение: страница /dashboard/profile (чтобы юзер мог обновить данные перед оплатой)
+    if (!isOwner && m?.paidUntil && m.paidUntil < new Date()) {
+      const h = await headers();
+      const pathname = h.get("x-pathname") ?? h.get("x-invoke-path") ?? "";
+      const isProfile = pathname.startsWith("/dashboard/profile");
+      if (!isProfile) {
+        redirect("/pricing");
+      }
+    }
   }
 
   return (

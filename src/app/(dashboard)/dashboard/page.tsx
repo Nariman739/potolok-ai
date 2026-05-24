@@ -25,6 +25,7 @@ import { KP_LIMITS } from "@/lib/constants";
 import { FeedbackButton } from "@/components/feedback-button";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
+import { SubscriptionWidget } from "@/components/dashboard/subscription-widget";
 
 export const metadata = {
   title: "Дашборд",
@@ -134,6 +135,8 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{master.companyName}</p>
         )}
       </div>
+
+      <SubscriptionWidget masterId={master.id} />
 
       <OnboardingChecklist
         hasProfile={hasProfile}
