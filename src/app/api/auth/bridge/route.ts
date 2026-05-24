@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/auth/bridge?token=<session_token>&redirect=/dashboard/branding
 // SSO-мост для мобильного приложения: мастер уже залогинен в app,
@@ -12,6 +13,15 @@ import { prisma } from "@/lib/prisma";
 const SESSION_COOKIE = "session_token";
 
 export async function GET(request: Request) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = checkRateLimit(`bridge:${ip}`, 20, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Слишком много попыток" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    );
+  }
+
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
   const redirectParam = url.searchParams.get("redirect") || "/dashboard";
@@ -27,10 +37,14 @@ export async function GET(request: Request) {
 
   const session = await prisma.session.findUnique({
     where: { token },
-    select: { expiresAt: true, masterId: true },
+    select: {
+      expiresAt: true,
+      masterId: true,
+      master: { select: { isActive: true } },
+    },
   });
 
-  if (!session || session.expiresAt < new Date()) {
+  if (!session || session.expiresAt < new Date() || !session.master.isActive) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 

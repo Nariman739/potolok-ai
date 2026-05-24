@@ -55,7 +55,10 @@ export function getMasterPriceForNextPayment(master: {
   if (master.isFounder && master.founderMonthsPaid < FOUNDER_DISCOUNT_MONTHS) {
     return FOUNDER_DISCOUNT_PRICE;
   }
-  return master.monthlyPrice > 0 ? master.monthlyPrice : STANDARD_PRICE;
+  // Floor: даже если в БД у мастера записано меньше STANDARD_PRICE
+  // (баг, ручная правка, миграция) — берём не ниже STANDARD_PRICE.
+  // Founder обрабатывается выше отдельным return.
+  return Math.max(master.monthlyPrice, STANDARD_PRICE);
 }
 
 function formatTenge(amount: number): string {
@@ -140,52 +143,75 @@ export async function activateSubscription(params: {
   }
 
   const now = new Date();
-  const currentPaidUntil = payment.master.paidUntil && payment.master.paidUntil > now
-    ? payment.master.paidUntil
-    : now;
-  const newPaidUntil = new Date(currentPaidUntil.getTime() + days * 24 * 60 * 60 * 1000);
-
-  const wasFounder = payment.master.isFounder;
   const isFestPayment = (payment.promocode ?? "").toUpperCase() === FOUNDER_PROMOCODE;
-  const newFounderMonthsPaid = (wasFounder || isFestPayment)
-    ? payment.master.founderMonthsPaid + 1
-    : payment.master.founderMonthsPaid;
 
-  // Founder-скидка истекла → новая цена = STANDARD_PRICE
-  let newMonthlyPrice = payment.master.monthlyPrice;
-  if (wasFounder && newFounderMonthsPaid >= FOUNDER_DISCOUNT_MONTHS) {
-    newMonthlyPrice = STANDARD_PRICE;
-  }
-
-  // Был ли ранее одобрен платёж? Если нет — это первый APPROVED.
-  const prevApproved = await prisma.pendingPayment.count({
-    where: { masterId: payment.masterId, status: "APPROVED" },
-  });
-  const firstApproved = prevApproved === 0;
-
-  const [updatedPayment, updatedMaster] = await prisma.$transaction([
-    prisma.pendingPayment.update({
-      where: { id: payment.id },
+  // Interactive transaction решает race condition: если два админа
+  // одновременно нажмут «✅ Активировать», updateMany с условием
+  // status: { not: "APPROVED" } делает atomic claim — вторая транзакция
+  // ничего не обновит. founderMonthsPaid читается ВНУТРИ tx из свежих
+  // данных, не из payment.master (который был прочитан до tx).
+  const result = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.pendingPayment.updateMany({
+      where: { id: payment.id, status: { not: "APPROVED" } },
       data: {
         status: "APPROVED",
         reviewedAt: now,
         reviewedBy: params.adminId,
         activatedDays: days,
       },
-    }),
-    prisma.master.update({
+    });
+    if (claimed.count === 0) return null; // already approved by concurrent tx
+
+    const master = await tx.master.findUnique({
+      where: { id: payment.masterId },
+    });
+    if (!master) throw new Error("Master not found");
+
+    const currentPaidUntil = master.paidUntil && master.paidUntil > now ? master.paidUntil : now;
+    const newPaidUntil = new Date(currentPaidUntil.getTime() + days * 24 * 60 * 60 * 1000);
+    const wasFounder = master.isFounder;
+    const newFounderMonthsPaid = (wasFounder || isFestPayment)
+      ? master.founderMonthsPaid + 1
+      : master.founderMonthsPaid;
+
+    // Founder-скидка истекла → новая цена = STANDARD_PRICE
+    let newMonthlyPrice = master.monthlyPrice;
+    if (wasFounder && newFounderMonthsPaid >= FOUNDER_DISCOUNT_MONTHS) {
+      newMonthlyPrice = STANDARD_PRICE;
+    }
+
+    const prevApproved = await tx.pendingPayment.count({
+      where: { masterId: payment.masterId, status: "APPROVED", id: { not: payment.id } },
+    });
+    const firstApproved = prevApproved === 0;
+
+    const updatedMaster = await tx.master.update({
       where: { id: payment.masterId },
       data: {
         paidUntil: newPaidUntil,
         subscriptionTier: "PRO",
         founderMonthsPaid: newFounderMonthsPaid,
         monthlyPrice: newMonthlyPrice,
-        welcomeSent: firstApproved ? true : payment.master.welcomeSent,
+        welcomeSent: firstApproved ? true : master.welcomeSent,
       },
-    }),
-  ]);
+    });
 
-  return { master: updatedMaster, payment: updatedPayment, firstApproved };
+    const updatedPayment = await tx.pendingPayment.findUniqueOrThrow({
+      where: { id: payment.id },
+    });
+
+    return { master: updatedMaster, payment: updatedPayment, firstApproved };
+  });
+
+  if (!result) {
+    const fresh = await prisma.pendingPayment.findUniqueOrThrow({
+      where: { id: payment.id },
+      include: { master: true },
+    });
+    return { master: fresh.master, payment: fresh, firstApproved: false };
+  }
+
+  return result;
 }
 
 export async function rejectPayment(params: {
