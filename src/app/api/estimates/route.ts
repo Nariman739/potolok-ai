@@ -21,10 +21,21 @@ export async function GET() {
         standardTotal: true,
         status: true,
         createdAt: true,
+        // Нужно для отображения «3 комнаты · 78 м²» в mobile-карточке.
+        // Парсим на сервере, чтобы не таскать roomsData/calculationData
+        // целиком в списке (там тяжёлые JSON).
+        calculationData: true,
       },
     });
 
-    return NextResponse.json(estimates);
+    const withCounts = estimates.map((e) => {
+      const calc = e.calculationData as { roomResults?: unknown[] } | null;
+      const roomsCount = Array.isArray(calc?.roomResults) ? calc!.roomResults!.length : 0;
+      const { calculationData: _omit, ...rest } = e;
+      return { ...rest, roomsCount };
+    });
+
+    return NextResponse.json(withCounts);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -81,6 +92,10 @@ export async function POST(request: Request) {
       clientPhone,
       clientAddress,
       clientId: providedClientId,
+      // Если КП создан из сохранённого замера — этот замер «съедается»:
+      // удаляем его, чтобы один объект не висел в двух местах
+      // (в Saved Measurements и внутри Estimate.roomsData).
+      fromMeasurementId,
     } = body;
 
     if (!roomsData || !calculationData) {
@@ -150,6 +165,22 @@ export async function POST(request: Request) {
       where: { id: master.id },
       data: { kpGeneratedThisMonth: { increment: 1 } },
     });
+
+    // Замер «съеден» — он жил в Saved Measurements, теперь его данные внутри
+    // Estimate.roomsData. Удаляем чтобы не было двух копий одного замера.
+    if (fromMeasurementId) {
+      try {
+        const m = await prisma.measurementObject.findFirst({
+          where: { id: fromMeasurementId, masterId: master.id },
+          select: { id: true },
+        });
+        if (m) {
+          await prisma.measurementObject.delete({ where: { id: m.id } });
+        }
+      } catch (e) {
+        console.warn("Failed to consume measurement after estimate create:", e);
+      }
+    }
 
     return NextResponse.json(estimate);
   } catch (error) {
