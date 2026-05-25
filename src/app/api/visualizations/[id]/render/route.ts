@@ -23,6 +23,12 @@ import {
 } from "@/lib/visualization-mask";
 import { buildScenePrompt, buildHybridScenePrompt } from "@/lib/ai-scene-prompt";
 import type { RoomElement } from "@/lib/room-types";
+import {
+  loadBillingState,
+  checkBilling,
+  buildBillingIncrement,
+  type BillingCheckResult,
+} from "@/lib/visualization-billing";
 
 // Nano Banana отвечает за 15-25 сек, FLUX Kontext до 60 сек → ставим 90 для запаса.
 export const maxDuration = 90;
@@ -140,16 +146,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
 
-    // --- check credits ---
-    const fresh = await prisma.master.findUnique({
-      where: { id: master.id },
-      select: { visualizationCredits: true },
-    });
-    if (!fresh || fresh.visualizationCredits <= 0) {
-      return NextResponse.json(
-        { error: "Кредиты на визуализацию исчерпаны. Пополните в профиле." },
-        { status: 402 },
-      );
+    // --- check billing (trial + tier + legacy credits) ---
+    const billing = await loadBillingState(master.id);
+    if (!billing) {
+      return NextResponse.json({ error: "Не найден мастер" }, { status: 404 });
+    }
+    const decision = checkBilling(billing);
+    if (!decision.allowed) {
+      const msg =
+        decision.reason === "monthly_limit_reached"
+          ? "Месячный лимит визуализаций исчерпан. Обновите до PRO+ или подождите следующего месяца."
+          : "Лимит визуализаций на этот месяц исчерпан. Подождите следующий месяц или обновите до PRO.";
+      return NextResponse.json({ error: msg, bucket: decision.bucket }, { status: 402 });
     }
 
     // === scene3d / scene2d ветка ===
@@ -157,7 +165,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // содержит { elements, finish, colorHex, colorName }. Опции reference-флоу не
     // требуются — геометрия полностью внутри snapshot'а.
     if (viz.sourceType === "scene3d" || viz.sourceType === "scene2d") {
-      return renderFromScene(viz, fresh, master.id, body.provider);
+      return renderFromScene(viz, decision, master.id, body.provider);
     }
 
     // --- reference flow: validate options ---
@@ -425,10 +433,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           } as unknown as object,
         },
       }),
-      prisma.master.update({
-        where: { id: master.id },
-        data: { visualizationCredits: { decrement: 1 } },
-      }),
+      ...buildBillingUpdate(decision, master.id),
       // Перезаписываем связи: сначала чистим старые, потом создаём новые.
       prisma.visualizationElement.deleteMany({ where: { visualizationId: viz.id } }),
       ...(elementCreateData.length > 0
@@ -445,7 +450,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         createdAt: render.createdAt,
       },
       elapsedMs: result.elapsedMs,
-      creditsLeft: fresh.visualizationCredits - 1,
+      remaining: decision.remaining,
+      bucket: decision.bucket,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -454,6 +460,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     console.error("[visualizations render] error:", error);
     return NextResponse.json({ error: "Ошибка рендера" }, { status: 500 });
   }
+}
+
+// Хелпер для $transaction: возвращает массив из 0-1 prisma update'ов для биллинга.
+function buildBillingUpdate(decision: BillingCheckResult, masterId: string) {
+  const inc = buildBillingIncrement(decision);
+  if (!inc) return [];
+  return [prisma.master.update({ where: { id: masterId }, data: inc.data })];
 }
 
 // === scene3d/scene2d рендер ===
@@ -467,7 +480,7 @@ async function renderFromScene(
     referenceUrl: string | null;
     markup: unknown;
   },
-  fresh: { visualizationCredits: number },
+  decision: BillingCheckResult,
   masterId: string,
   providerOverride?: VisualizationProvider,
 ): Promise<NextResponse> {
@@ -605,10 +618,7 @@ async function renderFromScene(
       where: { id: viz.id },
       data: { status: "ready" },
     }),
-    prisma.master.update({
-      where: { id: masterId },
-      data: { visualizationCredits: { decrement: 1 } },
-    }),
+    ...buildBillingUpdate(decision, masterId),
   ]);
 
   return NextResponse.json({
@@ -620,6 +630,7 @@ async function renderFromScene(
       createdAt: render.createdAt,
     },
     elapsedMs: result.elapsedMs,
-    creditsLeft: fresh.visualizationCredits - 1,
+    remaining: decision.remaining,
+    bucket: decision.bucket,
   });
 }

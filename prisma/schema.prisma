@@ -83,9 +83,13 @@ model Master {
   smmProfile               Json? // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   // AI Visualization (фотореалистичный рендер потолка клиента)
-  visualizationCredits    Int              @default(3) // 3 бесплатных на onboarding
-  visualizationsThisMonth Int              @default(0) // ежемесячный лимит для PRO
+  visualizationCredits    Int              @default(3) // legacy onboarding-кредиты — используются ДО триала, потом игнорируются
+  visualizationsThisMonth Int              @default(0) // ежемесячный счётчик: PRO/PRO+ tier + правило «1/мес после триала» для FREE
   visualizationMonthReset DateTime         @default(now())
+  // Триал 5 рендеров в первый месяц после регистрации. trialRendersUsed НЕ ресетится календарно
+  // (защита: регистрация 28 числа не должна давать 5+5 рендеров в двух месяцах подряд).
+  trialEndAt              DateTime? // null = миграция выставит createdAt + 30 дней для существующих
+  trialRendersUsed        Int              @default(0)
   visualizations          Visualization[]
   ceilingElements         CeilingElement[]
 
