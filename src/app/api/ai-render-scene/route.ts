@@ -1,3 +1,9 @@
+/**
+ * @deprecated Этап 2 плана cryptic-yawning-raccoon: будет превращён в обёртку
+ * над POST /api/visualizations/[id]/render с sourceType="scene3d".
+ * Сейчас работает изолированно — пишет в AiRenderLog, не создаёт Visualization.
+ * НЕ ДОБАВЛЯТЬ НОВЫЕ ВЫЗОВЫ. Используй /api/visualizations.
+ */
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
@@ -14,6 +20,10 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    console.warn(
+      `[deprecated] /api/ai-render-scene called by masterId=${master.id}; ` +
+        "migration to /api/visualizations is planned in Этап 2.",
+    );
 
     const body = (await request.json()) as {
       imageDataUrl?: string;     // base64 PNG/JPG snapshot из R3F-canvas
