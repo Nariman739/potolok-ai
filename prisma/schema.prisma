@@ -429,9 +429,10 @@ model Visualization {
   id           String   @id @default(uuid())
   masterId     String
   objectId     String? // опциональная связь с MeasurementObject
-  originalUrl  String // исходное фото клиентской комнаты (Vercel Blob)
-  referenceUrl String? // опциональное фото-референс «сделай как тут» (Pinterest / портфолио мастера)
-  markup       Json? // { attachmentType, finish, ledStrip, spotsCount, chandelierType, points?, lines? }
+  sourceType   String   @default("reference") // reference (фото+разметка) | scene3d (3D-снимок конструктора) | scene2d (план + RoomElement[] JSON, mobile)
+  originalUrl  String // фото клиентской комнаты ИЛИ снимок 3D-сцены/2D-плана (Vercel Blob)
+  referenceUrl String? // для reference: вдохновение «как тут». Для scene3d/scene2d: фото реальной комнаты клиента (опционально, гибрид)
+  markup       Json? // reference: { attachmentType, finish, points[], lines[] }. scene3d/scene2d: { elements: RoomElement[], finish, colorHex, colorName }
   publicHash   String?  @unique // для публичной ссылки /visual/<hash>
   status       String   @default("draft") // draft | rendering | ready | failed
   createdAt    DateTime @default(now())
