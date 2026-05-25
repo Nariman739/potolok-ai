@@ -4,8 +4,17 @@
 
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { randomBytes } from "node:crypto";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Генерирует 8-символьный URL-safe public hash для шеринга /visual/{hash}.
+ * Коллизия base64url(6) ≈ 10^-14 на запись — достаточно для prod-объёмов.
+ */
+function generatePublicHash(): string {
+  return randomBytes(6).toString("base64url");
+}
 import {
   generateVisualization,
   describeReferenceCeiling,
@@ -427,6 +436,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         where: { id: viz.id },
         data: {
           status: "ready",
+          // Генерируем publicHash при первом успешном render, если его ещё нет.
+          ...(viz.publicHash ? {} : { publicHash: generatePublicHash() }),
           markup: {
             options: options as unknown as object,
             drawing: body.markup ?? null,
@@ -441,6 +452,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         : []),
     ]);
 
+    const finalViz = await prisma.visualization.findUnique({
+      where: { id: viz.id },
+      select: { publicHash: true },
+    });
+
     return NextResponse.json({
       render: {
         id: render.id,
@@ -449,6 +465,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         costUsd: render.costUsd,
         createdAt: render.createdAt,
       },
+      publicHash: finalViz?.publicHash ?? null,
       elapsedMs: result.elapsedMs,
       remaining: decision.remaining,
       bucket: decision.bucket,
@@ -479,6 +496,7 @@ async function renderFromScene(
     originalUrl: string;
     referenceUrl: string | null;
     markup: unknown;
+    publicHash: string | null;
   },
   decision: BillingCheckResult,
   masterId: string,
@@ -616,10 +634,18 @@ async function renderFromScene(
     }),
     prisma.visualization.update({
       where: { id: viz.id },
-      data: { status: "ready" },
+      data: {
+        status: "ready",
+        ...(viz.publicHash ? {} : { publicHash: generatePublicHash() }),
+      },
     }),
     ...buildBillingUpdate(decision, masterId),
   ]);
+
+  const finalViz = await prisma.visualization.findUnique({
+    where: { id: viz.id },
+    select: { publicHash: true },
+  });
 
   return NextResponse.json({
     render: {
@@ -629,6 +655,7 @@ async function renderFromScene(
       costUsd: render.costUsd,
       createdAt: render.createdAt,
     },
+    publicHash: finalViz?.publicHash ?? null,
     elapsedMs: result.elapsedMs,
     remaining: decision.remaining,
     bucket: decision.bucket,
