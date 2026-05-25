@@ -61,6 +61,10 @@ export const ModelName = {
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
   AiRenderLog: 'AiRenderLog',
+  Visualization: 'Visualization',
+  CeilingElement: 'CeilingElement',
+  VisualizationElement: 'VisualizationElement',
+  VisualizationRender: 'VisualizationRender',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
@@ -132,6 +136,9 @@ export const MasterScalarFieldEnum = {
   logoGenerationsThisMonth: 'logoGenerationsThisMonth',
   logoMonthReset: 'logoMonthReset',
   logoBrief: 'logoBrief',
+  visualizationCredits: 'visualizationCredits',
+  visualizationsThisMonth: 'visualizationsThisMonth',
+  visualizationMonthReset: 'visualizationMonthReset',
   smmProfile: 'smmProfile',
   onboardingCompleted: 'onboardingCompleted',
   isActive: 'isActive',
@@ -192,6 +199,7 @@ export const PriceVariantScalarFieldEnum = {
   price: 'price',
   photoUrl: 'photoUrl',
   sortOrder: 'sortOrder',
+  noInsert: 'noInsert',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -312,6 +320,65 @@ export const AiRenderLogScalarFieldEnum = {
 } as const
 
 export type AiRenderLogScalarFieldEnum = (typeof AiRenderLogScalarFieldEnum)[keyof typeof AiRenderLogScalarFieldEnum]
+
+
+export const VisualizationScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  objectId: 'objectId',
+  originalUrl: 'originalUrl',
+  referenceUrl: 'referenceUrl',
+  markup: 'markup',
+  publicHash: 'publicHash',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type VisualizationScalarFieldEnum = (typeof VisualizationScalarFieldEnum)[keyof typeof VisualizationScalarFieldEnum]
+
+
+export const CeilingElementScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  category: 'category',
+  name: 'name',
+  description: 'description',
+  imageUrl: 'imageUrl',
+  defaultQty: 'defaultQty',
+  sortOrder: 'sortOrder',
+  isHidden: 'isHidden',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CeilingElementScalarFieldEnum = (typeof CeilingElementScalarFieldEnum)[keyof typeof CeilingElementScalarFieldEnum]
+
+
+export const VisualizationElementScalarFieldEnum = {
+  id: 'id',
+  visualizationId: 'visualizationId',
+  elementId: 'elementId',
+  quantity: 'quantity',
+  notes: 'notes',
+  sortOrder: 'sortOrder'
+} as const
+
+export type VisualizationElementScalarFieldEnum = (typeof VisualizationElementScalarFieldEnum)[keyof typeof VisualizationElementScalarFieldEnum]
+
+
+export const VisualizationRenderScalarFieldEnum = {
+  id: 'id',
+  visualizationId: 'visualizationId',
+  url: 'url',
+  prompt: 'prompt',
+  modelUsed: 'modelUsed',
+  costUsd: 'costUsd',
+  variantName: 'variantName',
+  createdAt: 'createdAt'
+} as const
+
+export type VisualizationRenderScalarFieldEnum = (typeof VisualizationRenderScalarFieldEnum)[keyof typeof VisualizationRenderScalarFieldEnum]
 
 
 export const PortfolioWorkScalarFieldEnum = {

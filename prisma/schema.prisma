@@ -12,103 +12,110 @@ datasource db {
 // ============================================
 
 model Master {
-  id              String   @id @default(uuid())
-  phone           String   @unique
-  email           String?  @unique
-  passwordHash    String
+  id           String  @id @default(uuid())
+  phone        String  @unique
+  email        String? @unique
+  passwordHash String
 
   // Profile
-  firstName       String
-  lastName        String?
-  companyName     String?
+  firstName   String
+  lastName    String?
+  companyName String?
 
   // Branding (for KP PDFs)
-  logoUrl         String?
-  brandColor      String   @default("#1e3a5f")
-  instagramUrl    String?
-  whatsappPhone   String?
-  address         String?
+  logoUrl       String?
+  brandColor    String  @default("#1e3a5f")
+  instagramUrl  String?
+  whatsappPhone String?
+  address       String?
 
   // Telegram integration
-  telegramChatId   String?  @unique
-  telegramLinkCode String?  @unique  // temp code for /start deep link
+  telegramChatId   String? @unique
+  telegramLinkCode String? @unique // temp code for /start deep link
 
   // Password reset OTP (sent via Telegram)
   resetOtp          String?
   resetOtpExpiresAt DateTime?
 
   // Contract settings
-  contractType      String?  // "ip" | "individual" | null
-  bin               String?  // БИН (для ИП)
-  iin               String?  // ИИН (для физлица)
-  legalName         String?  // Полное ФИО / наименование ИП
-  legalAddress      String?  // Юридический адрес
-  bankName          String?  // Название банка
-  iban              String?  // IBAN (расчётный счёт)
-  kbe               String?  // КБе (код бенефициара)
-  bik               String?  // БИК банка
-  passportData      String?  // Серия/номер удостоверения (для физлица)
-  prepaymentPercent Int      @default(50)
-  warrantyMaterials Int      @default(10)
-  warrantyInstall   Int      @default(2)
+  contractType      String? // "ip" | "individual" | null
+  bin               String? // БИН (для ИП)
+  iin               String? // ИИН (для физлица)
+  legalName         String? // Полное ФИО / наименование ИП
+  legalAddress      String? // Юридический адрес
+  bankName          String? // Название банка
+  iban              String? // IBAN (расчётный счёт)
+  kbe               String? // КБе (код бенефициара)
+  bik               String? // БИК банка
+  passportData      String? // Серия/номер удостоверения (для физлица)
+  prepaymentPercent Int     @default(50)
+  warrantyMaterials Int     @default(10)
+  warrantyInstall   Int     @default(2)
   contractCity      String?
 
   // Subscription
-  subscriptionTier SubscriptionTier @default(FREE)
-  kpGeneratedThisMonth Int  @default(0)
-  kpMonthReset    DateTime @default(now())
-  paidUntil       DateTime?            // до какой даты оплачено (PRO/PROPLUS)
-  billingNotes    String?              // ручные заметки админа (например, «Kaspi 5к на 3 мес»)
-  isOwner         Boolean  @default(false)  // доступ к /admin (true только для владельца)
+  subscriptionTier     SubscriptionTier @default(FREE)
+  kpGeneratedThisMonth Int              @default(0)
+  kpMonthReset         DateTime         @default(now())
+  paidUntil            DateTime? // до какой даты оплачено (PRO/PROPLUS)
+  billingNotes         String? // ручные заметки админа (например, «Kaspi 5к на 3 мес»)
+  isOwner              Boolean          @default(false) // доступ к /admin (true только для владельца)
 
   // CRM notifications (Telegram)
-  notifyDealWon   Boolean  @default(true)
-  notifyDealLost  Boolean  @default(false)
+  notifyDealWon  Boolean @default(true)
+  notifyDealLost Boolean @default(false)
 
   // SMM usage (Instagram auto-posting)
-  smmPostsThisMonth  Int      @default(0)
-  smmMonthReset      DateTime @default(now())
+  smmPostsThisMonth Int      @default(0)
+  smmMonthReset     DateTime @default(now())
 
   // Logo generation usage (AI logos)
-  logoGenerationsThisMonth Int      @default(0)
-  logoMonthReset           DateTime @default(now())
-  logoBrief                Json?    // последний бриф (ответы на наводящие вопросы)
+  logoGenerationsThisMonth Int              @default(0)
+  logoMonthReset           DateTime         @default(now())
+  logoBrief                Json? // последний бриф (ответы на наводящие вопросы)
   logoHistory              LogoGeneration[]
-  smmProfile         Json?    // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
-  onboardingCompleted Boolean @default(false)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  // AI Visualization (фотореалистичный рендер потолка клиента)
+  visualizationCredits    Int              @default(3) // 3 бесплатных на onboarding
+  visualizationsThisMonth Int              @default(0) // ежемесячный лимит для PRO
+  visualizationMonthReset DateTime         @default(now())
+  visualizations          Visualization[]
+  ceilingElements         CeilingElement[]
+  smmProfile              Json? // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
-  prices          MasterPrice[]
-  priceVariants   PriceVariant[]
-  estimates       Estimate[]
-  sessions        Session[]
-  chatSessions    ChatSession[]
-  customItems     CustomItem[]
-  portfolioWorks  PortfolioWork[]
-  measurements    MeasurementObject[]
+  onboardingCompleted Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  prices           MasterPrice[]
+  priceVariants    PriceVariant[]
+  estimates        Estimate[]
+  sessions         Session[]
+  chatSessions     ChatSession[]
+  customItems      CustomItem[]
+  portfolioWorks   PortfolioWork[]
+  measurements     MeasurementObject[]
   instagramAccount InstagramAccount?
   instagramSession InstagramSession?
-  clients         Client[]
-  objectPhotos    ObjectPhoto[]
+  clients          Client[]
+  objectPhotos     ObjectPhoto[]
 
   // Portfolio
-  portfolioSlug   String?  @unique  // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
-  portfolioBio    String?            // Краткое описание мастера для публичной страницы
+  portfolioSlug String? @unique // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
+  portfolioBio  String? // Краткое описание мастера для публичной страницы
 
-  rangefinders   Rangefinder[]
+  rangefinders Rangefinder[]
 }
 
 model Session {
-  id          String   @id @default(uuid())
-  masterId    String
-  token       String   @unique
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  masterId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
 
 enum SubscriptionTier {
@@ -122,14 +129,14 @@ enum SubscriptionTier {
 // ============================================
 
 model MasterPrice {
-  id          String  @id @default(uuid())
-  masterId    String
-  itemCode    String  // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
-  price       Float
-  photoUrl    String? // фото к дефолтной позиции (опционально)
-  isHidden    Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
+  id       String  @id @default(uuid())
+  masterId String
+  itemCode String // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
+  price    Float
+  photoUrl String? // фото к дефолтной позиции (опционально)
+  isHidden Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
 
-  master      Master  @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@unique([masterId, itemCode])
 }
@@ -139,18 +146,18 @@ model MasterPrice {
 // ============================================
 
 model CustomItem {
-  id        String   @id @default(uuid())
-  masterId  String
-  code      String
-  name      String
-  unit      String   // "м²" | "м.п." | "шт."
-  price     Float
-  category  String   @default("custom")
+  id       String @id @default(uuid())
+  masterId String
+  code     String
+  name     String
+  unit     String // "м²" | "м.п." | "шт."
+  price    Float
+  category String @default("custom")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  master    Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@unique([masterId, code])
 }
@@ -164,20 +171,21 @@ model CustomItem {
 // 2+ вариантов, строка тапается и открывается picker.
 
 model PriceVariant {
-  id         String   @id @default(uuid())
-  masterId   String
-  category   String   // canvas | profile | spot | chandelier | curtain | gardina | podshtornik | track | lightline
-  baseCode   String?  // опционально: маппинг на код из PRODUCT_ITEMS (canvas_320, profile_shadow, ...) — null = полностью своя позиция
-  name       String
-  unit       String
-  price      Float
-  photoUrl   String?  // Vercel Blob URL
-  sortOrder  Int      @default(0)
+  id        String  @id @default(uuid())
+  masterId  String
+  category  String // canvas | profile | spot | chandelier | curtain | gardina | podshtornik | track | lightline
+  baseCode  String? // опционально: маппинг на код из PRODUCT_ITEMS (canvas_320, profile_shadow, ...) — null = полностью своя позиция
+  name      String
+  unit      String
+  price     Float
+  photoUrl  String? // Vercel Blob URL
+  sortOrder Int     @default(0)
+  noInsert  Boolean @default(false) // вариант "не включать в расчёт по умолчанию" (только по запросу)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([masterId, category])
 }
@@ -187,16 +195,16 @@ model PriceVariant {
 // ============================================
 
 model Estimate {
-  id              String   @id @default(uuid())
-  publicId        String   @unique @default(uuid())
-  masterId        String
+  id       String @id @default(uuid())
+  publicId String @unique @default(uuid())
+  masterId String
 
   // Client info (legacy + new CRM link)
-  clientName      String?
-  clientPhone     String?
-  clientAddress   String?
-  clientId        String?
-  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientName    String?
+  clientPhone   String?
+  clientAddress String?
+  clientId      String?
+  client        Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   // Электронный договор
   contractPublicId        String?   @unique
@@ -210,7 +218,7 @@ model Estimate {
   // Условия договора (даты + схема оплаты)
   workStartDate           DateTime?
   workDurationDays        Int?
-  paymentSchedule         Json?      // [{ name: string, percent: number, when: string }]
+  paymentSchedule         Json? // [{ name: string, percent: number, when: string }]
 
   // Электронный Акт выполненных работ
   actPublicId        String?   @unique
@@ -219,7 +227,7 @@ model Estimate {
   actSignerName      String?
   actSignerIp        String?
   actSignerUserAgent String?
-  actCompletionDate  DateTime?  // когда работы фактически выполнены
+  actCompletionDate  DateTime? // когда работы фактически выполнены
 
   // Data (JSON)
   roomsData       Json
@@ -227,33 +235,33 @@ model Estimate {
 
   // Summary
   totalArea       Float
-  total           Float    @default(0)
-  discountPercent Float    @default(0)
+  total           Float  @default(0)
+  discountPercent Float  @default(0)
   economyTotal    Float?
   standardTotal   Float?
   premiumTotal    Float?
 
   // Status
-  status          EstimateStatus @default(DRAFT)
+  status EstimateStatus @default(DRAFT)
 
   // Variant selection
-  recommendedVariant String?  // "economy" | "standard" | "premium" — master sets this
-  confirmedVariant   String?  // which variant the client chose when confirming
+  recommendedVariant String? // "economy" | "standard" | "premium" — master sets this
+  confirmedVariant   String? // which variant the client chose when confirming
 
   // PDF
-  pdfUrl          String?
+  pdfUrl String?
 
   // 3D preview (PNG snapshot of first room from Scene3D)
   room3dPreviewUrl String?
 
   // Timestamps
-  validUntil      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  validUntil DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  chatSession     ChatSession?
+  chatSession ChatSession?
 
-  master          Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
 }
@@ -264,7 +272,7 @@ enum EstimateStatus {
   VIEWED
   CONFIRMED
   REJECTED
-  REVISED     // Мастер пересмотрел — старое КП недействительно, не считается в аналитике
+  REVISED // Мастер пересмотрел — старое КП недействительно, не считается в аналитике
 }
 
 // ============================================
@@ -272,19 +280,19 @@ enum EstimateStatus {
 // ============================================
 
 model ChatSession {
-  id              String      @id @default(uuid())
+  id              String     @id @default(uuid())
   masterId        String
-  messages        Json        @default("[]")
-  photoUrls       String[]    @default([])
+  messages        Json       @default("[]")
+  photoUrls       String[]   @default([])
   extractedRooms  Json?
   calculationData Json?
-  estimateId      String?     @unique
-  status          ChatStatus  @default(ACTIVE)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  estimateId      String?    @unique
+  status          ChatStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  estimate        Estimate?   @relation(fields: [estimateId], references: [id])
-  master          Master      @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  estimate Estimate? @relation(fields: [estimateId], references: [id])
+  master   Master    @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
 
 enum ChatStatus {
@@ -302,21 +310,22 @@ enum ChatStatus {
 // ============================================
 
 model MeasurementObject {
-  id          String   @id @default(uuid())
-  masterId    String
-  clientId    String?
-  address     String   @default("")
-  totalArea   Float    @default(0)
-  status      String   @default("active")  // "active" | "saved"
-  latitude    Float?
-  longitude   Float?
+  id        String  @id @default(uuid())
+  masterId  String
+  clientId  String?
+  address   String  @default("")
+  totalArea Float   @default(0)
+  status    String  @default("active") // "active" | "saved"
+  latitude  Float?
+  longitude Float?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  rooms       MeasurementRoom[]
-  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
-  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  rooms          MeasurementRoom[]
+  master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  visualizations Visualization[]
 
   @@index([masterId, status])
   @@index([masterId, createdAt])
@@ -324,25 +333,25 @@ model MeasurementObject {
 }
 
 model MeasurementRoom {
-  id             String   @id @default(uuid())
-  objectId       String
-  name           String   @default("")
-  walls          Json     // number[] — длины стен в см
-  normalCorners  Json     // boolean[] — тип углов
-  angles         Json?    // number[] — углы поворота (90, -90, custom)
-  arcBulges      Json?    // number[] — дуги стен (bulge factor)
-  columns        Json?    // RoomColumn[] — колонны в комнате
-  area           Float
-  perimeter      Float
-  elements       Json     @default("[]")  // RoomElement[] — софиты, люстры, гардины и т.д.
-  photoUrls      String[] @default([])    // Фото потолка комнаты (Vercel Blob URLs)
-  previewUrl3d   String?                  // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
-  sortOrder      Int      @default(0)
+  id            String   @id @default(uuid())
+  objectId      String
+  name          String   @default("")
+  walls         Json // number[] — длины стен в см
+  normalCorners Json // boolean[] — тип углов
+  angles        Json? // number[] — углы поворота (90, -90, custom)
+  arcBulges     Json? // number[] — дуги стен (bulge factor)
+  columns       Json? // RoomColumn[] — колонны в комнате
+  area          Float
+  perimeter     Float
+  elements      Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
+  photoUrls     String[] @default([]) // Фото потолка комнаты (Vercel Blob URLs)
+  previewUrl3d  String? // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
+  sortOrder     Int      @default(0)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  object         MeasurementObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  object MeasurementObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
 
   @@index([objectId])
 }
@@ -352,17 +361,97 @@ model MeasurementRoom {
 // ============================================
 
 model AiRenderLog {
-  id          String   @id @default(uuid())
-  masterId    String
-  estimateId  String?
-  renderUrl   String
-  prompt      String
-  model       String   @default("black-forest-labs/flux-fill-pro")
-  costUsd     Float    @default(0)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  masterId   String
+  estimateId String?
+  renderUrl  String
+  prompt     String
+  model      String   @default("black-forest-labs/flux-fill-pro")
+  costUsd    Float    @default(0)
+  createdAt  DateTime @default(now())
 
   @@index([masterId, createdAt])
   @@index([estimateId])
+}
+
+// ============================================
+// AI VISUALIZATION (фотореалистичный рендер потолка клиента)
+// Отдельная фича от AiRenderLog: своя загрузка фото, разметка,
+// много вариантов на одно фото, публичная ссылка для шеринга.
+// ============================================
+
+model Visualization {
+  id          String   @id @default(uuid())
+  masterId    String
+  objectId    String? // опциональная связь с MeasurementObject
+  originalUrl  String // исходное фото клиентской комнаты (Vercel Blob)
+  referenceUrl String? // опциональное фото-референс «сделай как тут» (Pinterest / портфолио мастера)
+  markup       Json? // { attachmentType, finish, ledStrip, spotsCount, chandelierType, points?, lines? }
+  publicHash  String?  @unique // для публичной ссылки /visual/<hash>
+  status      String   @default("draft") // draft | rendering | ready | failed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  master   Master                 @relation(fields: [masterId], references: [id])
+  object   MeasurementObject?     @relation(fields: [objectId], references: [id])
+  renders  VisualizationRender[]
+  elements VisualizationElement[]
+
+  @@index([masterId, createdAt])
+  @@index([objectId])
+}
+
+// Каталог элементов потолка — мастер создаёт один раз, использует во всех визуализациях.
+// Категории: spot, track, lightline, chandelier, ventilation, decoration, profile, other.
+model CeilingElement {
+  id          String   @id @default(uuid())
+  masterId    String
+  category    String // "spot" | "track" | "lightline" | "chandelier" | "ventilation" | "decoration" | "profile" | "other"
+  name        String // "Магнитный трек 1м", "Софит COB 30W", "Люстра 5 рожков"
+  description String?  @db.Text // AI-generated description (Claude vision auto-describe) — кэш
+  imageUrl    String // Vercel Blob — фото элемента на нейтральном фоне
+  defaultQty  Int      @default(1)
+  sortOrder   Int      @default(0)
+  isHidden    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  master   Master                 @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  usedIn   VisualizationElement[]
+
+  @@index([masterId, category])
+  @@index([masterId, isHidden])
+}
+
+// Связь визуализации с конкретными элементами + количеством (many-to-many с qty).
+model VisualizationElement {
+  id              String @id @default(uuid())
+  visualizationId String
+  elementId       String
+  quantity        Int    @default(1)
+  notes           String? // например "по периметру комнаты" — уточнение позиции
+  sortOrder       Int    @default(0)
+
+  visualization Visualization  @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
+  element       CeilingElement @relation(fields: [elementId], references: [id], onDelete: Cascade)
+
+  @@index([visualizationId])
+  @@index([elementId])
+}
+
+model VisualizationRender {
+  id              String   @id @default(uuid())
+  visualizationId String
+  url             String // фотореалистичный результат в Vercel Blob
+  prompt          String   @db.Text
+  modelUsed       String // 'nano-banana' | 'replicate-flux-kontext' | 'fal-flux-fill'
+  costUsd         Float    @default(0)
+  variantName     String? // например "Вариант 1", "С тёплой подсветкой"
+  createdAt       DateTime @default(now())
+
+  visualization Visualization @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
+
+  @@index([visualizationId, createdAt])
 }
 
 // ============================================
@@ -370,23 +459,23 @@ model AiRenderLog {
 // ============================================
 
 model PortfolioWork {
-  id            String   @id @default(uuid())
-  masterId      String
+  id       String @id @default(uuid())
+  masterId String
 
-  title         String?            // "Двухуровневый потолок в гостиной"
-  description   String?            // Свободное описание
-  ceilingType   String?            // "матовый" | "глянцевый" | "сатин" | "двухуровневый"
-  area          Float?             // Площадь в м²
-  photos        String[]  @default([])  // URLs из Vercel Blob
-  videoUrl      String?            // Ссылка на видео (YouTube/Vercel Blob)
+  title       String? // "Двухуровневый потолок в гостиной"
+  description String? // Свободное описание
+  ceilingType String? // "матовый" | "глянцевый" | "сатин" | "двухуровневый"
+  area        Float? // Площадь в м²
+  photos      String[] @default([]) // URLs из Vercel Blob
+  videoUrl    String? // Ссылка на видео (YouTube/Vercel Blob)
 
-  isPublished   Boolean  @default(true)
-  sortOrder     Int      @default(0)   // Для ручной сортировки
+  isPublished Boolean @default(true)
+  sortOrder   Int     @default(0) // Для ручной сортировки
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  master        Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
 
 // ============================================
@@ -394,51 +483,51 @@ model PortfolioWork {
 // ============================================
 
 model InstagramAccount {
-  id                String   @id @default(uuid())
-  masterId          String   @unique
-  instagramUserId   String   // Instagram Business Account ID
-  accessToken       String   // Long-lived token (60 days)
-  tokenExpiresAt    DateTime // Token expiry date
-  username          String?  // @handle for display
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String   @id @default(uuid())
+  masterId        String   @unique
+  instagramUserId String // Instagram Business Account ID
+  accessToken     String // Long-lived token (60 days)
+  tokenExpiresAt  DateTime // Token expiry date
+  username        String? // @handle for display
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  master            Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
-  posts             InstagramPost[]
+  master Master          @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  posts  InstagramPost[]
 }
 
 model InstagramPost {
-  id                  String              @id @default(uuid())
-  instagramAccountId  String
+  id                 String @id @default(uuid())
+  instagramAccountId String
 
   // Content
-  caption             String              // Generated caption
-  hashtags            String              // Hashtags string
-  mediaUrls           String[]  @default([])  // Vercel Blob public URLs
-  mediaType           String    @default("CAROUSEL") // IMAGE | CAROUSEL | VIDEO
-  coverIndex          Int       @default(0)   // Which photo is cover
+  caption    String // Generated caption
+  hashtags   String // Hashtags string
+  mediaUrls  String[] @default([]) // Vercel Blob public URLs
+  mediaType  String   @default("CAROUSEL") // IMAGE | CAROUSEL | VIDEO
+  coverIndex Int      @default(0) // Which photo is cover
 
   // AI Analysis
-  agentAnalysis       Json?               // Full pipeline output from all 5 agents
-  postType            String?             // "before_after" | "showcase" | "tips" | "process"
+  agentAnalysis Json? // Full pipeline output from all 5 agents
+  postType      String? // "before_after" | "showcase" | "tips" | "process"
 
   // Scheduling
-  scheduledAt         DateTime?           // When to publish
-  publishedAt         DateTime?           // When actually published
-  instagramMediaId    String?             // Returned by Instagram API after publish
+  scheduledAt      DateTime? // When to publish
+  publishedAt      DateTime? // When actually published
+  instagramMediaId String? // Returned by Instagram API after publish
 
   // Status
-  status              InstagramPostStatus @default(DRAFT)
-  errorMessage        String?
+  status       InstagramPostStatus @default(DRAFT)
+  errorMessage String?
 
   // Source
-  telegramChatId      String?             // Which Telegram chat initiated this
+  telegramChatId String? // Which Telegram chat initiated this
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  account             InstagramAccount    @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
 
   @@index([instagramAccountId, status])
   @@index([status, scheduledAt])
@@ -461,14 +550,14 @@ enum InstagramPostStatus {
 
 model InstagramSession {
   id          String   @id @default(uuid())
-  chatId      String   @unique  // Telegram chat ID — one active session per chat
+  chatId      String   @unique // Telegram chat ID — one active session per chat
   masterId    String   @unique
-  mediaItems  Json     @default("[]")  // [{blobUrl: string, type: "photo"|"video"}]
+  mediaItems  Json     @default("[]") // [{blobUrl: string, type: "photo"|"video"}]
   userContext String   @default("")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  master      Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
 
 // ============================================
@@ -476,19 +565,19 @@ model InstagramSession {
 // ============================================
 
 model Client {
-  id          String   @id @default(uuid())
-  masterId    String
-  name        String
-  phone       String?
-  address     String?
-  source      ClientSource?
-  status      DealStatus    @default(NEW)
-  notes       String?
+  id       String        @id @default(uuid())
+  masterId String
+  name     String
+  phone    String?
+  address  String?
+  source   ClientSource?
+  status   DealStatus    @default(NEW)
+  notes    String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  master       Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master       Master              @relation(fields: [masterId], references: [id], onDelete: Cascade)
   estimates    Estimate[]
   events       ClientEvent[]
   measurements MeasurementObject[]
@@ -500,14 +589,14 @@ model Client {
 }
 
 model ClientEvent {
-  id        String     @id @default(uuid())
+  id        String    @id @default(uuid())
   clientId  String
   type      EventType
   content   String?
   metadata  Json?
-  createdAt DateTime   @default(now())
+  createdAt DateTime  @default(now())
 
-  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
 }
@@ -554,18 +643,18 @@ enum EventType {
 // ============================================
 
 model ObjectPhoto {
-  id         String   @id @default(uuid())
+  id         String              @id @default(uuid())
   masterId   String
   clientId   String?
   estimateId String?
   category   ObjectPhotoCategory @default(PROCESS)
   blobUrl    String
   caption    String?
-  takenAt    DateTime @default(now())
-  createdAt  DateTime @default(now())
+  takenAt    DateTime            @default(now())
+  createdAt  DateTime            @default(now())
 
-  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
-  client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  master Master  @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([masterId, clientId, createdAt])
   @@index([clientId, category])
@@ -589,21 +678,21 @@ enum ObjectPhotoCategory {
 // qrCode — короткий 8-символьный код для QR-онбординга в 1.0.5 mobile.
 
 model Rangefinder {
-  id          String   @id @default(uuid())
-  serial      String?  @unique     // серийный номер на коробке (если есть)
-  name        String                // "Mi Smart Laser Measure" или кастомное
-  mac         String   @unique     // MAC адрес устройства (D4:43:8A:DA:26:D2)
-  token       String                // Mi Cloud token (24 hex)
-  bleKey      String?               // BLE key для MiBeacon advertisement (если извлекли)
-  qrCode      String?  @unique     // 8-символьный код для QR-онбординга (ABC12345)
+  id          String            @id @default(uuid())
+  serial      String?           @unique // серийный номер на коробке (если есть)
+  name        String // "Mi Smart Laser Measure" или кастомное
+  mac         String            @unique // MAC адрес устройства (D4:43:8A:DA:26:D2)
+  token       String // Mi Cloud token (24 hex)
+  bleKey      String? // BLE key для MiBeacon advertisement (если извлекли)
+  qrCode      String?           @unique // 8-символьный код для QR-онбординга (ABC12345)
   status      RangefinderStatus @default(AVAILABLE)
   ownerId     String?
-  note        String?               // заметки админа (партия, дата закупа, цена)
-  activatedAt DateTime?             // когда мастер активировал в app
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  note        String? // заметки админа (партия, дата закупа, цена)
+  activatedAt DateTime? // когда мастер активировал в app
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
-  owner       Master?  @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner Master? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
   @@index([status])
@@ -629,7 +718,7 @@ model LogoGeneration {
   isCurrent  Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  master     Master   @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([masterId, createdAt])
 }

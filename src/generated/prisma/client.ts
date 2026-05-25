@@ -90,6 +90,26 @@ export type MeasurementRoom = Prisma.MeasurementRoomModel
  */
 export type AiRenderLog = Prisma.AiRenderLogModel
 /**
+ * Model Visualization
+ * 
+ */
+export type Visualization = Prisma.VisualizationModel
+/**
+ * Model CeilingElement
+ * 
+ */
+export type CeilingElement = Prisma.CeilingElementModel
+/**
+ * Model VisualizationElement
+ * 
+ */
+export type VisualizationElement = Prisma.VisualizationElementModel
+/**
+ * Model VisualizationRender
+ * 
+ */
+export type VisualizationRender = Prisma.VisualizationRenderModel
+/**
  * Model PortfolioWork
  * 
  */

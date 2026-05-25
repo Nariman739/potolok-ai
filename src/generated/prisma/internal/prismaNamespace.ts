@@ -394,6 +394,10 @@ export const ModelName = {
   MeasurementObject: 'MeasurementObject',
   MeasurementRoom: 'MeasurementRoom',
   AiRenderLog: 'AiRenderLog',
+  Visualization: 'Visualization',
+  CeilingElement: 'CeilingElement',
+  VisualizationElement: 'VisualizationElement',
+  VisualizationRender: 'VisualizationRender',
   PortfolioWork: 'PortfolioWork',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
@@ -418,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1159,6 +1163,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.AiRenderLogCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.AiRenderLogCountAggregateOutputType> | number
+        }
+      }
+    }
+    Visualization: {
+      payload: Prisma.$VisualizationPayload<ExtArgs>
+      fields: Prisma.VisualizationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VisualizationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VisualizationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        findFirst: {
+          args: Prisma.VisualizationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VisualizationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        findMany: {
+          args: Prisma.VisualizationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>[]
+        }
+        create: {
+          args: Prisma.VisualizationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        createMany: {
+          args: Prisma.VisualizationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VisualizationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>[]
+        }
+        delete: {
+          args: Prisma.VisualizationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        update: {
+          args: Prisma.VisualizationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        deleteMany: {
+          args: Prisma.VisualizationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VisualizationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VisualizationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>[]
+        }
+        upsert: {
+          args: Prisma.VisualizationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationPayload>
+        }
+        aggregate: {
+          args: Prisma.VisualizationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVisualization>
+        }
+        groupBy: {
+          args: Prisma.VisualizationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VisualizationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationCountAggregateOutputType> | number
+        }
+      }
+    }
+    CeilingElement: {
+      payload: Prisma.$CeilingElementPayload<ExtArgs>
+      fields: Prisma.CeilingElementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CeilingElementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CeilingElementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        findFirst: {
+          args: Prisma.CeilingElementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CeilingElementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        findMany: {
+          args: Prisma.CeilingElementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>[]
+        }
+        create: {
+          args: Prisma.CeilingElementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        createMany: {
+          args: Prisma.CeilingElementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CeilingElementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>[]
+        }
+        delete: {
+          args: Prisma.CeilingElementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        update: {
+          args: Prisma.CeilingElementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        deleteMany: {
+          args: Prisma.CeilingElementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CeilingElementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CeilingElementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>[]
+        }
+        upsert: {
+          args: Prisma.CeilingElementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CeilingElementPayload>
+        }
+        aggregate: {
+          args: Prisma.CeilingElementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCeilingElement>
+        }
+        groupBy: {
+          args: Prisma.CeilingElementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CeilingElementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CeilingElementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CeilingElementCountAggregateOutputType> | number
+        }
+      }
+    }
+    VisualizationElement: {
+      payload: Prisma.$VisualizationElementPayload<ExtArgs>
+      fields: Prisma.VisualizationElementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VisualizationElementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VisualizationElementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        findFirst: {
+          args: Prisma.VisualizationElementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VisualizationElementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        findMany: {
+          args: Prisma.VisualizationElementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>[]
+        }
+        create: {
+          args: Prisma.VisualizationElementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        createMany: {
+          args: Prisma.VisualizationElementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VisualizationElementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>[]
+        }
+        delete: {
+          args: Prisma.VisualizationElementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        update: {
+          args: Prisma.VisualizationElementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        deleteMany: {
+          args: Prisma.VisualizationElementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VisualizationElementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VisualizationElementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>[]
+        }
+        upsert: {
+          args: Prisma.VisualizationElementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationElementPayload>
+        }
+        aggregate: {
+          args: Prisma.VisualizationElementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVisualizationElement>
+        }
+        groupBy: {
+          args: Prisma.VisualizationElementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationElementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VisualizationElementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationElementCountAggregateOutputType> | number
+        }
+      }
+    }
+    VisualizationRender: {
+      payload: Prisma.$VisualizationRenderPayload<ExtArgs>
+      fields: Prisma.VisualizationRenderFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VisualizationRenderFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VisualizationRenderFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        findFirst: {
+          args: Prisma.VisualizationRenderFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VisualizationRenderFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        findMany: {
+          args: Prisma.VisualizationRenderFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>[]
+        }
+        create: {
+          args: Prisma.VisualizationRenderCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        createMany: {
+          args: Prisma.VisualizationRenderCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VisualizationRenderCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>[]
+        }
+        delete: {
+          args: Prisma.VisualizationRenderDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        update: {
+          args: Prisma.VisualizationRenderUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        deleteMany: {
+          args: Prisma.VisualizationRenderDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VisualizationRenderUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VisualizationRenderUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>[]
+        }
+        upsert: {
+          args: Prisma.VisualizationRenderUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisualizationRenderPayload>
+        }
+        aggregate: {
+          args: Prisma.VisualizationRenderAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVisualizationRender>
+        }
+        groupBy: {
+          args: Prisma.VisualizationRenderGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationRenderGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VisualizationRenderCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisualizationRenderCountAggregateOutputType> | number
         }
       }
     }
@@ -1911,6 +2211,9 @@ export const MasterScalarFieldEnum = {
   logoGenerationsThisMonth: 'logoGenerationsThisMonth',
   logoMonthReset: 'logoMonthReset',
   logoBrief: 'logoBrief',
+  visualizationCredits: 'visualizationCredits',
+  visualizationsThisMonth: 'visualizationsThisMonth',
+  visualizationMonthReset: 'visualizationMonthReset',
   smmProfile: 'smmProfile',
   onboardingCompleted: 'onboardingCompleted',
   isActive: 'isActive',
@@ -1971,6 +2274,7 @@ export const PriceVariantScalarFieldEnum = {
   price: 'price',
   photoUrl: 'photoUrl',
   sortOrder: 'sortOrder',
+  noInsert: 'noInsert',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2091,6 +2395,65 @@ export const AiRenderLogScalarFieldEnum = {
 } as const
 
 export type AiRenderLogScalarFieldEnum = (typeof AiRenderLogScalarFieldEnum)[keyof typeof AiRenderLogScalarFieldEnum]
+
+
+export const VisualizationScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  objectId: 'objectId',
+  originalUrl: 'originalUrl',
+  referenceUrl: 'referenceUrl',
+  markup: 'markup',
+  publicHash: 'publicHash',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type VisualizationScalarFieldEnum = (typeof VisualizationScalarFieldEnum)[keyof typeof VisualizationScalarFieldEnum]
+
+
+export const CeilingElementScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  category: 'category',
+  name: 'name',
+  description: 'description',
+  imageUrl: 'imageUrl',
+  defaultQty: 'defaultQty',
+  sortOrder: 'sortOrder',
+  isHidden: 'isHidden',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CeilingElementScalarFieldEnum = (typeof CeilingElementScalarFieldEnum)[keyof typeof CeilingElementScalarFieldEnum]
+
+
+export const VisualizationElementScalarFieldEnum = {
+  id: 'id',
+  visualizationId: 'visualizationId',
+  elementId: 'elementId',
+  quantity: 'quantity',
+  notes: 'notes',
+  sortOrder: 'sortOrder'
+} as const
+
+export type VisualizationElementScalarFieldEnum = (typeof VisualizationElementScalarFieldEnum)[keyof typeof VisualizationElementScalarFieldEnum]
+
+
+export const VisualizationRenderScalarFieldEnum = {
+  id: 'id',
+  visualizationId: 'visualizationId',
+  url: 'url',
+  prompt: 'prompt',
+  modelUsed: 'modelUsed',
+  costUsd: 'costUsd',
+  variantName: 'variantName',
+  createdAt: 'createdAt'
+} as const
+
+export type VisualizationRenderScalarFieldEnum = (typeof VisualizationRenderScalarFieldEnum)[keyof typeof VisualizationRenderScalarFieldEnum]
 
 
 export const PortfolioWorkScalarFieldEnum = {
@@ -2598,6 +2961,10 @@ export type GlobalOmitConfig = {
   measurementObject?: Prisma.MeasurementObjectOmit
   measurementRoom?: Prisma.MeasurementRoomOmit
   aiRenderLog?: Prisma.AiRenderLogOmit
+  visualization?: Prisma.VisualizationOmit
+  ceilingElement?: Prisma.CeilingElementOmit
+  visualizationElement?: Prisma.VisualizationElementOmit
+  visualizationRender?: Prisma.VisualizationRenderOmit
   portfolioWork?: Prisma.PortfolioWorkOmit
   instagramAccount?: Prisma.InstagramAccountOmit
   instagramPost?: Prisma.InstagramPostOmit
