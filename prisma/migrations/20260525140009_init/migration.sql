@@ -1,4 +1,4 @@
-[dotenv@17.3.1] injecting env (12) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[dotenv@17.3.1] injecting env (12) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -28,6 +28,9 @@ CREATE TYPE "ObjectPhotoCategory" AS ENUM ('BEFORE', 'PROCESS', 'AFTER', 'MEASUR
 
 -- CreateEnum
 CREATE TYPE "RangefinderStatus" AS ENUM ('AVAILABLE', 'RESERVED', 'ACTIVATED', 'SOLD');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
 -- CreateTable
 CREATE TABLE "Master" (
@@ -67,6 +70,12 @@ CREATE TABLE "Master" (
     "paidUntil" TIMESTAMP(3),
     "billingNotes" TEXT,
     "isOwner" BOOLEAN NOT NULL DEFAULT false,
+    "monthlyPrice" INTEGER NOT NULL DEFAULT 9999,
+    "isFounder" BOOLEAN NOT NULL DEFAULT false,
+    "founderActivatedAt" TIMESTAMP(3),
+    "founderMonthsPaid" INTEGER NOT NULL DEFAULT 0,
+    "welcomeSent" BOOLEAN NOT NULL DEFAULT false,
+    "hasUsedTrial" BOOLEAN NOT NULL DEFAULT false,
     "notifyDealWon" BOOLEAN NOT NULL DEFAULT true,
     "notifyDealLost" BOOLEAN NOT NULL DEFAULT false,
     "smmPostsThisMonth" INTEGER NOT NULL DEFAULT 0,
@@ -74,14 +83,17 @@ CREATE TABLE "Master" (
     "logoGenerationsThisMonth" INTEGER NOT NULL DEFAULT 0,
     "logoMonthReset" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "logoBrief" JSONB,
+    "smmProfile" JSONB,
     "visualizationCredits" INTEGER NOT NULL DEFAULT 3,
     "visualizationsThisMonth" INTEGER NOT NULL DEFAULT 0,
     "visualizationMonthReset" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "smmProfile" JSONB,
     "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "kpConfig" JSONB,
+    "tagline" TEXT,
+    "coverPhotoUrl" TEXT,
     "portfolioSlug" TEXT,
     "portfolioBio" TEXT,
 
@@ -136,8 +148,8 @@ CREATE TABLE "PriceVariant" (
     "unit" TEXT NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
     "photoUrl" TEXT,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "noInsert" BOOLEAN NOT NULL DEFAULT false,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -337,6 +349,40 @@ CREATE TABLE "PortfolioWork" (
 );
 
 -- CreateTable
+CREATE TABLE "MasterBrief" (
+    "id" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
+    "brief" JSONB NOT NULL,
+    "generatedConfig" JSONB,
+    "generatedTagline" TEXT,
+    "rationale" TEXT,
+    "segment" TEXT,
+    "city" TEXT,
+    "yearsActive" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MasterBrief_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MasterReview" (
+    "id" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
+    "clientName" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL DEFAULT 5,
+    "text" TEXT NOT NULL,
+    "photoUrl" TEXT,
+    "location" TEXT,
+    "isPublished" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MasterReview_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "InstagramAccount" (
     "id" TEXT NOT NULL,
     "masterId" TEXT NOT NULL,
@@ -394,6 +440,8 @@ CREATE TABLE "Client" (
     "name" TEXT NOT NULL,
     "phone" TEXT,
     "address" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
     "source" "ClientSource",
     "status" "DealStatus" NOT NULL DEFAULT 'NEW',
     "notes" TEXT,
@@ -410,6 +458,8 @@ CREATE TABLE "ClientEvent" (
     "type" "EventType" NOT NULL,
     "content" TEXT,
     "metadata" JSONB,
+    "scheduledAt" TIMESTAMP(3),
+    "reminderSentAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ClientEvent_pkey" PRIMARY KEY ("id")
@@ -460,6 +510,24 @@ CREATE TABLE "LogoGeneration" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "LogoGeneration_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PendingPayment" (
+    "id" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "promocode" TEXT,
+    "screenshotUrl" TEXT,
+    "comment" TEXT,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reviewedAt" TIMESTAMP(3),
+    "reviewedBy" TEXT,
+    "reviewNotes" TEXT,
+    "activatedDays" INTEGER,
+
+    CONSTRAINT "PendingPayment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -547,6 +615,9 @@ CREATE INDEX "VisualizationElement_elementId_idx" ON "VisualizationElement"("ele
 CREATE INDEX "VisualizationRender_visualizationId_createdAt_idx" ON "VisualizationRender"("visualizationId", "createdAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "MasterBrief_masterId_key" ON "MasterBrief"("masterId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "InstagramAccount_masterId_key" ON "InstagramAccount"("masterId");
 
 -- CreateIndex
@@ -574,6 +645,9 @@ CREATE INDEX "Client_masterId_createdAt_idx" ON "Client"("masterId", "createdAt"
 CREATE INDEX "ClientEvent_clientId_createdAt_idx" ON "ClientEvent"("clientId", "createdAt");
 
 -- CreateIndex
+CREATE INDEX "ClientEvent_scheduledAt_reminderSentAt_idx" ON "ClientEvent"("scheduledAt", "reminderSentAt");
+
+-- CreateIndex
 CREATE INDEX "ObjectPhoto_masterId_clientId_createdAt_idx" ON "ObjectPhoto"("masterId", "clientId", "createdAt");
 
 -- CreateIndex
@@ -596,6 +670,12 @@ CREATE INDEX "Rangefinder_status_idx" ON "Rangefinder"("status");
 
 -- CreateIndex
 CREATE INDEX "LogoGeneration_masterId_createdAt_idx" ON "LogoGeneration"("masterId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PendingPayment_masterId_idx" ON "PendingPayment"("masterId");
+
+-- CreateIndex
+CREATE INDEX "PendingPayment_status_createdAt_idx" ON "PendingPayment"("status", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -652,6 +732,12 @@ ALTER TABLE "VisualizationRender" ADD CONSTRAINT "VisualizationRender_visualizat
 ALTER TABLE "PortfolioWork" ADD CONSTRAINT "PortfolioWork_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "MasterBrief" ADD CONSTRAINT "MasterBrief_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MasterReview" ADD CONSTRAINT "MasterReview_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "InstagramAccount" ADD CONSTRAINT "InstagramAccount_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -677,4 +763,7 @@ ALTER TABLE "Rangefinder" ADD CONSTRAINT "Rangefinder_ownerId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "LogoGeneration" ADD CONSTRAINT "LogoGeneration_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PendingPayment" ADD CONSTRAINT "PendingPayment_masterId_fkey" FOREIGN KEY ("masterId") REFERENCES "Master"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
