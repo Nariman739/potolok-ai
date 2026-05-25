@@ -79,6 +79,10 @@ export async function POST(request: Request) {
       suffix++;
     }
 
+    // Trial 7 дней при регистрации (выдаём PRO на 7 дней)
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
     const master = await prisma.master.create({
       data: {
         phone,
@@ -86,6 +90,10 @@ export async function POST(request: Request) {
         firstName,
         companyName: companyName || null,
         portfolioSlug,
+        subscriptionTier: "PRO",
+        paidUntil: trialEndsAt,
+        billingNotes: "trial 7d",
+        hasUsedTrial: true,
         prices: {
           create: PRODUCT_ITEMS.map((item) => ({
             itemCode: item.code,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateClient } from "@/lib/clients";
 
 export async function GET(
   _request: Request,
@@ -37,16 +38,22 @@ export async function PATCH(
     const master = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea, latitude, longitude, clientId } = body as {
+    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
       latitude?: number;
       longitude?: number;
       clientId?: string | null;
+      clientName?: string;
+      clientPhone?: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
     };
 
-    // Если передан clientId — валидируем что клиент принадлежит мастеру
+    // Привязка клиента: явный clientId → валидируем; иначе auto-create по имени/телефону.
+    // Раньше PATCH принимал только clientId — поэтому при «Обновить» новый клиент не
+    // создавался и не появлялся в CRM (в отличие от POST, который создаёт сам).
     let safeClientId: string | null | undefined = undefined;
     if (clientId === null) {
       safeClientId = null;
@@ -56,10 +63,28 @@ export async function PATCH(
         select: { id: true },
       });
       safeClientId = exists?.id ?? null;
+    } else if (clientName || clientPhone) {
+      const auto = await getOrCreateClient({
+        masterId: master.id,
+        name: clientName || null,
+        phone: clientPhone || null,
+        address: address || null,
+      });
+      safeClientId = auto?.id ?? undefined;
     }
 
-    const result = await prisma.measurementObject.updateMany({
+    // Проверяем что объект принадлежит мастеру
+    const owner = await prisma.measurementObject.findFirst({
       where: { id, masterId: master.id },
+      select: { id: true },
+    });
+    if (!owner) {
+      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    }
+
+    // Обновляем метаданные
+    await prisma.measurementObject.update({
+      where: { id },
       data: {
         ...(address !== undefined && { address }),
         ...(status !== undefined && { status }),
@@ -70,8 +95,31 @@ export async function PATCH(
       },
     });
 
-    if (result.count === 0) {
-      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    // Если переданы rooms — пересоздаём их. Старые комнаты с фото
+    // полностью заменяются на новые (фото в Vercel Blob остаются,
+    // но ссылки в БД пропадают — это допустимо, мастер пересохраняет
+    // замер только при добавлении новой комнаты).
+    if (rooms && Array.isArray(rooms)) {
+      await prisma.measurementRoom.deleteMany({
+        where: { objectId: id },
+      });
+      if (rooms.length > 0) {
+        await prisma.measurementRoom.createMany({
+          data: rooms.map((r, i) => ({
+            objectId: id,
+            name: r.name,
+            walls: r.walls,
+            normalCorners: r.normalCorners || r.walls.map(() => true),
+            angles: r.angles ?? undefined,
+            arcBulges: r.arcBulges ?? undefined,
+            columns: r.columns ?? undefined,
+            area: r.area,
+            perimeter: r.perimeter,
+            elements: r.elements || [],
+            sortOrder: i,
+          })),
+        });
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -276,7 +276,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
 
     let lengthM = 0;
     let widthM = 0;
-    let roomShape: RoomShape = shape;
+    const roomShape: RoomShape = shape;
     let lShapeDims = undefined;
     let tShapeDims = undefined;
     let customDims: CustomDimensions | undefined = undefined;

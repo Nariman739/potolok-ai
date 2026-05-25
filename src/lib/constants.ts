@@ -2,7 +2,10 @@ export type ProductCategory =
   | "canvas"
   | "profile"
   | "spot"
+  | "spot_pair"
   | "chandelier"
+  | "track"
+  | "lightline"
   | "curtain"
   | "gardina"
   | "podshtornik"
@@ -31,17 +34,26 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "insert", name: "Вставка", unit: "м.п.", defaultPrice: 1000, category: "profile", description: "Маскировочная лента" },
   { code: "profile_shadow", name: "Теневой профиль", unit: "м.п.", defaultPrice: 7000, category: "profile", description: "Алюминиевый теневой зазор" },
   { code: "profile_floating", name: "Парящий профиль", unit: "м.п.", defaultPrice: 14000, category: "profile", description: "Алюминиевый с подсветкой" },
+  // Серик 2026-05-20: добавлены алюминиевый профиль и подсветка
+  // для расчёта новых типов профиля периметра (билд 53).
+  { code: "profile_aluminum", name: "Алюминиевый профиль", unit: "м.п.", defaultPrice: 3000, category: "profile", description: "Алюминиевый багет (под вставку или без)" },
+  { code: "led_strip", name: "LED-подсветка по периметру", unit: "м.п.", defaultPrice: 4500, category: "profile", description: "Светодиодная лента для подшторника с подсветкой" },
 
   // Светильники (за шт.)
-  { code: "spot_client", name: "Споты (клиентские)", unit: "шт.", defaultPrice: 2500, category: "spot", description: "Установка клиентских" },
-  { code: "spot_ours", name: "Споты GX53 (наши)", unit: "шт.", defaultPrice: 5000, category: "spot", description: "GX53 в комплекте" },
-  { code: "spot_gu10", name: "Споты GU10", unit: "шт.", defaultPrice: 4500, category: "spot", description: "Цоколь GU10" },
-  { code: "spot_mr16", name: "Споты MR16", unit: "шт.", defaultPrice: 4000, category: "spot", description: "Цоколь GU5.3 / MR16" },
-  { code: "spot_swivel", name: "Споты поворотные", unit: "шт.", defaultPrice: 7000, category: "spot", description: "С регулировкой угла" },
-  { code: "spot_overhead", name: "Споты накладные", unit: "шт.", defaultPrice: 5500, category: "spot", description: "Накладные на потолок" },
-  { code: "spot_double", name: "Споты двойные LED", unit: "шт.", defaultPrice: 6000, category: "spot", description: "Двойные LED-споты" },
-  { code: "spot_pair", name: "Софиты двойные (пара)", unit: "пара", defaultPrice: 9000, category: "spot", description: "2 софита рядом — отдельная цена за пару" },
-  { code: "spot_triple", name: "Софиты тройные", unit: "шт.", defaultPrice: 13000, category: "spot", description: "3 софита рядом — отдельная цена за тройку" },
+  // Серик 2026-05-21: оставили только 2 дефолта по просьбе мастера —
+  // остальные варианты (GU10/MR16/поворотные/двойные/тройные) пусть мастер
+  // добавляет сам через «+ Добавить свой», если они ему реально нужны.
+  // Лишние строки только мешали в прайсе.
+  { code: "spot_client", name: "Софиты клиентские (установка)", unit: "шт.", defaultPrice: 2500, category: "spot", description: "Клиент даёт софит — мы только устанавливаем" },
+  { code: "spot_ours", name: "Софиты GX53 с установкой", unit: "шт.", defaultPrice: 5000, category: "spot", description: "Наш софит + установка" },
+
+  // Серик 2026-05-21: двойные софиты — отдельная категория, чтобы мастер
+  // мог в прайсе грузить фото своих парных моделей и выставлять цену
+  // за ПАРУ (не за штуку). При постановке двойного софита в дизайнере
+  // эти варианты будут показываться в picker'е.
+  { code: "spot_pair_client", name: "Двойной софит клиентский (установка)", unit: "пара", defaultPrice: 4500, category: "spot_pair", description: "Клиент даёт пару — мы только устанавливаем" },
+  { code: "spot_pair_ours", name: "Двойной софит с установкой", unit: "пара", defaultPrice: 9000, category: "spot_pair", description: "Наша пара + установка" },
+
   // Подвесной светильник / бра — отдельная категория (меньше люстры)
   { code: "pendant", name: "Закладная под подвесной светильник", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под подвесной светильник / бра" },
   { code: "pendant_install", name: "Установка подвесного светильника", unit: "шт.", defaultPrice: 3000, category: "spot", description: "Монтаж подвесного светильника / бра" },
@@ -50,8 +62,12 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "chandelier", name: "Закладная под люстру", unit: "шт.", defaultPrice: 2000, category: "chandelier" },
   { code: "chandelier_install", name: "Установка люстры", unit: "шт.", defaultPrice: 5000, category: "chandelier" },
   { code: "transformer", name: "Трансформатор", unit: "шт.", defaultPrice: 10000, category: "chandelier" },
-  { code: "track_magnetic", name: "Трек магнитный", unit: "м.п.", defaultPrice: 27000, category: "chandelier" },
-  { code: "light_line", name: "Световая линия", unit: "м.п.", defaultPrice: 15000, category: "chandelier" },
+  // Серик 2026-05-21: треки и световые линии вынесены в свои категории
+  // (раньше были в chandelier). Теперь мастер видит их отдельно в прайсе
+  // и может грузить варианты с фото; в дизайнере picker «Трек» / «Свет.линия»
+  // подтянет именно эти варианты, а не люстровые.
+  { code: "track_magnetic", name: "Трек магнитный", unit: "м.п.", defaultPrice: 27000, category: "track" },
+  { code: "light_line", name: "Световая линия", unit: "м.п.", defaultPrice: 15000, category: "lightline" },
 
   // Карнизы (за м.п.)
   { code: "curtain_ldsp", name: "Карниз ЛДСП", unit: "м.п.", defaultPrice: 3500, category: "curtain" },
@@ -65,7 +81,6 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "podshtornik_plastic", name: "Подшторник пластиковый (брус)", unit: "м.п.", defaultPrice: 2500, category: "podshtornik" },
   { code: "podshtornik_ldsp", name: "Подшторник ЛДСП (под галтели)", unit: "м.п.", defaultPrice: 5500, category: "podshtornik" },
   { code: "podshtornik_aluminum", name: "Подшторник алюминиевый", unit: "м.п.", defaultPrice: 8000, category: "podshtornik" },
-  { code: "podshtornik_aluminum_led", name: "Подшторник алюминиевый с подсветкой", unit: "м.п.", defaultPrice: 14000, category: "podshtornik", description: "Алюминиевый профиль + LED-полоса в комплекте" },
 
   // Углы
   { code: "corner_plastic", name: "Угол пластик", unit: "шт.", defaultPrice: 1000, category: "corner", description: "Для галтели / вставки" },
@@ -107,7 +122,10 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   canvas: "Полотно",
   profile: "Профили",
   spot: "Светильники",
-  chandelier: "Люстры и свет",
+  spot_pair: "Двойные софиты",
+  chandelier: "Люстры",
+  track: "Треки",
+  lightline: "Световая линия",
   curtain: "Карнизы",
   gardina: "Гардины",
   podshtornik: "Подшторник",
@@ -136,11 +154,6 @@ export const PROFILE_TYPES = [
 export const SPOT_TYPES = [
   { code: "spot_client", label: "Клиентские" },
   { code: "spot_ours", label: "GX53 (наши)" },
-  { code: "spot_gu10", label: "GU10" },
-  { code: "spot_mr16", label: "MR16" },
-  { code: "spot_swivel", label: "Поворотные" },
-  { code: "spot_overhead", label: "Накладные" },
-  { code: "spot_double", label: "Двойные LED" },
 ] as const;
 
 export const CORNER_TYPES = [

@@ -115,6 +115,16 @@ export type VisualizationRender = Prisma.VisualizationRenderModel
  */
 export type PortfolioWork = Prisma.PortfolioWorkModel
 /**
+ * Model MasterBrief
+ * 
+ */
+export type MasterBrief = Prisma.MasterBriefModel
+/**
+ * Model MasterReview
+ * 
+ */
+export type MasterReview = Prisma.MasterReviewModel
+/**
  * Model InstagramAccount
  * 
  */
@@ -154,3 +164,8 @@ export type Rangefinder = Prisma.RangefinderModel
  * 
  */
 export type LogoGeneration = Prisma.LogoGenerationModel
+/**
+ * Model PendingPayment
+ * 
+ */
+export type PendingPayment = Prisma.PendingPaymentModel

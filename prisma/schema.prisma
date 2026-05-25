@@ -60,6 +60,12 @@ model Master {
   paidUntil            DateTime? // до какой даты оплачено (PRO/PROPLUS)
   billingNotes         String? // ручные заметки админа (например, «Kaspi 5к на 3 мес»)
   isOwner              Boolean          @default(false) // доступ к /admin (true только для владельца)
+  monthlyPrice         Int              @default(9999) // персональная цена подписки в ₸ (3000 у Founder mo 1-3, 9999 обычная)
+  isFounder            Boolean          @default(false) // активировал POTOLOKFEST (бейдж + скидка 3 месяца)
+  founderActivatedAt   DateTime? // когда применил POTOLOKFEST
+  founderMonthsPaid    Int              @default(0) // счётчик 3000₸-оплат, после 3 → переход на STANDARD_PRICE
+  welcomeSent          Boolean          @default(false) // отправили ли инвайты в TG+WA группы
+  hasUsedTrial         Boolean          @default(false) // защита от повторной регистрации с trial
 
   // CRM notifications (Telegram)
   notifyDealWon  Boolean @default(true)
@@ -74,6 +80,7 @@ model Master {
   logoMonthReset           DateTime         @default(now())
   logoBrief                Json? // последний бриф (ответы на наводящие вопросы)
   logoHistory              LogoGeneration[]
+  smmProfile               Json? // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   // AI Visualization (фотореалистичный рендер потолка клиента)
   visualizationCredits    Int              @default(3) // 3 бесплатных на onboarding
@@ -81,12 +88,19 @@ model Master {
   visualizationMonthReset DateTime         @default(now())
   visualizations          Visualization[]
   ceilingElements         CeilingElement[]
-  smmProfile              Json? // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   onboardingCompleted Boolean  @default(false)
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  // KP конструктор: тема + расстановка секций + контент (FAQ, гарантии)
+  // Структура: см. src/lib/kp/types.ts (KpConfig)
+  kpConfig      Json?
+  // Слоган/девиз бренда для обложки и футера PDF
+  tagline       String?
+  // Фирменное фото-фон обложки (опционально, перебивает 3D-превью в некоторых темах)
+  coverPhotoUrl String?
 
   prices           MasterPrice[]
   priceVariants    PriceVariant[]
@@ -95,6 +109,8 @@ model Master {
   chatSessions     ChatSession[]
   customItems      CustomItem[]
   portfolioWorks   PortfolioWork[]
+  reviews          MasterReview[]
+  kpBrief          MasterBrief?
   measurements     MeasurementObject[]
   instagramAccount InstagramAccount?
   instagramSession InstagramSession?
@@ -105,7 +121,8 @@ model Master {
   portfolioSlug String? @unique // e.g. "ivan-almaty" → potolok.ai/master/ivan-almaty
   portfolioBio  String? // Краткое описание мастера для публичной страницы
 
-  rangefinders Rangefinder[]
+  rangefinders    Rangefinder[]
+  pendingPayments PendingPayment[]
 }
 
 model Session {
@@ -179,8 +196,8 @@ model PriceVariant {
   unit      String
   price     Float
   photoUrl  String? // Vercel Blob URL
+  noInsert  Boolean @default(false) // флаг «вариант профиля без вставки» (теневые/парящие)
   sortOrder Int     @default(0)
-  noInsert  Boolean @default(false) // вариант "не включать в расчёт по умолчанию" (только по запросу)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -376,21 +393,19 @@ model AiRenderLog {
 
 // ============================================
 // AI VISUALIZATION (фотореалистичный рендер потолка клиента)
-// Отдельная фича от AiRenderLog: своя загрузка фото, разметка,
-// много вариантов на одно фото, публичная ссылка для шеринга.
 // ============================================
 
 model Visualization {
-  id          String   @id @default(uuid())
-  masterId    String
-  objectId    String? // опциональная связь с MeasurementObject
+  id           String   @id @default(uuid())
+  masterId     String
+  objectId     String? // опциональная связь с MeasurementObject
   originalUrl  String // исходное фото клиентской комнаты (Vercel Blob)
   referenceUrl String? // опциональное фото-референс «сделай как тут» (Pinterest / портфолио мастера)
   markup       Json? // { attachmentType, finish, ledStrip, spotsCount, chandelierType, points?, lines? }
-  publicHash  String?  @unique // для публичной ссылки /visual/<hash>
-  status      String   @default("draft") // draft | rendering | ready | failed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  publicHash   String?  @unique // для публичной ссылки /visual/<hash>
+  status       String   @default("draft") // draft | rendering | ready | failed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   master   Master                 @relation(fields: [masterId], references: [id])
   object   MeasurementObject?     @relation(fields: [objectId], references: [id])
@@ -401,8 +416,6 @@ model Visualization {
   @@index([objectId])
 }
 
-// Каталог элементов потолка — мастер создаёт один раз, использует во всех визуализациях.
-// Категории: spot, track, lightline, chandelier, ventilation, decoration, profile, other.
 model CeilingElement {
   id          String   @id @default(uuid())
   masterId    String
@@ -416,21 +429,20 @@ model CeilingElement {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  master   Master                 @relation(fields: [masterId], references: [id], onDelete: Cascade)
-  usedIn   VisualizationElement[]
+  master Master                 @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  usedIn VisualizationElement[]
 
   @@index([masterId, category])
   @@index([masterId, isHidden])
 }
 
-// Связь визуализации с конкретными элементами + количеством (many-to-many с qty).
 model VisualizationElement {
-  id              String @id @default(uuid())
+  id              String  @id @default(uuid())
   visualizationId String
   elementId       String
-  quantity        Int    @default(1)
+  quantity        Int     @default(1)
   notes           String? // например "по периметру комнаты" — уточнение позиции
-  sortOrder       Int    @default(0)
+  sortOrder       Int     @default(0)
 
   visualization Visualization  @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
   element       CeilingElement @relation(fields: [elementId], references: [id], onDelete: Cascade)
@@ -471,6 +483,55 @@ model PortfolioWork {
 
   isPublished Boolean @default(true)
   sortOrder   Int     @default(0) // Для ручной сортировки
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// REVIEWS (отзывы клиентов для блока в КП)
+// ============================================
+
+// Бриф мастера для AI-онбординга конструктора КП.
+// Сохраняется при первичной настройке КП — мастер отвечает на 6-7 вопросов,
+// AI на основе ответов собирает персональный KpConfig.
+// Эти данные — ценный источник для аналитики рынка (сегменты, города,
+// типичные гарантии, материалы, частые вопросы клиентов).
+model MasterBrief {
+  id       String @id @default(uuid())
+  masterId String @unique
+  master   Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  // Полный бриф (структура — см. MasterBrief в src/lib/kp/ai-onboarding.ts)
+  brief            Json
+  // Что сгенерировал AI на этот бриф (для последующего сравнения)
+  generatedConfig  Json?
+  generatedTagline String?
+  rationale        String?
+
+  // Денормализованные поля для аналитики (быстрые запросы по сегментам/городам)
+  segment     String? // mass | middle | premium | family | young-bold
+  city        String?
+  yearsActive Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MasterReview {
+  id       String @id @default(uuid())
+  masterId String
+
+  clientName String // имя клиента (как подпись отзыва)
+  rating     Int     @default(5) // 1..5
+  text       String // сам отзыв
+  photoUrl   String? // опц. аватар/фото клиента
+  location   String? // опц. район/город ("Астана, Есиль")
+
+  isPublished Boolean @default(true)
+  sortOrder   Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -565,14 +626,16 @@ model InstagramSession {
 // ============================================
 
 model Client {
-  id       String        @id @default(uuid())
-  masterId String
-  name     String
-  phone    String?
-  address  String?
-  source   ClientSource?
-  status   DealStatus    @default(NEW)
-  notes    String?
+  id        String        @id @default(uuid())
+  masterId  String
+  name      String
+  phone     String?
+  address   String?
+  latitude  Float?
+  longitude Float?
+  source    ClientSource?
+  status    DealStatus    @default(NEW)
+  notes     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -589,16 +652,19 @@ model Client {
 }
 
 model ClientEvent {
-  id        String    @id @default(uuid())
-  clientId  String
-  type      EventType
-  content   String?
-  metadata  Json?
-  createdAt DateTime  @default(now())
+  id             String    @id @default(uuid())
+  clientId       String
+  type           EventType
+  content        String?
+  metadata       Json?
+  scheduledAt    DateTime?
+  reminderSentAt DateTime?
+  createdAt      DateTime  @default(now())
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
+  @@index([scheduledAt, reminderSentAt])
 }
 
 enum ClientSource {
@@ -721,4 +787,34 @@ model LogoGeneration {
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([masterId, createdAt])
+}
+
+// ============================================
+// PAYMENTS (Kaspi-перевод + ручная активация через Telegram)
+// ============================================
+
+model PendingPayment {
+  id            String        @id @default(uuid())
+  masterId      String
+  amount        Int // ₸: 3000 (Founder mo 1-3) / 9999 (Standard)
+  promocode     String? // POTOLOKFEST и т.д.
+  screenshotUrl String? // Vercel Blob URL чека
+  comment       String? // от юзера
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  reviewedAt    DateTime?
+  reviewedBy    String? // Master.id админа
+  reviewNotes   String?
+  activatedDays Int? // на сколько дней продлили (30)
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId])
+  @@index([status, createdAt])
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

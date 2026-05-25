@@ -31,6 +31,8 @@ export type MasterAvgAggregateOutputType = {
   warrantyMaterials: number | null
   warrantyInstall: number | null
   kpGeneratedThisMonth: number | null
+  monthlyPrice: number | null
+  founderMonthsPaid: number | null
   smmPostsThisMonth: number | null
   logoGenerationsThisMonth: number | null
   visualizationCredits: number | null
@@ -42,6 +44,8 @@ export type MasterSumAggregateOutputType = {
   warrantyMaterials: number | null
   warrantyInstall: number | null
   kpGeneratedThisMonth: number | null
+  monthlyPrice: number | null
+  founderMonthsPaid: number | null
   smmPostsThisMonth: number | null
   logoGenerationsThisMonth: number | null
   visualizationCredits: number | null
@@ -85,6 +89,12 @@ export type MasterMinAggregateOutputType = {
   paidUntil: Date | null
   billingNotes: string | null
   isOwner: boolean | null
+  monthlyPrice: number | null
+  isFounder: boolean | null
+  founderActivatedAt: Date | null
+  founderMonthsPaid: number | null
+  welcomeSent: boolean | null
+  hasUsedTrial: boolean | null
   notifyDealWon: boolean | null
   notifyDealLost: boolean | null
   smmPostsThisMonth: number | null
@@ -98,6 +108,8 @@ export type MasterMinAggregateOutputType = {
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
+  tagline: string | null
+  coverPhotoUrl: string | null
   portfolioSlug: string | null
   portfolioBio: string | null
 }
@@ -139,6 +151,12 @@ export type MasterMaxAggregateOutputType = {
   paidUntil: Date | null
   billingNotes: string | null
   isOwner: boolean | null
+  monthlyPrice: number | null
+  isFounder: boolean | null
+  founderActivatedAt: Date | null
+  founderMonthsPaid: number | null
+  welcomeSent: boolean | null
+  hasUsedTrial: boolean | null
   notifyDealWon: boolean | null
   notifyDealLost: boolean | null
   smmPostsThisMonth: number | null
@@ -152,6 +170,8 @@ export type MasterMaxAggregateOutputType = {
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
+  tagline: string | null
+  coverPhotoUrl: string | null
   portfolioSlug: string | null
   portfolioBio: string | null
 }
@@ -193,6 +213,12 @@ export type MasterCountAggregateOutputType = {
   paidUntil: number
   billingNotes: number
   isOwner: number
+  monthlyPrice: number
+  isFounder: number
+  founderActivatedAt: number
+  founderMonthsPaid: number
+  welcomeSent: number
+  hasUsedTrial: number
   notifyDealWon: number
   notifyDealLost: number
   smmPostsThisMonth: number
@@ -200,14 +226,17 @@ export type MasterCountAggregateOutputType = {
   logoGenerationsThisMonth: number
   logoMonthReset: number
   logoBrief: number
+  smmProfile: number
   visualizationCredits: number
   visualizationsThisMonth: number
   visualizationMonthReset: number
-  smmProfile: number
   onboardingCompleted: number
   isActive: number
   createdAt: number
   updatedAt: number
+  kpConfig: number
+  tagline: number
+  coverPhotoUrl: number
   portfolioSlug: number
   portfolioBio: number
   _all: number
@@ -219,6 +248,8 @@ export type MasterAvgAggregateInputType = {
   warrantyMaterials?: true
   warrantyInstall?: true
   kpGeneratedThisMonth?: true
+  monthlyPrice?: true
+  founderMonthsPaid?: true
   smmPostsThisMonth?: true
   logoGenerationsThisMonth?: true
   visualizationCredits?: true
@@ -230,6 +261,8 @@ export type MasterSumAggregateInputType = {
   warrantyMaterials?: true
   warrantyInstall?: true
   kpGeneratedThisMonth?: true
+  monthlyPrice?: true
+  founderMonthsPaid?: true
   smmPostsThisMonth?: true
   logoGenerationsThisMonth?: true
   visualizationCredits?: true
@@ -273,6 +306,12 @@ export type MasterMinAggregateInputType = {
   paidUntil?: true
   billingNotes?: true
   isOwner?: true
+  monthlyPrice?: true
+  isFounder?: true
+  founderActivatedAt?: true
+  founderMonthsPaid?: true
+  welcomeSent?: true
+  hasUsedTrial?: true
   notifyDealWon?: true
   notifyDealLost?: true
   smmPostsThisMonth?: true
@@ -286,6 +325,8 @@ export type MasterMinAggregateInputType = {
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  tagline?: true
+  coverPhotoUrl?: true
   portfolioSlug?: true
   portfolioBio?: true
 }
@@ -327,6 +368,12 @@ export type MasterMaxAggregateInputType = {
   paidUntil?: true
   billingNotes?: true
   isOwner?: true
+  monthlyPrice?: true
+  isFounder?: true
+  founderActivatedAt?: true
+  founderMonthsPaid?: true
+  welcomeSent?: true
+  hasUsedTrial?: true
   notifyDealWon?: true
   notifyDealLost?: true
   smmPostsThisMonth?: true
@@ -340,6 +387,8 @@ export type MasterMaxAggregateInputType = {
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  tagline?: true
+  coverPhotoUrl?: true
   portfolioSlug?: true
   portfolioBio?: true
 }
@@ -381,6 +430,12 @@ export type MasterCountAggregateInputType = {
   paidUntil?: true
   billingNotes?: true
   isOwner?: true
+  monthlyPrice?: true
+  isFounder?: true
+  founderActivatedAt?: true
+  founderMonthsPaid?: true
+  welcomeSent?: true
+  hasUsedTrial?: true
   notifyDealWon?: true
   notifyDealLost?: true
   smmPostsThisMonth?: true
@@ -388,14 +443,17 @@ export type MasterCountAggregateInputType = {
   logoGenerationsThisMonth?: true
   logoMonthReset?: true
   logoBrief?: true
+  smmProfile?: true
   visualizationCredits?: true
   visualizationsThisMonth?: true
   visualizationMonthReset?: true
-  smmProfile?: true
   onboardingCompleted?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  kpConfig?: true
+  tagline?: true
+  coverPhotoUrl?: true
   portfolioSlug?: true
   portfolioBio?: true
   _all?: true
@@ -524,6 +582,12 @@ export type MasterGroupByOutputType = {
   paidUntil: Date | null
   billingNotes: string | null
   isOwner: boolean
+  monthlyPrice: number
+  isFounder: boolean
+  founderActivatedAt: Date | null
+  founderMonthsPaid: number
+  welcomeSent: boolean
+  hasUsedTrial: boolean
   notifyDealWon: boolean
   notifyDealLost: boolean
   smmPostsThisMonth: number
@@ -531,14 +595,17 @@ export type MasterGroupByOutputType = {
   logoGenerationsThisMonth: number
   logoMonthReset: Date
   logoBrief: runtime.JsonValue | null
+  smmProfile: runtime.JsonValue | null
   visualizationCredits: number
   visualizationsThisMonth: number
   visualizationMonthReset: Date
-  smmProfile: runtime.JsonValue | null
   onboardingCompleted: boolean
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+  kpConfig: runtime.JsonValue | null
+  tagline: string | null
+  coverPhotoUrl: string | null
   portfolioSlug: string | null
   portfolioBio: string | null
   _count: MasterCountAggregateOutputType | null
@@ -603,6 +670,12 @@ export type MasterWhereInput = {
   paidUntil?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
   billingNotes?: Prisma.StringNullableFilter<"Master"> | string | null
   isOwner?: Prisma.BoolFilter<"Master"> | boolean
+  monthlyPrice?: Prisma.IntFilter<"Master"> | number
+  isFounder?: Prisma.BoolFilter<"Master"> | boolean
+  founderActivatedAt?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
+  founderMonthsPaid?: Prisma.IntFilter<"Master"> | number
+  welcomeSent?: Prisma.BoolFilter<"Master"> | boolean
+  hasUsedTrial?: Prisma.BoolFilter<"Master"> | boolean
   notifyDealWon?: Prisma.BoolFilter<"Master"> | boolean
   notifyDealLost?: Prisma.BoolFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
@@ -610,14 +683,17 @@ export type MasterWhereInput = {
   logoGenerationsThisMonth?: Prisma.IntFilter<"Master"> | number
   logoMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   logoBrief?: Prisma.JsonNullableFilter<"Master">
+  smmProfile?: Prisma.JsonNullableFilter<"Master">
   visualizationCredits?: Prisma.IntFilter<"Master"> | number
   visualizationsThisMonth?: Prisma.IntFilter<"Master"> | number
   visualizationMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
-  smmProfile?: Prisma.JsonNullableFilter<"Master">
   onboardingCompleted?: Prisma.BoolFilter<"Master"> | boolean
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
+  kpConfig?: Prisma.JsonNullableFilter<"Master">
+  tagline?: Prisma.StringNullableFilter<"Master"> | string | null
+  coverPhotoUrl?: Prisma.StringNullableFilter<"Master"> | string | null
   portfolioSlug?: Prisma.StringNullableFilter<"Master"> | string | null
   portfolioBio?: Prisma.StringNullableFilter<"Master"> | string | null
   logoHistory?: Prisma.LogoGenerationListRelationFilter
@@ -630,12 +706,15 @@ export type MasterWhereInput = {
   chatSessions?: Prisma.ChatSessionListRelationFilter
   customItems?: Prisma.CustomItemListRelationFilter
   portfolioWorks?: Prisma.PortfolioWorkListRelationFilter
+  reviews?: Prisma.MasterReviewListRelationFilter
+  kpBrief?: Prisma.XOR<Prisma.MasterBriefNullableScalarRelationFilter, Prisma.MasterBriefWhereInput> | null
   measurements?: Prisma.MeasurementObjectListRelationFilter
   instagramAccount?: Prisma.XOR<Prisma.InstagramAccountNullableScalarRelationFilter, Prisma.InstagramAccountWhereInput> | null
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
   clients?: Prisma.ClientListRelationFilter
   objectPhotos?: Prisma.ObjectPhotoListRelationFilter
   rangefinders?: Prisma.RangefinderListRelationFilter
+  pendingPayments?: Prisma.PendingPaymentListRelationFilter
 }
 
 export type MasterOrderByWithRelationInput = {
@@ -675,6 +754,12 @@ export type MasterOrderByWithRelationInput = {
   paidUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   billingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
   isOwner?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  isFounder?: Prisma.SortOrder
+  founderActivatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
+  welcomeSent?: Prisma.SortOrder
+  hasUsedTrial?: Prisma.SortOrder
   notifyDealWon?: Prisma.SortOrder
   notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
@@ -682,14 +767,17 @@ export type MasterOrderByWithRelationInput = {
   logoGenerationsThisMonth?: Prisma.SortOrder
   logoMonthReset?: Prisma.SortOrder
   logoBrief?: Prisma.SortOrderInput | Prisma.SortOrder
+  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   visualizationCredits?: Prisma.SortOrder
   visualizationsThisMonth?: Prisma.SortOrder
   visualizationMonthReset?: Prisma.SortOrder
-  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingCompleted?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  kpConfig?: Prisma.SortOrderInput | Prisma.SortOrder
+  tagline?: Prisma.SortOrderInput | Prisma.SortOrder
+  coverPhotoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrderInput | Prisma.SortOrder
   portfolioBio?: Prisma.SortOrderInput | Prisma.SortOrder
   logoHistory?: Prisma.LogoGenerationOrderByRelationAggregateInput
@@ -702,12 +790,15 @@ export type MasterOrderByWithRelationInput = {
   chatSessions?: Prisma.ChatSessionOrderByRelationAggregateInput
   customItems?: Prisma.CustomItemOrderByRelationAggregateInput
   portfolioWorks?: Prisma.PortfolioWorkOrderByRelationAggregateInput
+  reviews?: Prisma.MasterReviewOrderByRelationAggregateInput
+  kpBrief?: Prisma.MasterBriefOrderByWithRelationInput
   measurements?: Prisma.MeasurementObjectOrderByRelationAggregateInput
   instagramAccount?: Prisma.InstagramAccountOrderByWithRelationInput
   instagramSession?: Prisma.InstagramSessionOrderByWithRelationInput
   clients?: Prisma.ClientOrderByRelationAggregateInput
   objectPhotos?: Prisma.ObjectPhotoOrderByRelationAggregateInput
   rangefinders?: Prisma.RangefinderOrderByRelationAggregateInput
+  pendingPayments?: Prisma.PendingPaymentOrderByRelationAggregateInput
 }
 
 export type MasterWhereUniqueInput = Prisma.AtLeast<{
@@ -751,6 +842,12 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   paidUntil?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
   billingNotes?: Prisma.StringNullableFilter<"Master"> | string | null
   isOwner?: Prisma.BoolFilter<"Master"> | boolean
+  monthlyPrice?: Prisma.IntFilter<"Master"> | number
+  isFounder?: Prisma.BoolFilter<"Master"> | boolean
+  founderActivatedAt?: Prisma.DateTimeNullableFilter<"Master"> | Date | string | null
+  founderMonthsPaid?: Prisma.IntFilter<"Master"> | number
+  welcomeSent?: Prisma.BoolFilter<"Master"> | boolean
+  hasUsedTrial?: Prisma.BoolFilter<"Master"> | boolean
   notifyDealWon?: Prisma.BoolFilter<"Master"> | boolean
   notifyDealLost?: Prisma.BoolFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntFilter<"Master"> | number
@@ -758,14 +855,17 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   logoGenerationsThisMonth?: Prisma.IntFilter<"Master"> | number
   logoMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
   logoBrief?: Prisma.JsonNullableFilter<"Master">
+  smmProfile?: Prisma.JsonNullableFilter<"Master">
   visualizationCredits?: Prisma.IntFilter<"Master"> | number
   visualizationsThisMonth?: Prisma.IntFilter<"Master"> | number
   visualizationMonthReset?: Prisma.DateTimeFilter<"Master"> | Date | string
-  smmProfile?: Prisma.JsonNullableFilter<"Master">
   onboardingCompleted?: Prisma.BoolFilter<"Master"> | boolean
   isActive?: Prisma.BoolFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Master"> | Date | string
+  kpConfig?: Prisma.JsonNullableFilter<"Master">
+  tagline?: Prisma.StringNullableFilter<"Master"> | string | null
+  coverPhotoUrl?: Prisma.StringNullableFilter<"Master"> | string | null
   portfolioBio?: Prisma.StringNullableFilter<"Master"> | string | null
   logoHistory?: Prisma.LogoGenerationListRelationFilter
   visualizations?: Prisma.VisualizationListRelationFilter
@@ -777,12 +877,15 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   chatSessions?: Prisma.ChatSessionListRelationFilter
   customItems?: Prisma.CustomItemListRelationFilter
   portfolioWorks?: Prisma.PortfolioWorkListRelationFilter
+  reviews?: Prisma.MasterReviewListRelationFilter
+  kpBrief?: Prisma.XOR<Prisma.MasterBriefNullableScalarRelationFilter, Prisma.MasterBriefWhereInput> | null
   measurements?: Prisma.MeasurementObjectListRelationFilter
   instagramAccount?: Prisma.XOR<Prisma.InstagramAccountNullableScalarRelationFilter, Prisma.InstagramAccountWhereInput> | null
   instagramSession?: Prisma.XOR<Prisma.InstagramSessionNullableScalarRelationFilter, Prisma.InstagramSessionWhereInput> | null
   clients?: Prisma.ClientListRelationFilter
   objectPhotos?: Prisma.ObjectPhotoListRelationFilter
   rangefinders?: Prisma.RangefinderListRelationFilter
+  pendingPayments?: Prisma.PendingPaymentListRelationFilter
 }, "id" | "phone" | "email" | "telegramChatId" | "telegramLinkCode" | "portfolioSlug">
 
 export type MasterOrderByWithAggregationInput = {
@@ -822,6 +925,12 @@ export type MasterOrderByWithAggregationInput = {
   paidUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   billingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
   isOwner?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  isFounder?: Prisma.SortOrder
+  founderActivatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
+  welcomeSent?: Prisma.SortOrder
+  hasUsedTrial?: Prisma.SortOrder
   notifyDealWon?: Prisma.SortOrder
   notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
@@ -829,14 +938,17 @@ export type MasterOrderByWithAggregationInput = {
   logoGenerationsThisMonth?: Prisma.SortOrder
   logoMonthReset?: Prisma.SortOrder
   logoBrief?: Prisma.SortOrderInput | Prisma.SortOrder
+  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   visualizationCredits?: Prisma.SortOrder
   visualizationsThisMonth?: Prisma.SortOrder
   visualizationMonthReset?: Prisma.SortOrder
-  smmProfile?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingCompleted?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  kpConfig?: Prisma.SortOrderInput | Prisma.SortOrder
+  tagline?: Prisma.SortOrderInput | Prisma.SortOrder
+  coverPhotoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrderInput | Prisma.SortOrder
   portfolioBio?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MasterCountOrderByAggregateInput
@@ -886,6 +998,12 @@ export type MasterScalarWhereWithAggregatesInput = {
   paidUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"Master"> | Date | string | null
   billingNotes?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
   isOwner?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
+  monthlyPrice?: Prisma.IntWithAggregatesFilter<"Master"> | number
+  isFounder?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
+  founderActivatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Master"> | Date | string | null
+  founderMonthsPaid?: Prisma.IntWithAggregatesFilter<"Master"> | number
+  welcomeSent?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
+  hasUsedTrial?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   notifyDealWon?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   notifyDealLost?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   smmPostsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
@@ -893,14 +1011,17 @@ export type MasterScalarWhereWithAggregatesInput = {
   logoGenerationsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   logoMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   logoBrief?: Prisma.JsonNullableWithAggregatesFilter<"Master">
+  smmProfile?: Prisma.JsonNullableWithAggregatesFilter<"Master">
   visualizationCredits?: Prisma.IntWithAggregatesFilter<"Master"> | number
   visualizationsThisMonth?: Prisma.IntWithAggregatesFilter<"Master"> | number
   visualizationMonthReset?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
-  smmProfile?: Prisma.JsonNullableWithAggregatesFilter<"Master">
   onboardingCompleted?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   isActive?: Prisma.BoolWithAggregatesFilter<"Master"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Master"> | Date | string
+  kpConfig?: Prisma.JsonNullableWithAggregatesFilter<"Master">
+  tagline?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
+  coverPhotoUrl?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
   portfolioSlug?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
   portfolioBio?: Prisma.StringNullableWithAggregatesFilter<"Master"> | string | null
 }
@@ -942,6 +1063,12 @@ export type MasterCreateInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -949,14 +1076,17 @@ export type MasterCreateInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -969,12 +1099,15 @@ export type MasterCreateInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateInput = {
@@ -1014,6 +1147,12 @@ export type MasterUncheckedCreateInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -1021,14 +1160,17 @@ export type MasterUncheckedCreateInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -1041,12 +1183,15 @@ export type MasterUncheckedCreateInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUpdateInput = {
@@ -1086,6 +1231,12 @@ export type MasterUpdateInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1093,14 +1244,17 @@ export type MasterUpdateInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -1113,12 +1267,15 @@ export type MasterUpdateInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateInput = {
@@ -1158,6 +1315,12 @@ export type MasterUncheckedUpdateInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1165,14 +1328,17 @@ export type MasterUncheckedUpdateInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -1185,12 +1351,15 @@ export type MasterUncheckedUpdateInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateManyInput = {
@@ -1230,6 +1399,12 @@ export type MasterCreateManyInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -1237,14 +1412,17 @@ export type MasterCreateManyInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
 }
@@ -1286,6 +1464,12 @@ export type MasterUpdateManyMutationInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1293,14 +1477,17 @@ export type MasterUpdateManyMutationInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -1342,6 +1529,12 @@ export type MasterUncheckedUpdateManyInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1349,14 +1542,17 @@ export type MasterUncheckedUpdateManyInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -1398,6 +1594,12 @@ export type MasterCountOrderByAggregateInput = {
   paidUntil?: Prisma.SortOrder
   billingNotes?: Prisma.SortOrder
   isOwner?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  isFounder?: Prisma.SortOrder
+  founderActivatedAt?: Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
+  welcomeSent?: Prisma.SortOrder
+  hasUsedTrial?: Prisma.SortOrder
   notifyDealWon?: Prisma.SortOrder
   notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
@@ -1405,14 +1607,17 @@ export type MasterCountOrderByAggregateInput = {
   logoGenerationsThisMonth?: Prisma.SortOrder
   logoMonthReset?: Prisma.SortOrder
   logoBrief?: Prisma.SortOrder
+  smmProfile?: Prisma.SortOrder
   visualizationCredits?: Prisma.SortOrder
   visualizationsThisMonth?: Prisma.SortOrder
   visualizationMonthReset?: Prisma.SortOrder
-  smmProfile?: Prisma.SortOrder
   onboardingCompleted?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  kpConfig?: Prisma.SortOrder
+  tagline?: Prisma.SortOrder
+  coverPhotoUrl?: Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrder
   portfolioBio?: Prisma.SortOrder
 }
@@ -1422,6 +1627,8 @@ export type MasterAvgOrderByAggregateInput = {
   warrantyMaterials?: Prisma.SortOrder
   warrantyInstall?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   logoGenerationsThisMonth?: Prisma.SortOrder
   visualizationCredits?: Prisma.SortOrder
@@ -1465,6 +1672,12 @@ export type MasterMaxOrderByAggregateInput = {
   paidUntil?: Prisma.SortOrder
   billingNotes?: Prisma.SortOrder
   isOwner?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  isFounder?: Prisma.SortOrder
+  founderActivatedAt?: Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
+  welcomeSent?: Prisma.SortOrder
+  hasUsedTrial?: Prisma.SortOrder
   notifyDealWon?: Prisma.SortOrder
   notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
@@ -1478,6 +1691,8 @@ export type MasterMaxOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  tagline?: Prisma.SortOrder
+  coverPhotoUrl?: Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrder
   portfolioBio?: Prisma.SortOrder
 }
@@ -1519,6 +1734,12 @@ export type MasterMinOrderByAggregateInput = {
   paidUntil?: Prisma.SortOrder
   billingNotes?: Prisma.SortOrder
   isOwner?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  isFounder?: Prisma.SortOrder
+  founderActivatedAt?: Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
+  welcomeSent?: Prisma.SortOrder
+  hasUsedTrial?: Prisma.SortOrder
   notifyDealWon?: Prisma.SortOrder
   notifyDealLost?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
@@ -1532,6 +1753,8 @@ export type MasterMinOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  tagline?: Prisma.SortOrder
+  coverPhotoUrl?: Prisma.SortOrder
   portfolioSlug?: Prisma.SortOrder
   portfolioBio?: Prisma.SortOrder
 }
@@ -1541,6 +1764,8 @@ export type MasterSumOrderByAggregateInput = {
   warrantyMaterials?: Prisma.SortOrder
   warrantyInstall?: Prisma.SortOrder
   kpGeneratedThisMonth?: Prisma.SortOrder
+  monthlyPrice?: Prisma.SortOrder
+  founderMonthsPaid?: Prisma.SortOrder
   smmPostsThisMonth?: Prisma.SortOrder
   logoGenerationsThisMonth?: Prisma.SortOrder
   visualizationCredits?: Prisma.SortOrder
@@ -1729,6 +1954,34 @@ export type MasterUpdateOneRequiredWithoutPortfolioWorksNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutPortfolioWorksInput, Prisma.MasterUpdateWithoutPortfolioWorksInput>, Prisma.MasterUncheckedUpdateWithoutPortfolioWorksInput>
 }
 
+export type MasterCreateNestedOneWithoutKpBriefInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutKpBriefInput, Prisma.MasterUncheckedCreateWithoutKpBriefInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutKpBriefInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutKpBriefNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutKpBriefInput, Prisma.MasterUncheckedCreateWithoutKpBriefInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutKpBriefInput
+  upsert?: Prisma.MasterUpsertWithoutKpBriefInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutKpBriefInput, Prisma.MasterUpdateWithoutKpBriefInput>, Prisma.MasterUncheckedUpdateWithoutKpBriefInput>
+}
+
+export type MasterCreateNestedOneWithoutReviewsInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutReviewsInput, Prisma.MasterUncheckedCreateWithoutReviewsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutReviewsInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutReviewsNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutReviewsInput, Prisma.MasterUncheckedCreateWithoutReviewsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutReviewsInput
+  upsert?: Prisma.MasterUpsertWithoutReviewsInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutReviewsInput, Prisma.MasterUpdateWithoutReviewsInput>, Prisma.MasterUncheckedUpdateWithoutReviewsInput>
+}
+
 export type MasterCreateNestedOneWithoutInstagramAccountInput = {
   create?: Prisma.XOR<Prisma.MasterCreateWithoutInstagramAccountInput, Prisma.MasterUncheckedCreateWithoutInstagramAccountInput>
   connectOrCreate?: Prisma.MasterCreateOrConnectWithoutInstagramAccountInput
@@ -1815,6 +2068,20 @@ export type MasterUpdateOneRequiredWithoutLogoHistoryNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutLogoHistoryInput, Prisma.MasterUpdateWithoutLogoHistoryInput>, Prisma.MasterUncheckedUpdateWithoutLogoHistoryInput>
 }
 
+export type MasterCreateNestedOneWithoutPendingPaymentsInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutPendingPaymentsInput, Prisma.MasterUncheckedCreateWithoutPendingPaymentsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutPendingPaymentsInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutPendingPaymentsNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutPendingPaymentsInput, Prisma.MasterUncheckedCreateWithoutPendingPaymentsInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutPendingPaymentsInput
+  upsert?: Prisma.MasterUpsertWithoutPendingPaymentsInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutPendingPaymentsInput, Prisma.MasterUpdateWithoutPendingPaymentsInput>, Prisma.MasterUncheckedUpdateWithoutPendingPaymentsInput>
+}
+
 export type MasterCreateWithoutSessionsInput = {
   id?: string
   phone: string
@@ -1852,6 +2119,12 @@ export type MasterCreateWithoutSessionsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -1859,14 +2132,17 @@ export type MasterCreateWithoutSessionsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -1878,12 +2154,15 @@ export type MasterCreateWithoutSessionsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutSessionsInput = {
@@ -1923,6 +2202,12 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -1930,14 +2215,17 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -1949,12 +2237,15 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutSessionsInput = {
@@ -2010,6 +2301,12 @@ export type MasterUpdateWithoutSessionsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2017,14 +2314,17 @@ export type MasterUpdateWithoutSessionsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -2036,12 +2336,15 @@ export type MasterUpdateWithoutSessionsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutSessionsInput = {
@@ -2081,6 +2384,12 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2088,14 +2397,17 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -2107,12 +2419,15 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutPricesInput = {
@@ -2152,6 +2467,12 @@ export type MasterCreateWithoutPricesInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2159,14 +2480,17 @@ export type MasterCreateWithoutPricesInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -2178,12 +2502,15 @@ export type MasterCreateWithoutPricesInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutPricesInput = {
@@ -2223,6 +2550,12 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2230,14 +2563,17 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -2249,12 +2585,15 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutPricesInput = {
@@ -2310,6 +2649,12 @@ export type MasterUpdateWithoutPricesInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2317,14 +2662,17 @@ export type MasterUpdateWithoutPricesInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -2336,12 +2684,15 @@ export type MasterUpdateWithoutPricesInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPricesInput = {
@@ -2381,6 +2732,12 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2388,14 +2745,17 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -2407,12 +2767,15 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutCustomItemsInput = {
@@ -2452,6 +2815,12 @@ export type MasterCreateWithoutCustomItemsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2459,14 +2828,17 @@ export type MasterCreateWithoutCustomItemsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -2478,12 +2850,15 @@ export type MasterCreateWithoutCustomItemsInput = {
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutCustomItemsInput = {
@@ -2523,6 +2898,12 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2530,14 +2911,17 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -2549,12 +2933,15 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutCustomItemsInput = {
@@ -2610,6 +2997,12 @@ export type MasterUpdateWithoutCustomItemsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2617,14 +3010,17 @@ export type MasterUpdateWithoutCustomItemsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -2636,12 +3032,15 @@ export type MasterUpdateWithoutCustomItemsInput = {
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutCustomItemsInput = {
@@ -2681,6 +3080,12 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2688,14 +3093,17 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -2707,12 +3115,15 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutPriceVariantsInput = {
@@ -2752,6 +3163,12 @@ export type MasterCreateWithoutPriceVariantsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2759,14 +3176,17 @@ export type MasterCreateWithoutPriceVariantsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -2778,12 +3198,15 @@ export type MasterCreateWithoutPriceVariantsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutPriceVariantsInput = {
@@ -2823,6 +3246,12 @@ export type MasterUncheckedCreateWithoutPriceVariantsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -2830,14 +3259,17 @@ export type MasterUncheckedCreateWithoutPriceVariantsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -2849,12 +3281,15 @@ export type MasterUncheckedCreateWithoutPriceVariantsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutPriceVariantsInput = {
@@ -2910,6 +3345,12 @@ export type MasterUpdateWithoutPriceVariantsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2917,14 +3358,17 @@ export type MasterUpdateWithoutPriceVariantsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -2936,12 +3380,15 @@ export type MasterUpdateWithoutPriceVariantsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
@@ -2981,6 +3428,12 @@ export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -2988,14 +3441,17 @@ export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -3007,12 +3463,15 @@ export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutEstimatesInput = {
@@ -3052,6 +3511,12 @@ export type MasterCreateWithoutEstimatesInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3059,14 +3524,17 @@ export type MasterCreateWithoutEstimatesInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -3078,12 +3546,15 @@ export type MasterCreateWithoutEstimatesInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutEstimatesInput = {
@@ -3123,6 +3594,12 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3130,14 +3607,17 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -3149,12 +3629,15 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutEstimatesInput = {
@@ -3210,6 +3693,12 @@ export type MasterUpdateWithoutEstimatesInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3217,14 +3706,17 @@ export type MasterUpdateWithoutEstimatesInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -3236,12 +3728,15 @@ export type MasterUpdateWithoutEstimatesInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutEstimatesInput = {
@@ -3281,6 +3776,12 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3288,14 +3789,17 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -3307,12 +3811,15 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutChatSessionsInput = {
@@ -3352,6 +3859,12 @@ export type MasterCreateWithoutChatSessionsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3359,14 +3872,17 @@ export type MasterCreateWithoutChatSessionsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -3378,12 +3894,15 @@ export type MasterCreateWithoutChatSessionsInput = {
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutChatSessionsInput = {
@@ -3423,6 +3942,12 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3430,14 +3955,17 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -3449,12 +3977,15 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutChatSessionsInput = {
@@ -3510,6 +4041,12 @@ export type MasterUpdateWithoutChatSessionsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3517,14 +4054,17 @@ export type MasterUpdateWithoutChatSessionsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -3536,12 +4076,15 @@ export type MasterUpdateWithoutChatSessionsInput = {
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutChatSessionsInput = {
@@ -3581,6 +4124,12 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3588,14 +4137,17 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -3607,12 +4159,15 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutMeasurementsInput = {
@@ -3652,6 +4207,12 @@ export type MasterCreateWithoutMeasurementsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3659,14 +4220,17 @@ export type MasterCreateWithoutMeasurementsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -3679,11 +4243,14 @@ export type MasterCreateWithoutMeasurementsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutMeasurementsInput = {
@@ -3723,6 +4290,12 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3730,14 +4303,17 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -3750,11 +4326,14 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutMeasurementsInput = {
@@ -3810,6 +4389,12 @@ export type MasterUpdateWithoutMeasurementsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3817,14 +4402,17 @@ export type MasterUpdateWithoutMeasurementsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -3837,11 +4425,14 @@ export type MasterUpdateWithoutMeasurementsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutMeasurementsInput = {
@@ -3881,6 +4472,12 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -3888,14 +4485,17 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -3908,11 +4508,14 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutVisualizationsInput = {
@@ -3952,6 +4555,12 @@ export type MasterCreateWithoutVisualizationsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -3959,14 +4568,17 @@ export type MasterCreateWithoutVisualizationsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -3978,12 +4590,15 @@ export type MasterCreateWithoutVisualizationsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutVisualizationsInput = {
@@ -4023,6 +4638,12 @@ export type MasterUncheckedCreateWithoutVisualizationsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4030,14 +4651,17 @@ export type MasterUncheckedCreateWithoutVisualizationsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -4049,12 +4673,15 @@ export type MasterUncheckedCreateWithoutVisualizationsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutVisualizationsInput = {
@@ -4110,6 +4737,12 @@ export type MasterUpdateWithoutVisualizationsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4117,14 +4750,17 @@ export type MasterUpdateWithoutVisualizationsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -4136,12 +4772,15 @@ export type MasterUpdateWithoutVisualizationsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutVisualizationsInput = {
@@ -4181,6 +4820,12 @@ export type MasterUncheckedUpdateWithoutVisualizationsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4188,14 +4833,17 @@ export type MasterUncheckedUpdateWithoutVisualizationsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -4207,12 +4855,15 @@ export type MasterUncheckedUpdateWithoutVisualizationsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutCeilingElementsInput = {
@@ -4252,6 +4903,12 @@ export type MasterCreateWithoutCeilingElementsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4259,14 +4916,17 @@ export type MasterCreateWithoutCeilingElementsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -4278,12 +4938,15 @@ export type MasterCreateWithoutCeilingElementsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutCeilingElementsInput = {
@@ -4323,6 +4986,12 @@ export type MasterUncheckedCreateWithoutCeilingElementsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4330,14 +4999,17 @@ export type MasterUncheckedCreateWithoutCeilingElementsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -4349,12 +5021,15 @@ export type MasterUncheckedCreateWithoutCeilingElementsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutCeilingElementsInput = {
@@ -4410,6 +5085,12 @@ export type MasterUpdateWithoutCeilingElementsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4417,14 +5098,17 @@ export type MasterUpdateWithoutCeilingElementsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -4436,12 +5120,15 @@ export type MasterUpdateWithoutCeilingElementsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutCeilingElementsInput = {
@@ -4481,6 +5168,12 @@ export type MasterUncheckedUpdateWithoutCeilingElementsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4488,14 +5181,17 @@ export type MasterUncheckedUpdateWithoutCeilingElementsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -4507,12 +5203,15 @@ export type MasterUncheckedUpdateWithoutCeilingElementsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutPortfolioWorksInput = {
@@ -4552,6 +5251,12 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4559,14 +5264,17 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -4578,12 +5286,15 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
@@ -4623,6 +5334,12 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4630,14 +5347,17 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -4649,12 +5369,15 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutPortfolioWorksInput = {
@@ -4710,6 +5433,12 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4717,14 +5446,17 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -4736,12 +5468,15 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
@@ -4781,6 +5516,12 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -4788,14 +5529,17 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -4807,12 +5551,711 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterCreateWithoutKpBriefInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutKpBriefInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationUncheckedCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementUncheckedCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutKpBriefInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutKpBriefInput, Prisma.MasterUncheckedCreateWithoutKpBriefInput>
+}
+
+export type MasterUpsertWithoutKpBriefInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutKpBriefInput, Prisma.MasterUncheckedUpdateWithoutKpBriefInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutKpBriefInput, Prisma.MasterUncheckedCreateWithoutKpBriefInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutKpBriefInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutKpBriefInput, Prisma.MasterUncheckedUpdateWithoutKpBriefInput>
+}
+
+export type MasterUpdateWithoutKpBriefInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutKpBriefInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUncheckedUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUncheckedUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterCreateWithoutReviewsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutReviewsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationUncheckedCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementUncheckedCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutReviewsInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutReviewsInput, Prisma.MasterUncheckedCreateWithoutReviewsInput>
+}
+
+export type MasterUpsertWithoutReviewsInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutReviewsInput, Prisma.MasterUncheckedUpdateWithoutReviewsInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutReviewsInput, Prisma.MasterUncheckedCreateWithoutReviewsInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutReviewsInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutReviewsInput, Prisma.MasterUncheckedUpdateWithoutReviewsInput>
+}
+
+export type MasterUpdateWithoutReviewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutReviewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUncheckedUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUncheckedUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutInstagramAccountInput = {
@@ -4852,6 +6295,12 @@ export type MasterCreateWithoutInstagramAccountInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4859,14 +6308,17 @@ export type MasterCreateWithoutInstagramAccountInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -4879,11 +6331,14 @@ export type MasterCreateWithoutInstagramAccountInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramAccountInput = {
@@ -4923,6 +6378,12 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -4930,14 +6391,17 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -4950,11 +6414,14 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramAccountInput = {
@@ -5010,6 +6477,12 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5017,14 +6490,17 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -5037,11 +6513,14 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
@@ -5081,6 +6560,12 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5088,14 +6573,17 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -5108,11 +6596,14 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutInstagramSessionInput = {
@@ -5152,6 +6643,12 @@ export type MasterCreateWithoutInstagramSessionInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5159,14 +6656,17 @@ export type MasterCreateWithoutInstagramSessionInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -5179,11 +6679,14 @@ export type MasterCreateWithoutInstagramSessionInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutInstagramSessionInput = {
@@ -5223,6 +6726,12 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5230,14 +6739,17 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -5250,11 +6762,14 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutInstagramSessionInput = {
@@ -5310,6 +6825,12 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5317,14 +6838,17 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -5337,11 +6861,14 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
@@ -5381,6 +6908,12 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5388,14 +6921,17 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -5408,11 +6944,14 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutClientsInput = {
@@ -5452,6 +6991,12 @@ export type MasterCreateWithoutClientsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5459,14 +7004,17 @@ export type MasterCreateWithoutClientsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -5479,11 +7027,14 @@ export type MasterCreateWithoutClientsInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutClientsInput = {
@@ -5523,6 +7074,12 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5530,14 +7087,17 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -5550,11 +7110,14 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutClientsInput = {
@@ -5610,6 +7173,12 @@ export type MasterUpdateWithoutClientsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5617,14 +7186,17 @@ export type MasterUpdateWithoutClientsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -5637,11 +7209,14 @@ export type MasterUpdateWithoutClientsInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutClientsInput = {
@@ -5681,6 +7256,12 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5688,14 +7269,17 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -5708,11 +7292,14 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutObjectPhotosInput = {
@@ -5752,6 +7339,12 @@ export type MasterCreateWithoutObjectPhotosInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5759,14 +7352,17 @@ export type MasterCreateWithoutObjectPhotosInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -5779,11 +7375,14 @@ export type MasterCreateWithoutObjectPhotosInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutObjectPhotosInput = {
@@ -5823,6 +7422,12 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -5830,14 +7435,17 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -5850,11 +7458,14 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutObjectPhotosInput = {
@@ -5910,6 +7521,12 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5917,14 +7534,17 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -5937,11 +7557,14 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
@@ -5981,6 +7604,12 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -5988,14 +7617,17 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -6008,11 +7640,14 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutRangefindersInput = {
@@ -6052,6 +7687,12 @@ export type MasterCreateWithoutRangefindersInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -6059,14 +7700,17 @@ export type MasterCreateWithoutRangefindersInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
@@ -6079,11 +7723,14 @@ export type MasterCreateWithoutRangefindersInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutRangefindersInput = {
@@ -6123,6 +7770,12 @@ export type MasterUncheckedCreateWithoutRangefindersInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -6130,14 +7783,17 @@ export type MasterUncheckedCreateWithoutRangefindersInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
@@ -6150,11 +7806,14 @@ export type MasterUncheckedCreateWithoutRangefindersInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutRangefindersInput = {
@@ -6210,6 +7869,12 @@ export type MasterUpdateWithoutRangefindersInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -6217,14 +7882,17 @@ export type MasterUpdateWithoutRangefindersInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
@@ -6237,11 +7905,14 @@ export type MasterUpdateWithoutRangefindersInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutRangefindersInput = {
@@ -6281,6 +7952,12 @@ export type MasterUncheckedUpdateWithoutRangefindersInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -6288,14 +7965,17 @@ export type MasterUncheckedUpdateWithoutRangefindersInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
@@ -6308,11 +7988,14 @@ export type MasterUncheckedUpdateWithoutRangefindersInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterCreateWithoutLogoHistoryInput = {
@@ -6352,6 +8035,12 @@ export type MasterCreateWithoutLogoHistoryInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -6359,14 +8048,17 @@ export type MasterCreateWithoutLogoHistoryInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   visualizations?: Prisma.VisualizationCreateNestedManyWithoutMasterInput
@@ -6378,12 +8070,15 @@ export type MasterCreateWithoutLogoHistoryInput = {
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
 }
 
 export type MasterUncheckedCreateWithoutLogoHistoryInput = {
@@ -6423,6 +8118,12 @@ export type MasterUncheckedCreateWithoutLogoHistoryInput = {
   paidUntil?: Date | string | null
   billingNotes?: string | null
   isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: number
@@ -6430,14 +8131,17 @@ export type MasterUncheckedCreateWithoutLogoHistoryInput = {
   logoGenerationsThisMonth?: number
   logoMonthReset?: Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: number
   visualizationsThisMonth?: number
   visualizationMonthReset?: Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
   portfolioSlug?: string | null
   portfolioBio?: string | null
   visualizations?: Prisma.VisualizationUncheckedCreateNestedManyWithoutMasterInput
@@ -6449,12 +8153,15 @@ export type MasterUncheckedCreateWithoutLogoHistoryInput = {
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
   instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
   instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
   rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
 }
 
 export type MasterCreateOrConnectWithoutLogoHistoryInput = {
@@ -6510,6 +8217,12 @@ export type MasterUpdateWithoutLogoHistoryInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -6517,14 +8230,17 @@ export type MasterUpdateWithoutLogoHistoryInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visualizations?: Prisma.VisualizationUpdateManyWithoutMasterNestedInput
@@ -6536,12 +8252,15 @@ export type MasterUpdateWithoutLogoHistoryInput = {
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
   clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
   objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
   rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
 }
 
 export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
@@ -6581,6 +8300,12 @@ export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
   paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
   notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
   smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
@@ -6588,14 +8313,17 @@ export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
   logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
   visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visualizations?: Prisma.VisualizationUncheckedUpdateManyWithoutMasterNestedInput
@@ -6607,6 +8335,357 @@ export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterCreateWithoutPendingPaymentsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+}
+
+export type MasterUncheckedCreateWithoutPendingPaymentsInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationUncheckedCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementUncheckedCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+}
+
+export type MasterCreateOrConnectWithoutPendingPaymentsInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutPendingPaymentsInput, Prisma.MasterUncheckedCreateWithoutPendingPaymentsInput>
+}
+
+export type MasterUpsertWithoutPendingPaymentsInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutPendingPaymentsInput, Prisma.MasterUncheckedUpdateWithoutPendingPaymentsInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutPendingPaymentsInput, Prisma.MasterUncheckedCreateWithoutPendingPaymentsInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutPendingPaymentsInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutPendingPaymentsInput, Prisma.MasterUncheckedUpdateWithoutPendingPaymentsInput>
+}
+
+export type MasterUpdateWithoutPendingPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutPendingPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUncheckedUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUncheckedUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
   instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
   instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
@@ -6631,10 +8710,12 @@ export type MasterCountOutputType = {
   chatSessions: number
   customItems: number
   portfolioWorks: number
+  reviews: number
   measurements: number
   clients: number
   objectPhotos: number
   rangefinders: number
+  pendingPayments: number
 }
 
 export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -6648,10 +8729,12 @@ export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   chatSessions?: boolean | MasterCountOutputTypeCountChatSessionsArgs
   customItems?: boolean | MasterCountOutputTypeCountCustomItemsArgs
   portfolioWorks?: boolean | MasterCountOutputTypeCountPortfolioWorksArgs
+  reviews?: boolean | MasterCountOutputTypeCountReviewsArgs
   measurements?: boolean | MasterCountOutputTypeCountMeasurementsArgs
   clients?: boolean | MasterCountOutputTypeCountClientsArgs
   objectPhotos?: boolean | MasterCountOutputTypeCountObjectPhotosArgs
   rangefinders?: boolean | MasterCountOutputTypeCountRangefindersArgs
+  pendingPayments?: boolean | MasterCountOutputTypeCountPendingPaymentsArgs
 }
 
 /**
@@ -6737,6 +8820,13 @@ export type MasterCountOutputTypeCountPortfolioWorksArgs<ExtArgs extends runtime
 /**
  * MasterCountOutputType without action
  */
+export type MasterCountOutputTypeCountReviewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.MasterReviewWhereInput
+}
+
+/**
+ * MasterCountOutputType without action
+ */
 export type MasterCountOutputTypeCountMeasurementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.MeasurementObjectWhereInput
 }
@@ -6760,6 +8850,13 @@ export type MasterCountOutputTypeCountObjectPhotosArgs<ExtArgs extends runtime.T
  */
 export type MasterCountOutputTypeCountRangefindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.RangefinderWhereInput
+}
+
+/**
+ * MasterCountOutputType without action
+ */
+export type MasterCountOutputTypeCountPendingPaymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PendingPaymentWhereInput
 }
 
 
@@ -6800,6 +8897,12 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   paidUntil?: boolean
   billingNotes?: boolean
   isOwner?: boolean
+  monthlyPrice?: boolean
+  isFounder?: boolean
+  founderActivatedAt?: boolean
+  founderMonthsPaid?: boolean
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
@@ -6807,14 +8910,17 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   logoGenerationsThisMonth?: boolean
   logoMonthReset?: boolean
   logoBrief?: boolean
+  smmProfile?: boolean
   visualizationCredits?: boolean
   visualizationsThisMonth?: boolean
   visualizationMonthReset?: boolean
-  smmProfile?: boolean
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kpConfig?: boolean
+  tagline?: boolean
+  coverPhotoUrl?: boolean
   portfolioSlug?: boolean
   portfolioBio?: boolean
   logoHistory?: boolean | Prisma.Master$logoHistoryArgs<ExtArgs>
@@ -6827,12 +8933,15 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   chatSessions?: boolean | Prisma.Master$chatSessionsArgs<ExtArgs>
   customItems?: boolean | Prisma.Master$customItemsArgs<ExtArgs>
   portfolioWorks?: boolean | Prisma.Master$portfolioWorksArgs<ExtArgs>
+  reviews?: boolean | Prisma.Master$reviewsArgs<ExtArgs>
+  kpBrief?: boolean | Prisma.Master$kpBriefArgs<ExtArgs>
   measurements?: boolean | Prisma.Master$measurementsArgs<ExtArgs>
   instagramAccount?: boolean | Prisma.Master$instagramAccountArgs<ExtArgs>
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
   clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   objectPhotos?: boolean | Prisma.Master$objectPhotosArgs<ExtArgs>
   rangefinders?: boolean | Prisma.Master$rangefindersArgs<ExtArgs>
+  pendingPayments?: boolean | Prisma.Master$pendingPaymentsArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["master"]>
 
@@ -6873,6 +8982,12 @@ export type MasterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   paidUntil?: boolean
   billingNotes?: boolean
   isOwner?: boolean
+  monthlyPrice?: boolean
+  isFounder?: boolean
+  founderActivatedAt?: boolean
+  founderMonthsPaid?: boolean
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
@@ -6880,14 +8995,17 @@ export type MasterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   logoGenerationsThisMonth?: boolean
   logoMonthReset?: boolean
   logoBrief?: boolean
+  smmProfile?: boolean
   visualizationCredits?: boolean
   visualizationsThisMonth?: boolean
   visualizationMonthReset?: boolean
-  smmProfile?: boolean
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kpConfig?: boolean
+  tagline?: boolean
+  coverPhotoUrl?: boolean
   portfolioSlug?: boolean
   portfolioBio?: boolean
 }, ExtArgs["result"]["master"]>
@@ -6929,6 +9047,12 @@ export type MasterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   paidUntil?: boolean
   billingNotes?: boolean
   isOwner?: boolean
+  monthlyPrice?: boolean
+  isFounder?: boolean
+  founderActivatedAt?: boolean
+  founderMonthsPaid?: boolean
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
@@ -6936,14 +9060,17 @@ export type MasterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   logoGenerationsThisMonth?: boolean
   logoMonthReset?: boolean
   logoBrief?: boolean
+  smmProfile?: boolean
   visualizationCredits?: boolean
   visualizationsThisMonth?: boolean
   visualizationMonthReset?: boolean
-  smmProfile?: boolean
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kpConfig?: boolean
+  tagline?: boolean
+  coverPhotoUrl?: boolean
   portfolioSlug?: boolean
   portfolioBio?: boolean
 }, ExtArgs["result"]["master"]>
@@ -6985,6 +9112,12 @@ export type MasterSelectScalar = {
   paidUntil?: boolean
   billingNotes?: boolean
   isOwner?: boolean
+  monthlyPrice?: boolean
+  isFounder?: boolean
+  founderActivatedAt?: boolean
+  founderMonthsPaid?: boolean
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
   notifyDealWon?: boolean
   notifyDealLost?: boolean
   smmPostsThisMonth?: boolean
@@ -6992,19 +9125,22 @@ export type MasterSelectScalar = {
   logoGenerationsThisMonth?: boolean
   logoMonthReset?: boolean
   logoBrief?: boolean
+  smmProfile?: boolean
   visualizationCredits?: boolean
   visualizationsThisMonth?: boolean
   visualizationMonthReset?: boolean
-  smmProfile?: boolean
   onboardingCompleted?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kpConfig?: boolean
+  tagline?: boolean
+  coverPhotoUrl?: boolean
   portfolioSlug?: boolean
   portfolioBio?: boolean
 }
 
-export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "paidUntil" | "billingNotes" | "isOwner" | "notifyDealWon" | "notifyDealLost" | "smmPostsThisMonth" | "smmMonthReset" | "logoGenerationsThisMonth" | "logoMonthReset" | "logoBrief" | "visualizationCredits" | "visualizationsThisMonth" | "visualizationMonthReset" | "smmProfile" | "onboardingCompleted" | "isActive" | "createdAt" | "updatedAt" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
+export type MasterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "firstName" | "lastName" | "companyName" | "logoUrl" | "brandColor" | "instagramUrl" | "whatsappPhone" | "address" | "telegramChatId" | "telegramLinkCode" | "resetOtp" | "resetOtpExpiresAt" | "contractType" | "bin" | "iin" | "legalName" | "legalAddress" | "bankName" | "iban" | "kbe" | "bik" | "passportData" | "prepaymentPercent" | "warrantyMaterials" | "warrantyInstall" | "contractCity" | "subscriptionTier" | "kpGeneratedThisMonth" | "kpMonthReset" | "paidUntil" | "billingNotes" | "isOwner" | "monthlyPrice" | "isFounder" | "founderActivatedAt" | "founderMonthsPaid" | "welcomeSent" | "hasUsedTrial" | "notifyDealWon" | "notifyDealLost" | "smmPostsThisMonth" | "smmMonthReset" | "logoGenerationsThisMonth" | "logoMonthReset" | "logoBrief" | "smmProfile" | "visualizationCredits" | "visualizationsThisMonth" | "visualizationMonthReset" | "onboardingCompleted" | "isActive" | "createdAt" | "updatedAt" | "kpConfig" | "tagline" | "coverPhotoUrl" | "portfolioSlug" | "portfolioBio", ExtArgs["result"]["master"]>
 export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   logoHistory?: boolean | Prisma.Master$logoHistoryArgs<ExtArgs>
   visualizations?: boolean | Prisma.Master$visualizationsArgs<ExtArgs>
@@ -7016,12 +9152,15 @@ export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   chatSessions?: boolean | Prisma.Master$chatSessionsArgs<ExtArgs>
   customItems?: boolean | Prisma.Master$customItemsArgs<ExtArgs>
   portfolioWorks?: boolean | Prisma.Master$portfolioWorksArgs<ExtArgs>
+  reviews?: boolean | Prisma.Master$reviewsArgs<ExtArgs>
+  kpBrief?: boolean | Prisma.Master$kpBriefArgs<ExtArgs>
   measurements?: boolean | Prisma.Master$measurementsArgs<ExtArgs>
   instagramAccount?: boolean | Prisma.Master$instagramAccountArgs<ExtArgs>
   instagramSession?: boolean | Prisma.Master$instagramSessionArgs<ExtArgs>
   clients?: boolean | Prisma.Master$clientsArgs<ExtArgs>
   objectPhotos?: boolean | Prisma.Master$objectPhotosArgs<ExtArgs>
   rangefinders?: boolean | Prisma.Master$rangefindersArgs<ExtArgs>
+  pendingPayments?: boolean | Prisma.Master$pendingPaymentsArgs<ExtArgs>
   _count?: boolean | Prisma.MasterCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MasterIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -7040,12 +9179,15 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
     customItems: Prisma.$CustomItemPayload<ExtArgs>[]
     portfolioWorks: Prisma.$PortfolioWorkPayload<ExtArgs>[]
+    reviews: Prisma.$MasterReviewPayload<ExtArgs>[]
+    kpBrief: Prisma.$MasterBriefPayload<ExtArgs> | null
     measurements: Prisma.$MeasurementObjectPayload<ExtArgs>[]
     instagramAccount: Prisma.$InstagramAccountPayload<ExtArgs> | null
     instagramSession: Prisma.$InstagramSessionPayload<ExtArgs> | null
     clients: Prisma.$ClientPayload<ExtArgs>[]
     objectPhotos: Prisma.$ObjectPhotoPayload<ExtArgs>[]
     rangefinders: Prisma.$RangefinderPayload<ExtArgs>[]
+    pendingPayments: Prisma.$PendingPaymentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -7084,6 +9226,12 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     paidUntil: Date | null
     billingNotes: string | null
     isOwner: boolean
+    monthlyPrice: number
+    isFounder: boolean
+    founderActivatedAt: Date | null
+    founderMonthsPaid: number
+    welcomeSent: boolean
+    hasUsedTrial: boolean
     notifyDealWon: boolean
     notifyDealLost: boolean
     smmPostsThisMonth: number
@@ -7091,14 +9239,17 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     logoGenerationsThisMonth: number
     logoMonthReset: Date
     logoBrief: runtime.JsonValue | null
+    smmProfile: runtime.JsonValue | null
     visualizationCredits: number
     visualizationsThisMonth: number
     visualizationMonthReset: Date
-    smmProfile: runtime.JsonValue | null
     onboardingCompleted: boolean
     isActive: boolean
     createdAt: Date
     updatedAt: Date
+    kpConfig: runtime.JsonValue | null
+    tagline: string | null
+    coverPhotoUrl: string | null
     portfolioSlug: string | null
     portfolioBio: string | null
   }, ExtArgs["result"]["master"]>
@@ -7505,12 +9656,15 @@ export interface Prisma__MasterClient<T, Null = never, ExtArgs extends runtime.T
   chatSessions<T extends Prisma.Master$chatSessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   customItems<T extends Prisma.Master$customItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$customItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   portfolioWorks<T extends Prisma.Master$portfolioWorksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$portfolioWorksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioWorkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  reviews<T extends Prisma.Master$reviewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$reviewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MasterReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  kpBrief<T extends Prisma.Master$kpBriefArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$kpBriefArgs<ExtArgs>>): Prisma.Prisma__MasterBriefClient<runtime.Types.Result.GetResult<Prisma.$MasterBriefPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   measurements<T extends Prisma.Master$measurementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$measurementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MeasurementObjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   instagramAccount<T extends Prisma.Master$instagramAccountArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$instagramAccountArgs<ExtArgs>>): Prisma.Prisma__InstagramAccountClient<runtime.Types.Result.GetResult<Prisma.$InstagramAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   instagramSession<T extends Prisma.Master$instagramSessionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$instagramSessionArgs<ExtArgs>>): Prisma.Prisma__InstagramSessionClient<runtime.Types.Result.GetResult<Prisma.$InstagramSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   clients<T extends Prisma.Master$clientsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$clientsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   objectPhotos<T extends Prisma.Master$objectPhotosArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$objectPhotosArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectPhotoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   rangefinders<T extends Prisma.Master$rangefindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$rangefindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RangefinderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  pendingPayments<T extends Prisma.Master$pendingPaymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$pendingPaymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PendingPaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -7576,6 +9730,12 @@ export interface MasterFieldRefs {
   readonly paidUntil: Prisma.FieldRef<"Master", 'DateTime'>
   readonly billingNotes: Prisma.FieldRef<"Master", 'String'>
   readonly isOwner: Prisma.FieldRef<"Master", 'Boolean'>
+  readonly monthlyPrice: Prisma.FieldRef<"Master", 'Int'>
+  readonly isFounder: Prisma.FieldRef<"Master", 'Boolean'>
+  readonly founderActivatedAt: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly founderMonthsPaid: Prisma.FieldRef<"Master", 'Int'>
+  readonly welcomeSent: Prisma.FieldRef<"Master", 'Boolean'>
+  readonly hasUsedTrial: Prisma.FieldRef<"Master", 'Boolean'>
   readonly notifyDealWon: Prisma.FieldRef<"Master", 'Boolean'>
   readonly notifyDealLost: Prisma.FieldRef<"Master", 'Boolean'>
   readonly smmPostsThisMonth: Prisma.FieldRef<"Master", 'Int'>
@@ -7583,14 +9743,17 @@ export interface MasterFieldRefs {
   readonly logoGenerationsThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly logoMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
   readonly logoBrief: Prisma.FieldRef<"Master", 'Json'>
+  readonly smmProfile: Prisma.FieldRef<"Master", 'Json'>
   readonly visualizationCredits: Prisma.FieldRef<"Master", 'Int'>
   readonly visualizationsThisMonth: Prisma.FieldRef<"Master", 'Int'>
   readonly visualizationMonthReset: Prisma.FieldRef<"Master", 'DateTime'>
-  readonly smmProfile: Prisma.FieldRef<"Master", 'Json'>
   readonly onboardingCompleted: Prisma.FieldRef<"Master", 'Boolean'>
   readonly isActive: Prisma.FieldRef<"Master", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Master", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Master", 'DateTime'>
+  readonly kpConfig: Prisma.FieldRef<"Master", 'Json'>
+  readonly tagline: Prisma.FieldRef<"Master", 'String'>
+  readonly coverPhotoUrl: Prisma.FieldRef<"Master", 'String'>
   readonly portfolioSlug: Prisma.FieldRef<"Master", 'String'>
   readonly portfolioBio: Prisma.FieldRef<"Master", 'String'>
 }
@@ -8221,6 +10384,49 @@ export type Master$portfolioWorksArgs<ExtArgs extends runtime.Types.Extensions.I
 }
 
 /**
+ * Master.reviews
+ */
+export type Master$reviewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MasterReview
+   */
+  select?: Prisma.MasterReviewSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the MasterReview
+   */
+  omit?: Prisma.MasterReviewOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MasterReviewInclude<ExtArgs> | null
+  where?: Prisma.MasterReviewWhereInput
+  orderBy?: Prisma.MasterReviewOrderByWithRelationInput | Prisma.MasterReviewOrderByWithRelationInput[]
+  cursor?: Prisma.MasterReviewWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.MasterReviewScalarFieldEnum | Prisma.MasterReviewScalarFieldEnum[]
+}
+
+/**
+ * Master.kpBrief
+ */
+export type Master$kpBriefArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MasterBrief
+   */
+  select?: Prisma.MasterBriefSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the MasterBrief
+   */
+  omit?: Prisma.MasterBriefOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MasterBriefInclude<ExtArgs> | null
+  where?: Prisma.MasterBriefWhereInput
+}
+
+/**
  * Master.measurements
  */
 export type Master$measurementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -8352,6 +10558,30 @@ export type Master$rangefindersArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.RangefinderScalarFieldEnum | Prisma.RangefinderScalarFieldEnum[]
+}
+
+/**
+ * Master.pendingPayments
+ */
+export type Master$pendingPaymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PendingPayment
+   */
+  select?: Prisma.PendingPaymentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PendingPayment
+   */
+  omit?: Prisma.PendingPaymentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PendingPaymentInclude<ExtArgs> | null
+  where?: Prisma.PendingPaymentWhereInput
+  orderBy?: Prisma.PendingPaymentOrderByWithRelationInput | Prisma.PendingPaymentOrderByWithRelationInput[]
+  cursor?: Prisma.PendingPaymentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PendingPaymentScalarFieldEnum | Prisma.PendingPaymentScalarFieldEnum[]
 }
 
 /**

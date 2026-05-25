@@ -399,6 +399,8 @@ export const ModelName = {
   VisualizationElement: 'VisualizationElement',
   VisualizationRender: 'VisualizationRender',
   PortfolioWork: 'PortfolioWork',
+  MasterBrief: 'MasterBrief',
+  MasterReview: 'MasterReview',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
   InstagramSession: 'InstagramSession',
@@ -406,7 +408,8 @@ export const ModelName = {
   ClientEvent: 'ClientEvent',
   ObjectPhoto: 'ObjectPhoto',
   Rangefinder: 'Rangefinder',
-  LogoGeneration: 'LogoGeneration'
+  LogoGeneration: 'LogoGeneration',
+  PendingPayment: 'PendingPayment'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -422,7 +425,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "masterBrief" | "masterReview" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration" | "pendingPayment"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1536,6 +1539,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    MasterBrief: {
+      payload: Prisma.$MasterBriefPayload<ExtArgs>
+      fields: Prisma.MasterBriefFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MasterBriefFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MasterBriefFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        findFirst: {
+          args: Prisma.MasterBriefFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MasterBriefFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        findMany: {
+          args: Prisma.MasterBriefFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>[]
+        }
+        create: {
+          args: Prisma.MasterBriefCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        createMany: {
+          args: Prisma.MasterBriefCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MasterBriefCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>[]
+        }
+        delete: {
+          args: Prisma.MasterBriefDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        update: {
+          args: Prisma.MasterBriefUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        deleteMany: {
+          args: Prisma.MasterBriefDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MasterBriefUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MasterBriefUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>[]
+        }
+        upsert: {
+          args: Prisma.MasterBriefUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterBriefPayload>
+        }
+        aggregate: {
+          args: Prisma.MasterBriefAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMasterBrief>
+        }
+        groupBy: {
+          args: Prisma.MasterBriefGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MasterBriefGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MasterBriefCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MasterBriefCountAggregateOutputType> | number
+        }
+      }
+    }
+    MasterReview: {
+      payload: Prisma.$MasterReviewPayload<ExtArgs>
+      fields: Prisma.MasterReviewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MasterReviewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MasterReviewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        findFirst: {
+          args: Prisma.MasterReviewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MasterReviewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        findMany: {
+          args: Prisma.MasterReviewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>[]
+        }
+        create: {
+          args: Prisma.MasterReviewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        createMany: {
+          args: Prisma.MasterReviewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MasterReviewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>[]
+        }
+        delete: {
+          args: Prisma.MasterReviewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        update: {
+          args: Prisma.MasterReviewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        deleteMany: {
+          args: Prisma.MasterReviewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MasterReviewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MasterReviewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>[]
+        }
+        upsert: {
+          args: Prisma.MasterReviewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MasterReviewPayload>
+        }
+        aggregate: {
+          args: Prisma.MasterReviewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMasterReview>
+        }
+        groupBy: {
+          args: Prisma.MasterReviewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MasterReviewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MasterReviewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MasterReviewCountAggregateOutputType> | number
+        }
+      }
+    }
     InstagramAccount: {
       payload: Prisma.$InstagramAccountPayload<ExtArgs>
       fields: Prisma.InstagramAccountFieldRefs
@@ -2128,6 +2279,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PendingPayment: {
+      payload: Prisma.$PendingPaymentPayload<ExtArgs>
+      fields: Prisma.PendingPaymentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PendingPaymentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PendingPaymentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        findFirst: {
+          args: Prisma.PendingPaymentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PendingPaymentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        findMany: {
+          args: Prisma.PendingPaymentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>[]
+        }
+        create: {
+          args: Prisma.PendingPaymentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        createMany: {
+          args: Prisma.PendingPaymentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PendingPaymentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>[]
+        }
+        delete: {
+          args: Prisma.PendingPaymentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        update: {
+          args: Prisma.PendingPaymentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        deleteMany: {
+          args: Prisma.PendingPaymentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PendingPaymentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PendingPaymentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>[]
+        }
+        upsert: {
+          args: Prisma.PendingPaymentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PendingPaymentPayload>
+        }
+        aggregate: {
+          args: Prisma.PendingPaymentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePendingPayment>
+        }
+        groupBy: {
+          args: Prisma.PendingPaymentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PendingPaymentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PendingPaymentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PendingPaymentCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2204,6 +2429,12 @@ export const MasterScalarFieldEnum = {
   paidUntil: 'paidUntil',
   billingNotes: 'billingNotes',
   isOwner: 'isOwner',
+  monthlyPrice: 'monthlyPrice',
+  isFounder: 'isFounder',
+  founderActivatedAt: 'founderActivatedAt',
+  founderMonthsPaid: 'founderMonthsPaid',
+  welcomeSent: 'welcomeSent',
+  hasUsedTrial: 'hasUsedTrial',
   notifyDealWon: 'notifyDealWon',
   notifyDealLost: 'notifyDealLost',
   smmPostsThisMonth: 'smmPostsThisMonth',
@@ -2211,14 +2442,17 @@ export const MasterScalarFieldEnum = {
   logoGenerationsThisMonth: 'logoGenerationsThisMonth',
   logoMonthReset: 'logoMonthReset',
   logoBrief: 'logoBrief',
+  smmProfile: 'smmProfile',
   visualizationCredits: 'visualizationCredits',
   visualizationsThisMonth: 'visualizationsThisMonth',
   visualizationMonthReset: 'visualizationMonthReset',
-  smmProfile: 'smmProfile',
   onboardingCompleted: 'onboardingCompleted',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
+  kpConfig: 'kpConfig',
+  tagline: 'tagline',
+  coverPhotoUrl: 'coverPhotoUrl',
   portfolioSlug: 'portfolioSlug',
   portfolioBio: 'portfolioBio'
 } as const
@@ -2273,8 +2507,8 @@ export const PriceVariantScalarFieldEnum = {
   unit: 'unit',
   price: 'price',
   photoUrl: 'photoUrl',
-  sortOrder: 'sortOrder',
   noInsert: 'noInsert',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2474,6 +2708,40 @@ export const PortfolioWorkScalarFieldEnum = {
 export type PortfolioWorkScalarFieldEnum = (typeof PortfolioWorkScalarFieldEnum)[keyof typeof PortfolioWorkScalarFieldEnum]
 
 
+export const MasterBriefScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  brief: 'brief',
+  generatedConfig: 'generatedConfig',
+  generatedTagline: 'generatedTagline',
+  rationale: 'rationale',
+  segment: 'segment',
+  city: 'city',
+  yearsActive: 'yearsActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MasterBriefScalarFieldEnum = (typeof MasterBriefScalarFieldEnum)[keyof typeof MasterBriefScalarFieldEnum]
+
+
+export const MasterReviewScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  clientName: 'clientName',
+  rating: 'rating',
+  text: 'text',
+  photoUrl: 'photoUrl',
+  location: 'location',
+  isPublished: 'isPublished',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MasterReviewScalarFieldEnum = (typeof MasterReviewScalarFieldEnum)[keyof typeof MasterReviewScalarFieldEnum]
+
+
 export const InstagramAccountScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
@@ -2531,6 +2799,8 @@ export const ClientScalarFieldEnum = {
   name: 'name',
   phone: 'phone',
   address: 'address',
+  latitude: 'latitude',
+  longitude: 'longitude',
   source: 'source',
   status: 'status',
   notes: 'notes',
@@ -2547,6 +2817,8 @@ export const ClientEventScalarFieldEnum = {
   type: 'type',
   content: 'content',
   metadata: 'metadata',
+  scheduledAt: 'scheduledAt',
+  reminderSentAt: 'reminderSentAt',
   createdAt: 'createdAt'
 } as const
 
@@ -2598,6 +2870,24 @@ export const LogoGenerationScalarFieldEnum = {
 } as const
 
 export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
+
+
+export const PendingPaymentScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  amount: 'amount',
+  promocode: 'promocode',
+  screenshotUrl: 'screenshotUrl',
+  comment: 'comment',
+  status: 'status',
+  createdAt: 'createdAt',
+  reviewedAt: 'reviewedAt',
+  reviewedBy: 'reviewedBy',
+  reviewNotes: 'reviewNotes',
+  activatedDays: 'activatedDays'
+} as const
+
+export type PendingPaymentScalarFieldEnum = (typeof PendingPaymentScalarFieldEnum)[keyof typeof PendingPaymentScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2856,6 +3146,20 @@ export type EnumRangefinderStatusFieldRefInput<$PrismaModel> = FieldRefInputType
 export type ListEnumRangefinderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RangefinderStatus[]'>
     
 
+
+/**
+ * Reference to a field of type 'PaymentStatus'
+ */
+export type EnumPaymentStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PaymentStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'PaymentStatus[]'
+ */
+export type ListEnumPaymentStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PaymentStatus[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2966,6 +3270,8 @@ export type GlobalOmitConfig = {
   visualizationElement?: Prisma.VisualizationElementOmit
   visualizationRender?: Prisma.VisualizationRenderOmit
   portfolioWork?: Prisma.PortfolioWorkOmit
+  masterBrief?: Prisma.MasterBriefOmit
+  masterReview?: Prisma.MasterReviewOmit
   instagramAccount?: Prisma.InstagramAccountOmit
   instagramPost?: Prisma.InstagramPostOmit
   instagramSession?: Prisma.InstagramSessionOmit
@@ -2974,6 +3280,7 @@ export type GlobalOmitConfig = {
   objectPhoto?: Prisma.ObjectPhotoOmit
   rangefinder?: Prisma.RangefinderOmit
   logoGeneration?: Prisma.LogoGenerationOmit
+  pendingPayment?: Prisma.PendingPaymentOmit
 }
 
 /* Types for Logging */

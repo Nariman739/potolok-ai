@@ -20,8 +20,20 @@ export type ClientModel = runtime.Types.Result.DefaultSelection<Prisma.$ClientPa
 
 export type AggregateClient = {
   _count: ClientCountAggregateOutputType | null
+  _avg: ClientAvgAggregateOutputType | null
+  _sum: ClientSumAggregateOutputType | null
   _min: ClientMinAggregateOutputType | null
   _max: ClientMaxAggregateOutputType | null
+}
+
+export type ClientAvgAggregateOutputType = {
+  latitude: number | null
+  longitude: number | null
+}
+
+export type ClientSumAggregateOutputType = {
+  latitude: number | null
+  longitude: number | null
 }
 
 export type ClientMinAggregateOutputType = {
@@ -30,6 +42,8 @@ export type ClientMinAggregateOutputType = {
   name: string | null
   phone: string | null
   address: string | null
+  latitude: number | null
+  longitude: number | null
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus | null
   notes: string | null
@@ -43,6 +57,8 @@ export type ClientMaxAggregateOutputType = {
   name: string | null
   phone: string | null
   address: string | null
+  latitude: number | null
+  longitude: number | null
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus | null
   notes: string | null
@@ -56,6 +72,8 @@ export type ClientCountAggregateOutputType = {
   name: number
   phone: number
   address: number
+  latitude: number
+  longitude: number
   source: number
   status: number
   notes: number
@@ -65,12 +83,24 @@ export type ClientCountAggregateOutputType = {
 }
 
 
+export type ClientAvgAggregateInputType = {
+  latitude?: true
+  longitude?: true
+}
+
+export type ClientSumAggregateInputType = {
+  latitude?: true
+  longitude?: true
+}
+
 export type ClientMinAggregateInputType = {
   id?: true
   masterId?: true
   name?: true
   phone?: true
   address?: true
+  latitude?: true
+  longitude?: true
   source?: true
   status?: true
   notes?: true
@@ -84,6 +114,8 @@ export type ClientMaxAggregateInputType = {
   name?: true
   phone?: true
   address?: true
+  latitude?: true
+  longitude?: true
   source?: true
   status?: true
   notes?: true
@@ -97,6 +129,8 @@ export type ClientCountAggregateInputType = {
   name?: true
   phone?: true
   address?: true
+  latitude?: true
+  longitude?: true
   source?: true
   status?: true
   notes?: true
@@ -143,6 +177,18 @@ export type ClientAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: ClientAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: ClientSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: ClientMinAggregateInputType
@@ -173,6 +219,8 @@ export type ClientGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: ClientCountAggregateInputType | true
+  _avg?: ClientAvgAggregateInputType
+  _sum?: ClientSumAggregateInputType
   _min?: ClientMinAggregateInputType
   _max?: ClientMaxAggregateInputType
 }
@@ -183,12 +231,16 @@ export type ClientGroupByOutputType = {
   name: string
   phone: string | null
   address: string | null
+  latitude: number | null
+  longitude: number | null
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus
   notes: string | null
   createdAt: Date
   updatedAt: Date
   _count: ClientCountAggregateOutputType | null
+  _avg: ClientAvgAggregateOutputType | null
+  _sum: ClientSumAggregateOutputType | null
   _min: ClientMinAggregateOutputType | null
   _max: ClientMaxAggregateOutputType | null
 }
@@ -217,6 +269,8 @@ export type ClientWhereInput = {
   name?: Prisma.StringFilter<"Client"> | string
   phone?: Prisma.StringNullableFilter<"Client"> | string | null
   address?: Prisma.StringNullableFilter<"Client"> | string | null
+  latitude?: Prisma.FloatNullableFilter<"Client"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"Client"> | number | null
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
@@ -235,6 +289,8 @@ export type ClientOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrderInput | Prisma.SortOrder
+  latitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  longitude?: Prisma.SortOrderInput | Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -256,6 +312,8 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"Client"> | string
   phone?: Prisma.StringNullableFilter<"Client"> | string | null
   address?: Prisma.StringNullableFilter<"Client"> | string | null
+  latitude?: Prisma.FloatNullableFilter<"Client"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"Client"> | number | null
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
@@ -274,14 +332,18 @@ export type ClientOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrderInput | Prisma.SortOrder
+  latitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  longitude?: Prisma.SortOrderInput | Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ClientCountOrderByAggregateInput
+  _avg?: Prisma.ClientAvgOrderByAggregateInput
   _max?: Prisma.ClientMaxOrderByAggregateInput
   _min?: Prisma.ClientMinOrderByAggregateInput
+  _sum?: Prisma.ClientSumOrderByAggregateInput
 }
 
 export type ClientScalarWhereWithAggregatesInput = {
@@ -293,6 +355,8 @@ export type ClientScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"Client"> | string
   phone?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
   address?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
+  latitude?: Prisma.FloatNullableWithAggregatesFilter<"Client"> | number | null
+  longitude?: Prisma.FloatNullableWithAggregatesFilter<"Client"> | number | null
   source?: Prisma.EnumClientSourceNullableWithAggregatesFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusWithAggregatesFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
@@ -305,6 +369,8 @@ export type ClientCreateInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -323,6 +389,8 @@ export type ClientUncheckedCreateInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -339,6 +407,8 @@ export type ClientUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -357,6 +427,8 @@ export type ClientUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -374,6 +446,8 @@ export type ClientCreateManyInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -386,6 +460,8 @@ export type ClientUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -399,6 +475,8 @@ export type ClientUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -427,11 +505,18 @@ export type ClientCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   address?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type ClientAvgOrderByAggregateInput = {
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
 }
 
 export type ClientMaxOrderByAggregateInput = {
@@ -440,6 +525,8 @@ export type ClientMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   address?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
@@ -453,11 +540,18 @@ export type ClientMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   address?: Prisma.SortOrder
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type ClientSumOrderByAggregateInput = {
+  latitude?: Prisma.SortOrder
+  longitude?: Prisma.SortOrder
 }
 
 export type ClientScalarRelationFilter = {
@@ -582,6 +676,8 @@ export type ClientCreateWithoutMasterInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -598,6 +694,8 @@ export type ClientUncheckedCreateWithoutMasterInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -644,6 +742,8 @@ export type ClientScalarWhereInput = {
   name?: Prisma.StringFilter<"Client"> | string
   phone?: Prisma.StringNullableFilter<"Client"> | string | null
   address?: Prisma.StringNullableFilter<"Client"> | string | null
+  latitude?: Prisma.FloatNullableFilter<"Client"> | number | null
+  longitude?: Prisma.FloatNullableFilter<"Client"> | number | null
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
@@ -656,6 +756,8 @@ export type ClientCreateWithoutEstimatesInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -673,6 +775,8 @@ export type ClientUncheckedCreateWithoutEstimatesInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -704,6 +808,8 @@ export type ClientUpdateWithoutEstimatesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -721,6 +827,8 @@ export type ClientUncheckedUpdateWithoutEstimatesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -736,6 +844,8 @@ export type ClientCreateWithoutMeasurementsInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -753,6 +863,8 @@ export type ClientUncheckedCreateWithoutMeasurementsInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -784,6 +896,8 @@ export type ClientUpdateWithoutMeasurementsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -801,6 +915,8 @@ export type ClientUncheckedUpdateWithoutMeasurementsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -816,6 +932,8 @@ export type ClientCreateWithoutEventsInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -833,6 +951,8 @@ export type ClientUncheckedCreateWithoutEventsInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -864,6 +984,8 @@ export type ClientUpdateWithoutEventsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -881,6 +1003,8 @@ export type ClientUncheckedUpdateWithoutEventsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -896,6 +1020,8 @@ export type ClientCreateWithoutObjectPhotosInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -913,6 +1039,8 @@ export type ClientUncheckedCreateWithoutObjectPhotosInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -944,6 +1072,8 @@ export type ClientUpdateWithoutObjectPhotosInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -961,6 +1091,8 @@ export type ClientUncheckedUpdateWithoutObjectPhotosInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -976,6 +1108,8 @@ export type ClientCreateManyMasterInput = {
   name: string
   phone?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
@@ -988,6 +1122,8 @@ export type ClientUpdateWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1004,6 +1140,8 @@ export type ClientUncheckedUpdateWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1020,6 +1158,8 @@ export type ClientUncheckedUpdateManyWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  latitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  longitude?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1091,6 +1231,8 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name?: boolean
   phone?: boolean
   address?: boolean
+  latitude?: boolean
+  longitude?: boolean
   source?: boolean
   status?: boolean
   notes?: boolean
@@ -1110,6 +1252,8 @@ export type ClientSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   phone?: boolean
   address?: boolean
+  latitude?: boolean
+  longitude?: boolean
   source?: boolean
   status?: boolean
   notes?: boolean
@@ -1124,6 +1268,8 @@ export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   phone?: boolean
   address?: boolean
+  latitude?: boolean
+  longitude?: boolean
   source?: boolean
   status?: boolean
   notes?: boolean
@@ -1138,6 +1284,8 @@ export type ClientSelectScalar = {
   name?: boolean
   phone?: boolean
   address?: boolean
+  latitude?: boolean
+  longitude?: boolean
   source?: boolean
   status?: boolean
   notes?: boolean
@@ -1145,7 +1293,7 @@ export type ClientSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "source" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
+export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "latitude" | "longitude" | "source" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
 export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
   estimates?: boolean | Prisma.Client$estimatesArgs<ExtArgs>
@@ -1176,6 +1324,8 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     name: string
     phone: string | null
     address: string | null
+    latitude: number | null
+    longitude: number | null
     source: $Enums.ClientSource | null
     status: $Enums.DealStatus
     notes: string | null
@@ -1614,6 +1764,8 @@ export interface ClientFieldRefs {
   readonly name: Prisma.FieldRef<"Client", 'String'>
   readonly phone: Prisma.FieldRef<"Client", 'String'>
   readonly address: Prisma.FieldRef<"Client", 'String'>
+  readonly latitude: Prisma.FieldRef<"Client", 'Float'>
+  readonly longitude: Prisma.FieldRef<"Client", 'Float'>
   readonly source: Prisma.FieldRef<"Client", 'ClientSource'>
   readonly status: Prisma.FieldRef<"Client", 'DealStatus'>
   readonly notes: Prisma.FieldRef<"Client", 'String'>

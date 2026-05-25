@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     let baseCode: string | null = null;
     let photoUrl: string | null = null;
     let sortOrder = 0;
+    let noInsert = false;
 
     if (contentType.includes("multipart/form-data")) {
       // С фото — multipart
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       price = parseFloat(String(form.get("price") || "0"));
       baseCode = (form.get("baseCode") as string) || null;
       sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
+      noInsert = form.get("noInsert") === "1" || form.get("noInsert") === "true";
 
       const file = form.get("photo") as File | null;
       if (file && file.size > 0) {
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
       price = parseFloat(String(body.price || 0));
       baseCode = body.baseCode || null;
       sortOrder = body.sortOrder ?? 0;
+      noInsert = body.noInsert === true || body.noInsert === "true";
     }
 
     if (!isCategory(category)) {
@@ -116,6 +119,7 @@ export async function POST(request: NextRequest) {
         price,
         photoUrl,
         sortOrder,
+        noInsert,
       },
     });
 

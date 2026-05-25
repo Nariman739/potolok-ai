@@ -78,6 +78,22 @@ export async function handleTelegramBotMessage(
     return;
   }
 
+  // Текст БЕЗ фото → CRM agent с tool calling (запись событий, поиск клиентов,
+  // смена статусов, план дня и т.д.). Фото → старый flow расчёта потолков.
+  if (messageText && !imageUrl) {
+    try {
+      const { processCRMAgent } = await import("@/lib/telegram-agent");
+      const response = await processCRMAgent(master.id, messageText);
+      await sendTelegramMessage(chatId, response);
+      return;
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error("CRM agent error:", errMsg);
+      await sendTelegramMessage(chatId, `⚠️ Помощник временно недоступен: ${errMsg}`);
+      return;
+    }
+  }
+
   // Process through AI
   try {
     // If photo → run multi-agent vision first, then conversation without photo

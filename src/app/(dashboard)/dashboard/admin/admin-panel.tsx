@@ -95,13 +95,22 @@ export function AdminPanel({
           <Crown className="h-5 w-5 text-amber-500" />
           <h1 className="text-2xl font-bold">Админ-панель</h1>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/admin/rangefinders")}
-        >
-          📏 Рулетки
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/admin/payments")}
+          >
+            💰 Оплаты
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/admin/rangefinders")}
+          >
+            📏 Рулетки
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

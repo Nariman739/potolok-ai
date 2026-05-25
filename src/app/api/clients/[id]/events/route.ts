@@ -20,13 +20,25 @@ export async function POST(
     const master = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const { type, content } = body;
+    const { type, content, scheduledAt } = body;
 
     if (!type || !(ALLOWED_TYPES as readonly string[]).includes(type)) {
       return NextResponse.json(
         { error: "Недопустимый тип события" },
         { status: 400 },
       );
+    }
+
+    let scheduledDate: Date | null = null;
+    if (scheduledAt) {
+      const parsed = new Date(scheduledAt);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "Некорректная дата scheduledAt" },
+          { status: 400 },
+        );
+      }
+      scheduledDate = parsed;
     }
 
     const client = await prisma.client.findFirst({
@@ -45,6 +57,7 @@ export async function POST(
         clientId: id,
         type: type as EventType,
         content: content?.trim() || null,
+        scheduledAt: scheduledDate,
       },
     });
 

@@ -29,6 +29,8 @@ export type ClientEventMinAggregateOutputType = {
   clientId: string | null
   type: $Enums.EventType | null
   content: string | null
+  scheduledAt: Date | null
+  reminderSentAt: Date | null
   createdAt: Date | null
 }
 
@@ -37,6 +39,8 @@ export type ClientEventMaxAggregateOutputType = {
   clientId: string | null
   type: $Enums.EventType | null
   content: string | null
+  scheduledAt: Date | null
+  reminderSentAt: Date | null
   createdAt: Date | null
 }
 
@@ -46,6 +50,8 @@ export type ClientEventCountAggregateOutputType = {
   type: number
   content: number
   metadata: number
+  scheduledAt: number
+  reminderSentAt: number
   createdAt: number
   _all: number
 }
@@ -56,6 +62,8 @@ export type ClientEventMinAggregateInputType = {
   clientId?: true
   type?: true
   content?: true
+  scheduledAt?: true
+  reminderSentAt?: true
   createdAt?: true
 }
 
@@ -64,6 +72,8 @@ export type ClientEventMaxAggregateInputType = {
   clientId?: true
   type?: true
   content?: true
+  scheduledAt?: true
+  reminderSentAt?: true
   createdAt?: true
 }
 
@@ -73,6 +83,8 @@ export type ClientEventCountAggregateInputType = {
   type?: true
   content?: true
   metadata?: true
+  scheduledAt?: true
+  reminderSentAt?: true
   createdAt?: true
   _all?: true
 }
@@ -155,6 +167,8 @@ export type ClientEventGroupByOutputType = {
   type: $Enums.EventType
   content: string | null
   metadata: runtime.JsonValue | null
+  scheduledAt: Date | null
+  reminderSentAt: Date | null
   createdAt: Date
   _count: ClientEventCountAggregateOutputType | null
   _min: ClientEventMinAggregateOutputType | null
@@ -185,6 +199,8 @@ export type ClientEventWhereInput = {
   type?: Prisma.EnumEventTypeFilter<"ClientEvent"> | $Enums.EventType
   content?: Prisma.StringNullableFilter<"ClientEvent"> | string | null
   metadata?: Prisma.JsonNullableFilter<"ClientEvent">
+  scheduledAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
+  reminderSentAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ClientEvent"> | Date | string
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
 }
@@ -195,6 +211,8 @@ export type ClientEventOrderByWithRelationInput = {
   type?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+  scheduledAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  reminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   client?: Prisma.ClientOrderByWithRelationInput
 }
@@ -208,6 +226,8 @@ export type ClientEventWhereUniqueInput = Prisma.AtLeast<{
   type?: Prisma.EnumEventTypeFilter<"ClientEvent"> | $Enums.EventType
   content?: Prisma.StringNullableFilter<"ClientEvent"> | string | null
   metadata?: Prisma.JsonNullableFilter<"ClientEvent">
+  scheduledAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
+  reminderSentAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ClientEvent"> | Date | string
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
 }, "id">
@@ -218,6 +238,8 @@ export type ClientEventOrderByWithAggregationInput = {
   type?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+  scheduledAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  reminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.ClientEventCountOrderByAggregateInput
   _max?: Prisma.ClientEventMaxOrderByAggregateInput
@@ -233,6 +255,8 @@ export type ClientEventScalarWhereWithAggregatesInput = {
   type?: Prisma.EnumEventTypeWithAggregatesFilter<"ClientEvent"> | $Enums.EventType
   content?: Prisma.StringNullableWithAggregatesFilter<"ClientEvent"> | string | null
   metadata?: Prisma.JsonNullableWithAggregatesFilter<"ClientEvent">
+  scheduledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ClientEvent"> | Date | string | null
+  reminderSentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ClientEvent"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ClientEvent"> | Date | string
 }
 
@@ -241,6 +265,8 @@ export type ClientEventCreateInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutEventsInput
 }
@@ -251,6 +277,8 @@ export type ClientEventUncheckedCreateInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -259,6 +287,8 @@ export type ClientEventUpdateInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutEventsNestedInput
 }
@@ -269,6 +299,8 @@ export type ClientEventUncheckedUpdateInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -278,6 +310,8 @@ export type ClientEventCreateManyInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -286,6 +320,8 @@ export type ClientEventUpdateManyMutationInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -295,6 +331,8 @@ export type ClientEventUncheckedUpdateManyInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -314,6 +352,8 @@ export type ClientEventCountOrderByAggregateInput = {
   type?: Prisma.SortOrder
   content?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
+  scheduledAt?: Prisma.SortOrder
+  reminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -322,6 +362,8 @@ export type ClientEventMaxOrderByAggregateInput = {
   clientId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  scheduledAt?: Prisma.SortOrder
+  reminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -330,6 +372,8 @@ export type ClientEventMinOrderByAggregateInput = {
   clientId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  scheduledAt?: Prisma.SortOrder
+  reminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -384,6 +428,8 @@ export type ClientEventCreateWithoutClientInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -392,6 +438,8 @@ export type ClientEventUncheckedCreateWithoutClientInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -430,6 +478,8 @@ export type ClientEventScalarWhereInput = {
   type?: Prisma.EnumEventTypeFilter<"ClientEvent"> | $Enums.EventType
   content?: Prisma.StringNullableFilter<"ClientEvent"> | string | null
   metadata?: Prisma.JsonNullableFilter<"ClientEvent">
+  scheduledAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
+  reminderSentAt?: Prisma.DateTimeNullableFilter<"ClientEvent"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ClientEvent"> | Date | string
 }
 
@@ -438,6 +488,8 @@ export type ClientEventCreateManyClientInput = {
   type: $Enums.EventType
   content?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Date | string | null
+  reminderSentAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -446,6 +498,8 @@ export type ClientEventUpdateWithoutClientInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -454,6 +508,8 @@ export type ClientEventUncheckedUpdateWithoutClientInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -462,6 +518,8 @@ export type ClientEventUncheckedUpdateManyWithoutClientInput = {
   type?: Prisma.EnumEventTypeFieldUpdateOperationsInput | $Enums.EventType
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -473,6 +531,8 @@ export type ClientEventSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   type?: boolean
   content?: boolean
   metadata?: boolean
+  scheduledAt?: boolean
+  reminderSentAt?: boolean
   createdAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["clientEvent"]>
@@ -483,6 +543,8 @@ export type ClientEventSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   type?: boolean
   content?: boolean
   metadata?: boolean
+  scheduledAt?: boolean
+  reminderSentAt?: boolean
   createdAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["clientEvent"]>
@@ -493,6 +555,8 @@ export type ClientEventSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   type?: boolean
   content?: boolean
   metadata?: boolean
+  scheduledAt?: boolean
+  reminderSentAt?: boolean
   createdAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["clientEvent"]>
@@ -503,10 +567,12 @@ export type ClientEventSelectScalar = {
   type?: boolean
   content?: boolean
   metadata?: boolean
+  scheduledAt?: boolean
+  reminderSentAt?: boolean
   createdAt?: boolean
 }
 
-export type ClientEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "type" | "content" | "metadata" | "createdAt", ExtArgs["result"]["clientEvent"]>
+export type ClientEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "type" | "content" | "metadata" | "scheduledAt" | "reminderSentAt" | "createdAt", ExtArgs["result"]["clientEvent"]>
 export type ClientEventInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }
@@ -528,6 +594,8 @@ export type $ClientEventPayload<ExtArgs extends runtime.Types.Extensions.Interna
     type: $Enums.EventType
     content: string | null
     metadata: runtime.JsonValue | null
+    scheduledAt: Date | null
+    reminderSentAt: Date | null
     createdAt: Date
   }, ExtArgs["result"]["clientEvent"]>
   composites: {}
@@ -958,6 +1026,8 @@ export interface ClientEventFieldRefs {
   readonly type: Prisma.FieldRef<"ClientEvent", 'EventType'>
   readonly content: Prisma.FieldRef<"ClientEvent", 'String'>
   readonly metadata: Prisma.FieldRef<"ClientEvent", 'Json'>
+  readonly scheduledAt: Prisma.FieldRef<"ClientEvent", 'DateTime'>
+  readonly reminderSentAt: Prisma.FieldRef<"ClientEvent", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"ClientEvent", 'DateTime'>
 }
     

@@ -40,15 +40,17 @@ export async function GET(request: Request) {
     }
 
     if (search) {
+      const digitsOnly = search.replace(/\D/g, "");
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search } },
+        ...(digitsOnly ? [{ phone: { contains: digitsOnly } }] : []),
       ];
     }
 
     const clients = await prisma.client.findMany({
       where,
       orderBy: { updatedAt: "desc" },
+      ...(search ? { take: 20 } : {}),
       select: {
         id: true,
         name: true,
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { name, phone, address, source, notes } = body;
+    const { name, phone, address, latitude, longitude, source, notes } = body;
 
     if (!name && !phone) {
       return NextResponse.json(
@@ -121,11 +123,19 @@ export async function POST(request: Request) {
       normalizedSource = source as ClientSource;
     }
 
+    const toCoord = (v: unknown): number | null => {
+      if (v === undefined || v === null || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     const client = await getOrCreateClient({
       masterId: master.id,
       name: name || null,
       phone: phone || null,
       address: address || null,
+      latitude: toCoord(latitude),
+      longitude: toCoord(longitude),
       source: normalizedSource,
     });
 

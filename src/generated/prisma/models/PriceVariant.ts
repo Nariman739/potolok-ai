@@ -45,8 +45,8 @@ export type PriceVariantMinAggregateOutputType = {
   unit: string | null
   price: number | null
   photoUrl: string | null
-  sortOrder: number | null
   noInsert: boolean | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -60,8 +60,8 @@ export type PriceVariantMaxAggregateOutputType = {
   unit: string | null
   price: number | null
   photoUrl: string | null
-  sortOrder: number | null
   noInsert: boolean | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -75,8 +75,8 @@ export type PriceVariantCountAggregateOutputType = {
   unit: number
   price: number
   photoUrl: number
-  sortOrder: number
   noInsert: number
+  sortOrder: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -102,8 +102,8 @@ export type PriceVariantMinAggregateInputType = {
   unit?: true
   price?: true
   photoUrl?: true
-  sortOrder?: true
   noInsert?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -117,8 +117,8 @@ export type PriceVariantMaxAggregateInputType = {
   unit?: true
   price?: true
   photoUrl?: true
-  sortOrder?: true
   noInsert?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -132,8 +132,8 @@ export type PriceVariantCountAggregateInputType = {
   unit?: true
   price?: true
   photoUrl?: true
-  sortOrder?: true
   noInsert?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -234,8 +234,8 @@ export type PriceVariantGroupByOutputType = {
   unit: string
   price: number
   photoUrl: string | null
-  sortOrder: number
   noInsert: boolean
+  sortOrder: number
   createdAt: Date
   updatedAt: Date
   _count: PriceVariantCountAggregateOutputType | null
@@ -272,8 +272,8 @@ export type PriceVariantWhereInput = {
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
-  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
+  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -288,8 +288,8 @@ export type PriceVariantOrderByWithRelationInput = {
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
-  sortOrder?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
@@ -307,8 +307,8 @@ export type PriceVariantWhereUniqueInput = Prisma.AtLeast<{
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
-  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
+  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -323,8 +323,8 @@ export type PriceVariantOrderByWithAggregationInput = {
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
-  sortOrder?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.PriceVariantCountOrderByAggregateInput
@@ -346,8 +346,8 @@ export type PriceVariantScalarWhereWithAggregatesInput = {
   unit?: Prisma.StringWithAggregatesFilter<"PriceVariant"> | string
   price?: Prisma.FloatWithAggregatesFilter<"PriceVariant"> | number
   photoUrl?: Prisma.StringNullableWithAggregatesFilter<"PriceVariant"> | string | null
-  sortOrder?: Prisma.IntWithAggregatesFilter<"PriceVariant"> | number
   noInsert?: Prisma.BoolWithAggregatesFilter<"PriceVariant"> | boolean
+  sortOrder?: Prisma.IntWithAggregatesFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"PriceVariant"> | Date | string
 }
@@ -360,8 +360,8 @@ export type PriceVariantCreateInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutPriceVariantsInput
@@ -376,8 +376,8 @@ export type PriceVariantUncheckedCreateInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -390,8 +390,8 @@ export type PriceVariantUpdateInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutPriceVariantsNestedInput
@@ -406,8 +406,8 @@ export type PriceVariantUncheckedUpdateInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -421,8 +421,8 @@ export type PriceVariantCreateManyInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -435,8 +435,8 @@ export type PriceVariantUpdateManyMutationInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -450,8 +450,8 @@ export type PriceVariantUncheckedUpdateManyInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -475,8 +475,8 @@ export type PriceVariantCountOrderByAggregateInput = {
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
-  sortOrder?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -495,8 +495,8 @@ export type PriceVariantMaxOrderByAggregateInput = {
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
-  sortOrder?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -510,8 +510,8 @@ export type PriceVariantMinOrderByAggregateInput = {
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
-  sortOrder?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -571,8 +571,8 @@ export type PriceVariantCreateWithoutMasterInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -585,8 +585,8 @@ export type PriceVariantUncheckedCreateWithoutMasterInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -629,8 +629,8 @@ export type PriceVariantScalarWhereInput = {
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
-  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
+  sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
 }
@@ -643,8 +643,8 @@ export type PriceVariantCreateManyMasterInput = {
   unit: string
   price: number
   photoUrl?: string | null
-  sortOrder?: number
   noInsert?: boolean
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -657,8 +657,8 @@ export type PriceVariantUpdateWithoutMasterInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -671,8 +671,8 @@ export type PriceVariantUncheckedUpdateWithoutMasterInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -685,8 +685,8 @@ export type PriceVariantUncheckedUpdateManyWithoutMasterInput = {
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -702,8 +702,8 @@ export type PriceVariantSelect<ExtArgs extends runtime.Types.Extensions.Internal
   unit?: boolean
   price?: boolean
   photoUrl?: boolean
-  sortOrder?: boolean
   noInsert?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -718,8 +718,8 @@ export type PriceVariantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   unit?: boolean
   price?: boolean
   photoUrl?: boolean
-  sortOrder?: boolean
   noInsert?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -734,8 +734,8 @@ export type PriceVariantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   unit?: boolean
   price?: boolean
   photoUrl?: boolean
-  sortOrder?: boolean
   noInsert?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -750,13 +750,13 @@ export type PriceVariantSelectScalar = {
   unit?: boolean
   price?: boolean
   photoUrl?: boolean
-  sortOrder?: boolean
   noInsert?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "photoUrl" | "sortOrder" | "noInsert" | "createdAt" | "updatedAt", ExtArgs["result"]["priceVariant"]>
+export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "photoUrl" | "noInsert" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["priceVariant"]>
 export type PriceVariantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
@@ -781,8 +781,8 @@ export type $PriceVariantPayload<ExtArgs extends runtime.Types.Extensions.Intern
     unit: string
     price: number
     photoUrl: string | null
-    sortOrder: number
     noInsert: boolean
+    sortOrder: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["priceVariant"]>
@@ -1217,8 +1217,8 @@ export interface PriceVariantFieldRefs {
   readonly unit: Prisma.FieldRef<"PriceVariant", 'String'>
   readonly price: Prisma.FieldRef<"PriceVariant", 'Float'>
   readonly photoUrl: Prisma.FieldRef<"PriceVariant", 'String'>
-  readonly sortOrder: Prisma.FieldRef<"PriceVariant", 'Int'>
   readonly noInsert: Prisma.FieldRef<"PriceVariant", 'Boolean'>
+  readonly sortOrder: Prisma.FieldRef<"PriceVariant", 'Int'>
   readonly createdAt: Prisma.FieldRef<"PriceVariant", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"PriceVariant", 'DateTime'>
 }

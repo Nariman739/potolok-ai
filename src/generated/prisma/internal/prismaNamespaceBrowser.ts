@@ -66,6 +66,8 @@ export const ModelName = {
   VisualizationElement: 'VisualizationElement',
   VisualizationRender: 'VisualizationRender',
   PortfolioWork: 'PortfolioWork',
+  MasterBrief: 'MasterBrief',
+  MasterReview: 'MasterReview',
   InstagramAccount: 'InstagramAccount',
   InstagramPost: 'InstagramPost',
   InstagramSession: 'InstagramSession',
@@ -73,7 +75,8 @@ export const ModelName = {
   ClientEvent: 'ClientEvent',
   ObjectPhoto: 'ObjectPhoto',
   Rangefinder: 'Rangefinder',
-  LogoGeneration: 'LogoGeneration'
+  LogoGeneration: 'LogoGeneration',
+  PendingPayment: 'PendingPayment'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -129,6 +132,12 @@ export const MasterScalarFieldEnum = {
   paidUntil: 'paidUntil',
   billingNotes: 'billingNotes',
   isOwner: 'isOwner',
+  monthlyPrice: 'monthlyPrice',
+  isFounder: 'isFounder',
+  founderActivatedAt: 'founderActivatedAt',
+  founderMonthsPaid: 'founderMonthsPaid',
+  welcomeSent: 'welcomeSent',
+  hasUsedTrial: 'hasUsedTrial',
   notifyDealWon: 'notifyDealWon',
   notifyDealLost: 'notifyDealLost',
   smmPostsThisMonth: 'smmPostsThisMonth',
@@ -136,14 +145,17 @@ export const MasterScalarFieldEnum = {
   logoGenerationsThisMonth: 'logoGenerationsThisMonth',
   logoMonthReset: 'logoMonthReset',
   logoBrief: 'logoBrief',
+  smmProfile: 'smmProfile',
   visualizationCredits: 'visualizationCredits',
   visualizationsThisMonth: 'visualizationsThisMonth',
   visualizationMonthReset: 'visualizationMonthReset',
-  smmProfile: 'smmProfile',
   onboardingCompleted: 'onboardingCompleted',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
+  kpConfig: 'kpConfig',
+  tagline: 'tagline',
+  coverPhotoUrl: 'coverPhotoUrl',
   portfolioSlug: 'portfolioSlug',
   portfolioBio: 'portfolioBio'
 } as const
@@ -198,8 +210,8 @@ export const PriceVariantScalarFieldEnum = {
   unit: 'unit',
   price: 'price',
   photoUrl: 'photoUrl',
-  sortOrder: 'sortOrder',
   noInsert: 'noInsert',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -399,6 +411,40 @@ export const PortfolioWorkScalarFieldEnum = {
 export type PortfolioWorkScalarFieldEnum = (typeof PortfolioWorkScalarFieldEnum)[keyof typeof PortfolioWorkScalarFieldEnum]
 
 
+export const MasterBriefScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  brief: 'brief',
+  generatedConfig: 'generatedConfig',
+  generatedTagline: 'generatedTagline',
+  rationale: 'rationale',
+  segment: 'segment',
+  city: 'city',
+  yearsActive: 'yearsActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MasterBriefScalarFieldEnum = (typeof MasterBriefScalarFieldEnum)[keyof typeof MasterBriefScalarFieldEnum]
+
+
+export const MasterReviewScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  clientName: 'clientName',
+  rating: 'rating',
+  text: 'text',
+  photoUrl: 'photoUrl',
+  location: 'location',
+  isPublished: 'isPublished',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MasterReviewScalarFieldEnum = (typeof MasterReviewScalarFieldEnum)[keyof typeof MasterReviewScalarFieldEnum]
+
+
 export const InstagramAccountScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
@@ -456,6 +502,8 @@ export const ClientScalarFieldEnum = {
   name: 'name',
   phone: 'phone',
   address: 'address',
+  latitude: 'latitude',
+  longitude: 'longitude',
   source: 'source',
   status: 'status',
   notes: 'notes',
@@ -472,6 +520,8 @@ export const ClientEventScalarFieldEnum = {
   type: 'type',
   content: 'content',
   metadata: 'metadata',
+  scheduledAt: 'scheduledAt',
+  reminderSentAt: 'reminderSentAt',
   createdAt: 'createdAt'
 } as const
 
@@ -523,6 +573,24 @@ export const LogoGenerationScalarFieldEnum = {
 } as const
 
 export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
+
+
+export const PendingPaymentScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  amount: 'amount',
+  promocode: 'promocode',
+  screenshotUrl: 'screenshotUrl',
+  comment: 'comment',
+  status: 'status',
+  createdAt: 'createdAt',
+  reviewedAt: 'reviewedAt',
+  reviewedBy: 'reviewedBy',
+  reviewNotes: 'reviewNotes',
+  activatedDays: 'activatedDays'
+} as const
+
+export type PendingPaymentScalarFieldEnum = (typeof PendingPaymentScalarFieldEnum)[keyof typeof PendingPaymentScalarFieldEnum]
 
 
 export const SortOrder = {

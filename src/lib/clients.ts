@@ -13,6 +13,8 @@ export type GetOrCreateClientInput = {
   name: string | null | undefined;
   phone?: string | null;
   address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   source?: ClientSource | null;
 };
 
@@ -21,6 +23,14 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   const name = (input.name ?? "").trim();
   const phone = normalizePhone(input.phone);
   const address = input.address?.trim() || null;
+  const latitude =
+    typeof input.latitude === "number" && Number.isFinite(input.latitude)
+      ? input.latitude
+      : null;
+  const longitude =
+    typeof input.longitude === "number" && Number.isFinite(input.longitude)
+      ? input.longitude
+      : null;
 
   if (!name && !phone) return null;
 
@@ -44,6 +54,8 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
       name: name || phone || "Без имени",
       phone,
       address,
+      latitude,
+      longitude,
       source: input.source ?? null,
       status: "NEW",
     },

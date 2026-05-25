@@ -48,6 +48,18 @@ export async function GET(
             createdAt: true,
           },
         },
+        measurements: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            address: true,
+            totalArea: true,
+            latitude: true,
+            longitude: true,
+            createdAt: true,
+            rooms: { select: { id: true } },
+          },
+        },
       },
     });
 
@@ -90,7 +102,7 @@ export async function PUT(
       );
     }
 
-    const { name, phone, address, source, notes, status } = body;
+    const { name, phone, address, latitude, longitude, source, notes, status } = body;
 
     let normalizedSource: ClientSource | null | undefined = undefined;
     if (source === null) normalizedSource = null;
@@ -98,12 +110,24 @@ export async function PUT(
       normalizedSource = source as ClientSource;
     }
 
+    const parseCoord = (v: unknown): number | null | undefined => {
+      if (v === undefined) return undefined;
+      if (v === null || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const lat = parseCoord(latitude);
+    const lng = parseCoord(longitude);
+
     const updated = await prisma.client.update({
       where: { id },
       data: {
         ...(name !== undefined && { name: name || existing.name }),
         ...(phone !== undefined && { phone: phone || null }),
         ...(address !== undefined && { address: address || null }),
+        ...(lat !== undefined && { latitude: lat }),
+        ...(lng !== undefined && { longitude: lng }),
         ...(notes !== undefined && { notes: notes || null }),
         ...(normalizedSource !== undefined && { source: normalizedSource }),
       },
@@ -158,15 +182,29 @@ export async function DELETE(
       );
     }
 
-    await prisma.client.delete({ where: { id } });
+    // Явное «обнуление» связанных таблиц до удаления клиента — раньше
+    // полагались только на onDelete:SetNull в schema, но в проде иногда
+    // ловили P2003 (foreign key constraint) при удалении. Транзакция
+    // гарантирует целостность: либо всё прошло, либо ничего не изменилось.
+    // ClientEvent удаляется (cascade в schema), photo/measurement/estimate —
+    // обнуляются (остаются у мастера в общем списке без привязки к клиенту).
+    await prisma.$transaction([
+      prisma.estimate.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.measurementObject.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.objectPhoto.updateMany({ where: { clientId: id }, data: { clientId: null } }),
+      prisma.clientEvent.deleteMany({ where: { clientId: id } }),
+      prisma.client.delete({ where: { id } }),
+    ]);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+    const msg = error instanceof Error ? error.message : "Ошибка удаления клиента";
     console.error("Delete client error:", error);
     return NextResponse.json(
-      { error: "Ошибка удаления клиента" },
+      { error: msg },
       { status: 500 },
     );
   }

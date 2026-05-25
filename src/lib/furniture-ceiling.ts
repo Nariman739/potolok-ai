@@ -48,13 +48,16 @@ export interface FurnitureCeilingStats {
   plannedCorners: number;
 }
 
-/** Порог в см: грань мебели у стены если ОБЕ её точки на расстоянии < этого. */
-const AT_WALL_THRESHOLD_CM = 5;
+/** Порог в см: грань мебели у стены если ОБЕ её точки на расстоянии < этого.
+ *  Поднят с 5 → 15 см потому что мастер пальцем не всегда попадает точно
+ *  впритык, остаётся зазор. Если шкаф «почти прижат» (5-15 см) — считаем
+ *  что профиль не идёт между ним и стеной (мебель упирается). */
+const AT_WALL_THRESHOLD_CM = 15;
 /** Порог в см: грань мебели у соседней мебели (для модульной кухни/шкафа из
  *  нескольких блоков). Значение больше чем AT_WALL_THRESHOLD_CM — между
- *  блоками часто оставляют небольшой зазор 10-25см который не должен
+ *  блоками часто оставляют небольшой зазор 10-40см который не должен
  *  заставлять парящий «пробивать» внутрь сборки. */
-const AT_NEIGHBOR_THRESHOLD_CM = 30;
+const AT_NEIGHBOR_THRESHOLD_CM = 50;
 
 /** Углы мебели в SVG-координатах после rotation вокруг центра.
  *  4 угла для rect (через width/height), произвольное N для custom (через polygonPoints). */
@@ -130,11 +133,24 @@ export function classifyEdges(
   vertices: Vertex[],
   allFurniture?: FurnitureLikeElement[],
 ): boolean[] {
+  const det = classifyEdgesDetailed(el, vertices, allFurniture);
+  return det.atWall.map((aw, i) => aw || det.atNeighbor[i]);
+}
+
+/**
+ * Расширенная версия classifyEdges — возвращает atWall и atNeighbor раздельно.
+ * Нужно для рендера: грани atNeighbor (шов между блоками модульной кухни)
+ * должны быть скрыты, чтобы Г-образная сборка выглядела как один контур.
+ */
+export function classifyEdgesDetailed(
+  el: FurnitureLikeElement,
+  vertices: Vertex[],
+  allFurniture?: FurnitureLikeElement[],
+): { atWall: boolean[]; atNeighbor: boolean[] } {
   const corners = getFurnitureCorners(el);
-  if (!corners) return [false, false, false, false];
+  if (!corners) return { atWall: [false, false, false, false], atNeighbor: [false, false, false, false] };
   const n = corners.length;
 
-  // Заранее посчитаем углы соседней мебели (только to-ceiling / planned)
   const neighbors: Vertex[][] = [];
   if (allFurniture) {
     for (const other of allFurniture) {
@@ -146,32 +162,41 @@ export function classifyEdges(
     }
   }
 
-  const result: boolean[] = [];
+  const atWall: boolean[] = [];
+  const atNeighbor: boolean[] = [];
   for (let i = 0; i < n; i++) {
     const p1 = corners[i], p2 = corners[(i + 1) % n];
     const n1 = nearestWallDist(p1, vertices);
     const n2 = nearestWallDist(p2, vertices);
-    const atWall = n1.dist < AT_WALL_THRESHOLD_CM
-                && n2.dist < AT_WALL_THRESHOLD_CM
-                && n1.wallIdx === n2.wallIdx;
-    let atNeighbor = false;
-    if (!atWall && neighbors.length > 0) {
-      // Грань at-furniture если ОБА её угла близко к ОДНОЙ соседней мебели.
-      // Используем расширенный AT_NEIGHBOR_THRESHOLD_CM (30см) — между блоками
-      // модульной кухни часто оставляют зазор для духовки/посудомойки/etc,
-      // парящий не должен пробивать в эти швы.
+    const isAtWall = n1.dist < AT_WALL_THRESHOLD_CM
+                  && n2.dist < AT_WALL_THRESHOLD_CM
+                  && n1.wallIdx === n2.wallIdx;
+    let isAtNeighbor = false;
+    if (!isAtWall && neighbors.length > 0) {
+      // Дополнительно проверяем середину грани — для длинных граней одна
+      // точка может быть далеко от соседа, а середина — рядом (это и есть
+      // случай Г-сборки, где блоки соприкасаются частью своих граней).
+      const pMid: Vertex = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       for (const oc of neighbors) {
         const d1 = distPointToPolygon(p1, oc);
         const d2 = distPointToPolygon(p2, oc);
-        if (d1 < AT_NEIGHBOR_THRESHOLD_CM && d2 < AT_NEIGHBOR_THRESHOLD_CM) {
-          atNeighbor = true;
+        const dMid = distPointToPolygon(pMid, oc);
+        // Считаем грань "у соседа", если хотя бы 2 из 3 контрольных точек
+        // (начало/середина/конец) близки к полигону соседа.
+        const closeCount =
+          (d1 < AT_NEIGHBOR_THRESHOLD_CM ? 1 : 0) +
+          (d2 < AT_NEIGHBOR_THRESHOLD_CM ? 1 : 0) +
+          (dMid < AT_NEIGHBOR_THRESHOLD_CM ? 1 : 0);
+        if (closeCount >= 2) {
+          isAtNeighbor = true;
           break;
         }
       }
     }
-    result.push(atWall || atNeighbor);
+    atWall.push(isAtWall);
+    atNeighbor.push(isAtNeighbor);
   }
-  return result;
+  return { atWall, atNeighbor };
 }
 
 /**
@@ -364,6 +389,44 @@ export function snapFurnitureToWallAndNeighbors(
         newX += wallNx * bestPerpDelta;
         newY += wallNy * bestPerpDelta;
       }
+    }
+  }
+
+  // ── Corner snap: если шкаф/кухня стоит у стены и его длинный конец
+  // близок к перпендикулярной стене (соседняя стена в углу комнаты) —
+  // подвинуть мебель вдоль стены так чтобы конец встал ровно в угол.
+  // Решает «шкаф у нижней стены не прислоняется к правой стене с зазором 5–25см».
+  {
+    const myT = (newX - a.x) * wallNx + (newY - a.y) * wallNy; // проекция центра на ось текущей стены
+    // Концы длинной стороны вдоль стены
+    const endLeftT = myT - longSide / 2;
+    const endRightT = myT + longSide / 2;
+    const cornerSnapCm = 30; // порог: щель до 30см — прижимаем к углу
+    let bestCornerDelta = 0;
+    let bestCornerAbs = cornerSnapCm + 1;
+    // Перебираем все вершины комнаты — нас интересует расстояние от концов
+    // мебели до проекций вершин на ось текущей стены.
+    for (let vi = 0; vi < vertices.length - 1; vi++) {
+      const v = vertices[vi];
+      const vT = (v.x - a.x) * wallNx + (v.y - a.y) * wallNy;
+      // delta = насколько подвинуть мебель ВДОЛЬ СТЕНЫ (по wallN), чтобы конец совпал с вершиной
+      const dLeft = vT - endLeftT;   // если delta < 0 → вершина левее левого конца (щель снаружи)
+      const dRight = vT - endRightT; // если delta > 0 → вершина правее правого конца (щель снаружи)
+      // Берём только щель «снаружи» (вершина за пределами мебели) — иначе утопим в стену.
+      // Левый конец: щель есть когда dLeft < 0 (вершина левее), магнитим delta = dLeft.
+      if (dLeft < 0 && -dLeft < bestCornerAbs) {
+        bestCornerAbs = -dLeft;
+        bestCornerDelta = dLeft;
+      }
+      // Правый конец: щель есть когда dRight > 0 (вершина правее), магнитим delta = dRight.
+      if (dRight > 0 && dRight < bestCornerAbs) {
+        bestCornerAbs = dRight;
+        bestCornerDelta = dRight;
+      }
+    }
+    if (bestCornerAbs <= cornerSnapCm && bestCornerAbs > 0.1) {
+      newX += wallNx * bestCornerDelta;
+      newY += wallNy * bestCornerDelta;
     }
   }
 
