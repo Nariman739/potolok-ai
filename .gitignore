@@ -47,5 +47,8 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# AI bake-off artifacts (рендеры / json-логи тестовых прогонов)
+/scripts/bake-off/out/
+
 .vercel
 .env*.local
