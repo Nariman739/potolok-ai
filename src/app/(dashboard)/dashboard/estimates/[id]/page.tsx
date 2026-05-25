@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ExternalLink, RefreshCcw } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCcw, Sparkles } from "lucide-react";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import { computeArea } from "@/lib/room-geometry";
@@ -35,11 +35,19 @@ export default async function EstimateDetailPage({
 
   const { id } = await params;
 
-  const estimate = await prisma.estimate.findFirst({
-    where: { id, masterId: master.id },
-  });
+  const [estimate, kpBrief] = await Promise.all([
+    prisma.estimate.findFirst({
+      where: { id, masterId: master.id },
+    }),
+    prisma.masterBrief.findUnique({
+      where: { masterId: master.id },
+      select: { id: true },
+    }),
+  ]);
 
   if (!estimate) notFound();
+
+  const hasKpBrief = !!kpBrief;
 
   const calc = estimate.calculationData as unknown as CalculationResult;
   const statusInfo = STATUS_LABELS[estimate.status] ?? { label: estimate.status, variant: "secondary" as const };
@@ -63,6 +71,29 @@ export default async function EstimateDetailPage({
         </div>
         <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
       </div>
+
+      {/* KP-конструктор hint: показываем только если ещё не настроен */}
+      {!hasKpBrief && (
+        <Link
+          href="/dashboard/branding"
+          className="block rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 px-4 py-3 hover:from-orange-100 hover:to-amber-100 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="rounded-md bg-orange-500 p-1.5 flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-orange-900">
+                Хочешь чтобы этот PDF был в твоём стиле?
+              </p>
+              <p className="text-xs text-orange-800/80 mt-0.5">
+                Настрой дизайн КП — AI подберёт тему за 2 минуты
+              </p>
+            </div>
+            <span className="text-orange-700 text-sm font-medium flex-shrink-0">→</span>
+          </div>
+        </Link>
+      )}
 
       {/* Confirmed banner */}
       {estimate.status === "CONFIRMED" && (

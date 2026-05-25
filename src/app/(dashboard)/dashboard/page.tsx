@@ -26,6 +26,7 @@ import { FeedbackButton } from "@/components/feedback-button";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { SubscriptionWidget } from "@/components/dashboard/subscription-widget";
+import { KpBrandingBanner } from "@/components/dashboard/kp-branding-banner";
 
 export const metadata = {
   title: "Дашборд",
@@ -101,6 +102,7 @@ export default async function DashboardPage() {
         bin: true,
         iin: true,
         logoUrl: true,
+        kpBrief: { select: { id: true } },
       },
     }),
   ]);
@@ -111,6 +113,7 @@ export default async function DashboardPage() {
     (masterFull?.bin || masterFull?.iin)
   );
   const hasLogo = !!masterFull?.logoUrl;
+  const hasKpBrief = !!masterFull?.kpBrief;
 
   const isPro = master.subscriptionTier === "PRO";
   const kpLimit = KP_LIMITS[master.subscriptionTier];
@@ -138,11 +141,14 @@ export default async function DashboardPage() {
 
       <SubscriptionWidget masterId={master.id} />
 
+      <KpBrandingBanner hasKpBrief={hasKpBrief} />
+
       <OnboardingChecklist
         hasProfile={hasProfile}
         hasLogo={hasLogo}
         hasFirstEstimate={estimatesCount > 0}
         hasClient={clientsCount > 0}
+        hasKpBrief={hasKpBrief}
       />
 
       {/* Quick Actions — always visible */}

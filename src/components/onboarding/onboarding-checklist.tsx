@@ -21,11 +21,13 @@ export function OnboardingChecklist({
   hasLogo,
   hasFirstEstimate,
   hasClient,
+  hasKpBrief,
 }: {
   hasProfile: boolean;
   hasLogo: boolean;
   hasFirstEstimate: boolean;
   hasClient: boolean;
+  hasKpBrief: boolean;
 }) {
   const router = useRouter();
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
@@ -43,6 +45,12 @@ export function OnboardingChecklist({
       href: "/dashboard/profile",
       hrefLabel: "Загрузить",
       aiAction: true,
+    },
+    {
+      done: hasKpBrief,
+      label: "Настрой дизайн КП — выбери стиль и AI подберёт под бренд",
+      href: "/dashboard/branding",
+      hrefLabel: "Настроить",
     },
     {
       done: hasFirstEstimate,
