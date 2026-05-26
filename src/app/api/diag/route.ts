@@ -1,5 +1,65 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyPassword, createSession } from "@/lib/auth";
+import { normalizePhone } from "@/lib/phone";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+export async function POST(request: Request) {
+  const out: Record<string, unknown> = { step: "start" };
+  try {
+    out.step = "ip";
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    out.step = "ratelimit";
+    const rl = checkRateLimit(`diag-login:${ip}`, 100, 15 * 60 * 1000);
+    out.rl = rl;
+
+    out.step = "body";
+    const body = await request.json();
+    const { phone: rawPhone, password } = body;
+
+    out.step = "normalizePhone";
+    const phone = normalizePhone(rawPhone);
+    out.phone = phone;
+    if (!phone) {
+      out.step = "phone-null";
+      return NextResponse.json(out, { status: 400 });
+    }
+
+    out.step = "findUnique";
+    const t0 = Date.now();
+    const master = await prisma.master.findUnique({ where: { phone } });
+    out.findUniqueTookMs = Date.now() - t0;
+    out.masterFound = !!master;
+    if (!master) {
+      out.step = "no-master";
+      return NextResponse.json(out, { status: 200 });
+    }
+    out.masterId = master.id;
+    out.masterIsActive = master.isActive;
+
+    out.step = "verifyPassword";
+    const t1 = Date.now();
+    const valid = await verifyPassword(password, master.passwordHash);
+    out.verifyTookMs = Date.now() - t1;
+    out.passwordValid = valid;
+
+    if (valid) {
+      out.step = "createSession";
+      const t2 = Date.now();
+      const token = await createSession(master.id);
+      out.sessionTookMs = Date.now() - t2;
+      out.hasToken = !!token;
+    }
+
+    out.step = "done";
+    return NextResponse.json(out);
+  } catch (e) {
+    out.error = e instanceof Error ? e.message : String(e);
+    out.errorName = e instanceof Error ? e.name : null;
+    out.stack = e instanceof Error ? e.stack?.split("\n").slice(0, 10).join("\n") : null;
+    return NextResponse.json(out, { status: 500 });
+  }
+}
 
 export async function GET() {
   const out: Record<string, unknown> = {};
