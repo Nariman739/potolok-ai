@@ -8,6 +8,10 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Claude Sonnet через OpenRouter может думать 20-40 сек при max_tokens=2500.
+// Без явного maxDuration Vercel режет на 10 сек → fetch «Load failed».
+// (Нариман 26.05.26: «теперь Load failed на шаге 7 онбординга бренда».)
+export const maxDuration = 60;
 
 // POST /api/ai/kp-onboarding
 // Body: MasterBrief (ответы мастера на 6-7 вопросов первичного скрининга)
