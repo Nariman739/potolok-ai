@@ -140,7 +140,15 @@ ${brief.differentiator ? `— Чем отличается от других: ${b
   });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(raw) as Partial<{
+  // OpenRouter с моделью Claude иногда игнорирует response_format и возвращает
+  // JSON завёрнутым в ```json ... ``` markdown-fence. Снимаем обёртку, если есть
+  // (Нариман 26.05.26: «Unexpected token '`'» на шаге 7 онбординга бренда).
+  const cleaned = (() => {
+    const t = raw.trim();
+    const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+    return m ? m[1].trim() : t;
+  })();
+  const parsed = JSON.parse(cleaned) as Partial<{
     tagline: string;
     warranties: WarrantyItem[];
     faq: FaqItem[];
