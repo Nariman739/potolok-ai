@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
   try {
     const master = await requireAuth();
 
-    const body = (await req.json()) as Partial<MasterBrief>;
+    // Серик 28.05: онбординг теперь принимает массив `segments` (multi-select).
+    // Старое поле `segment` (single) поддерживаем для backward-compat.
+    // AI-промпт и тема КП пока подбираются по первому выбранному сегменту.
+    const body = (await req.json()) as Partial<MasterBrief> & { segments?: string[] };
 
     if (!body.companyName?.trim()) {
       return NextResponse.json(
@@ -34,15 +37,23 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const ALLOWED_SEGMENTS = ["mass", "middle", "premium", "family", "young-bold"] as const;
+    type AllowedSegment = (typeof ALLOWED_SEGMENTS)[number];
+    const segmentsArr: string[] = Array.isArray(body.segments) && body.segments.length > 0
+      ? body.segments
+      : body.segment
+        ? [body.segment]
+        : [];
     if (
-      !body.segment ||
-      !["mass", "middle", "premium", "family", "young-bold"].includes(body.segment)
+      segmentsArr.length === 0 ||
+      !segmentsArr.every((s) => (ALLOWED_SEGMENTS as readonly string[]).includes(s))
     ) {
       return NextResponse.json(
-        { error: "segment must be one of: mass | middle | premium | family | young-bold" },
+        { error: "segments must be a non-empty array of: mass | middle | premium | family | young-bold" },
         { status: 400 }
       );
     }
+    const primarySegment = segmentsArr[0] as AllowedSegment;
 
     // Подмешиваем дефолты из профиля мастера
     const brief: MasterBrief = {
@@ -52,7 +63,7 @@ export async function POST(req: NextRequest) {
         `${master.firstName} ${master.lastName ?? ""}`.trim(),
       city: body.city?.trim() || master.address?.trim() || undefined,
       yearsActive: body.yearsActive,
-      segment: body.segment,
+      segment: primarySegment,
       materialsUsed: body.materialsUsed?.trim(),
       warrantyMaterialsYears: body.warrantyMaterialsYears ?? master.warrantyMaterials,
       warrantyInstallYears: body.warrantyInstallYears ?? master.warrantyInstall,

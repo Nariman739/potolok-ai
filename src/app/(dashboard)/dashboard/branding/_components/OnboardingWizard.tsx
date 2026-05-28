@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Loader2, Sparkles } from "lucide-react";
@@ -61,7 +62,15 @@ export function OnboardingWizard({
     String(master.warrantyInstall ?? 2)
   );
 
-  const [segment, setSegment] = useState<Segment>("middle");
+  // Серик 28.05: мастер хотел отметить НЕСКОЛЬКО сегментов (например работает
+  // и со «средним», и с «премиум»). Заменили radio → multi-select. AI получает
+  // список, тема КП всё ещё подбирается по приоритетному сегменту.
+  const [segments, setSegments] = useState<Segment[]>(["middle"]);
+  const toggleSegment = (v: Segment) => {
+    setSegments((prev) =>
+      prev.includes(v) ? prev.filter((s) => s !== v) : [...prev, v]
+    );
+  };
   const [communicationStyle, setCommunicationStyle] = useState<CommStyle>("warm");
 
   const [materialsUsed, setMaterialsUsed] = useState("");
@@ -93,7 +102,7 @@ export function OnboardingWizard({
           warrantyInstallYears: warrantyInstallYears
             ? Number(warrantyInstallYears)
             : undefined,
-          segment,
+          segments,
           communicationStyle,
           materialsUsed: materialsUsed.trim() || undefined,
           differentiator: differentiator.trim() || undefined,
@@ -205,26 +214,39 @@ export function OnboardingWizard({
 
           {step === 3 && (
             <div className="space-y-3">
-              <Label>Сегмент клиентов</Label>
-              <RadioGroup
-                value={segment}
-                onValueChange={(v) => setSegment(v as Segment)}
-                className="gap-2"
-              >
-                {SEGMENT_LABELS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    htmlFor={`seg-${opt.value}`}
-                    className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent"
-                  >
-                    <RadioGroupItem value={opt.value} id={`seg-${opt.value}`} className="mt-1" />
-                    <div>
-                      <div className="text-sm font-medium">{opt.label}</div>
-                      <div className="text-xs text-muted-foreground">{opt.hint}</div>
-                    </div>
-                  </label>
-                ))}
-              </RadioGroup>
+              <div>
+                <Label>Сегмент клиентов</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Можно выбрать несколько — например работаете и со «средним», и с «премиум».
+                </p>
+              </div>
+              <div className="grid gap-2">
+                {SEGMENT_LABELS.map((opt) => {
+                  const checked = segments.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleSegment(opt.value)}
+                      className={`flex items-start gap-3 rounded-lg border p-3 text-left cursor-pointer transition-colors ${
+                        checked ? "border-primary bg-accent" : "hover:bg-accent"
+                      }`}
+                    >
+                      <div
+                        className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
+                          checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        }`}
+                      >
+                        {checked && <Check className="h-3.5 w-3.5" />}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{opt.label}</div>
+                        <div className="text-xs text-muted-foreground">{opt.hint}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
