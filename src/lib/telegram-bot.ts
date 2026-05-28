@@ -17,6 +17,17 @@ import {
   processInstagramPhotos,
   handleInstagramCallback,
 } from "@/lib/instagram-publisher";
+import {
+  handleContentPlanCommand,
+  handleNextTopicCommand,
+  handleTodayCommand,
+  handleLinkToTopicCommand,
+  handleContentPlanCallback,
+} from "@/lib/content-plan-handlers";
+import {
+  clearActiveContentPlanOnSession,
+  getActiveContentPlanIdFromSession,
+} from "@/lib/content-plan";
 import type { ChatMessage, RoomInput, CalculationResult } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
@@ -1012,9 +1023,10 @@ async function processCollectedPhotos(chatId: string): Promise<void> {
     return;
   }
 
-  // Delete session from DB (collection done)
+  // Delete session from DB (collection done) — capture ContentPlan link first
   const userContext = session.userContext;
   const masterId = session.masterId;
+  const contentPlanId = await getActiveContentPlanIdFromSession(chatId);
   await prisma.instagramSession.delete({ where: { chatId } });
 
   const photoCount = items.filter(m => m.type === "photo").length;
@@ -1069,7 +1081,8 @@ async function processCollectedPhotos(chatId: string): Promise<void> {
       photoBase64Urls,
       blobUrls,
       userContext || undefined,
-      mediaTypes
+      mediaTypes,
+      contentPlanId || undefined
     );
 
     // Increment SMM post counter
@@ -1088,6 +1101,10 @@ export async function handleInstagramCallbackQuery(
   chatId: string,
   callbackData: string
 ): Promise<boolean> {
+  // ContentPlan callbacks (cp_shoot, cp_defer, cp_skip, cp_link_*)
+  if (callbackData.startsWith("cp_")) {
+    return handleContentPlanCallback(chatId, callbackData);
+  }
   if (!callbackData.startsWith("ig_")) return false;
 
   // Handle "Готово" button — start processing
@@ -1190,7 +1207,30 @@ export async function handleBotCommand(
     }
 
     case "/post": {
+      // Bare /post — clear any stale ContentPlan link so the new post
+      // doesn't accidentally close someone else's planned topic.
+      await clearActiveContentPlanOnSession(chatId);
       await handleInstagramPostCommand(chatId, masterId);
+      break;
+    }
+
+    case "/content-plan": {
+      await handleContentPlanCommand(chatId);
+      break;
+    }
+
+    case "/today": {
+      await handleTodayCommand(chatId);
+      break;
+    }
+
+    case "/next-topic": {
+      await handleNextTopicCommand(chatId);
+      break;
+    }
+
+    case "/link-to-topic": {
+      await handleLinkToTopicCommand(chatId);
       break;
     }
 
@@ -1246,6 +1286,10 @@ export async function handleBotCommand(
         `✏️ Или написать текстом\n\n` +
         `<b>Команды:</b>\n` +
         `/post — создать Instagram пост\n` +
+        `/today — пачка тем на сегодня (3 темы в burst-режиме до 18.06)\n` +
+        `/next-topic — одна тема под аудиторию дня\n` +
+        `/content-plan — обзор бэклога\n` +
+        `/link-to-topic — привязать опубликованный пост к теме плана\n` +
         `/connect — подключить Instagram аккаунт\n` +
         `/cancel — отменить текущий пост\n` +
         `/help — эта справка`

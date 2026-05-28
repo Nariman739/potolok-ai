@@ -16,6 +16,7 @@ import {
   sendTelegramMessageWithButtons,
   sendTelegramPhoto,
 } from "@/lib/telegram";
+import { linkContentPlanByPostId, fetchTopicById } from "@/lib/content-plan";
 
 // ─────────────────────────────────────────────────────
 // Upload photos to Vercel Blob
@@ -52,7 +53,8 @@ export async function processInstagramPhotos(
   photoBase64Urls: string[],
   blobUrls: string[],
   userContext?: string,
-  mediaTypes?: ("photo" | "video")[]
+  mediaTypes?: ("photo" | "video")[],
+  contentPlanId?: string
 ): Promise<string | null> {
   // Get recent post dates for scheduler
   const account = await prisma.instagramAccount.findUnique({
@@ -82,10 +84,25 @@ export async function processInstagramPhotos(
   // Load master's SMM profile for personalized captions
   const smmProfile = await getSmmProfile(masterId);
 
+  // If invoked via ContentPlan (cp_shoot_*), load brief to feed into Copywriter
+  let contentPlanBrief: { hook: string; voiceOver?: string; cta: string; feature: string; title: string } | undefined;
+  if (contentPlanId) {
+    const topic = await fetchTopicById(contentPlanId);
+    if (topic) {
+      contentPlanBrief = {
+        hook: topic.brief.hook,
+        voiceOver: topic.brief.voiceOver,
+        cta: topic.brief.cta,
+        feature: topic.feature,
+        title: topic.title,
+      };
+    }
+  }
+
   // Run 5-agent pipeline
   let pipelineResult: InstagramPipelineResult;
   try {
-    pipelineResult = await runInstagramPipeline(photoBase64Urls, recentPostDates, userContext, smmProfile);
+    pipelineResult = await runInstagramPipeline(photoBase64Urls, recentPostDates, userContext, smmProfile, contentPlanBrief);
   } catch (error) {
     console.error("[Instagram Publisher] Pipeline error:", error);
     await sendTelegramMessage(
@@ -142,7 +159,7 @@ export async function processInstagramPhotos(
       mediaUrls,
       mediaType: postMediaType,
       coverIndex: pipelineResult.visual.cover_index,
-      agentAnalysis: JSON.parse(JSON.stringify({ ...pipelineResult, mediaTypes: finalMediaTypes })),
+      agentAnalysis: JSON.parse(JSON.stringify({ ...pipelineResult, mediaTypes: finalMediaTypes, contentPlanId: contentPlanId || null })),
       postType: pipelineResult.strategy.post_type,
       scheduledAt: new Date(pipelineResult.schedule.recommended_datetime),
       status: "PENDING_APPROVAL",
@@ -264,6 +281,9 @@ export async function handleInstagramCallback(
           },
         });
 
+        // ContentPlan: close planned topic if this post was created via cp_shoot_*
+        await linkContentPlanByPostId(postId, "PUBLISHED");
+
         await sendTelegramMessage(
           chatId,
           `✅ <b>Опубликовано в Instagram!</b>\n\n` +
@@ -293,6 +313,9 @@ export async function handleInstagramCallback(
         where: { id: postId },
         data: { status: "SCHEDULED" },
       });
+
+      // ContentPlan: mark planned topic as scheduled (publishedAt set on cron publish)
+      await linkContentPlanByPostId(postId, "SCHEDULED");
 
       const schedDate = post.scheduledAt
         ? post.scheduledAt.toLocaleString("ru-RU", {
@@ -400,6 +423,9 @@ export async function publishScheduledPosts(): Promise<number> {
           instagramMediaId: mediaId,
         },
       });
+
+      // ContentPlan: cron-published posts also close their planned topics
+      await linkContentPlanByPostId(post.id, "PUBLISHED");
 
       // Notify master via Telegram
       if (post.telegramChatId) {

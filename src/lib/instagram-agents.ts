@@ -291,11 +291,19 @@ async function runCopywriter(
   analysis: AnalyzerResult,
   strategy: StrategyResult,
   userContext?: string,
-  smmProfile?: SmmProfile | null
+  smmProfile?: SmmProfile | null,
+  contentPlanBrief?: { hook: string; voiceOver?: string; cta: string; feature: string; title: string }
 ): Promise<CopywriterResult> {
   let userMessage = `Анализ фото:\n${JSON.stringify(analysis, null, 2)}\n\nСтратегия:\n${JSON.stringify(strategy, null, 2)}\n\nНапиши тёплый, качественный текст для Instagram.`;
   if (userContext) {
     userMessage += `\n\nДополнительная информация от мастера (ОБЯЗАТЕЛЬНО учти в тексте): "${userContext}"`;
+  }
+  if (contentPlanBrief) {
+    userMessage += `\n\nЭтот пост из контент-плана PotolokAI. Тема: "${contentPlanBrief.title}" (фича приложения: ${contentPlanBrief.feature}).\nХук задан планом: "${contentPlanBrief.hook}"\nCTA задан планом: "${contentPlanBrief.cta}"`;
+    if (contentPlanBrief.voiceOver) {
+      userMessage += `\nГолосовая дорожка (для тона/смысла, не копируй дословно): "${contentPlanBrief.voiceOver}"`;
+    }
+    userMessage += `\n\nИспользуй ХУК и CTA из плана как опору, но финальный caption должен учитывать реальный анализ фото. Не переписывай дословно — переплети.`;
   }
 
   const prompt = buildCopywriterPrompt(smmProfile);
@@ -456,9 +464,10 @@ export async function runInstagramPipeline(
   imageBase64Urls: string[],
   recentPostDates: string[] = [],
   userContext?: string,
-  smmProfile?: SmmProfile | null
+  smmProfile?: SmmProfile | null,
+  contentPlanBrief?: { hook: string; voiceOver?: string; cta: string; feature: string; title: string }
 ): Promise<InstagramPipelineResult> {
-  console.log(`[Instagram Pipeline] Starting with ${imageBase64Urls.length} photos${userContext ? `, context: "${userContext.substring(0, 50)}..."` : ""}${smmProfile?.setupComplete ? `, profile: ${smmProfile.city}/${smmProfile.tone}` : ""}`);
+  console.log(`[Instagram Pipeline] Starting with ${imageBase64Urls.length} photos${userContext ? `, context: "${userContext.substring(0, 50)}..."` : ""}${smmProfile?.setupComplete ? `, profile: ${smmProfile.city}/${smmProfile.tone}` : ""}${contentPlanBrief ? `, plan: "${contentPlanBrief.title}"` : ""}`);
 
   // Phase 1: Run Analyzer (vision) and Scheduler in parallel
   const [analysis, schedule] = await Promise.all([
@@ -472,8 +481,8 @@ export async function runInstagramPipeline(
   const strategy = await runStrategist(analysis);
   console.log(`[Instagram Pipeline] Strategy: ${strategy.post_type}, cover=${strategy.cover_index}`);
 
-  // Phase 3: Copywriter (needs analysis + strategy + user context + SMM profile)
-  const copy = await runCopywriter(analysis, strategy, userContext, smmProfile);
+  // Phase 3: Copywriter (needs analysis + strategy + user context + SMM profile + optional ContentPlan brief)
+  const copy = await runCopywriter(analysis, strategy, userContext, smmProfile, contentPlanBrief);
   console.log(`[Instagram Pipeline] Copy: ${copy.caption.substring(0, 50)}...`);
 
   // Phase 4: Visual Editor (needs analysis + strategy)
