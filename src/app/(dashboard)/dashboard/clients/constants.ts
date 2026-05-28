@@ -1,8 +1,9 @@
 export type DealStatusKey =
   | "NEW"
-  | "QUALIFIED"
-  | "PROPOSAL_SENT"
-  | "NEGOTIATING"
+  | "QUALIFIED"      // legacy: показываем как "В работе"
+  | "PROPOSAL_SENT"  // legacy
+  | "NEGOTIATING"    // legacy
+  | "IN_PROGRESS"
   | "WON"
   | "LOST";
 
@@ -32,23 +33,32 @@ export type EventTypeKey =
   | "ACT_SIGNED"
   | "PHOTO_ADDED";
 
+// Legacy статусы (QUALIFIED/PROPOSAL_SENT/NEGOTIATING) показываем как "В работе"
+// и тем же цветом что IN_PROGRESS. На сервере (canonicalizeStatus) новые записи
+// уже идут как IN_PROGRESS, но старые строки в БД остаются.
 export const STATUS_LABELS: Record<DealStatusKey, string> = {
   NEW: "Новый",
-  QUALIFIED: "Квалифицирован",
-  PROPOSAL_SENT: "КП отправлено",
-  NEGOTIATING: "Переговоры",
-  WON: "Выигран",
-  LOST: "Проиграл",
+  QUALIFIED: "В работе",
+  PROPOSAL_SENT: "В работе",
+  NEGOTIATING: "В работе",
+  IN_PROGRESS: "В работе",
+  WON: "Сделка",
+  LOST: "Отказ",
 };
 
 export const STATUS_COLORS: Record<DealStatusKey, string> = {
-  NEW: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  QUALIFIED: "bg-purple-100 text-purple-800 hover:bg-purple-100",
+  NEW: "bg-slate-100 text-slate-700 hover:bg-slate-100",
+  QUALIFIED: "bg-amber-100 text-amber-800 hover:bg-amber-100",
   PROPOSAL_SENT: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-  NEGOTIATING: "bg-orange-100 text-orange-800 hover:bg-orange-100",
+  NEGOTIATING: "bg-amber-100 text-amber-800 hover:bg-amber-100",
+  IN_PROGRESS: "bg-amber-100 text-amber-800 hover:bg-amber-100",
   WON: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
   LOST: "bg-zinc-200 text-zinc-700 hover:bg-zinc-200",
 };
+
+// В UI пикера статусов показываем только 4 канонических значения.
+// Legacy в этом массиве отсутствуют — мастер выбирает только из новых.
+export const PICKABLE_STATUSES: DealStatusKey[] = ["NEW", "IN_PROGRESS", "WON", "LOST"];
 
 export const SOURCE_LABELS: Record<ClientSourceKey, string> = {
   INSTAGRAM: "Instagram",

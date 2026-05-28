@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { changeClientStatus } from "@/lib/clients";
+import { canonicalizeStatus, changeClientStatus } from "@/lib/clients";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
-const ALLOWED_STATUSES = [
+// Принимаем и старые, и новые значения статусов. Старые билды mobile продолжат
+// слать QUALIFIED/PROPOSAL_SENT/NEGOTIATING; canonicalizeStatus сворачивает их
+// в IN_PROGRESS перед записью. См. src/lib/clients.ts:LEGACY_STATUS_MAP.
+const ACCEPTED_STATUSES = [
   "NEW",
   "QUALIFIED",
   "PROPOSAL_SENT",
   "NEGOTIATING",
+  "IN_PROGRESS",
   "WON",
   "LOST",
 ] as const;
@@ -102,7 +106,7 @@ export async function PUT(
       );
     }
 
-    const { name, phone, address, latitude, longitude, source, notes, status } = body;
+    const { name, phone, address, latitude, longitude, source, notes, status, nextContactAt } = body;
 
     let normalizedSource: ClientSource | null | undefined = undefined;
     if (source === null) normalizedSource = null;
@@ -120,6 +124,16 @@ export async function PUT(
     const lat = parseCoord(latitude);
     const lng = parseCoord(longitude);
 
+    // nextContactAt: ISO-строка | null | undefined.
+    // undefined = поле не пришло (PATCH без изменений), null = очистить.
+    let nextContactValue: Date | null | undefined = undefined;
+    if (nextContactAt === null) {
+      nextContactValue = null;
+    } else if (typeof nextContactAt === "string" && nextContactAt) {
+      const parsed = new Date(nextContactAt);
+      if (Number.isFinite(parsed.getTime())) nextContactValue = parsed;
+    }
+
     const updated = await prisma.client.update({
       where: { id },
       data: {
@@ -130,15 +144,21 @@ export async function PUT(
         ...(lng !== undefined && { longitude: lng }),
         ...(notes !== undefined && { notes: notes || null }),
         ...(normalizedSource !== undefined && { source: normalizedSource }),
+        ...(nextContactValue !== undefined && { nextContactAt: nextContactValue }),
       },
     });
 
     if (
       status !== undefined &&
-      (ALLOWED_STATUSES as readonly string[]).includes(status) &&
-      status !== existing.status
+      (ACCEPTED_STATUSES as readonly string[]).includes(status)
     ) {
-      await changeClientStatus(id, status as DealStatus);
+      // Сначала маппим legacy → canonical, потом сравниваем с текущим.
+      // Без этого старый билд шлёт PROPOSAL_SENT, в БД лежит IN_PROGRESS —
+      // и мы создаём STATUS_CHANGE событие на каждый PATCH.
+      const canonical = canonicalizeStatus(status);
+      if (canonical !== existing.status) {
+        await changeClientStatus(id, canonical);
+      }
     }
 
     const fresh = await prisma.client.findUnique({ where: { id } });

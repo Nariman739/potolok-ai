@@ -507,6 +507,7 @@ export const ClientScalarFieldEnum = {
   source: 'source',
   status: 'status',
   notes: 'notes',
+  nextContactAt: 'nextContactAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

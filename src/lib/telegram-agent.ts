@@ -17,14 +17,17 @@ import type { DealStatus, EventType } from "@/generated/prisma/client";
 const ALLOWED_EVENT_TYPES: EventType[] = [
   "CALL", "MEETING", "MEASUREMENT", "INSTALL", "WHATSAPP", "NOTE",
 ];
+// AI-агент пишет только 4 канонических статуса. Legacy остаются в БД
+// для старых строк, но новые операции — только эти.
 const ALLOWED_STATUSES: DealStatus[] = [
-  "NEW", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATING", "WON", "LOST",
+  "NEW", "IN_PROGRESS", "WON", "LOST",
 ];
 const STATUS_LABELS: Record<DealStatus, string> = {
   NEW: "Новый",
-  QUALIFIED: "Квалифицирован",
-  PROPOSAL_SENT: "КП отправлен",
-  NEGOTIATING: "Переговоры",
+  QUALIFIED: "В работе",
+  PROPOSAL_SENT: "В работе",
+  NEGOTIATING: "В работе",
+  IN_PROGRESS: "В работе",
   WON: "Сделка",
   LOST: "Отказ",
 };

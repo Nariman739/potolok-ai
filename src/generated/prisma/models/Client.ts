@@ -47,6 +47,7 @@ export type ClientMinAggregateOutputType = {
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus | null
   notes: string | null
+  nextContactAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -62,6 +63,7 @@ export type ClientMaxAggregateOutputType = {
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus | null
   notes: string | null
+  nextContactAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -77,6 +79,7 @@ export type ClientCountAggregateOutputType = {
   source: number
   status: number
   notes: number
+  nextContactAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -104,6 +107,7 @@ export type ClientMinAggregateInputType = {
   source?: true
   status?: true
   notes?: true
+  nextContactAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -119,6 +123,7 @@ export type ClientMaxAggregateInputType = {
   source?: true
   status?: true
   notes?: true
+  nextContactAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -134,6 +139,7 @@ export type ClientCountAggregateInputType = {
   source?: true
   status?: true
   notes?: true
+  nextContactAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -236,6 +242,7 @@ export type ClientGroupByOutputType = {
   source: $Enums.ClientSource | null
   status: $Enums.DealStatus
   notes: string | null
+  nextContactAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: ClientCountAggregateOutputType | null
@@ -274,6 +281,7 @@ export type ClientWhereInput = {
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
+  nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -294,6 +302,7 @@ export type ClientOrderByWithRelationInput = {
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  nextContactAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
@@ -317,6 +326,7 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
+  nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -337,6 +347,7 @@ export type ClientOrderByWithAggregationInput = {
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  nextContactAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ClientCountOrderByAggregateInput
@@ -360,6 +371,7 @@ export type ClientScalarWhereWithAggregatesInput = {
   source?: Prisma.EnumClientSourceNullableWithAggregatesFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusWithAggregatesFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
+  nextContactAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
 }
@@ -374,6 +386,7 @@ export type ClientCreateInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
@@ -394,6 +407,7 @@ export type ClientUncheckedCreateInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
@@ -412,6 +426,7 @@ export type ClientUpdateInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
@@ -432,6 +447,7 @@ export type ClientUncheckedUpdateInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
@@ -451,6 +467,7 @@ export type ClientCreateManyInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -465,6 +482,7 @@ export type ClientUpdateManyMutationInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -480,6 +498,7 @@ export type ClientUncheckedUpdateManyInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -510,6 +529,7 @@ export type ClientCountOrderByAggregateInput = {
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -530,6 +550,7 @@ export type ClientMaxOrderByAggregateInput = {
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -545,6 +566,7 @@ export type ClientMinOrderByAggregateInput = {
   source?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -681,6 +703,7 @@ export type ClientCreateWithoutMasterInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
@@ -699,6 +722,7 @@ export type ClientUncheckedCreateWithoutMasterInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
@@ -747,6 +771,7 @@ export type ClientScalarWhereInput = {
   source?: Prisma.EnumClientSourceNullableFilter<"Client"> | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFilter<"Client"> | $Enums.DealStatus
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
+  nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
 }
@@ -761,6 +786,7 @@ export type ClientCreateWithoutEstimatesInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
@@ -780,6 +806,7 @@ export type ClientUncheckedCreateWithoutEstimatesInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
@@ -813,6 +840,7 @@ export type ClientUpdateWithoutEstimatesInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
@@ -832,6 +860,7 @@ export type ClientUncheckedUpdateWithoutEstimatesInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
@@ -849,6 +878,7 @@ export type ClientCreateWithoutMeasurementsInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
@@ -868,6 +898,7 @@ export type ClientUncheckedCreateWithoutMeasurementsInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
@@ -901,6 +932,7 @@ export type ClientUpdateWithoutMeasurementsInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
@@ -920,6 +952,7 @@ export type ClientUncheckedUpdateWithoutMeasurementsInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
@@ -937,6 +970,7 @@ export type ClientCreateWithoutEventsInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
@@ -956,6 +990,7 @@ export type ClientUncheckedCreateWithoutEventsInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
@@ -989,6 +1024,7 @@ export type ClientUpdateWithoutEventsInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
@@ -1008,6 +1044,7 @@ export type ClientUncheckedUpdateWithoutEventsInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
@@ -1025,6 +1062,7 @@ export type ClientCreateWithoutObjectPhotosInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
@@ -1044,6 +1082,7 @@ export type ClientUncheckedCreateWithoutObjectPhotosInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
@@ -1077,6 +1116,7 @@ export type ClientUpdateWithoutObjectPhotosInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
@@ -1096,6 +1136,7 @@ export type ClientUncheckedUpdateWithoutObjectPhotosInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
@@ -1113,6 +1154,7 @@ export type ClientCreateManyMasterInput = {
   source?: $Enums.ClientSource | null
   status?: $Enums.DealStatus
   notes?: string | null
+  nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1127,6 +1169,7 @@ export type ClientUpdateWithoutMasterInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
@@ -1145,6 +1188,7 @@ export type ClientUncheckedUpdateWithoutMasterInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
@@ -1163,6 +1207,7 @@ export type ClientUncheckedUpdateManyWithoutMasterInput = {
   source?: Prisma.NullableEnumClientSourceFieldUpdateOperationsInput | $Enums.ClientSource | null
   status?: Prisma.EnumDealStatusFieldUpdateOperationsInput | $Enums.DealStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1236,6 +1281,7 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   source?: boolean
   status?: boolean
   notes?: boolean
+  nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -1257,6 +1303,7 @@ export type ClientSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   source?: boolean
   status?: boolean
   notes?: boolean
+  nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -1273,6 +1320,7 @@ export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   source?: boolean
   status?: boolean
   notes?: boolean
+  nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -1289,11 +1337,12 @@ export type ClientSelectScalar = {
   source?: boolean
   status?: boolean
   notes?: boolean
+  nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "latitude" | "longitude" | "source" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
+export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "latitude" | "longitude" | "source" | "status" | "notes" | "nextContactAt" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
 export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
   estimates?: boolean | Prisma.Client$estimatesArgs<ExtArgs>
@@ -1329,6 +1378,7 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     source: $Enums.ClientSource | null
     status: $Enums.DealStatus
     notes: string | null
+    nextContactAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["client"]>
@@ -1769,6 +1819,7 @@ export interface ClientFieldRefs {
   readonly source: Prisma.FieldRef<"Client", 'ClientSource'>
   readonly status: Prisma.FieldRef<"Client", 'DealStatus'>
   readonly notes: Prisma.FieldRef<"Client", 'String'>
+  readonly nextContactAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Client", 'DateTime'>
 }

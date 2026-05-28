@@ -70,6 +70,7 @@ export const DealStatus = {
   QUALIFIED: 'QUALIFIED',
   PROPOSAL_SENT: 'PROPOSAL_SENT',
   NEGOTIATING: 'NEGOTIATING',
+  IN_PROGRESS: 'IN_PROGRESS',
   WON: 'WON',
   LOST: 'LOST'
 } as const

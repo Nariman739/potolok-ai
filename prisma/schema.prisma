@@ -588,7 +588,8 @@ model InstagramPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  account     InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  contentPlan ContentPlan?
 
   @@index([instagramAccountId, status])
   @@index([status, scheduledAt])
@@ -615,8 +616,14 @@ model InstagramSession {
   masterId    String   @unique
   mediaItems  Json     @default("[]") // [{blobUrl: string, type: "photo"|"video"}]
   userContext String   @default("")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  // ContentPlan link (when session was started via cp_shoot_* callback).
+  // Cleared on bare /post. TTL 24h — see content-plan.ts.
+  activeContentPlanId    String?
+  activeContentPlanSetAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 }
@@ -636,6 +643,12 @@ model Client {
   source    ClientSource?
   status    DealStatus    @default(NEW)
   notes     String?
+
+  // Когда мастеру нужно следующий раз связаться с клиентом.
+  // Лента "Что делать" на главном экране группирует клиентов по этому полю
+  // (просрочено / сегодня / завтра). Один утренний Telegram-дайджест
+  // в 9:00 Asia/Almaty (cron tg-followups) перечисляет актуальное.
+  nextContactAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -678,9 +691,13 @@ enum ClientSource {
 
 enum DealStatus {
   NEW
+  // Legacy: оставлены для совместимости со старыми билдами mobile.
+  // На сервере (canonicalizeStatus) сворачиваются в IN_PROGRESS при записи.
+  // Удалить через ≥30 дней когда все мастера обновятся (опциональная Phase B).
   QUALIFIED
   PROPOSAL_SENT
   NEGOTIATING
+  IN_PROGRESS
   WON
   LOST
 }
@@ -817,4 +834,82 @@ enum PaymentStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ============================================
+// CONTENT PLAN — systematic Instagram backlog
+// ============================================
+
+model ContentPlan {
+  id       String  @id @default(uuid())
+  masterId String? // nullable: single global account for now, per-master later
+
+  title    String
+  feature  ContentFeature
+  format   ContentFormat
+  audience ContentAudience
+  priority Int               @default(50) // 0-100; killer 90+, strong 70-89, normal 50-69, nice <50
+  status   ContentPlanStatus @default(IDEA)
+
+  brief           Json    // ContentBrief — see src/lib/content-plan-types.ts
+  isBriefSkeleton Boolean @default(false) // true = title+hook only, LLM enriches on cp_shoot_*
+
+  releaseTag   String? // "1.0.10" — killer release theme, ignores day-of-week rubric
+  series       String? // "master-class" / "fest-2026" — series runs by seriesOrder, ignores rubric
+  seriesOrder  Int? // 1..N
+  scheduledFor DateTime? // fixed publish date hint (fest-2026: 2026-05-28, 06-04, 06-11, 06-18, 06-20)
+
+  skipReason  String?
+  publishedAt DateTime?
+
+  // Boost +5/week capped at 6 weeks — see getNextTopic
+  inBacklogSince DateTime @default(now())
+
+  instagramPostId String?        @unique
+  instagramPost   InstagramPost? @relation(fields: [instagramPostId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  // updatedAt — SCHEDULED theme returns to selection if updatedAt < now-7d
+  updatedAt DateTime @updatedAt
+
+  @@index([status, priority])
+  @@index([feature, status])
+  @@index([masterId, status])
+  @@index([series, seriesOrder])
+  @@index([scheduledFor, status])
+}
+
+enum ContentFeature {
+  ONBOARDING
+  TECH_PASSPORT_AI
+  MEASUREMENT
+  BLE_RULER
+  CONSTRUCTOR_3D
+  KP
+  CONTRACT
+  CRM
+  PRICE_LIST
+  PORTFOLIO
+  GENERAL
+}
+
+enum ContentFormat {
+  REELS
+  CAROUSEL
+  POST
+  // STORY deferred — add when /story command lands
+}
+
+enum ContentAudience {
+  MASTERS
+  CLIENTS
+  BOTH
+}
+
+enum ContentPlanStatus {
+  IDEA
+  READY
+  SCHEDULED
+  PUBLISHED
+  SKIPPED
 }
