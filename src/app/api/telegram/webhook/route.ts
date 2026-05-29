@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendTelegramMessage } from "@/lib/telegram";
+import {
+  sendTelegramMessage,
+  sendTelegramShareContactRequest,
+  sendTelegramMessageRemoveKeyboard,
+} from "@/lib/telegram";
 import { answerCallbackQuery } from "@/lib/telegram";
 import {
   handleTelegramBotMessage,
@@ -147,6 +151,21 @@ export async function POST(request: Request) {
       const parts = text.split(" ");
       const code = parts[1]?.trim();
 
+      // /start reset — flow восстановления пароля.
+      // Просим юзера поделиться номером (request_contact). По номеру
+      // находим мастера и шлём ему OTP прямо в чат.
+      if (code === "reset") {
+        await sendTelegramShareContactRequest(
+          chatId,
+          `🔐 <b>Восстановление пароля PotolokAI</b>\n\n` +
+          `Нажмите кнопку ниже, чтобы поделиться номером телефона. ` +
+          `Я отправлю код подтверждения сюда же в чат.\n\n` +
+          `Никаких SMS или ввода номера руками — Telegram сам передаст ваш номер.`,
+          "📱 Поделиться номером"
+        );
+        return NextResponse.json({ ok: true });
+      }
+
       // /start CODE — link code flow (from profile page)
       if (code) {
         const master = await prisma.master.findUnique({
@@ -191,6 +210,65 @@ export async function POST(request: Request) {
           `Ещё нет аккаунта? Зарегистрируйтесь на potolok.ai`
         );
       }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Contact share — flow восстановления пароля.
+    // Юзер нажал «📱 Поделиться номером» после /start reset.
+    // Telegram прислал реальный номер из аккаунта — он гарантированно
+    // принадлежит этому юзеру (подделать через webhook нельзя).
+    if (message.contact?.phone_number) {
+      const rawContactPhone: string = String(message.contact.phone_number);
+      const contactPhone = normalizePhone(
+        rawContactPhone.startsWith("+") ? rawContactPhone : `+${rawContactPhone}`
+      );
+      if (!contactPhone) {
+        await sendTelegramMessageRemoveKeyboard(
+          chatId,
+          "❌ Не смог распознать номер. Попробуйте ещё раз: /start reset"
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const master = await prisma.master.findUnique({
+        where: { phone: contactPhone },
+        select: { id: true, firstName: true, telegramChatId: true },
+      });
+
+      if (!master) {
+        await sendTelegramMessageRemoveKeyboard(
+          chatId,
+          `❌ Аккаунт с номером <b>${contactPhone}</b> не найден.\n\n` +
+          `Возможно, в аккаунте potolok.ai указан другой номер. ` +
+          `Зарегистрируйтесь на potolok.ai или проверьте номер.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // Auto-link telegramChatId если не привязан или сменился
+      if (master.telegramChatId !== chatId) {
+        await prisma.master.update({
+          where: { id: master.id },
+          data: { telegramChatId: chatId, telegramLinkCode: null },
+        });
+      }
+
+      // Сгенерить OTP, сохранить (10 мин), отправить в чат
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await prisma.master.update({
+        where: { id: master.id },
+        data: { resetOtp: otp, resetOtpExpiresAt: expiresAt },
+      });
+
+      await sendTelegramMessageRemoveKeyboard(
+        chatId,
+        `🔐 <b>${master.firstName}, ваш код сброса пароля:</b>\n\n` +
+        `<code>${otp}</code>\n\n` +
+        `Код действует 10 минут. Введите его в приложении или на potolok.ai, ` +
+        `затем задайте новый пароль.\n\n` +
+        `Никому не сообщайте этот код.`
+      );
       return NextResponse.json({ ok: true });
     }
 

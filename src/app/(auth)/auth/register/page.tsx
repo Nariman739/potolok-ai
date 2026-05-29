@@ -30,12 +30,8 @@ export default function RegisterPage() {
     const firstName = formData.get("firstName") as string;
     const companyName = formData.get("companyName") as string;
 
-    if (password.length < 8) {
-      toast.error("Пароль минимум 8 символов");
-      return;
-    }
-    if (!/\d/.test(password)) {
-      toast.error("Пароль должен содержать хотя бы одну цифру");
+    if (password.length < 4) {
+      toast.error("Пароль минимум 4 символа");
       return;
     }
     if (password !== passwordConfirm) {
@@ -121,7 +117,7 @@ export default function RegisterPage() {
               id="password"
               name="password"
               type="password"
-              placeholder="Минимум 8 символов, хотя бы 1 цифра"
+              placeholder="Минимум 4 символа"
               required
               minLength={8}
               autoComplete="new-password"

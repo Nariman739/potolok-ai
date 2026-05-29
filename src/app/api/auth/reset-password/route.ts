@@ -21,11 +21,8 @@ export async function POST(request: Request) {
     if (!otp || !newPassword) {
       return NextResponse.json({ error: "Введите код и новый пароль" }, { status: 400 });
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: "Пароль минимум 8 символов" }, { status: 400 });
-    }
-    if (!/\d/.test(newPassword)) {
-      return NextResponse.json({ error: "Пароль должен содержать хотя бы одну цифру" }, { status: 400 });
+    if (newPassword.length < 4) {
+      return NextResponse.json({ error: "Пароль минимум 4 символа" }, { status: 400 });
     }
 
     const master = await prisma.master.findUnique({

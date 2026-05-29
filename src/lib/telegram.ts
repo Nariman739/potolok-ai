@@ -177,6 +177,61 @@ export async function sendTelegramMessageWithButtons(
 }
 
 // ─────────────────────────────────────────────────────
+// Send message with reply-keyboard "Поделиться номером".
+// Используется в flow восстановления пароля: бот получает реальный
+// номер из Telegram-аккаунта (его подделать нельзя).
+// ─────────────────────────────────────────────────────
+export async function sendTelegramShareContactRequest(
+  chatId: string,
+  text: string,
+  buttonText: string,
+): Promise<void> {
+  try {
+    const truncated = text.length > 4096 ? text.substring(0, 4090) + "..." : text;
+    await fetch(apiUrl("sendMessage"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: truncated,
+        parse_mode: "HTML",
+        reply_markup: {
+          keyboard: [[{ text: buttonText, request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      }),
+    });
+  } catch {
+    console.error("Telegram sendShareContactRequest failed");
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Убрать reply-keyboard после получения контакта.
+// ─────────────────────────────────────────────────────
+export async function sendTelegramMessageRemoveKeyboard(
+  chatId: string,
+  text: string,
+): Promise<void> {
+  try {
+    const truncated = text.length > 4096 ? text.substring(0, 4090) + "..." : text;
+    await fetch(apiUrl("sendMessage"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: truncated,
+        parse_mode: "HTML",
+        reply_markup: { remove_keyboard: true },
+      }),
+    });
+  } catch {
+    console.error("Telegram sendMessageRemoveKeyboard failed");
+  }
+}
+
+// ─────────────────────────────────────────────────────
 // Answer callback query (acknowledge button press)
 // ─────────────────────────────────────────────────────
 export async function answerCallbackQuery(
