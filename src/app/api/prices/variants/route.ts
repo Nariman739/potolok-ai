@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
     let name: string;
     let unit: string;
     let price: number;
+    let installerPrice: number | null = null;
     let baseCode: string | null = null;
     let photoUrl: string | null = null;
     let sortOrder = 0;
@@ -69,6 +70,10 @@ export async function POST(request: NextRequest) {
       name = String(form.get("name") || "").trim();
       unit = String(form.get("unit") || "");
       price = parseFloat(String(form.get("price") || "0"));
+      if (form.has("installerPrice")) {
+        const raw = String(form.get("installerPrice"));
+        installerPrice = raw === "" || raw === "null" ? null : parseFloat(raw);
+      }
       baseCode = (form.get("baseCode") as string) || null;
       sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
       noInsert = form.get("noInsert") === "1" || form.get("noInsert") === "true";
@@ -91,6 +96,9 @@ export async function POST(request: NextRequest) {
       name = String(body.name || "").trim();
       unit = String(body.unit || "");
       price = parseFloat(String(body.price || 0));
+      if (body.installerPrice !== undefined) {
+        installerPrice = body.installerPrice === null ? null : Number(body.installerPrice);
+      }
       baseCode = body.baseCode || null;
       sortOrder = body.sortOrder ?? 0;
       noInsert = body.noInsert === true || body.noInsert === "true";
@@ -117,6 +125,7 @@ export async function POST(request: NextRequest) {
         name,
         unit,
         price,
+        installerPrice: installerPrice === null || Number.isNaN(installerPrice) ? null : installerPrice,
         photoUrl,
         sortOrder,
         noInsert,

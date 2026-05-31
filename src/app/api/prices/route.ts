@@ -11,16 +11,17 @@ export async function GET() {
       where: { masterId: master.id },
     });
 
-    const mpMap: Record<string, { price: number; photoUrl: string | null; isHidden: boolean }> = {};
+    const mpMap: Record<string, { price: number; installerPrice: number | null; photoUrl: string | null; isHidden: boolean }> = {};
     for (const mp of masterPrices) {
       mpMap[mp.itemCode] = {
         price: mp.price,
+        installerPrice: mp.installerPrice,
         photoUrl: mp.photoUrl,
         isHidden: mp.isHidden,
       };
     }
 
-    // Return all items with master's overrides (price/photo/hidden)
+    // Return all items with master's overrides (price/photo/hidden + installer)
     const items = PRODUCT_ITEMS.map((item) => {
       const mp = mpMap[item.code];
       return {
@@ -31,6 +32,7 @@ export async function GET() {
         description: item.description,
         defaultPrice: item.defaultPrice,
         price: mp?.price ?? item.defaultPrice,
+        installerPrice: mp?.installerPrice ?? null,
         photoUrl: mp?.photoUrl ?? null,
         isHidden: mp?.isHidden ?? false,
         isCustom: mp != null && mp.price !== item.defaultPrice,
@@ -73,7 +75,7 @@ export async function PUT(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { items } = body as { items: { itemCode: string; price: number }[] };
+    const { items } = body as { items: { itemCode: string; price: number; installerPrice?: number | null }[] };
 
     if (!items || !Array.isArray(items)) {
       return NextResponse.json(
@@ -82,24 +84,26 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Upsert all prices
+    // Upsert all prices (включая installerPrice если передан).
     await Promise.all(
-      items.map((item) =>
-        prisma.masterPrice.upsert({
+      items.map((item) => {
+        const installerPrice = item.installerPrice === null ? null : item.installerPrice;
+        return prisma.masterPrice.upsert({
           where: {
             masterId_itemCode: {
               masterId: master.id,
               itemCode: item.itemCode,
             },
           },
-          update: { price: item.price },
+          update: { price: item.price, ...(item.installerPrice !== undefined && { installerPrice }) },
           create: {
             masterId: master.id,
             itemCode: item.itemCode,
             price: item.price,
+            installerPrice: installerPrice ?? null,
           },
-        })
-      )
+        });
+      })
     );
 
     return NextResponse.json({ success: true });

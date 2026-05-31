@@ -28,11 +28,13 @@ export type AggregatePriceVariant = {
 
 export type PriceVariantAvgAggregateOutputType = {
   price: number | null
+  installerPrice: number | null
   sortOrder: number | null
 }
 
 export type PriceVariantSumAggregateOutputType = {
   price: number | null
+  installerPrice: number | null
   sortOrder: number | null
 }
 
@@ -44,6 +46,7 @@ export type PriceVariantMinAggregateOutputType = {
   name: string | null
   unit: string | null
   price: number | null
+  installerPrice: number | null
   photoUrl: string | null
   noInsert: boolean | null
   sortOrder: number | null
@@ -59,6 +62,7 @@ export type PriceVariantMaxAggregateOutputType = {
   name: string | null
   unit: string | null
   price: number | null
+  installerPrice: number | null
   photoUrl: string | null
   noInsert: boolean | null
   sortOrder: number | null
@@ -74,6 +78,7 @@ export type PriceVariantCountAggregateOutputType = {
   name: number
   unit: number
   price: number
+  installerPrice: number
   photoUrl: number
   noInsert: number
   sortOrder: number
@@ -85,11 +90,13 @@ export type PriceVariantCountAggregateOutputType = {
 
 export type PriceVariantAvgAggregateInputType = {
   price?: true
+  installerPrice?: true
   sortOrder?: true
 }
 
 export type PriceVariantSumAggregateInputType = {
   price?: true
+  installerPrice?: true
   sortOrder?: true
 }
 
@@ -101,6 +108,7 @@ export type PriceVariantMinAggregateInputType = {
   name?: true
   unit?: true
   price?: true
+  installerPrice?: true
   photoUrl?: true
   noInsert?: true
   sortOrder?: true
@@ -116,6 +124,7 @@ export type PriceVariantMaxAggregateInputType = {
   name?: true
   unit?: true
   price?: true
+  installerPrice?: true
   photoUrl?: true
   noInsert?: true
   sortOrder?: true
@@ -131,6 +140,7 @@ export type PriceVariantCountAggregateInputType = {
   name?: true
   unit?: true
   price?: true
+  installerPrice?: true
   photoUrl?: true
   noInsert?: true
   sortOrder?: true
@@ -233,6 +243,7 @@ export type PriceVariantGroupByOutputType = {
   name: string
   unit: string
   price: number
+  installerPrice: number | null
   photoUrl: string | null
   noInsert: boolean
   sortOrder: number
@@ -271,6 +282,7 @@ export type PriceVariantWhereInput = {
   name?: Prisma.StringFilter<"PriceVariant"> | string
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
+  installerPrice?: Prisma.FloatNullableFilter<"PriceVariant"> | number | null
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
@@ -287,6 +299,7 @@ export type PriceVariantOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   noInsert?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
@@ -306,6 +319,7 @@ export type PriceVariantWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"PriceVariant"> | string
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
+  installerPrice?: Prisma.FloatNullableFilter<"PriceVariant"> | number | null
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
@@ -322,6 +336,7 @@ export type PriceVariantOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   photoUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   noInsert?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
@@ -345,6 +360,7 @@ export type PriceVariantScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"PriceVariant"> | string
   unit?: Prisma.StringWithAggregatesFilter<"PriceVariant"> | string
   price?: Prisma.FloatWithAggregatesFilter<"PriceVariant"> | number
+  installerPrice?: Prisma.FloatNullableWithAggregatesFilter<"PriceVariant"> | number | null
   photoUrl?: Prisma.StringNullableWithAggregatesFilter<"PriceVariant"> | string | null
   noInsert?: Prisma.BoolWithAggregatesFilter<"PriceVariant"> | boolean
   sortOrder?: Prisma.IntWithAggregatesFilter<"PriceVariant"> | number
@@ -359,6 +375,7 @@ export type PriceVariantCreateInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -375,6 +392,7 @@ export type PriceVariantUncheckedCreateInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -389,6 +407,7 @@ export type PriceVariantUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -405,6 +424,7 @@ export type PriceVariantUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -420,6 +440,7 @@ export type PriceVariantCreateManyInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -434,6 +455,7 @@ export type PriceVariantUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -449,6 +471,7 @@ export type PriceVariantUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -474,6 +497,7 @@ export type PriceVariantCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
@@ -483,6 +507,7 @@ export type PriceVariantCountOrderByAggregateInput = {
 
 export type PriceVariantAvgOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -494,6 +519,7 @@ export type PriceVariantMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
@@ -509,6 +535,7 @@ export type PriceVariantMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   unit?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrder
   photoUrl?: Prisma.SortOrder
   noInsert?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
@@ -518,6 +545,7 @@ export type PriceVariantMinOrderByAggregateInput = {
 
 export type PriceVariantSumOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  installerPrice?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -570,6 +598,7 @@ export type PriceVariantCreateWithoutMasterInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -584,6 +613,7 @@ export type PriceVariantUncheckedCreateWithoutMasterInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -628,6 +658,7 @@ export type PriceVariantScalarWhereInput = {
   name?: Prisma.StringFilter<"PriceVariant"> | string
   unit?: Prisma.StringFilter<"PriceVariant"> | string
   price?: Prisma.FloatFilter<"PriceVariant"> | number
+  installerPrice?: Prisma.FloatNullableFilter<"PriceVariant"> | number | null
   photoUrl?: Prisma.StringNullableFilter<"PriceVariant"> | string | null
   noInsert?: Prisma.BoolFilter<"PriceVariant"> | boolean
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
@@ -642,6 +673,7 @@ export type PriceVariantCreateManyMasterInput = {
   name: string
   unit: string
   price: number
+  installerPrice?: number | null
   photoUrl?: string | null
   noInsert?: boolean
   sortOrder?: number
@@ -656,6 +688,7 @@ export type PriceVariantUpdateWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -670,6 +703,7 @@ export type PriceVariantUncheckedUpdateWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -684,6 +718,7 @@ export type PriceVariantUncheckedUpdateManyWithoutMasterInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unit?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  installerPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   photoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noInsert?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -701,6 +736,7 @@ export type PriceVariantSelect<ExtArgs extends runtime.Types.Extensions.Internal
   name?: boolean
   unit?: boolean
   price?: boolean
+  installerPrice?: boolean
   photoUrl?: boolean
   noInsert?: boolean
   sortOrder?: boolean
@@ -717,6 +753,7 @@ export type PriceVariantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   name?: boolean
   unit?: boolean
   price?: boolean
+  installerPrice?: boolean
   photoUrl?: boolean
   noInsert?: boolean
   sortOrder?: boolean
@@ -733,6 +770,7 @@ export type PriceVariantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   name?: boolean
   unit?: boolean
   price?: boolean
+  installerPrice?: boolean
   photoUrl?: boolean
   noInsert?: boolean
   sortOrder?: boolean
@@ -749,6 +787,7 @@ export type PriceVariantSelectScalar = {
   name?: boolean
   unit?: boolean
   price?: boolean
+  installerPrice?: boolean
   photoUrl?: boolean
   noInsert?: boolean
   sortOrder?: boolean
@@ -756,7 +795,7 @@ export type PriceVariantSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "photoUrl" | "noInsert" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["priceVariant"]>
+export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "installerPrice" | "photoUrl" | "noInsert" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["priceVariant"]>
 export type PriceVariantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
@@ -780,6 +819,7 @@ export type $PriceVariantPayload<ExtArgs extends runtime.Types.Extensions.Intern
     name: string
     unit: string
     price: number
+    installerPrice: number | null
     photoUrl: string | null
     noInsert: boolean
     sortOrder: number
@@ -1216,6 +1256,7 @@ export interface PriceVariantFieldRefs {
   readonly name: Prisma.FieldRef<"PriceVariant", 'String'>
   readonly unit: Prisma.FieldRef<"PriceVariant", 'String'>
   readonly price: Prisma.FieldRef<"PriceVariant", 'Float'>
+  readonly installerPrice: Prisma.FieldRef<"PriceVariant", 'Float'>
   readonly photoUrl: Prisma.FieldRef<"PriceVariant", 'String'>
   readonly noInsert: Prisma.FieldRef<"PriceVariant", 'Boolean'>
   readonly sortOrder: Prisma.FieldRef<"PriceVariant", 'Int'>

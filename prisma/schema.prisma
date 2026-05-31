@@ -150,6 +150,9 @@ model MasterPrice {
   masterId String
   itemCode String // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
   price    Float
+  // Цена работы монтажнику. null = используется default (30% от price).
+  // Мастер выставляет вручную в Прайсе или в форме КП (Нариман 2026-05-31).
+  installerPrice Float?
   photoUrl String? // фото к дефолтной позиции (опционально)
   isHidden Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
 
@@ -195,6 +198,8 @@ model PriceVariant {
   name      String
   unit      String
   price     Float
+  // Цена работы монтажнику (Нариман 2026-05-31). null = default 30% от price.
+  installerPrice Float?
   photoUrl  String? // Vercel Blob URL
   noInsert  Boolean @default(false) // флаг «вариант профиля без вставки» (теневые/парящие)
   sortOrder Int     @default(0)

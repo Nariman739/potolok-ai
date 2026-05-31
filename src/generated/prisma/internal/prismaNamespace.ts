@@ -409,7 +409,8 @@ export const ModelName = {
   ObjectPhoto: 'ObjectPhoto',
   Rangefinder: 'Rangefinder',
   LogoGeneration: 'LogoGeneration',
-  PendingPayment: 'PendingPayment'
+  PendingPayment: 'PendingPayment',
+  ContentPlan: 'ContentPlan'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -425,7 +426,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "masterBrief" | "masterReview" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration" | "pendingPayment"
+    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "masterBrief" | "masterReview" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration" | "pendingPayment" | "contentPlan"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2353,6 +2354,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ContentPlan: {
+      payload: Prisma.$ContentPlanPayload<ExtArgs>
+      fields: Prisma.ContentPlanFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ContentPlanFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ContentPlanFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        findFirst: {
+          args: Prisma.ContentPlanFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ContentPlanFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        findMany: {
+          args: Prisma.ContentPlanFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>[]
+        }
+        create: {
+          args: Prisma.ContentPlanCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        createMany: {
+          args: Prisma.ContentPlanCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ContentPlanCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>[]
+        }
+        delete: {
+          args: Prisma.ContentPlanDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        update: {
+          args: Prisma.ContentPlanUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        deleteMany: {
+          args: Prisma.ContentPlanDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ContentPlanUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ContentPlanUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>[]
+        }
+        upsert: {
+          args: Prisma.ContentPlanUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ContentPlanPayload>
+        }
+        aggregate: {
+          args: Prisma.ContentPlanAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateContentPlan>
+        }
+        groupBy: {
+          args: Prisma.ContentPlanGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ContentPlanGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ContentPlanCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ContentPlanCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2476,6 +2551,7 @@ export const MasterPriceScalarFieldEnum = {
   masterId: 'masterId',
   itemCode: 'itemCode',
   price: 'price',
+  installerPrice: 'installerPrice',
   photoUrl: 'photoUrl',
   isHidden: 'isHidden'
 } as const
@@ -2506,6 +2582,7 @@ export const PriceVariantScalarFieldEnum = {
   name: 'name',
   unit: 'unit',
   price: 'price',
+  installerPrice: 'installerPrice',
   photoUrl: 'photoUrl',
   noInsert: 'noInsert',
   sortOrder: 'sortOrder',
@@ -2786,6 +2863,8 @@ export const InstagramSessionScalarFieldEnum = {
   masterId: 'masterId',
   mediaItems: 'mediaItems',
   userContext: 'userContext',
+  activeContentPlanId: 'activeContentPlanId',
+  activeContentPlanSetAt: 'activeContentPlanSetAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2889,6 +2968,32 @@ export const PendingPaymentScalarFieldEnum = {
 } as const
 
 export type PendingPaymentScalarFieldEnum = (typeof PendingPaymentScalarFieldEnum)[keyof typeof PendingPaymentScalarFieldEnum]
+
+
+export const ContentPlanScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  title: 'title',
+  feature: 'feature',
+  format: 'format',
+  audience: 'audience',
+  priority: 'priority',
+  status: 'status',
+  brief: 'brief',
+  isBriefSkeleton: 'isBriefSkeleton',
+  releaseTag: 'releaseTag',
+  series: 'series',
+  seriesOrder: 'seriesOrder',
+  scheduledFor: 'scheduledFor',
+  skipReason: 'skipReason',
+  publishedAt: 'publishedAt',
+  inBacklogSince: 'inBacklogSince',
+  instagramPostId: 'instagramPostId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ContentPlanScalarFieldEnum = (typeof ContentPlanScalarFieldEnum)[keyof typeof ContentPlanScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -3161,6 +3266,62 @@ export type EnumPaymentStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
 export type ListEnumPaymentStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PaymentStatus[]'>
     
 
+
+/**
+ * Reference to a field of type 'ContentFeature'
+ */
+export type EnumContentFeatureFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentFeature'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentFeature[]'
+ */
+export type ListEnumContentFeatureFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentFeature[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentFormat'
+ */
+export type EnumContentFormatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentFormat'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentFormat[]'
+ */
+export type ListEnumContentFormatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentFormat[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentAudience'
+ */
+export type EnumContentAudienceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentAudience'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentAudience[]'
+ */
+export type ListEnumContentAudienceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentAudience[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentPlanStatus'
+ */
+export type EnumContentPlanStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentPlanStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentPlanStatus[]'
+ */
+export type ListEnumContentPlanStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentPlanStatus[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -3282,6 +3443,7 @@ export type GlobalOmitConfig = {
   rangefinder?: Prisma.RangefinderOmit
   logoGeneration?: Prisma.LogoGenerationOmit
   pendingPayment?: Prisma.PendingPaymentOmit
+  contentPlan?: Prisma.ContentPlanOmit
 }
 
 /* Types for Logging */

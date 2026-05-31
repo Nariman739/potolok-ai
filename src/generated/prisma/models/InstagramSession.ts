@@ -29,6 +29,8 @@ export type InstagramSessionMinAggregateOutputType = {
   chatId: string | null
   masterId: string | null
   userContext: string | null
+  activeContentPlanId: string | null
+  activeContentPlanSetAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -38,6 +40,8 @@ export type InstagramSessionMaxAggregateOutputType = {
   chatId: string | null
   masterId: string | null
   userContext: string | null
+  activeContentPlanId: string | null
+  activeContentPlanSetAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -48,6 +52,8 @@ export type InstagramSessionCountAggregateOutputType = {
   masterId: number
   mediaItems: number
   userContext: number
+  activeContentPlanId: number
+  activeContentPlanSetAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -59,6 +65,8 @@ export type InstagramSessionMinAggregateInputType = {
   chatId?: true
   masterId?: true
   userContext?: true
+  activeContentPlanId?: true
+  activeContentPlanSetAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -68,6 +76,8 @@ export type InstagramSessionMaxAggregateInputType = {
   chatId?: true
   masterId?: true
   userContext?: true
+  activeContentPlanId?: true
+  activeContentPlanSetAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -78,6 +88,8 @@ export type InstagramSessionCountAggregateInputType = {
   masterId?: true
   mediaItems?: true
   userContext?: true
+  activeContentPlanId?: true
+  activeContentPlanSetAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -161,6 +173,8 @@ export type InstagramSessionGroupByOutputType = {
   masterId: string
   mediaItems: runtime.JsonValue
   userContext: string
+  activeContentPlanId: string | null
+  activeContentPlanSetAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: InstagramSessionCountAggregateOutputType | null
@@ -192,6 +206,8 @@ export type InstagramSessionWhereInput = {
   masterId?: Prisma.StringFilter<"InstagramSession"> | string
   mediaItems?: Prisma.JsonFilter<"InstagramSession">
   userContext?: Prisma.StringFilter<"InstagramSession"> | string
+  activeContentPlanId?: Prisma.StringNullableFilter<"InstagramSession"> | string | null
+  activeContentPlanSetAt?: Prisma.DateTimeNullableFilter<"InstagramSession"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"InstagramSession"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"InstagramSession"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -203,6 +219,8 @@ export type InstagramSessionOrderByWithRelationInput = {
   masterId?: Prisma.SortOrder
   mediaItems?: Prisma.SortOrder
   userContext?: Prisma.SortOrder
+  activeContentPlanId?: Prisma.SortOrderInput | Prisma.SortOrder
+  activeContentPlanSetAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
@@ -217,6 +235,8 @@ export type InstagramSessionWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.InstagramSessionWhereInput | Prisma.InstagramSessionWhereInput[]
   mediaItems?: Prisma.JsonFilter<"InstagramSession">
   userContext?: Prisma.StringFilter<"InstagramSession"> | string
+  activeContentPlanId?: Prisma.StringNullableFilter<"InstagramSession"> | string | null
+  activeContentPlanSetAt?: Prisma.DateTimeNullableFilter<"InstagramSession"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"InstagramSession"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"InstagramSession"> | Date | string
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -228,6 +248,8 @@ export type InstagramSessionOrderByWithAggregationInput = {
   masterId?: Prisma.SortOrder
   mediaItems?: Prisma.SortOrder
   userContext?: Prisma.SortOrder
+  activeContentPlanId?: Prisma.SortOrderInput | Prisma.SortOrder
+  activeContentPlanSetAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.InstagramSessionCountOrderByAggregateInput
@@ -244,6 +266,8 @@ export type InstagramSessionScalarWhereWithAggregatesInput = {
   masterId?: Prisma.StringWithAggregatesFilter<"InstagramSession"> | string
   mediaItems?: Prisma.JsonWithAggregatesFilter<"InstagramSession">
   userContext?: Prisma.StringWithAggregatesFilter<"InstagramSession"> | string
+  activeContentPlanId?: Prisma.StringNullableWithAggregatesFilter<"InstagramSession"> | string | null
+  activeContentPlanSetAt?: Prisma.DateTimeNullableWithAggregatesFilter<"InstagramSession"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"InstagramSession"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"InstagramSession"> | Date | string
 }
@@ -253,6 +277,8 @@ export type InstagramSessionCreateInput = {
   chatId: string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: string
+  activeContentPlanId?: string | null
+  activeContentPlanSetAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   master: Prisma.MasterCreateNestedOneWithoutInstagramSessionInput
@@ -264,6 +290,8 @@ export type InstagramSessionUncheckedCreateInput = {
   masterId: string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: string
+  activeContentPlanId?: string | null
+  activeContentPlanSetAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -273,6 +301,8 @@ export type InstagramSessionUpdateInput = {
   chatId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   master?: Prisma.MasterUpdateOneRequiredWithoutInstagramSessionNestedInput
@@ -284,6 +314,8 @@ export type InstagramSessionUncheckedUpdateInput = {
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -294,6 +326,8 @@ export type InstagramSessionCreateManyInput = {
   masterId: string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: string
+  activeContentPlanId?: string | null
+  activeContentPlanSetAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -303,6 +337,8 @@ export type InstagramSessionUpdateManyMutationInput = {
   chatId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -313,6 +349,8 @@ export type InstagramSessionUncheckedUpdateManyInput = {
   masterId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -328,6 +366,8 @@ export type InstagramSessionCountOrderByAggregateInput = {
   masterId?: Prisma.SortOrder
   mediaItems?: Prisma.SortOrder
   userContext?: Prisma.SortOrder
+  activeContentPlanId?: Prisma.SortOrder
+  activeContentPlanSetAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -337,6 +377,8 @@ export type InstagramSessionMaxOrderByAggregateInput = {
   chatId?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
   userContext?: Prisma.SortOrder
+  activeContentPlanId?: Prisma.SortOrder
+  activeContentPlanSetAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -346,6 +388,8 @@ export type InstagramSessionMinOrderByAggregateInput = {
   chatId?: Prisma.SortOrder
   masterId?: Prisma.SortOrder
   userContext?: Prisma.SortOrder
+  activeContentPlanId?: Prisma.SortOrder
+  activeContentPlanSetAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -387,6 +431,8 @@ export type InstagramSessionCreateWithoutMasterInput = {
   chatId: string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: string
+  activeContentPlanId?: string | null
+  activeContentPlanSetAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -396,6 +442,8 @@ export type InstagramSessionUncheckedCreateWithoutMasterInput = {
   chatId: string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: string
+  activeContentPlanId?: string | null
+  activeContentPlanSetAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -421,6 +469,8 @@ export type InstagramSessionUpdateWithoutMasterInput = {
   chatId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -430,6 +480,8 @@ export type InstagramSessionUncheckedUpdateWithoutMasterInput = {
   chatId?: Prisma.StringFieldUpdateOperationsInput | string
   mediaItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   userContext?: Prisma.StringFieldUpdateOperationsInput | string
+  activeContentPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activeContentPlanSetAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -442,6 +494,8 @@ export type InstagramSessionSelect<ExtArgs extends runtime.Types.Extensions.Inte
   masterId?: boolean
   mediaItems?: boolean
   userContext?: boolean
+  activeContentPlanId?: boolean
+  activeContentPlanSetAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -453,6 +507,8 @@ export type InstagramSessionSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   masterId?: boolean
   mediaItems?: boolean
   userContext?: boolean
+  activeContentPlanId?: boolean
+  activeContentPlanSetAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -464,6 +520,8 @@ export type InstagramSessionSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   masterId?: boolean
   mediaItems?: boolean
   userContext?: boolean
+  activeContentPlanId?: boolean
+  activeContentPlanSetAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -475,11 +533,13 @@ export type InstagramSessionSelectScalar = {
   masterId?: boolean
   mediaItems?: boolean
   userContext?: boolean
+  activeContentPlanId?: boolean
+  activeContentPlanSetAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type InstagramSessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "chatId" | "masterId" | "mediaItems" | "userContext" | "createdAt" | "updatedAt", ExtArgs["result"]["instagramSession"]>
+export type InstagramSessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "chatId" | "masterId" | "mediaItems" | "userContext" | "activeContentPlanId" | "activeContentPlanSetAt" | "createdAt" | "updatedAt", ExtArgs["result"]["instagramSession"]>
 export type InstagramSessionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
@@ -501,6 +561,8 @@ export type $InstagramSessionPayload<ExtArgs extends runtime.Types.Extensions.In
     masterId: string
     mediaItems: runtime.JsonValue
     userContext: string
+    activeContentPlanId: string | null
+    activeContentPlanSetAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["instagramSession"]>
@@ -932,6 +994,8 @@ export interface InstagramSessionFieldRefs {
   readonly masterId: Prisma.FieldRef<"InstagramSession", 'String'>
   readonly mediaItems: Prisma.FieldRef<"InstagramSession", 'Json'>
   readonly userContext: Prisma.FieldRef<"InstagramSession", 'String'>
+  readonly activeContentPlanId: Prisma.FieldRef<"InstagramSession", 'String'>
+  readonly activeContentPlanSetAt: Prisma.FieldRef<"InstagramSession", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"InstagramSession", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"InstagramSession", 'DateTime'>
 }

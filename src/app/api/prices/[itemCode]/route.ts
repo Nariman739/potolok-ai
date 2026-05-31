@@ -24,6 +24,7 @@ export async function PUT(
 
     const contentType = request.headers.get("content-type") || "";
     let price: number | undefined;
+    let installerPrice: number | null | undefined;
     let isHidden: boolean | undefined;
     let newPhotoUrl: string | null | undefined;
     let removePhoto = false;
@@ -31,6 +32,10 @@ export async function PUT(
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
       if (form.has("price")) price = parseFloat(String(form.get("price") || "0"));
+      if (form.has("installerPrice")) {
+        const raw = String(form.get("installerPrice"));
+        installerPrice = raw === "" || raw === "null" ? null : parseFloat(raw);
+      }
       if (form.has("isHidden")) isHidden = String(form.get("isHidden")) === "true";
       if (String(form.get("removePhoto")) === "true") removePhoto = true;
 
@@ -53,6 +58,9 @@ export async function PUT(
     } else {
       const body = await request.json();
       if (body.price !== undefined) price = Number(body.price);
+      if (body.installerPrice !== undefined) {
+        installerPrice = body.installerPrice === null ? null : Number(body.installerPrice);
+      }
       if (body.isHidden !== undefined) isHidden = Boolean(body.isHidden);
       if (body.removePhoto === true) removePhoto = true;
     }
@@ -68,10 +76,14 @@ export async function PUT(
 
     const data: {
       price?: number;
+      installerPrice?: number | null;
       photoUrl?: string | null;
       isHidden?: boolean;
     } = {};
     if (price !== undefined && !Number.isNaN(price)) data.price = price;
+    if (installerPrice !== undefined) {
+      data.installerPrice = installerPrice === null || Number.isNaN(installerPrice) ? null : installerPrice;
+    }
     if (isHidden !== undefined) data.isHidden = isHidden;
     if (newPhotoUrl !== undefined) data.photoUrl = newPhotoUrl;
     else if (removePhoto) data.photoUrl = null;
@@ -83,6 +95,7 @@ export async function PUT(
         masterId: master.id,
         itemCode,
         price: price ?? PRODUCT_BY_CODE[itemCode].defaultPrice,
+        installerPrice: installerPrice === null ? null : (installerPrice ?? null),
         photoUrl: newPhotoUrl ?? null,
         isHidden: isHidden ?? false,
       },
@@ -91,6 +104,7 @@ export async function PUT(
     return NextResponse.json({
       itemCode: result.itemCode,
       price: result.price,
+      installerPrice: result.installerPrice,
       photoUrl: result.photoUrl,
       isHidden: result.isHidden,
     });

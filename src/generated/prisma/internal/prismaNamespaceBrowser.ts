@@ -76,7 +76,8 @@ export const ModelName = {
   ObjectPhoto: 'ObjectPhoto',
   Rangefinder: 'Rangefinder',
   LogoGeneration: 'LogoGeneration',
-  PendingPayment: 'PendingPayment'
+  PendingPayment: 'PendingPayment',
+  ContentPlan: 'ContentPlan'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -179,6 +180,7 @@ export const MasterPriceScalarFieldEnum = {
   masterId: 'masterId',
   itemCode: 'itemCode',
   price: 'price',
+  installerPrice: 'installerPrice',
   photoUrl: 'photoUrl',
   isHidden: 'isHidden'
 } as const
@@ -209,6 +211,7 @@ export const PriceVariantScalarFieldEnum = {
   name: 'name',
   unit: 'unit',
   price: 'price',
+  installerPrice: 'installerPrice',
   photoUrl: 'photoUrl',
   noInsert: 'noInsert',
   sortOrder: 'sortOrder',
@@ -489,6 +492,8 @@ export const InstagramSessionScalarFieldEnum = {
   masterId: 'masterId',
   mediaItems: 'mediaItems',
   userContext: 'userContext',
+  activeContentPlanId: 'activeContentPlanId',
+  activeContentPlanSetAt: 'activeContentPlanSetAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -592,6 +597,32 @@ export const PendingPaymentScalarFieldEnum = {
 } as const
 
 export type PendingPaymentScalarFieldEnum = (typeof PendingPaymentScalarFieldEnum)[keyof typeof PendingPaymentScalarFieldEnum]
+
+
+export const ContentPlanScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  title: 'title',
+  feature: 'feature',
+  format: 'format',
+  audience: 'audience',
+  priority: 'priority',
+  status: 'status',
+  brief: 'brief',
+  isBriefSkeleton: 'isBriefSkeleton',
+  releaseTag: 'releaseTag',
+  series: 'series',
+  seriesOrder: 'seriesOrder',
+  scheduledFor: 'scheduledFor',
+  skipReason: 'skipReason',
+  publishedAt: 'publishedAt',
+  inBacklogSince: 'inBacklogSince',
+  instagramPostId: 'instagramPostId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ContentPlanScalarFieldEnum = (typeof ContentPlanScalarFieldEnum)[keyof typeof ContentPlanScalarFieldEnum]
 
 
 export const SortOrder = {

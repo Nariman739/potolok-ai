@@ -305,6 +305,7 @@ export type InstagramPostWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"InstagramPost"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"InstagramPost"> | Date | string
   account?: Prisma.XOR<Prisma.InstagramAccountScalarRelationFilter, Prisma.InstagramAccountWhereInput>
+  contentPlan?: Prisma.XOR<Prisma.ContentPlanNullableScalarRelationFilter, Prisma.ContentPlanWhereInput> | null
 }
 
 export type InstagramPostOrderByWithRelationInput = {
@@ -326,6 +327,7 @@ export type InstagramPostOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   account?: Prisma.InstagramAccountOrderByWithRelationInput
+  contentPlan?: Prisma.ContentPlanOrderByWithRelationInput
 }
 
 export type InstagramPostWhereUniqueInput = Prisma.AtLeast<{
@@ -350,6 +352,7 @@ export type InstagramPostWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"InstagramPost"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"InstagramPost"> | Date | string
   account?: Prisma.XOR<Prisma.InstagramAccountScalarRelationFilter, Prisma.InstagramAccountWhereInput>
+  contentPlan?: Prisma.XOR<Prisma.ContentPlanNullableScalarRelationFilter, Prisma.ContentPlanWhereInput> | null
 }, "id">
 
 export type InstagramPostOrderByWithAggregationInput = {
@@ -418,6 +421,7 @@ export type InstagramPostCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   account: Prisma.InstagramAccountCreateNestedOneWithoutPostsInput
+  contentPlan?: Prisma.ContentPlanCreateNestedOneWithoutInstagramPostInput
 }
 
 export type InstagramPostUncheckedCreateInput = {
@@ -438,6 +442,7 @@ export type InstagramPostUncheckedCreateInput = {
   telegramChatId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  contentPlan?: Prisma.ContentPlanUncheckedCreateNestedOneWithoutInstagramPostInput
 }
 
 export type InstagramPostUpdateInput = {
@@ -458,6 +463,7 @@ export type InstagramPostUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   account?: Prisma.InstagramAccountUpdateOneRequiredWithoutPostsNestedInput
+  contentPlan?: Prisma.ContentPlanUpdateOneWithoutInstagramPostNestedInput
 }
 
 export type InstagramPostUncheckedUpdateInput = {
@@ -478,6 +484,7 @@ export type InstagramPostUncheckedUpdateInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  contentPlan?: Prisma.ContentPlanUncheckedUpdateOneWithoutInstagramPostNestedInput
 }
 
 export type InstagramPostCreateManyInput = {
@@ -613,6 +620,11 @@ export type InstagramPostSumOrderByAggregateInput = {
   coverIndex?: Prisma.SortOrder
 }
 
+export type InstagramPostNullableScalarRelationFilter = {
+  is?: Prisma.InstagramPostWhereInput | null
+  isNot?: Prisma.InstagramPostWhereInput | null
+}
+
 export type InstagramPostCreateNestedManyWithoutAccountInput = {
   create?: Prisma.XOR<Prisma.InstagramPostCreateWithoutAccountInput, Prisma.InstagramPostUncheckedCreateWithoutAccountInput> | Prisma.InstagramPostCreateWithoutAccountInput[] | Prisma.InstagramPostUncheckedCreateWithoutAccountInput[]
   connectOrCreate?: Prisma.InstagramPostCreateOrConnectWithoutAccountInput | Prisma.InstagramPostCreateOrConnectWithoutAccountInput[]
@@ -668,6 +680,22 @@ export type EnumInstagramPostStatusFieldUpdateOperationsInput = {
   set?: $Enums.InstagramPostStatus
 }
 
+export type InstagramPostCreateNestedOneWithoutContentPlanInput = {
+  create?: Prisma.XOR<Prisma.InstagramPostCreateWithoutContentPlanInput, Prisma.InstagramPostUncheckedCreateWithoutContentPlanInput>
+  connectOrCreate?: Prisma.InstagramPostCreateOrConnectWithoutContentPlanInput
+  connect?: Prisma.InstagramPostWhereUniqueInput
+}
+
+export type InstagramPostUpdateOneWithoutContentPlanNestedInput = {
+  create?: Prisma.XOR<Prisma.InstagramPostCreateWithoutContentPlanInput, Prisma.InstagramPostUncheckedCreateWithoutContentPlanInput>
+  connectOrCreate?: Prisma.InstagramPostCreateOrConnectWithoutContentPlanInput
+  upsert?: Prisma.InstagramPostUpsertWithoutContentPlanInput
+  disconnect?: Prisma.InstagramPostWhereInput | boolean
+  delete?: Prisma.InstagramPostWhereInput | boolean
+  connect?: Prisma.InstagramPostWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InstagramPostUpdateToOneWithWhereWithoutContentPlanInput, Prisma.InstagramPostUpdateWithoutContentPlanInput>, Prisma.InstagramPostUncheckedUpdateWithoutContentPlanInput>
+}
+
 export type InstagramPostCreateWithoutAccountInput = {
   id?: string
   caption: string
@@ -685,6 +713,7 @@ export type InstagramPostCreateWithoutAccountInput = {
   telegramChatId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  contentPlan?: Prisma.ContentPlanCreateNestedOneWithoutInstagramPostInput
 }
 
 export type InstagramPostUncheckedCreateWithoutAccountInput = {
@@ -704,6 +733,7 @@ export type InstagramPostUncheckedCreateWithoutAccountInput = {
   telegramChatId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  contentPlan?: Prisma.ContentPlanUncheckedCreateNestedOneWithoutInstagramPostInput
 }
 
 export type InstagramPostCreateOrConnectWithoutAccountInput = {
@@ -755,6 +785,102 @@ export type InstagramPostScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"InstagramPost"> | Date | string
 }
 
+export type InstagramPostCreateWithoutContentPlanInput = {
+  id?: string
+  caption: string
+  hashtags: string
+  mediaUrls?: Prisma.InstagramPostCreatemediaUrlsInput | string[]
+  mediaType?: string
+  coverIndex?: number
+  agentAnalysis?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  postType?: string | null
+  scheduledAt?: Date | string | null
+  publishedAt?: Date | string | null
+  instagramMediaId?: string | null
+  status?: $Enums.InstagramPostStatus
+  errorMessage?: string | null
+  telegramChatId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  account: Prisma.InstagramAccountCreateNestedOneWithoutPostsInput
+}
+
+export type InstagramPostUncheckedCreateWithoutContentPlanInput = {
+  id?: string
+  instagramAccountId: string
+  caption: string
+  hashtags: string
+  mediaUrls?: Prisma.InstagramPostCreatemediaUrlsInput | string[]
+  mediaType?: string
+  coverIndex?: number
+  agentAnalysis?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  postType?: string | null
+  scheduledAt?: Date | string | null
+  publishedAt?: Date | string | null
+  instagramMediaId?: string | null
+  status?: $Enums.InstagramPostStatus
+  errorMessage?: string | null
+  telegramChatId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type InstagramPostCreateOrConnectWithoutContentPlanInput = {
+  where: Prisma.InstagramPostWhereUniqueInput
+  create: Prisma.XOR<Prisma.InstagramPostCreateWithoutContentPlanInput, Prisma.InstagramPostUncheckedCreateWithoutContentPlanInput>
+}
+
+export type InstagramPostUpsertWithoutContentPlanInput = {
+  update: Prisma.XOR<Prisma.InstagramPostUpdateWithoutContentPlanInput, Prisma.InstagramPostUncheckedUpdateWithoutContentPlanInput>
+  create: Prisma.XOR<Prisma.InstagramPostCreateWithoutContentPlanInput, Prisma.InstagramPostUncheckedCreateWithoutContentPlanInput>
+  where?: Prisma.InstagramPostWhereInput
+}
+
+export type InstagramPostUpdateToOneWithWhereWithoutContentPlanInput = {
+  where?: Prisma.InstagramPostWhereInput
+  data: Prisma.XOR<Prisma.InstagramPostUpdateWithoutContentPlanInput, Prisma.InstagramPostUncheckedUpdateWithoutContentPlanInput>
+}
+
+export type InstagramPostUpdateWithoutContentPlanInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  caption?: Prisma.StringFieldUpdateOperationsInput | string
+  hashtags?: Prisma.StringFieldUpdateOperationsInput | string
+  mediaUrls?: Prisma.InstagramPostUpdatemediaUrlsInput | string[]
+  mediaType?: Prisma.StringFieldUpdateOperationsInput | string
+  coverIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  agentAnalysis?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  postType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  instagramMediaId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumInstagramPostStatusFieldUpdateOperationsInput | $Enums.InstagramPostStatus
+  errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  account?: Prisma.InstagramAccountUpdateOneRequiredWithoutPostsNestedInput
+}
+
+export type InstagramPostUncheckedUpdateWithoutContentPlanInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramAccountId?: Prisma.StringFieldUpdateOperationsInput | string
+  caption?: Prisma.StringFieldUpdateOperationsInput | string
+  hashtags?: Prisma.StringFieldUpdateOperationsInput | string
+  mediaUrls?: Prisma.InstagramPostUpdatemediaUrlsInput | string[]
+  mediaType?: Prisma.StringFieldUpdateOperationsInput | string
+  coverIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  agentAnalysis?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  postType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  instagramMediaId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumInstagramPostStatusFieldUpdateOperationsInput | $Enums.InstagramPostStatus
+  errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type InstagramPostCreateManyAccountInput = {
   id?: string
   caption: string
@@ -791,6 +917,7 @@ export type InstagramPostUpdateWithoutAccountInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  contentPlan?: Prisma.ContentPlanUpdateOneWithoutInstagramPostNestedInput
 }
 
 export type InstagramPostUncheckedUpdateWithoutAccountInput = {
@@ -810,6 +937,7 @@ export type InstagramPostUncheckedUpdateWithoutAccountInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  contentPlan?: Prisma.ContentPlanUncheckedUpdateOneWithoutInstagramPostNestedInput
 }
 
 export type InstagramPostUncheckedUpdateManyWithoutAccountInput = {
@@ -852,6 +980,7 @@ export type InstagramPostSelect<ExtArgs extends runtime.Types.Extensions.Interna
   createdAt?: boolean
   updatedAt?: boolean
   account?: boolean | Prisma.InstagramAccountDefaultArgs<ExtArgs>
+  contentPlan?: boolean | Prisma.InstagramPost$contentPlanArgs<ExtArgs>
 }, ExtArgs["result"]["instagramPost"]>
 
 export type InstagramPostSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -919,6 +1048,7 @@ export type InstagramPostSelectScalar = {
 export type InstagramPostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "instagramAccountId" | "caption" | "hashtags" | "mediaUrls" | "mediaType" | "coverIndex" | "agentAnalysis" | "postType" | "scheduledAt" | "publishedAt" | "instagramMediaId" | "status" | "errorMessage" | "telegramChatId" | "createdAt" | "updatedAt", ExtArgs["result"]["instagramPost"]>
 export type InstagramPostInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   account?: boolean | Prisma.InstagramAccountDefaultArgs<ExtArgs>
+  contentPlan?: boolean | Prisma.InstagramPost$contentPlanArgs<ExtArgs>
 }
 export type InstagramPostIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   account?: boolean | Prisma.InstagramAccountDefaultArgs<ExtArgs>
@@ -931,6 +1061,7 @@ export type $InstagramPostPayload<ExtArgs extends runtime.Types.Extensions.Inter
   name: "InstagramPost"
   objects: {
     account: Prisma.$InstagramAccountPayload<ExtArgs>
+    contentPlan: Prisma.$ContentPlanPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1345,6 +1476,7 @@ readonly fields: InstagramPostFieldRefs;
 export interface Prisma__InstagramPostClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   account<T extends Prisma.InstagramAccountDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InstagramAccountDefaultArgs<ExtArgs>>): Prisma.Prisma__InstagramAccountClient<runtime.Types.Result.GetResult<Prisma.$InstagramAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  contentPlan<T extends Prisma.InstagramPost$contentPlanArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InstagramPost$contentPlanArgs<ExtArgs>>): Prisma.Prisma__ContentPlanClient<runtime.Types.Result.GetResult<Prisma.$ContentPlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1784,6 +1916,25 @@ export type InstagramPostDeleteManyArgs<ExtArgs extends runtime.Types.Extensions
    * Limit how many InstagramPosts to delete.
    */
   limit?: number
+}
+
+/**
+ * InstagramPost.contentPlan
+ */
+export type InstagramPost$contentPlanArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ContentPlan
+   */
+  select?: Prisma.ContentPlanSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ContentPlan
+   */
+  omit?: Prisma.ContentPlanOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentPlanInclude<ExtArgs> | null
+  where?: Prisma.ContentPlanWhereInput
 }
 
 /**

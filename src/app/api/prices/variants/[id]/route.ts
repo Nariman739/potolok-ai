@@ -21,6 +21,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       name?: string;
       unit?: string;
       price?: number;
+      installerPrice?: number | null;
       sortOrder?: number;
       photoUrl?: string | null;
       category?: string;
@@ -44,6 +45,10 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (form.has("name")) updates.name = String(form.get("name") || "").trim();
       if (form.has("unit")) updates.unit = String(form.get("unit") || "");
       if (form.has("price")) updates.price = parseFloat(String(form.get("price") || "0"));
+      if (form.has("installerPrice")) {
+        const raw = String(form.get("installerPrice"));
+        updates.installerPrice = raw === "" || raw === "null" ? null : parseFloat(raw);
+      }
       if (form.has("sortOrder")) updates.sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
       if (form.has("noInsert")) {
         const v = form.get("noInsert");
@@ -80,6 +85,9 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (body.name !== undefined) updates.name = String(body.name).trim();
       if (body.unit !== undefined) updates.unit = String(body.unit);
       if (body.price !== undefined) updates.price = parseFloat(String(body.price));
+      if (body.installerPrice !== undefined) {
+        updates.installerPrice = body.installerPrice === null ? null : Number(body.installerPrice);
+      }
       if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
       if (body.noInsert !== undefined) updates.noInsert = body.noInsert === true || body.noInsert === "true";
       if (body.category !== undefined) {

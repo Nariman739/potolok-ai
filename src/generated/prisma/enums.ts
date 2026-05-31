@@ -129,3 +129,49 @@ export const PaymentStatus = {
 } as const
 
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus]
+
+
+export const ContentFeature = {
+  ONBOARDING: 'ONBOARDING',
+  TECH_PASSPORT_AI: 'TECH_PASSPORT_AI',
+  MEASUREMENT: 'MEASUREMENT',
+  BLE_RULER: 'BLE_RULER',
+  CONSTRUCTOR_3D: 'CONSTRUCTOR_3D',
+  KP: 'KP',
+  CONTRACT: 'CONTRACT',
+  CRM: 'CRM',
+  PRICE_LIST: 'PRICE_LIST',
+  PORTFOLIO: 'PORTFOLIO',
+  GENERAL: 'GENERAL'
+} as const
+
+export type ContentFeature = (typeof ContentFeature)[keyof typeof ContentFeature]
+
+
+export const ContentFormat = {
+  REELS: 'REELS',
+  CAROUSEL: 'CAROUSEL',
+  POST: 'POST'
+} as const
+
+export type ContentFormat = (typeof ContentFormat)[keyof typeof ContentFormat]
+
+
+export const ContentAudience = {
+  MASTERS: 'MASTERS',
+  CLIENTS: 'CLIENTS',
+  BOTH: 'BOTH'
+} as const
+
+export type ContentAudience = (typeof ContentAudience)[keyof typeof ContentAudience]
+
+
+export const ContentPlanStatus = {
+  IDEA: 'IDEA',
+  READY: 'READY',
+  SCHEDULED: 'SCHEDULED',
+  PUBLISHED: 'PUBLISHED',
+  SKIPPED: 'SKIPPED'
+} as const
+
+export type ContentPlanStatus = (typeof ContentPlanStatus)[keyof typeof ContentPlanStatus]

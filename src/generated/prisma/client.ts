@@ -169,3 +169,8 @@ export type LogoGeneration = Prisma.LogoGenerationModel
  * 
  */
 export type PendingPayment = Prisma.PendingPaymentModel
+/**
+ * Model ContentPlan
+ * 
+ */
+export type ContentPlan = Prisma.ContentPlanModel
