@@ -106,6 +106,7 @@ model Master {
   priceVariants    PriceVariant[]
   estimates        Estimate[]
   sessions         Session[]
+  bridgeTokens     BridgeToken[]
   chatSessions     ChatSession[]
   customItems      CustomItem[]
   portfolioWorks   PortfolioWork[]
@@ -133,6 +134,21 @@ model Session {
   createdAt DateTime @default(now())
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+// Single-use, short-lived (≤60s) handoff token used by the mobile app to
+// open a web view as the same master without putting the long-lived
+// session_token into the URL (which would leak via logs, history, Referer).
+model BridgeToken {
+  id        String   @id @default(uuid())
+  masterId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 enum SubscriptionTier {

@@ -17,6 +17,7 @@ import {
   processInstagramPhotos,
   handleInstagramCallback,
 } from "@/lib/instagram-publisher";
+import { signTelegramConnectToken } from "@/lib/instagram-state";
 import {
   handleContentPlanCommand,
   handleNextTopicCommand,
@@ -1250,7 +1251,7 @@ export async function handleBotCommand(
         break;
       }
 
-      const connectUrl = `https://potolok.ai/api/auth/instagram/connect?chatId=${chatId}`;
+      const connectUrl = `https://potolok.ai/api/auth/instagram/connect?tg=${signTelegramConnectToken(chatId)}`;
 
       await sendTelegramMessageWithButtons(
         chatId,

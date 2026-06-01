@@ -277,7 +277,7 @@ export default async function PublicKpPage({
           Стоимость работ
         </h2>
         <ConfirmSection
-          estimateId={estimate.id}
+          publicId={estimate.publicId}
           calc={calc}
           total={estimate.total || estimate.standardTotal || 0}
           discountPercent={estimate.discountPercent}

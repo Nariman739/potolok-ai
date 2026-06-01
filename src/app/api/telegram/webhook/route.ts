@@ -26,15 +26,27 @@ import { activateSubscription, rejectPayment, notifyUserAboutPaymentDecision } f
 // Allow up to 60s for AI processing (vision + conversation)
 export const maxDuration = 60;
 
+// TELEGRAM_WEBHOOK_SECRET is REQUIRED — without it any attacker who knows the
+// webhook URL can replay updates and impersonate any linked master.
+// Resolved at module load so an unconfigured prod instance refuses to start.
+const TELEGRAM_WEBHOOK_SECRET = (() => {
+  const v = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!v || v.length < 16) {
+    throw new Error(
+      "TELEGRAM_WEBHOOK_SECRET is not set (need >=16 random chars). " +
+      "Generate with: openssl rand -base64 32, set it on Vercel AND on the " +
+      "webhook via setWebhook?secret_token=...",
+    );
+  }
+  return v;
+})();
+
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
   try {
-    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-    if (secret) {
-      const header = request.headers.get("x-telegram-bot-api-secret-token");
-      if (header !== secret) {
-        return NextResponse.json({ ok: false }, { status: 403 });
-      }
+    const header = request.headers.get("x-telegram-bot-api-secret-token");
+    if (header !== TELEGRAM_WEBHOOK_SECRET) {
+      return NextResponse.json({ ok: false }, { status: 401 });
     }
 
     const body = await request.json();

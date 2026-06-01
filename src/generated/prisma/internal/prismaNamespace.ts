@@ -386,6 +386,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   Master: 'Master',
   Session: 'Session',
+  BridgeToken: 'BridgeToken',
   MasterPrice: 'MasterPrice',
   CustomItem: 'CustomItem',
   PriceVariant: 'PriceVariant',
@@ -426,7 +427,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "master" | "session" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "masterBrief" | "masterReview" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration" | "pendingPayment" | "contentPlan"
+    modelProps: "master" | "session" | "bridgeToken" | "masterPrice" | "customItem" | "priceVariant" | "estimate" | "chatSession" | "measurementObject" | "measurementRoom" | "aiRenderLog" | "visualization" | "ceilingElement" | "visualizationElement" | "visualizationRender" | "portfolioWork" | "masterBrief" | "masterReview" | "instagramAccount" | "instagramPost" | "instagramSession" | "client" | "clientEvent" | "objectPhoto" | "rangefinder" | "logoGeneration" | "pendingPayment" | "contentPlan"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -575,6 +576,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.SessionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.SessionCountAggregateOutputType> | number
+        }
+      }
+    }
+    BridgeToken: {
+      payload: Prisma.$BridgeTokenPayload<ExtArgs>
+      fields: Prisma.BridgeTokenFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BridgeTokenFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BridgeTokenFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        findFirst: {
+          args: Prisma.BridgeTokenFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BridgeTokenFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        findMany: {
+          args: Prisma.BridgeTokenFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>[]
+        }
+        create: {
+          args: Prisma.BridgeTokenCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        createMany: {
+          args: Prisma.BridgeTokenCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BridgeTokenCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>[]
+        }
+        delete: {
+          args: Prisma.BridgeTokenDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        update: {
+          args: Prisma.BridgeTokenUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        deleteMany: {
+          args: Prisma.BridgeTokenDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BridgeTokenUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BridgeTokenUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>[]
+        }
+        upsert: {
+          args: Prisma.BridgeTokenUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BridgeTokenPayload>
+        }
+        aggregate: {
+          args: Prisma.BridgeTokenAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBridgeToken>
+        }
+        groupBy: {
+          args: Prisma.BridgeTokenGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BridgeTokenGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BridgeTokenCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BridgeTokenCountAggregateOutputType> | number
         }
       }
     }
@@ -2546,6 +2621,17 @@ export const SessionScalarFieldEnum = {
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
 
 
+export const BridgeTokenScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  token: 'token',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type BridgeTokenScalarFieldEnum = (typeof BridgeTokenScalarFieldEnum)[keyof typeof BridgeTokenScalarFieldEnum]
+
+
 export const MasterPriceScalarFieldEnum = {
   id: 'id',
   masterId: 'masterId',
@@ -3419,6 +3505,7 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   master?: Prisma.MasterOmit
   session?: Prisma.SessionOmit
+  bridgeToken?: Prisma.BridgeTokenOmit
   masterPrice?: Prisma.MasterPriceOmit
   customItem?: Prisma.CustomItemOmit
   priceVariant?: Prisma.PriceVariantOmit
