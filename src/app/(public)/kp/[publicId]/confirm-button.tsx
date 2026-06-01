@@ -3,11 +3,11 @@
 import { useState } from "react";
 
 interface ConfirmButtonProps {
-  estimateId: string;
+  publicId: string;
   initialConfirmed: boolean;
 }
 
-export function ConfirmButton({ estimateId, initialConfirmed }: ConfirmButtonProps) {
+export function ConfirmButton({ publicId, initialConfirmed }: ConfirmButtonProps) {
   const [confirmed, setConfirmed] = useState(initialConfirmed);
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +15,7 @@ export function ConfirmButton({ estimateId, initialConfirmed }: ConfirmButtonPro
     if (confirmed || loading) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/estimates/${estimateId}/confirm`, {
+      const res = await fetch(`/api/estimates/by-public/${publicId}/confirm`, {
         method: "POST",
       });
       if (res.ok) {

@@ -10,6 +10,7 @@
  */
 export type * from './models/Master'
 export type * from './models/Session'
+export type * from './models/BridgeToken'
 export type * from './models/MasterPrice'
 export type * from './models/CustomItem'
 export type * from './models/PriceVariant'

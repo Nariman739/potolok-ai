@@ -50,6 +50,11 @@ export type Master = Prisma.MasterModel
  */
 export type Session = Prisma.SessionModel
 /**
+ * Model BridgeToken
+ * 
+ */
+export type BridgeToken = Prisma.BridgeTokenModel
+/**
  * Model MasterPrice
  * 
  */

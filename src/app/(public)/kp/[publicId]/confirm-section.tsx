@@ -6,7 +6,7 @@ import type { CalculationResult, RoomResult } from "@/lib/types";
 import { ChevronDown } from "lucide-react";
 
 interface ConfirmSectionProps {
-  estimateId: string;
+  publicId: string;
   calc: CalculationResult;
   total: number;
   discountPercent: number;
@@ -16,7 +16,7 @@ interface ConfirmSectionProps {
 }
 
 export function ConfirmSection({
-  estimateId,
+  publicId,
   calc,
   total,
   discountPercent,
@@ -52,7 +52,7 @@ export function ConfirmSection({
     if (confirmed || loading) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/estimates/${estimateId}/confirm`, {
+      const res = await fetch(`/api/estimates/by-public/${publicId}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

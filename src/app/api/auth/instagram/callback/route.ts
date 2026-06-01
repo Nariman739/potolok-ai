@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLongLivedToken } from "@/lib/instagram";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { verifyOAuthState } from "@/lib/instagram-state";
 
 const GRAPH_FB_API = "https://graph.facebook.com/v21.0";
 
@@ -22,18 +23,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/instagram-connected?status=error&msg=missing_params", getBaseUrl(request)));
   }
 
-  // Decode state
-  let masterId: string;
-  try {
-    const state = JSON.parse(Buffer.from(stateParam, "base64url").toString());
-    masterId = state.masterId;
-    // Check timestamp — reject if older than 1 hour
-    if (Date.now() - state.ts > 3600000) {
-      return NextResponse.redirect(new URL("/instagram-connected?status=error&msg=expired", getBaseUrl(request)));
-    }
-  } catch {
+  // Verify signed state — rejects tampering, expiry, and bad signatures.
+  const verified = verifyOAuthState(stateParam);
+  if (!verified) {
     return NextResponse.redirect(new URL("/instagram-connected?status=error&msg=invalid_state", getBaseUrl(request)));
   }
+  const masterId = verified.masterId;
 
   const appId = process.env.INSTAGRAM_APP_ID;
   const appSecret = process.env.INSTAGRAM_APP_SECRET;

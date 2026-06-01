@@ -1,55 +1,47 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getCurrentMaster } from "@/lib/auth";
+import { verifyTelegramConnectToken, signOAuthState } from "@/lib/instagram-state";
 
-// GET /api/auth/instagram/connect?from=telegram&chatId=xxx
-// Generates Facebook OAuth URL and redirects user to it
+// GET /api/auth/instagram/connect
+//   - from web/mobile dashboard: requires a valid session cookie / Bearer
+//   - from Telegram bot: requires a signed ?tg=<token> issued by the bot
+// Either way, the masterId is derived from a trusted source, never from raw query.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const chatId = searchParams.get("chatId");
 
   const appId = process.env.INSTAGRAM_APP_ID;
   if (!appId) {
     return NextResponse.json({ error: "INSTAGRAM_APP_ID not configured" }, { status: 500 });
   }
 
-  // Find master by chatId (from Telegram) or by session cookie (from dashboard)
   let masterId: string | null = null;
 
-  if (chatId) {
-    const master = await prisma.master.findUnique({
-      where: { telegramChatId: chatId },
-      select: { id: true },
-    });
-    masterId = master?.id || null;
-  } else {
-    // Try session cookie
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("session")?.value;
-    if (sessionToken) {
-      const session = await prisma.session.findUnique({
-        where: { token: sessionToken },
-        select: { masterId: true, expiresAt: true },
+  const tgToken = searchParams.get("tg");
+  if (tgToken) {
+    const chatId = verifyTelegramConnectToken(tgToken);
+    if (chatId) {
+      const master = await prisma.master.findUnique({
+        where: { telegramChatId: chatId },
+        select: { id: true },
       });
-      if (session && session.expiresAt > new Date()) {
-        masterId = session.masterId;
-      }
+      masterId = master?.id || null;
     }
+  } else {
+    const master = await getCurrentMaster();
+    masterId = master?.id || null;
   }
 
   if (!masterId) {
     return NextResponse.json(
-      { error: "Аккаунт не найден. Привяжите Telegram к potolok.ai" },
+      { error: "Не авторизованы. Войдите в potolok.ai или используйте ссылку из Telegram-бота." },
       { status: 401 }
     );
   }
 
-  // Generate state token (masterId encrypted simple — for CSRF + identification)
-  const state = Buffer.from(JSON.stringify({ masterId, ts: Date.now() })).toString("base64url");
-
+  const state = signOAuthState(masterId);
   const redirectUri = `${getBaseUrl(request)}/api/auth/instagram/callback`;
 
-  // Facebook OAuth URL with Instagram permissions
   const oauthUrl = new URL("https://www.facebook.com/v21.0/dialog/oauth");
   oauthUrl.searchParams.set("client_id", appId);
   oauthUrl.searchParams.set("redirect_uri", redirectUri);

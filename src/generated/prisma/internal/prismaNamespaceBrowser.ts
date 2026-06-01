@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Master: 'Master',
   Session: 'Session',
+  BridgeToken: 'BridgeToken',
   MasterPrice: 'MasterPrice',
   CustomItem: 'CustomItem',
   PriceVariant: 'PriceVariant',
@@ -173,6 +174,17 @@ export const SessionScalarFieldEnum = {
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
+
+
+export const BridgeTokenScalarFieldEnum = {
+  id: 'id',
+  masterId: 'masterId',
+  token: 'token',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type BridgeTokenScalarFieldEnum = (typeof BridgeTokenScalarFieldEnum)[keyof typeof BridgeTokenScalarFieldEnum]
 
 
 export const MasterPriceScalarFieldEnum = {

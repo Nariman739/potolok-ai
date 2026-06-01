@@ -703,6 +703,7 @@ export type MasterWhereInput = {
   priceVariants?: Prisma.PriceVariantListRelationFilter
   estimates?: Prisma.EstimateListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
+  bridgeTokens?: Prisma.BridgeTokenListRelationFilter
   chatSessions?: Prisma.ChatSessionListRelationFilter
   customItems?: Prisma.CustomItemListRelationFilter
   portfolioWorks?: Prisma.PortfolioWorkListRelationFilter
@@ -787,6 +788,7 @@ export type MasterOrderByWithRelationInput = {
   priceVariants?: Prisma.PriceVariantOrderByRelationAggregateInput
   estimates?: Prisma.EstimateOrderByRelationAggregateInput
   sessions?: Prisma.SessionOrderByRelationAggregateInput
+  bridgeTokens?: Prisma.BridgeTokenOrderByRelationAggregateInput
   chatSessions?: Prisma.ChatSessionOrderByRelationAggregateInput
   customItems?: Prisma.CustomItemOrderByRelationAggregateInput
   portfolioWorks?: Prisma.PortfolioWorkOrderByRelationAggregateInput
@@ -874,6 +876,7 @@ export type MasterWhereUniqueInput = Prisma.AtLeast<{
   priceVariants?: Prisma.PriceVariantListRelationFilter
   estimates?: Prisma.EstimateListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
+  bridgeTokens?: Prisma.BridgeTokenListRelationFilter
   chatSessions?: Prisma.ChatSessionListRelationFilter
   customItems?: Prisma.CustomItemListRelationFilter
   portfolioWorks?: Prisma.PortfolioWorkListRelationFilter
@@ -1096,6 +1099,7 @@ export type MasterCreateInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -1180,6 +1184,7 @@ export type MasterUncheckedCreateInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -1264,6 +1269,7 @@ export type MasterUpdateInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -1348,6 +1354,7 @@ export type MasterUncheckedUpdateInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -1828,6 +1835,20 @@ export type MasterUpdateOneRequiredWithoutSessionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutSessionsInput, Prisma.MasterUpdateWithoutSessionsInput>, Prisma.MasterUncheckedUpdateWithoutSessionsInput>
 }
 
+export type MasterCreateNestedOneWithoutBridgeTokensInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutBridgeTokensInput, Prisma.MasterUncheckedCreateWithoutBridgeTokensInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutBridgeTokensInput
+  connect?: Prisma.MasterWhereUniqueInput
+}
+
+export type MasterUpdateOneRequiredWithoutBridgeTokensNestedInput = {
+  create?: Prisma.XOR<Prisma.MasterCreateWithoutBridgeTokensInput, Prisma.MasterUncheckedCreateWithoutBridgeTokensInput>
+  connectOrCreate?: Prisma.MasterCreateOrConnectWithoutBridgeTokensInput
+  upsert?: Prisma.MasterUpsertWithoutBridgeTokensInput
+  connect?: Prisma.MasterWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MasterUpdateToOneWithWhereWithoutBridgeTokensInput, Prisma.MasterUpdateWithoutBridgeTokensInput>, Prisma.MasterUncheckedUpdateWithoutBridgeTokensInput>
+}
+
 export type MasterCreateNestedOneWithoutPricesInput = {
   create?: Prisma.XOR<Prisma.MasterCreateWithoutPricesInput, Prisma.MasterUncheckedCreateWithoutPricesInput>
   connectOrCreate?: Prisma.MasterCreateOrConnectWithoutPricesInput
@@ -2151,6 +2172,7 @@ export type MasterCreateWithoutSessionsInput = {
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -2234,6 +2256,7 @@ export type MasterUncheckedCreateWithoutSessionsInput = {
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -2333,6 +2356,7 @@ export type MasterUpdateWithoutSessionsInput = {
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -2416,6 +2440,359 @@ export type MasterUncheckedUpdateWithoutSessionsInput = {
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUncheckedUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUncheckedUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUncheckedUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterCreateWithoutBridgeTokensInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentCreateNestedManyWithoutMasterInput
+}
+
+export type MasterUncheckedCreateWithoutBridgeTokensInput = {
+  id?: string
+  phone: string
+  email?: string | null
+  passwordHash: string
+  firstName: string
+  lastName?: string | null
+  companyName?: string | null
+  logoUrl?: string | null
+  brandColor?: string
+  instagramUrl?: string | null
+  whatsappPhone?: string | null
+  address?: string | null
+  telegramChatId?: string | null
+  telegramLinkCode?: string | null
+  resetOtp?: string | null
+  resetOtpExpiresAt?: Date | string | null
+  contractType?: string | null
+  bin?: string | null
+  iin?: string | null
+  legalName?: string | null
+  legalAddress?: string | null
+  bankName?: string | null
+  iban?: string | null
+  kbe?: string | null
+  bik?: string | null
+  passportData?: string | null
+  prepaymentPercent?: number
+  warrantyMaterials?: number
+  warrantyInstall?: number
+  contractCity?: string | null
+  subscriptionTier?: $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: number
+  kpMonthReset?: Date | string
+  paidUntil?: Date | string | null
+  billingNotes?: string | null
+  isOwner?: boolean
+  monthlyPrice?: number
+  isFounder?: boolean
+  founderActivatedAt?: Date | string | null
+  founderMonthsPaid?: number
+  welcomeSent?: boolean
+  hasUsedTrial?: boolean
+  notifyDealWon?: boolean
+  notifyDealLost?: boolean
+  smmPostsThisMonth?: number
+  smmMonthReset?: Date | string
+  logoGenerationsThisMonth?: number
+  logoMonthReset?: Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: number
+  visualizationsThisMonth?: number
+  visualizationMonthReset?: Date | string
+  onboardingCompleted?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: string | null
+  coverPhotoUrl?: string | null
+  portfolioSlug?: string | null
+  portfolioBio?: string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutMasterInput
+  visualizations?: Prisma.VisualizationUncheckedCreateNestedManyWithoutMasterInput
+  ceilingElements?: Prisma.CeilingElementUncheckedCreateNestedManyWithoutMasterInput
+  prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
+  priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
+  estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
+  customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
+  portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
+  reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
+  kpBrief?: Prisma.MasterBriefUncheckedCreateNestedOneWithoutMasterInput
+  measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutMasterInput
+  instagramAccount?: Prisma.InstagramAccountUncheckedCreateNestedOneWithoutMasterInput
+  instagramSession?: Prisma.InstagramSessionUncheckedCreateNestedOneWithoutMasterInput
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutMasterInput
+  objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutMasterInput
+  rangefinders?: Prisma.RangefinderUncheckedCreateNestedManyWithoutOwnerInput
+  pendingPayments?: Prisma.PendingPaymentUncheckedCreateNestedManyWithoutMasterInput
+}
+
+export type MasterCreateOrConnectWithoutBridgeTokensInput = {
+  where: Prisma.MasterWhereUniqueInput
+  create: Prisma.XOR<Prisma.MasterCreateWithoutBridgeTokensInput, Prisma.MasterUncheckedCreateWithoutBridgeTokensInput>
+}
+
+export type MasterUpsertWithoutBridgeTokensInput = {
+  update: Prisma.XOR<Prisma.MasterUpdateWithoutBridgeTokensInput, Prisma.MasterUncheckedUpdateWithoutBridgeTokensInput>
+  create: Prisma.XOR<Prisma.MasterCreateWithoutBridgeTokensInput, Prisma.MasterUncheckedCreateWithoutBridgeTokensInput>
+  where?: Prisma.MasterWhereInput
+}
+
+export type MasterUpdateToOneWithWhereWithoutBridgeTokensInput = {
+  where?: Prisma.MasterWhereInput
+  data: Prisma.XOR<Prisma.MasterUpdateWithoutBridgeTokensInput, Prisma.MasterUncheckedUpdateWithoutBridgeTokensInput>
+}
+
+export type MasterUpdateWithoutBridgeTokensInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
+  customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
+  portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
+  reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
+  kpBrief?: Prisma.MasterBriefUpdateOneWithoutMasterNestedInput
+  measurements?: Prisma.MeasurementObjectUpdateManyWithoutMasterNestedInput
+  instagramAccount?: Prisma.InstagramAccountUpdateOneWithoutMasterNestedInput
+  instagramSession?: Prisma.InstagramSessionUpdateOneWithoutMasterNestedInput
+  clients?: Prisma.ClientUpdateManyWithoutMasterNestedInput
+  objectPhotos?: Prisma.ObjectPhotoUpdateManyWithoutMasterNestedInput
+  rangefinders?: Prisma.RangefinderUpdateManyWithoutOwnerNestedInput
+  pendingPayments?: Prisma.PendingPaymentUpdateManyWithoutMasterNestedInput
+}
+
+export type MasterUncheckedUpdateWithoutBridgeTokensInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brandColor?: Prisma.StringFieldUpdateOperationsInput | string
+  instagramUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  whatsappPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  telegramLinkCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  resetOtpExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  contractType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  legalAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  iban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kbe?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bik?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passportData?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  prepaymentPercent?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyMaterials?: Prisma.IntFieldUpdateOperationsInput | number
+  warrantyInstall?: Prisma.IntFieldUpdateOperationsInput | number
+  contractCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionTier?: Prisma.EnumSubscriptionTierFieldUpdateOperationsInput | $Enums.SubscriptionTier
+  kpGeneratedThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  kpMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  billingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOwner?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  monthlyPrice?: Prisma.IntFieldUpdateOperationsInput | number
+  isFounder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  founderActivatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  founderMonthsPaid?: Prisma.IntFieldUpdateOperationsInput | number
+  welcomeSent?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasUsedTrial?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealWon?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  notifyDealLost?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  smmPostsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  smmMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoGenerationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  logoMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  logoBrief?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  smmProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  visualizationCredits?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationsThisMonth?: Prisma.IntFieldUpdateOperationsInput | number
+  visualizationMonthReset?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  onboardingCompleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kpConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverPhotoUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioSlug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  portfolioBio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoHistory?: Prisma.LogoGenerationUncheckedUpdateManyWithoutMasterNestedInput
+  visualizations?: Prisma.VisualizationUncheckedUpdateManyWithoutMasterNestedInput
+  ceilingElements?: Prisma.CeilingElementUncheckedUpdateManyWithoutMasterNestedInput
+  prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
+  priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
+  estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -2499,6 +2876,7 @@ export type MasterCreateWithoutPricesInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -2582,6 +2960,7 @@ export type MasterUncheckedCreateWithoutPricesInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -2681,6 +3060,7 @@ export type MasterUpdateWithoutPricesInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -2764,6 +3144,7 @@ export type MasterUncheckedUpdateWithoutPricesInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -2848,6 +3229,7 @@ export type MasterCreateWithoutCustomItemsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
@@ -2931,6 +3313,7 @@ export type MasterUncheckedCreateWithoutCustomItemsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
@@ -3030,6 +3413,7 @@ export type MasterUpdateWithoutCustomItemsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
@@ -3113,6 +3497,7 @@ export type MasterUncheckedUpdateWithoutCustomItemsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
@@ -3195,6 +3580,7 @@ export type MasterCreateWithoutPriceVariantsInput = {
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -3278,6 +3664,7 @@ export type MasterUncheckedCreateWithoutPriceVariantsInput = {
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -3377,6 +3764,7 @@ export type MasterUpdateWithoutPriceVariantsInput = {
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -3460,6 +3848,7 @@ export type MasterUncheckedUpdateWithoutPriceVariantsInput = {
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -3543,6 +3932,7 @@ export type MasterCreateWithoutEstimatesInput = {
   prices?: Prisma.MasterPriceCreateNestedManyWithoutMasterInput
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -3626,6 +4016,7 @@ export type MasterUncheckedCreateWithoutEstimatesInput = {
   prices?: Prisma.MasterPriceUncheckedCreateNestedManyWithoutMasterInput
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -3725,6 +4116,7 @@ export type MasterUpdateWithoutEstimatesInput = {
   prices?: Prisma.MasterPriceUpdateManyWithoutMasterNestedInput
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -3808,6 +4200,7 @@ export type MasterUncheckedUpdateWithoutEstimatesInput = {
   prices?: Prisma.MasterPriceUncheckedUpdateManyWithoutMasterNestedInput
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -3892,6 +4285,7 @@ export type MasterCreateWithoutChatSessionsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
@@ -3975,6 +4369,7 @@ export type MasterUncheckedCreateWithoutChatSessionsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
@@ -4074,6 +4469,7 @@ export type MasterUpdateWithoutChatSessionsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
@@ -4157,6 +4553,7 @@ export type MasterUncheckedUpdateWithoutChatSessionsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
@@ -4240,6 +4637,7 @@ export type MasterCreateWithoutMeasurementsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -4323,6 +4721,7 @@ export type MasterUncheckedCreateWithoutMeasurementsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -4422,6 +4821,7 @@ export type MasterUpdateWithoutMeasurementsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -4505,6 +4905,7 @@ export type MasterUncheckedUpdateWithoutMeasurementsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -4587,6 +4988,7 @@ export type MasterCreateWithoutVisualizationsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -4670,6 +5072,7 @@ export type MasterUncheckedCreateWithoutVisualizationsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -4769,6 +5172,7 @@ export type MasterUpdateWithoutVisualizationsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -4852,6 +5256,7 @@ export type MasterUncheckedUpdateWithoutVisualizationsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -4935,6 +5340,7 @@ export type MasterCreateWithoutCeilingElementsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -5018,6 +5424,7 @@ export type MasterUncheckedCreateWithoutCeilingElementsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -5117,6 +5524,7 @@ export type MasterUpdateWithoutCeilingElementsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -5200,6 +5608,7 @@ export type MasterUncheckedUpdateWithoutCeilingElementsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -5284,6 +5693,7 @@ export type MasterCreateWithoutPortfolioWorksInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewCreateNestedManyWithoutMasterInput
@@ -5367,6 +5777,7 @@ export type MasterUncheckedCreateWithoutPortfolioWorksInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   reviews?: Prisma.MasterReviewUncheckedCreateNestedManyWithoutMasterInput
@@ -5466,6 +5877,7 @@ export type MasterUpdateWithoutPortfolioWorksInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUpdateManyWithoutMasterNestedInput
@@ -5549,6 +5961,7 @@ export type MasterUncheckedUpdateWithoutPortfolioWorksInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   reviews?: Prisma.MasterReviewUncheckedUpdateManyWithoutMasterNestedInput
@@ -5632,6 +6045,7 @@ export type MasterCreateWithoutKpBriefInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -5715,6 +6129,7 @@ export type MasterUncheckedCreateWithoutKpBriefInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -5814,6 +6229,7 @@ export type MasterUpdateWithoutKpBriefInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -5897,6 +6313,7 @@ export type MasterUncheckedUpdateWithoutKpBriefInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -5980,6 +6397,7 @@ export type MasterCreateWithoutReviewsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -6063,6 +6481,7 @@ export type MasterUncheckedCreateWithoutReviewsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -6162,6 +6581,7 @@ export type MasterUpdateWithoutReviewsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -6245,6 +6665,7 @@ export type MasterUncheckedUpdateWithoutReviewsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -6328,6 +6749,7 @@ export type MasterCreateWithoutInstagramAccountInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -6411,6 +6833,7 @@ export type MasterUncheckedCreateWithoutInstagramAccountInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -6510,6 +6933,7 @@ export type MasterUpdateWithoutInstagramAccountInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -6593,6 +7017,7 @@ export type MasterUncheckedUpdateWithoutInstagramAccountInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -6676,6 +7101,7 @@ export type MasterCreateWithoutInstagramSessionInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -6759,6 +7185,7 @@ export type MasterUncheckedCreateWithoutInstagramSessionInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -6858,6 +7285,7 @@ export type MasterUpdateWithoutInstagramSessionInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -6941,6 +7369,7 @@ export type MasterUncheckedUpdateWithoutInstagramSessionInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -7024,6 +7453,7 @@ export type MasterCreateWithoutClientsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -7107,6 +7537,7 @@ export type MasterUncheckedCreateWithoutClientsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -7206,6 +7637,7 @@ export type MasterUpdateWithoutClientsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -7289,6 +7721,7 @@ export type MasterUncheckedUpdateWithoutClientsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -7372,6 +7805,7 @@ export type MasterCreateWithoutObjectPhotosInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -7455,6 +7889,7 @@ export type MasterUncheckedCreateWithoutObjectPhotosInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -7554,6 +7989,7 @@ export type MasterUpdateWithoutObjectPhotosInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -7637,6 +8073,7 @@ export type MasterUncheckedUpdateWithoutObjectPhotosInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -7720,6 +8157,7 @@ export type MasterCreateWithoutRangefindersInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -7803,6 +8241,7 @@ export type MasterUncheckedCreateWithoutRangefindersInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -7902,6 +8341,7 @@ export type MasterUpdateWithoutRangefindersInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -7985,6 +8425,7 @@ export type MasterUncheckedUpdateWithoutRangefindersInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -8067,6 +8508,7 @@ export type MasterCreateWithoutLogoHistoryInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -8150,6 +8592,7 @@ export type MasterUncheckedCreateWithoutLogoHistoryInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -8249,6 +8692,7 @@ export type MasterUpdateWithoutLogoHistoryInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -8332,6 +8776,7 @@ export type MasterUncheckedUpdateWithoutLogoHistoryInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -8416,6 +8861,7 @@ export type MasterCreateWithoutPendingPaymentsInput = {
   priceVariants?: Prisma.PriceVariantCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkCreateNestedManyWithoutMasterInput
@@ -8499,6 +8945,7 @@ export type MasterUncheckedCreateWithoutPendingPaymentsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedCreateNestedManyWithoutMasterInput
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutMasterInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutMasterInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedCreateNestedManyWithoutMasterInput
   chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutMasterInput
   customItems?: Prisma.CustomItemUncheckedCreateNestedManyWithoutMasterInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedCreateNestedManyWithoutMasterInput
@@ -8598,6 +9045,7 @@ export type MasterUpdateWithoutPendingPaymentsInput = {
   priceVariants?: Prisma.PriceVariantUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUpdateManyWithoutMasterNestedInput
@@ -8681,6 +9129,7 @@ export type MasterUncheckedUpdateWithoutPendingPaymentsInput = {
   priceVariants?: Prisma.PriceVariantUncheckedUpdateManyWithoutMasterNestedInput
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutMasterNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutMasterNestedInput
+  bridgeTokens?: Prisma.BridgeTokenUncheckedUpdateManyWithoutMasterNestedInput
   chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutMasterNestedInput
   customItems?: Prisma.CustomItemUncheckedUpdateManyWithoutMasterNestedInput
   portfolioWorks?: Prisma.PortfolioWorkUncheckedUpdateManyWithoutMasterNestedInput
@@ -8707,6 +9156,7 @@ export type MasterCountOutputType = {
   priceVariants: number
   estimates: number
   sessions: number
+  bridgeTokens: number
   chatSessions: number
   customItems: number
   portfolioWorks: number
@@ -8726,6 +9176,7 @@ export type MasterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   priceVariants?: boolean | MasterCountOutputTypeCountPriceVariantsArgs
   estimates?: boolean | MasterCountOutputTypeCountEstimatesArgs
   sessions?: boolean | MasterCountOutputTypeCountSessionsArgs
+  bridgeTokens?: boolean | MasterCountOutputTypeCountBridgeTokensArgs
   chatSessions?: boolean | MasterCountOutputTypeCountChatSessionsArgs
   customItems?: boolean | MasterCountOutputTypeCountCustomItemsArgs
   portfolioWorks?: boolean | MasterCountOutputTypeCountPortfolioWorksArgs
@@ -8794,6 +9245,13 @@ export type MasterCountOutputTypeCountEstimatesArgs<ExtArgs extends runtime.Type
  */
 export type MasterCountOutputTypeCountSessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.SessionWhereInput
+}
+
+/**
+ * MasterCountOutputType without action
+ */
+export type MasterCountOutputTypeCountBridgeTokensArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BridgeTokenWhereInput
 }
 
 /**
@@ -8930,6 +9388,7 @@ export type MasterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   priceVariants?: boolean | Prisma.Master$priceVariantsArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
   sessions?: boolean | Prisma.Master$sessionsArgs<ExtArgs>
+  bridgeTokens?: boolean | Prisma.Master$bridgeTokensArgs<ExtArgs>
   chatSessions?: boolean | Prisma.Master$chatSessionsArgs<ExtArgs>
   customItems?: boolean | Prisma.Master$customItemsArgs<ExtArgs>
   portfolioWorks?: boolean | Prisma.Master$portfolioWorksArgs<ExtArgs>
@@ -9149,6 +9608,7 @@ export type MasterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   priceVariants?: boolean | Prisma.Master$priceVariantsArgs<ExtArgs>
   estimates?: boolean | Prisma.Master$estimatesArgs<ExtArgs>
   sessions?: boolean | Prisma.Master$sessionsArgs<ExtArgs>
+  bridgeTokens?: boolean | Prisma.Master$bridgeTokensArgs<ExtArgs>
   chatSessions?: boolean | Prisma.Master$chatSessionsArgs<ExtArgs>
   customItems?: boolean | Prisma.Master$customItemsArgs<ExtArgs>
   portfolioWorks?: boolean | Prisma.Master$portfolioWorksArgs<ExtArgs>
@@ -9176,6 +9636,7 @@ export type $MasterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     priceVariants: Prisma.$PriceVariantPayload<ExtArgs>[]
     estimates: Prisma.$EstimatePayload<ExtArgs>[]
     sessions: Prisma.$SessionPayload<ExtArgs>[]
+    bridgeTokens: Prisma.$BridgeTokenPayload<ExtArgs>[]
     chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
     customItems: Prisma.$CustomItemPayload<ExtArgs>[]
     portfolioWorks: Prisma.$PortfolioWorkPayload<ExtArgs>[]
@@ -9653,6 +10114,7 @@ export interface Prisma__MasterClient<T, Null = never, ExtArgs extends runtime.T
   priceVariants<T extends Prisma.Master$priceVariantsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$priceVariantsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PriceVariantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   estimates<T extends Prisma.Master$estimatesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$estimatesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EstimatePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   sessions<T extends Prisma.Master$sessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  bridgeTokens<T extends Prisma.Master$bridgeTokensArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$bridgeTokensArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BridgeTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   chatSessions<T extends Prisma.Master$chatSessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   customItems<T extends Prisma.Master$customItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$customItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   portfolioWorks<T extends Prisma.Master$portfolioWorksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Master$portfolioWorksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioWorkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -10309,6 +10771,30 @@ export type Master$sessionsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.SessionScalarFieldEnum | Prisma.SessionScalarFieldEnum[]
+}
+
+/**
+ * Master.bridgeTokens
+ */
+export type Master$bridgeTokensArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BridgeToken
+   */
+  select?: Prisma.BridgeTokenSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BridgeToken
+   */
+  omit?: Prisma.BridgeTokenOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BridgeTokenInclude<ExtArgs> | null
+  where?: Prisma.BridgeTokenWhereInput
+  orderBy?: Prisma.BridgeTokenOrderByWithRelationInput | Prisma.BridgeTokenOrderByWithRelationInput[]
+  cursor?: Prisma.BridgeTokenWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BridgeTokenScalarFieldEnum | Prisma.BridgeTokenScalarFieldEnum[]
 }
 
 /**
