@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     const me = await requireAuth();
 
-    const rl = checkRateLimit(`payment-submit:${me.id}`, 5, 10 * 60 * 1000);
+    const rl = await checkRateLimit(`payment-submit:${me.id}`, 5, 10 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Слишком много заявок. Попробуйте позже." },

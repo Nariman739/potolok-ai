@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getOpenRouter } from "@/lib/openrouter";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 const PARSE_MODEL = "anthropic/claude-sonnet-4";
 
@@ -21,7 +22,15 @@ const SYSTEM_PROMPT = `Ты — помощник мастера натяжных
 
 export async function POST(request: Request) {
   try {
-    await requireAuth();
+    const master = await requireAuth();
+
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
 
     const { text } = await request.json();
     if (!text || typeof text !== "string" || text.trim().length < 3) {
@@ -62,6 +71,7 @@ export async function POST(request: Request) {
       unitPrice: Math.max(Number(item.unitPrice) || 0, 0),
     }));
 
+    await recordAiUsage(master.id);
     return NextResponse.json({ items: cleaned });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

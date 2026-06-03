@@ -2,10 +2,20 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { continueLogoChat, type LogoChatMessage } from "@/lib/logo-generation";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 export async function POST(request: Request) {
   try {
     const masterAuth = await requireAuth();
+
+    const budget = await checkAiBudget(masterAuth.id, masterRole(masterAuth));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
     const { history } = body as { history?: LogoChatMessage[] };
 
@@ -22,6 +32,7 @@ export async function POST(request: Request) {
     }
 
     const result = await continueLogoChat(master, history);
+    await recordAiUsage(masterAuth.id);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

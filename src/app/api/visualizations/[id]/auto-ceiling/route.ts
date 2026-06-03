@@ -6,12 +6,22 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { detectCeilingPolygon } from "@/lib/ai-visualization";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 export const maxDuration = 30;
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const master = await requireAuth();
+
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
+
     const { id } = await params;
 
     const viz = await prisma.visualization.findFirst({
@@ -30,6 +40,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const photoBase64 = Buffer.from(await photoRes.arrayBuffer()).toString("base64");
 
     const polygon = await detectCeilingPolygon(photoBase64, photoMime);
+    await recordAiUsage(master.id);
 
     return NextResponse.json({ polygon });
   } catch (error) {

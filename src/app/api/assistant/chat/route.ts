@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 import { buildSystemPrompt, VISION_EXTRACTION_PROMPT, computeRoomSummary } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
@@ -49,6 +50,15 @@ async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return new Response(
+        JSON.stringify({ error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt }),
+        { status: 429, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     const body = await request.json();
     const {
       message,
@@ -319,6 +329,8 @@ export async function POST(request: Request) {
             where: { id: sessionId },
             data: updateData,
           });
+
+          await recordAiUsage(master.id);
 
           // Send done
           controller.enqueue(

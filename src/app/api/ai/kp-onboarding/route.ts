@@ -5,6 +5,7 @@ import {
   generateKpConfigFromBrief,
   type MasterBrief,
 } from "@/lib/kp/ai-onboarding";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,14 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const master = await requireAuth();
+
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
 
     // Серик 28.05: онбординг теперь принимает массив `segments` (multi-select).
     // Старое поле `segment` (single) поддерживаем для backward-compat.
@@ -73,6 +82,7 @@ export async function POST(req: NextRequest) {
     };
 
     const result = await generateKpConfigFromBrief(brief);
+    await recordAiUsage(master.id);
 
     // Сохраняем бриф + результат AI в БД — для последующей аналитики рынка
     // (какие сегменты популярны в каких городах, какие гарантии типичны, и т.д.)
