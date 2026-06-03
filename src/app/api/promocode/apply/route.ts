@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     const me = await requireAuth();
 
-    const rl = checkRateLimit(`promocode:${me.id}`, 10, 10 * 60 * 1000);
+    const rl = await checkRateLimit(`promocode:${me.id}`, 10, 10 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Слишком много попыток. Попробуйте позже." },

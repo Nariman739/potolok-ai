@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { runTechpassportVision } from "@/lib/techpassport-vision";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 /**
  * POST /api/assistant/parse-techpassport
@@ -18,7 +19,15 @@ import { runTechpassportVision } from "@/lib/techpassport-vision";
  */
 export async function POST(request: Request) {
   try {
-    await requireAuth();
+    const master = await requireAuth();
+
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
@@ -47,6 +56,8 @@ export async function POST(request: Request) {
         { status: 422 },
       );
     }
+
+    await recordAiUsage(master.id);
 
     return NextResponse.json({
       rooms: result.rooms.map((r) => ({

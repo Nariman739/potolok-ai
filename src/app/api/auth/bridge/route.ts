@@ -22,7 +22,7 @@ const DEPRECATED_TOKEN_SUNSET = new Date("2026-06-15T00:00:00Z");
 
 export async function GET(request: Request) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = checkRateLimit(`bridge:${ip}`, 20, 60_000);
+  const rl = await checkRateLimit(`bridge:${ip}`, 20, 60_000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Слишком много попыток" },

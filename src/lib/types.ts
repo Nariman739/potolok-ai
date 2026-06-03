@@ -226,6 +226,7 @@ export interface MasterProfile {
   whatsappPhone?: string | null;
   address?: string | null;
   subscriptionTier: "FREE" | "PRO" | "PROPLUS";
+  isOwner: boolean;
   kpGeneratedThisMonth: number;
   telegramChatId?: string | null;
   // Contract settings

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { suggestCopy, type CopyFieldKind, type CopyContext } from "@/lib/kp/ai-copy";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,14 @@ export async function POST(req: NextRequest) {
   try {
     const master = await requireAuth();
 
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (!budget.allowed) {
+      return NextResponse.json(
+        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { status: 429 },
+      );
+    }
+
     const body = (await req.json()) as {
       field?: string;
       context?: CopyContext;
@@ -67,6 +76,7 @@ export async function POST(req: NextRequest) {
     };
 
     const suggestions = await suggestCopy(field, context, n);
+    await recordAiUsage(master.id);
 
     return NextResponse.json({ suggestions });
   } catch (err) {

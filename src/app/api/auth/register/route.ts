@@ -8,7 +8,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const rl = checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+    const rl = await checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Слишком много попыток регистрации. Попробуйте через час." },

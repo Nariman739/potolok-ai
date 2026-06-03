@@ -83,6 +83,7 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     whatsappPhone: m.whatsappPhone,
     address: m.address,
     subscriptionTier: m.subscriptionTier,
+    isOwner: m.isOwner,
     kpGeneratedThisMonth: m.kpGeneratedThisMonth,
     telegramChatId: m.telegramChatId,
     contractType: m.contractType,
