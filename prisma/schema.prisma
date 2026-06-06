@@ -230,6 +230,15 @@ model PriceVariant {
   noInsert       Boolean @default(false) // флаг «вариант профиля без вставки» (теневые/парящие)
   sortOrder      Int     @default(0)
 
+  // 3D-рендер: реальные размеры и характеристики товара. Используются
+  // для точного отображения в Scene3D (вместо обобщённой геометрии) и
+  // в AI-промпте (текст + опц. фото товара как reference).
+  physicalWidthMm  Int? // диаметр софита / ширина трека / ширина светолинии (мм)
+  physicalHeightMm Int? // глубина встраивания софита / высота профиля трека (мм)
+  colorHex         String? // основной цвет товара (#RRGGBB)
+  mountingType     String? // recessed | surface | pendant | track-mounted | profile
+  glbModelUrl      String? // опц. готовая 3D-модель в Vercel Blob
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   // Soft-delete (см. /dashboard/trash). null = живая запись.

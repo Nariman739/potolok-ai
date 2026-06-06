@@ -93,6 +93,17 @@ const FINISH_DESCRIPTORS: Record<CeilingFinish, string> = {
   glossy: "high-gloss stretched PVC ceiling with mirror-like reflections of the room",
 };
 
+export interface LinkedPriceVariantInfo {
+  id: string;
+  name: string;
+  category: string;
+  photoUrl?: string | null;
+  physicalWidthMm?: number | null;
+  physicalHeightMm?: number | null;
+  colorHex?: string | null;
+  mountingType?: string | null;
+}
+
 export interface SceneSourcePromptInput {
   elements: RoomElement[];
   finish: CeilingFinish;
@@ -104,6 +115,8 @@ export interface SceneSourcePromptInput {
   sourceType: "scene3d" | "scene2d";
   /** Готовая фраза про температуру света для добавления в промпт (warm 2700K / neutral 4000K / cool 6500K). */
   lightTempPromptHint?: string;
+  /** Конкретные товары из прайса мастера, привязанные к RoomElement'ам — для AI рендера реальных моделей. */
+  linkedVariants?: LinkedPriceVariantInfo[];
 }
 
 /**
@@ -170,6 +183,22 @@ export function buildScenePrompt(input: SceneSourcePromptInput): string {
 
   if (archElements.length > 0) {
     parts.push("Architectural elements visible in the room:", ...archElements.map((a) => `  • ${a}`));
+  }
+
+  if (input.linkedVariants && input.linkedVariants.length > 0) {
+    const variantLines = input.linkedVariants.map((v) => {
+      const spec: string[] = [];
+      if (v.physicalWidthMm) spec.push(`${v.physicalWidthMm}mm wide/diameter`);
+      if (v.physicalHeightMm) spec.push(`${v.physicalHeightMm}mm depth/height`);
+      if (v.colorHex) spec.push(`body color ${v.colorHex}`);
+      if (v.mountingType) spec.push(`${v.mountingType}-mounted`);
+      const specStr = spec.length > 0 ? ` — ${spec.join(", ")}` : "";
+      return `  • ${v.category}: «${v.name}»${specStr}`;
+    });
+    parts.push(
+      "REAL PRODUCTS from master's catalog — match EXACT appearance (shape, color, mounting style) for all corresponding fixtures:",
+      ...variantLines,
+    );
   }
 
   parts.push(

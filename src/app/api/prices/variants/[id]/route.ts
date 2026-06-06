@@ -26,6 +26,11 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       photoUrl?: string | null;
       category?: string;
       noInsert?: boolean;
+      physicalWidthMm?: number | null;
+      physicalHeightMm?: number | null;
+      colorHex?: string | null;
+      mountingType?: string | null;
+      glbModelUrl?: string | null;
     } = {};
 
     const ALLOWED_CATEGORIES_SET = new Set([
@@ -80,6 +85,17 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
         try { await del(existing.photoUrl); } catch { /* ignore */ }
         updates.photoUrl = null;
       }
+      if (form.has("physicalWidthMm")) {
+        const v = parseInt(String(form.get("physicalWidthMm")), 10);
+        updates.physicalWidthMm = Number.isFinite(v) ? v : null;
+      }
+      if (form.has("physicalHeightMm")) {
+        const v = parseInt(String(form.get("physicalHeightMm")), 10);
+        updates.physicalHeightMm = Number.isFinite(v) ? v : null;
+      }
+      if (form.has("colorHex")) updates.colorHex = (form.get("colorHex") as string) || null;
+      if (form.has("mountingType")) updates.mountingType = (form.get("mountingType") as string) || null;
+      if (form.has("glbModelUrl")) updates.glbModelUrl = (form.get("glbModelUrl") as string) || null;
     } else {
       const body = await request.json();
       if (body.name !== undefined) updates.name = String(body.name).trim();
@@ -97,6 +113,15 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
         }
         updates.category = cat;
       }
+      if (body.physicalWidthMm !== undefined) {
+        updates.physicalWidthMm = body.physicalWidthMm === null ? null : Number(body.physicalWidthMm);
+      }
+      if (body.physicalHeightMm !== undefined) {
+        updates.physicalHeightMm = body.physicalHeightMm === null ? null : Number(body.physicalHeightMm);
+      }
+      if (body.colorHex !== undefined) updates.colorHex = body.colorHex === null ? null : String(body.colorHex);
+      if (body.mountingType !== undefined) updates.mountingType = body.mountingType === null ? null : String(body.mountingType);
+      if (body.glbModelUrl !== undefined) updates.glbModelUrl = body.glbModelUrl === null ? null : String(body.glbModelUrl);
     }
 
     if (updates.price !== undefined && (!isFinite(updates.price) || updates.price < 0)) {

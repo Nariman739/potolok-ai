@@ -65,6 +65,12 @@ export async function POST(request: NextRequest) {
     let photoUrl: string | null = null;
     let sortOrder = 0;
     let noInsert = false;
+    // 3D-spec поля (опц.)
+    let physicalWidthMm: number | null = null;
+    let physicalHeightMm: number | null = null;
+    let colorHex: string | null = null;
+    let mountingType: string | null = null;
+    let glbModelUrl: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       // С фото — multipart
@@ -80,6 +86,17 @@ export async function POST(request: NextRequest) {
       baseCode = (form.get("baseCode") as string) || null;
       sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
       noInsert = form.get("noInsert") === "1" || form.get("noInsert") === "true";
+      if (form.has("physicalWidthMm")) {
+        const v = parseInt(String(form.get("physicalWidthMm")), 10);
+        physicalWidthMm = Number.isFinite(v) ? v : null;
+      }
+      if (form.has("physicalHeightMm")) {
+        const v = parseInt(String(form.get("physicalHeightMm")), 10);
+        physicalHeightMm = Number.isFinite(v) ? v : null;
+      }
+      colorHex = (form.get("colorHex") as string) || null;
+      mountingType = (form.get("mountingType") as string) || null;
+      glbModelUrl = (form.get("glbModelUrl") as string) || null;
 
       const file = form.get("photo") as File | null;
       if (file && file.size > 0) {
@@ -105,6 +122,11 @@ export async function POST(request: NextRequest) {
       baseCode = body.baseCode || null;
       sortOrder = body.sortOrder ?? 0;
       noInsert = body.noInsert === true || body.noInsert === "true";
+      physicalWidthMm = typeof body.physicalWidthMm === "number" ? body.physicalWidthMm : null;
+      physicalHeightMm = typeof body.physicalHeightMm === "number" ? body.physicalHeightMm : null;
+      colorHex = typeof body.colorHex === "string" ? body.colorHex : null;
+      mountingType = typeof body.mountingType === "string" ? body.mountingType : null;
+      glbModelUrl = typeof body.glbModelUrl === "string" ? body.glbModelUrl : null;
     }
 
     if (!isCategory(category)) {
@@ -132,6 +154,11 @@ export async function POST(request: NextRequest) {
         photoUrl,
         sortOrder,
         noInsert,
+        physicalWidthMm,
+        physicalHeightMm,
+        colorHex,
+        mountingType,
+        glbModelUrl,
       },
     });
 
