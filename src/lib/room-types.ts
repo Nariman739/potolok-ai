@@ -58,6 +58,12 @@ export interface RoomElement {
   /** ID группы (для софитов в паре/тройке) — при drag двигаются вместe. */
   groupId?: string;
   /**
+   * Привязка к конкретному товару из прайса мастера (PriceVariant.id).
+   * Если задано — в 3D рендерится модель с реальными размерами/цветом,
+   * AI-промпт включает spec и опционально фото товара как reference.
+   */
+  priceVariantId?: string;
+  /**
    * @deprecated Legacy-поля для подшторника «через выступы». Текущая
    * single-anchor модель хранит сторону через `wallIndex` (anchor) +
    * `wallPosition` (может выходить за [0..1]) + `length` (может превышать

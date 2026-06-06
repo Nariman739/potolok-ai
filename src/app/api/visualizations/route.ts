@@ -75,6 +75,16 @@ export async function POST(request: Request) {
         kelvin?: number;
         lightTempKey?: "warm" | "neutral" | "cool";
         lightTempPromptHint?: string;
+        linkedVariants?: Array<{
+          id: string;
+          name: string;
+          category: string;
+          photoUrl?: string | null;
+          physicalWidthMm?: number | null;
+          physicalHeightMm?: number | null;
+          colorHex?: string | null;
+          mountingType?: string | null;
+        }>;
       };
 
       if (body.sourceType !== "scene3d" && body.sourceType !== "scene2d") {
@@ -120,6 +130,7 @@ export async function POST(request: Request) {
             kelvin: typeof body.kelvin === "number" ? body.kelvin : null,
             lightTempKey: body.lightTempKey || null,
             lightTempPromptHint: body.lightTempPromptHint || null,
+            linkedVariants: Array.isArray(body.linkedVariants) ? body.linkedVariants : [],
           } as unknown as object,
         },
       });

@@ -512,6 +512,16 @@ async function renderFromScene(
     kelvin?: number;
     lightTempKey?: "warm" | "neutral" | "cool";
     lightTempPromptHint?: string;
+    linkedVariants?: Array<{
+      id: string;
+      name: string;
+      category: string;
+      photoUrl?: string | null;
+      physicalWidthMm?: number | null;
+      physicalHeightMm?: number | null;
+      colorHex?: string | null;
+      mountingType?: string | null;
+    }>;
   };
   const elements = Array.isArray(markup.elements) ? markup.elements : [];
   const finish: CeilingFinish = (markup.finish as CeilingFinish) ?? "matte";
@@ -545,6 +555,7 @@ async function renderFromScene(
   const sourceType = viz.sourceType as "scene3d" | "scene2d";
 
   const lightTempPromptHint = typeof markup.lightTempPromptHint === "string" ? markup.lightTempPromptHint : undefined;
+  const linkedVariants = Array.isArray(markup.linkedVariants) ? markup.linkedVariants : undefined;
 
   const customPrompt = hasReference
     ? buildHybridScenePrompt({
@@ -556,6 +567,7 @@ async function renderFromScene(
         sourceType,
         referenceDescription,
         lightTempPromptHint,
+        linkedVariants,
       })
     : buildScenePrompt({
         elements,
@@ -565,6 +577,7 @@ async function renderFromScene(
         extraPrompt: markup.extraPrompt,
         sourceType,
         lightTempPromptHint,
+        linkedVariants,
       });
 
   // FLUX Kontext не умеет multi-image, при гибриде форсим nano-banana.

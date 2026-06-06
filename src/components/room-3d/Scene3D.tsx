@@ -144,6 +144,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       id: string;
       pos: [number, number, number];
       variant?: "ours" | "client";
+      priceVariantId?: string;
     }> = [];
     for (const el of elements) {
       if (el.x === undefined || el.y === undefined) continue;
@@ -155,10 +156,46 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         id: el.id,
         pos: [x, ceilingM, z],
         variant: el.variant,
+        priceVariantId: el.priceVariantId,
       });
     }
     return items;
   }, [elements, centerOffset.x, centerOffset.z, ceilingM]);
+
+  interface LinkedPriceVariant {
+    id: string;
+    name: string;
+    category: string;
+    photoUrl: string | null;
+    physicalWidthMm: number | null;
+    physicalHeightMm: number | null;
+    colorHex: string | null;
+    mountingType: string | null;
+    glbModelUrl: string | null;
+  }
+  const [priceVariants, setPriceVariants] = useState<Map<string, LinkedPriceVariant>>(new Map());
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const el of elements) if (el.priceVariantId) ids.add(el.priceVariantId);
+    if (ids.size === 0) {
+      if (priceVariants.size > 0) setPriceVariants(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/prices/variants", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: LinkedPriceVariant[]) => {
+        if (cancelled) return;
+        const map = new Map<string, LinkedPriceVariant>();
+        for (const v of list) if (ids.has(v.id)) map.set(v.id, v);
+        setPriceVariants(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements]);
 
   const totalLightSources = lightFixtures.length;
   const lightBudget = totalLightSources <= MAX_POINT_LIGHTS;
@@ -193,6 +230,18 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     try {
       const colorEntry = CEILING_COLORS.find((c) => c.id === ceilingColorId);
 
+      // Собираем привязанные товары из прайса для AI-промпта.
+      const linkedVariants = Array.from(priceVariants.values()).map((v) => ({
+        id: v.id,
+        name: v.name,
+        category: v.category,
+        photoUrl: v.photoUrl,
+        physicalWidthMm: v.physicalWidthMm,
+        physicalHeightMm: v.physicalHeightMm,
+        colorHex: v.colorHex,
+        mountingType: v.mountingType,
+      }));
+
       // 1) create draft Visualization (sourceType=scene3d)
       const createRes = await fetch("/api/visualizations", {
         method: "POST",
@@ -207,6 +256,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           kelvin: lightTemp.kelvin,
           lightTempKey: lightTemp.key,
           lightTempPromptHint: lightTemp.promptHint,
+          linkedVariants,
         }),
       });
       if (!createRes.ok) {
@@ -232,7 +282,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
       setAiState("error");
     }
-  }, [ceilingFinish, ceilingColorId, elements, lightTemp]);
+  }, [ceilingFinish, ceilingColorId, elements, lightTemp, priceVariants]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
@@ -454,13 +504,31 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           />
         )}
 
-        {lightFixtures.map((f) =>
-          f.kind === "spot" ? (
-            <Spot3D key={f.id} position={f.pos} variant={f.variant} withLight={lightBudget} lightColor={lightTemp.hex} />
-          ) : (
-            <Chandelier3D key={f.id} position={f.pos} withLight={lightBudget} lightColor={lightTemp.hex} />
-          ),
-        )}
+        {lightFixtures.map((f) => {
+          const pv = f.priceVariantId ? priceVariants.get(f.priceVariantId) : undefined;
+          if (f.kind === "spot") {
+            return (
+              <Spot3D
+                key={f.id}
+                position={f.pos}
+                variant={f.variant}
+                withLight={lightBudget}
+                lightColor={lightTemp.hex}
+                diameterMm={pv?.physicalWidthMm ?? undefined}
+                depthMm={pv?.physicalHeightMm ?? undefined}
+                bodyColor={pv?.colorHex ?? undefined}
+              />
+            );
+          }
+          return (
+            <Chandelier3D
+              key={f.id}
+              position={f.pos}
+              withLight={lightBudget}
+              lightColor={lightTemp.hex}
+            />
+          );
+        })}
 
         {furnitureItems.map((f) => (
           <Furniture3D
