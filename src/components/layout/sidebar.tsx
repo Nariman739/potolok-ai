@@ -17,6 +17,7 @@ import {
   Users,
   Crown,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/dashboard/visualization", label: "AI-визуализация", icon: Sparkles },
   { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
+  { href: "/dashboard/trash", label: "Корзина", icon: Trash2 },
 ];
 
 export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
