@@ -3,6 +3,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, PerformanceMonitor } from "@react-three/drei";
+import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
 import {
@@ -14,6 +16,14 @@ import {
   DEFAULT_LIGHT_TEMP,
   getLightTempByKey,
   type LightTempKey,
+  FLOOR_PRESETS,
+  WALL_PRESETS,
+  DEFAULT_FLOOR,
+  DEFAULT_WALL,
+  getFloorPreset,
+  getWallPreset,
+  type FloorPresetId,
+  type WallPresetId,
 } from "./constants";
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
 import { ScreenshotCapture } from "./ScreenshotCapture";
@@ -80,6 +90,16 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     const v = window.localStorage.getItem("potolok3d.kelvin");
     return v === "warm" || v === "neutral" || v === "cool" ? v : DEFAULT_LIGHT_TEMP;
   });
+  const [floorId, setFloorId] = useState<FloorPresetId>(() => {
+    if (typeof window === "undefined") return DEFAULT_FLOOR;
+    const v = window.localStorage.getItem("potolok3d.floor");
+    return FLOOR_PRESETS.some((f) => f.id === v) ? (v as FloorPresetId) : DEFAULT_FLOOR;
+  });
+  const [wallId, setWallId] = useState<WallPresetId>(() => {
+    if (typeof window === "undefined") return DEFAULT_WALL;
+    const v = window.localStorage.getItem("potolok3d.wall");
+    return WALL_PRESETS.some((w) => w.id === v) ? (v as WallPresetId) : DEFAULT_WALL;
+  });
   const [showCeilingPanel, setShowCeilingPanel] = useState(false);
   // Адаптивное качество: high — с Environment HDR + ContactShadows; low — без них (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
@@ -105,6 +125,14 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     if (typeof window === "undefined") return;
     window.localStorage.setItem("potolok3d.kelvin", lightTempKey);
   }, [lightTempKey]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("potolok3d.floor", floorId);
+  }, [floorId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("potolok3d.wall", wallId);
+  }, [wallId]);
   const lookRef = useRef<LookAroundHandle | null>(null);
 
   const ceilingColor = useMemo(
@@ -113,6 +141,8 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   );
 
   const lightTemp = useMemo(() => getLightTempByKey(lightTempKey), [lightTempKey]);
+  const floorPreset = useMemo(() => getFloorPreset(floorId), [floorId]);
+  const wallPreset = useMemo(() => getWallPreset(wallId), [wallId]);
 
   const { centerOffset, roomSize } = useMemo(() => {
     if (vertices.length === 0) {
@@ -257,6 +287,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           lightTempKey: lightTemp.key,
           lightTempPromptHint: lightTemp.promptHint,
           linkedVariants,
+          floorPresetId: floorPreset.id,
+          floorPromptDesc: floorPreset.promptDesc,
+          wallPresetId: wallPreset.id,
+          wallPromptDesc: wallPreset.promptDesc,
         }),
       });
       if (!createRes.ok) {
@@ -282,7 +316,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
       setAiState("error");
     }
-  }, [ceilingFinish, ceilingColorId, elements, lightTemp, priceVariants]);
+  }, [ceilingFinish, ceilingColorId, elements, lightTemp, priceVariants, floorPreset, wallPreset]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
@@ -489,6 +523,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           wallCutouts={wallCutouts}
           ceilingColor={ceilingColor}
           ceilingFinish={ceilingFinish}
+          floorColor={floorPreset.color}
+          floorRoughness={floorPreset.roughness}
+          wallColor={wallPreset.color}
+          wallRoughness={wallPreset.roughness}
         />
 
         {/* Контактные тени под мебелью — без shadow maps, работает на iOS */}
@@ -558,6 +596,16 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
         <ScreenshotCapture trigger={aiTrigger} onCapture={handleAiCapture} />
+
+        {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
+        {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader. */}
+        {quality === "high" && (
+          <EffectComposer>
+            <Bloom mipmapBlur intensity={0.55} luminanceThreshold={0.78} luminanceSmoothing={0.5} />
+            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+            <Vignette eskil={false} offset={0.15} darkness={0.45} />
+          </EffectComposer>
+        )}
       </Canvas>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
@@ -649,6 +697,30 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
                 })}
               </div>
               <div className="text-[10px] text-gray-400 mt-1 text-center">{lightTemp.kelvin}K</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Пол</div>
+              <select
+                value={floorId}
+                onChange={(e) => setFloorId(e.target.value as FloorPresetId)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-medium text-gray-700"
+              >
+                {FLOOR_PRESETS.map((f) => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Стены</div>
+              <select
+                value={wallId}
+                onChange={(e) => setWallId(e.target.value as WallPresetId)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-medium text-gray-700"
+              >
+                {WALL_PRESETS.map((w) => (
+                  <option key={w.id} value={w.id}>{w.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         )}

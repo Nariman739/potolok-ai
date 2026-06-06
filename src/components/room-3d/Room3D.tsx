@@ -21,6 +21,12 @@ interface Room3DProps {
   ceilingColor: string;
   ceilingFinish: CeilingFinish;
   hideCeiling?: boolean;
+  /** Цвет пола из пресета (если текстура не загрузилась — fallback). */
+  floorColor?: string;
+  floorRoughness?: number;
+  /** Цвет стен из пресета. */
+  wallColor?: string;
+  wallRoughness?: number;
 }
 
 const WALL_THICKNESS = 0.06;
@@ -35,7 +41,19 @@ const FINISH_PARAMS: Record<CeilingFinish, { roughness: number; metalness: numbe
   glossy: { roughness: 0.08, metalness: 0.15, envIntensity: 1.6 },
 };
 
-export function Room3D({ vertices, ceilingHeight, centerOffset, wallCutouts, ceilingColor, ceilingFinish, hideCeiling = false }: Room3DProps) {
+export function Room3D({
+  vertices,
+  ceilingHeight,
+  centerOffset,
+  wallCutouts,
+  ceilingColor,
+  ceilingFinish,
+  hideCeiling = false,
+  floorColor = "#D6CFC2",
+  floorRoughness = 0.85,
+  wallColor = "#F2EFEA",
+  wallRoughness = 0.85,
+}: Room3DProps) {
   const ceilingM = cm2m(ceilingHeight);
   const finish = FINISH_PARAMS[ceilingFinish];
 
@@ -119,7 +137,7 @@ export function Room3D({ vertices, ceilingHeight, centerOffset, wallCutouts, cei
     <group>
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <shapeGeometry args={[floorShape]} />
-        <meshStandardMaterial color="#D6CFC2" roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
       {!hideCeiling && (
@@ -138,7 +156,7 @@ export function Room3D({ vertices, ceilingHeight, centerOffset, wallCutouts, cei
       {wallMeshes.map((w) => (
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <mesh geometry={w.geometry} castShadow receiveShadow>
-            <meshStandardMaterial color="#F2EFEA" roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
+            <meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />
           </mesh>
 
           <mesh position={[w.length / 2, SKIRTING_HEIGHT / 2, -WALL_THICKNESS / 2 - SKIRTING_DEPTH / 2]} castShadow>
