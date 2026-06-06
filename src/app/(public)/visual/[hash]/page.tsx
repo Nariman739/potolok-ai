@@ -51,7 +51,8 @@ export default async function VisualPage({
         },
       },
       renders: {
-        orderBy: { createdAt: "desc" },
+        where: { approvalStatus: "APPROVED" },
+        orderBy: { approvedAt: "desc" },
         take: 1,
       },
     },
@@ -121,9 +122,10 @@ export default async function VisualPage({
           )}
         </div>
 
-        <div className="mt-8 text-center text-xs text-slate-400">
-          Изображение сгенерировано AI на основе вашего проекта. Финальный результат
-          может отличаться в деталях освещения и цвета.
+        <div className="mt-8 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-center text-[11px] leading-relaxed text-slate-500">
+          Визуализация конечного результата. Оттенки освещения и фактура поверхности
+          могут незначительно отличаться в реальности. Точные размеры, расстановка
+          элементов и спецификация — согласно проекту и договору.
         </div>
       </section>
     </main>

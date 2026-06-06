@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
+type ApprovalStatus = "PENDING_REVIEW" | "APPROVED" | "ARCHIVED";
+
 interface RenderItem {
   id: string;
   url: string;
@@ -12,6 +14,8 @@ interface RenderItem {
   costUsd: number;
   variantName: string | null;
   createdAt: string;
+  approvalStatus: ApprovalStatus;
+  approvedAt: string | null;
 }
 
 interface VisualizationDetail {
@@ -50,6 +54,54 @@ export default function VisualizationDetailPage() {
     if (!confirm("Удалить визуализацию со всеми рендерами?")) return;
     const res = await fetch(`/api/visualizations/${params.id}`, { method: "DELETE" });
     if (res.ok) router.push("/dashboard/visualization");
+  }
+
+  async function setApproval(renderId: string, status: ApprovalStatus) {
+    const res = await fetch(
+      `/api/visualizations/${params.id}/renders/${renderId}/approval`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      },
+    );
+    if (!res.ok) {
+      alert("Не удалось обновить статус");
+      return;
+    }
+    const updated = (await res.json()) as {
+      id: string;
+      approvalStatus: ApprovalStatus;
+      approvedAt: string | null;
+    };
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            renders: prev.renders.map((r) =>
+              r.id === renderId
+                ? { ...r, approvalStatus: updated.approvalStatus, approvedAt: updated.approvedAt }
+                : r,
+            ),
+          }
+        : prev,
+    );
+    setSelectedRender((prev) =>
+      prev && prev.id === renderId
+        ? { ...prev, approvalStatus: updated.approvalStatus, approvedAt: updated.approvedAt }
+        : prev,
+    );
+  }
+
+  function shareWhatsApp(url: string) {
+    const text = encodeURIComponent(`Посмотрите визуализацию вашего потолка: ${url}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener");
+  }
+
+  function statusBadge(s: ApprovalStatus): { label: string; cls: string } {
+    if (s === "APPROVED") return { label: "Одобрено", cls: "bg-emerald-100 text-emerald-700" };
+    if (s === "ARCHIVED") return { label: "В архиве", cls: "bg-slate-200 text-slate-600" };
+    return { label: "На просмотре", cls: "bg-amber-100 text-amber-800" };
   }
 
   if (loading) {
@@ -126,26 +178,73 @@ export default function VisualizationDetailPage() {
         </div>
       </div>
 
-      {selectedRender && (
-        <div className="mb-6 flex gap-2">
-          <a
-            href={selectedRender.url}
-            download
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
-          >
-            ⬇ Скачать
-          </a>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => {
-              navigator.clipboard.writeText(selectedRender.url);
-            }}
-          >
-            🔗 Копировать ссылку
-          </button>
-        </div>
-      )}
+      {selectedRender && (() => {
+        const sb = statusBadge(selectedRender.approvalStatus);
+        return (
+          <>
+            <div className="mb-3 flex items-center gap-2">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${sb.cls}`}>
+                {sb.label}
+              </span>
+              {selectedRender.approvalStatus !== "APPROVED" && (
+                <button
+                  type="button"
+                  onClick={() => setApproval(selectedRender.id, "APPROVED")}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  ✅ Одобрить для клиента
+                </button>
+              )}
+              {selectedRender.approvalStatus !== "ARCHIVED" && (
+                <button
+                  type="button"
+                  onClick={() => setApproval(selectedRender.id, "ARCHIVED")}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  📥 В архив
+                </button>
+              )}
+              {selectedRender.approvalStatus === "ARCHIVED" && (
+                <button
+                  type="button"
+                  onClick={() => setApproval(selectedRender.id, "PENDING_REVIEW")}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  ↩ Вернуть на просмотр
+                </button>
+              )}
+            </div>
+
+            <div className="mb-6 flex flex-wrap gap-2">
+              <a
+                href={selectedRender.url}
+                download
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+              >
+                ⬇ Скачать
+              </a>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedRender.url);
+                }}
+              >
+                🔗 Копировать ссылку
+              </button>
+              {selectedRender.approvalStatus === "APPROVED" && (
+                <button
+                  type="button"
+                  onClick={() => shareWhatsApp(selectedRender.url)}
+                  className="rounded-lg bg-[#25D366] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                >
+                  💬 В WhatsApp
+                </button>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* All variants */}
       {data.renders.length > 1 && (
@@ -159,7 +258,7 @@ export default function VisualizationDetailPage() {
                 key={r.id}
                 type="button"
                 onClick={() => setSelectedRender(r)}
-                className={`overflow-hidden rounded-lg border-2 transition ${
+                className={`relative overflow-hidden rounded-lg border-2 transition ${
                   selectedRender?.id === r.id
                     ? "border-indigo-500"
                     : "border-slate-200 hover:border-slate-300"
@@ -167,6 +266,9 @@ export default function VisualizationDetailPage() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={r.url} alt={r.variantName ?? ""} className="aspect-square w-full object-cover" />
+                <span className="absolute right-1 top-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur">
+                  {r.approvalStatus === "APPROVED" ? "✅" : r.approvalStatus === "ARCHIVED" ? "📥" : "👁"}
+                </span>
               </button>
             ))}
           </div>

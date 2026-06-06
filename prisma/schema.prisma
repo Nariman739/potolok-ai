@@ -161,20 +161,26 @@ enum SubscriptionTier {
   PROPLUS
 }
 
+enum VisualizationApprovalStatus {
+  PENDING_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
 // ============================================
 // PRICING
 // ============================================
 
 model MasterPrice {
-  id       String  @id @default(uuid())
-  masterId String
-  itemCode String // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
-  price    Float
+  id             String  @id @default(uuid())
+  masterId       String
+  itemCode       String // код из PRODUCT_ITEMS (canvas_320, spot_gu10, ...)
+  price          Float
   // Цена работы монтажнику. null = используется default (30% от price).
   // Мастер выставляет вручную в Прайсе или в форме КП (Нариман 2026-05-31).
   installerPrice Float?
-  photoUrl String? // фото к дефолтной позиции (опционально)
-  isHidden Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
+  photoUrl       String? // фото к дефолтной позиции (опционально)
+  isHidden       Boolean @default(false) // мастер скрыл позицию — не показывать в прайсе и КП
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
@@ -211,21 +217,21 @@ model CustomItem {
 // 2+ вариантов, строка тапается и открывается picker.
 
 model PriceVariant {
-  id        String  @id @default(uuid())
-  masterId  String
-  category  String // canvas | profile | spot | chandelier | curtain | gardina | podshtornik | track | lightline
-  baseCode  String? // опционально: маппинг на код из PRODUCT_ITEMS (canvas_320, profile_shadow, ...) — null = полностью своя позиция
-  name      String
-  unit      String
-  price     Float
+  id             String  @id @default(uuid())
+  masterId       String
+  category       String // canvas | profile | spot | chandelier | curtain | gardina | podshtornik | track | lightline
+  baseCode       String? // опционально: маппинг на код из PRODUCT_ITEMS (canvas_320, profile_shadow, ...) — null = полностью своя позиция
+  name           String
+  unit           String
+  price          Float
   // Цена работы монтажнику (Нариман 2026-05-31). null = default 30% от price.
   installerPrice Float?
-  photoUrl  String? // Vercel Blob URL
-  noInsert  Boolean @default(false) // флаг «вариант профиля без вставки» (теневые/парящие)
-  sortOrder Int     @default(0)
+  photoUrl       String? // Vercel Blob URL
+  noInsert       Boolean @default(false) // флаг «вариант профиля без вставки» (теневые/парящие)
+  sortOrder      Int     @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   // Soft-delete (см. /dashboard/trash). null = живая запись.
   deletedAt DateTime?
 
@@ -298,6 +304,10 @@ model Estimate {
 
   // 3D preview (PNG snapshot of first room from Scene3D)
   room3dPreviewUrl String?
+
+  // AI-визуализации, приложенные к публичному КП (массив VisualizationRender.id).
+  // Показывается только если массив непустой и все рендеры в статусе APPROVED.
+  attachedVisualizationIds Json?
 
   // Timestamps
   validUntil DateTime?
@@ -489,16 +499,20 @@ model VisualizationElement {
 model VisualizationRender {
   id              String   @id @default(uuid())
   visualizationId String
-  url             String // фотореалистичный результат в Vercel Blob
+  url             String
   prompt          String   @db.Text
-  modelUsed       String // 'nano-banana' | 'replicate-flux-kontext' | 'fal-flux-fill'
+  modelUsed       String
   costUsd         Float    @default(0)
-  variantName     String? // например "Вариант 1", "С тёплой подсветкой"
+  variantName     String?
   createdAt       DateTime @default(now())
+
+  approvalStatus VisualizationApprovalStatus @default(PENDING_REVIEW)
+  approvedAt     DateTime?
 
   visualization Visualization @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
 
   @@index([visualizationId, createdAt])
+  @@index([visualizationId, approvalStatus])
 }
 
 // ============================================
@@ -646,11 +660,11 @@ enum InstagramPostStatus {
 // ============================================
 
 model InstagramSession {
-  id          String   @id @default(uuid())
-  chatId      String   @unique // Telegram chat ID — one active session per chat
-  masterId    String   @unique
-  mediaItems  Json     @default("[]") // [{blobUrl: string, type: "photo"|"video"}]
-  userContext String   @default("")
+  id          String @id @default(uuid())
+  chatId      String @unique // Telegram chat ID — one active session per chat
+  masterId    String @unique
+  mediaItems  Json   @default("[]") // [{blobUrl: string, type: "photo"|"video"}]
+  userContext String @default("")
 
   // ContentPlan link (when session was started via cp_shoot_* callback).
   // Cleared on bare /post. TTL 24h — see content-plan.ts.
@@ -891,7 +905,7 @@ model ContentPlan {
   priority Int               @default(50) // 0-100; killer 90+, strong 70-89, normal 50-69, nice <50
   status   ContentPlanStatus @default(IDEA)
 
-  brief           Json    // ContentBrief — see src/lib/content-plan-types.ts
+  brief           Json // ContentBrief — see src/lib/content-plan-types.ts
   isBriefSkeleton Boolean @default(false) // true = title+hook only, LLM enriches on cp_shoot_*
 
   releaseTag   String? // "1.0.10" — killer release theme, ignores day-of-week rubric
