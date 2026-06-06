@@ -11,12 +11,16 @@ interface WallElement3DProps {
   ceilingM: number;
   type: ElementType;
   variant?: "ours" | "client";
+  lightColor?: string;
 }
 
 const CURTAIN_HEIGHT_M = 0.5;
 const CURTAIN_THICKNESS_M = 0.04;
 
-export function WallElement3D({ position, rotationY, lengthM, ceilingM, type, variant }: WallElement3DProps) {
+export function WallElement3D({ position, rotationY, lengthM, ceilingM, type, variant, lightColor: lightColorOverride }: WallElement3DProps) {
+  const lightColor = lightColorOverride ?? "#FFE5B4";
+  const emissiveColor = lightColorOverride ?? "#FFD37A";
+  const floatingEmissive = lightColorOverride ?? "#FFEAB4";
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {type === "door" && (
@@ -74,8 +78,8 @@ export function WallElement3D({ position, rotationY, lengthM, ceilingM, type, va
         <mesh position={[0, ceilingM - 0.02, 0]}>
           <boxGeometry args={[lengthM, 0.03, 0.05]} />
           <meshStandardMaterial
-            color="#FFE5B4"
-            emissive="#FFD37A"
+            color={lightColor}
+            emissive={emissiveColor}
             emissiveIntensity={1.6}
             toneMapped={false}
           />
@@ -88,14 +92,14 @@ export function WallElement3D({ position, rotationY, lengthM, ceilingM, type, va
             <boxGeometry args={[lengthM, 0.01, 0.04]} />
             <meshStandardMaterial
               color="#FFEFD5"
-              emissive="#FFEAB4"
+              emissive={floatingEmissive}
               emissiveIntensity={2.0}
               toneMapped={false}
             />
           </mesh>
           <pointLight
             position={[0, ceilingM - 0.06, -0.08]}
-            color="#FFE5B4"
+            color={lightColor}
             intensity={0.8}
             distance={Math.max(lengthM * 0.6, 1.5)}
             decay={2}
