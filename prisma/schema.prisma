@@ -222,10 +222,13 @@ model PriceVariant {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Soft-delete (см. /dashboard/trash). null = живая запись.
+  deletedAt DateTime?
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([masterId, category])
+  @@index([masterId, deletedAt])
 }
 
 // ============================================
@@ -296,12 +299,15 @@ model Estimate {
   validUntil DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  // Soft-delete (см. /dashboard/trash). null = живая запись.
+  deletedAt  DateTime?
 
   chatSession ChatSession?
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
+  @@index([masterId, deletedAt])
 }
 
 enum EstimateStatus {
@@ -357,8 +363,10 @@ model MeasurementObject {
   latitude  Float?
   longitude Float?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Soft-delete (см. /dashboard/trash). null = живая запись.
+  deletedAt DateTime?
 
   rooms          MeasurementRoom[]
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
@@ -368,6 +376,7 @@ model MeasurementObject {
   @@index([masterId, status])
   @@index([masterId, createdAt])
   @@index([clientId])
+  @@index([masterId, deletedAt])
 }
 
 model MeasurementRoom {
@@ -671,8 +680,12 @@ model Client {
   // в 9:00 Asia/Almaty (cron tg-followups) перечисляет актуальное.
   nextContactAt DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Soft-delete (см. /dashboard/trash). null = живая запись.
+  // При восстановлении связанные Estimate/MeasurementObject становятся
+  // видны автоматически (мы не теряли FK при удалении).
+  deletedAt DateTime?
 
   master       Master              @relation(fields: [masterId], references: [id], onDelete: Cascade)
   estimates    Estimate[]
@@ -683,6 +696,7 @@ model Client {
   @@index([masterId, status])
   @@index([masterId, phone])
   @@index([masterId, createdAt])
+  @@index([masterId, deletedAt])
 }
 
 model ClientEvent {

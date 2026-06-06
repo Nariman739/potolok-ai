@@ -21,7 +21,7 @@ export default async function EditRoomPage({
   if (!Number.isFinite(idx) || idx < 0) notFound();
 
   const estimate = await prisma.estimate.findFirst({
-    where: { id, masterId: master.id },
+    where: { id, masterId: master.id, deletedAt: null },
   });
   if (!estimate) notFound();
 

@@ -17,7 +17,7 @@ export default async function EstimatesPage() {
   if (!master) redirect("/api/auth/clear");
 
   const estimates = await prisma.estimate.findMany({
-    where: { masterId: master.id },
+    where: { masterId: master.id, deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

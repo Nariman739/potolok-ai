@@ -41,6 +41,7 @@ export async function getActionableClients(masterId: string) {
   const rows = await prisma.client.findMany({
     where: {
       masterId,
+      deletedAt: null,
       nextContactAt: { lte: tomorrowEnd },
       status: { notIn: ["WON" as DealStatus, "LOST" as DealStatus] },
     },
@@ -95,16 +96,19 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
 
   if (!name && !phone) return null;
 
+  // Дедуп по телефону / имени игнорирует soft-deleted клиентов: если мастер
+  // удалил клиента и завёл нового по тому же телефону — это его выбор. При
+  // желании старый можно восстановить из /dashboard/trash.
   if (phone) {
     const existing = await prisma.client.findFirst({
-      where: { masterId, phone },
+      where: { masterId, phone, deletedAt: null },
     });
     if (existing) return existing;
   }
 
   if (name && !phone) {
     const existing = await prisma.client.findFirst({
-      where: { masterId, name, phone: null },
+      where: { masterId, name, phone: null, deletedAt: null },
     });
     if (existing) return existing;
   }
@@ -160,8 +164,10 @@ export async function changeClientStatus(
   status: DealStatus,
   reason?: string,
 ) {
-  const before = await prisma.client.findUnique({
-    where: { id: clientId },
+  // Soft-deleted клиентов не трогаем — статус-изменения от CRM-событий
+  // (KP_CONFIRMED и т.п.) могут прилетать после удаления, это noop.
+  const before = await prisma.client.findFirst({
+    where: { id: clientId, deletedAt: null },
     select: { status: true },
   });
   if (!before) return null;

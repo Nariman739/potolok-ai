@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 async function findOwned(id: string, masterId: string) {
-  return prisma.priceVariant.findFirst({ where: { id, masterId } });
+  return prisma.priceVariant.findFirst({ where: { id, masterId, deletedAt: null } });
 }
 
 export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -122,10 +122,13 @@ export async function DELETE(_request: NextRequest, ctx: { params: Promise<{ id:
     if (!existing) {
       return NextResponse.json({ error: "Вариант не найден" }, { status: 404 });
     }
-    if (existing.photoUrl) {
-      try { await del(existing.photoUrl); } catch { /* ignore */ }
-    }
-    await prisma.priceVariant.delete({ where: { id } });
+    // Soft-delete: фото в Vercel Blob НЕ удаляем — оно нужно при restore.
+    // Hard-delete фото уйдёт только если мастер сделает «Удалить навсегда»
+    // из /dashboard/trash (см. PR-B).
+    await prisma.priceVariant.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

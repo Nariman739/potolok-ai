@@ -19,7 +19,7 @@ export default async function ClientPage({
   const { id } = await params;
 
   const client = await prisma.client.findFirst({
-    where: { id, masterId: master.id },
+    where: { id, masterId: master.id, deletedAt: null },
     include: {
       events: {
         orderBy: { createdAt: "desc" },

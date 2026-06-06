@@ -191,6 +191,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
         const clients = await prisma.client.findMany({
           where: {
             masterId,
+            deletedAt: null,
             OR: [
               { name: { contains: q, mode: "insensitive" } },
               ...(digitsOnly ? [{ phone: { contains: digitsOnly } }] : []),
@@ -206,7 +207,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
       case "summary_client": {
         const id = String(args.client_id || "");
         const c = await prisma.client.findFirst({
-          where: { id, masterId },
+          where: { id, masterId, deletedAt: null },
           include: {
             estimates: {
               orderBy: { createdAt: "desc" },
@@ -254,7 +255,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
           return JSON.stringify({ error: `event_type должен быть один из: ${ALLOWED_EVENT_TYPES.join(", ")}` });
         }
         if (isNaN(dt.getTime())) return JSON.stringify({ error: "datetime_iso некорректен" });
-        const c = await prisma.client.findFirst({ where: { id, masterId }, select: { id: true, name: true } });
+        const c = await prisma.client.findFirst({ where: { id, masterId, deletedAt: null }, select: { id: true, name: true } });
         if (!c) return JSON.stringify({ error: "Клиент не найден" });
         const dateStr = dt.toLocaleString("ru-RU", {
           day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
@@ -310,7 +311,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
           return JSON.stringify({ error: `status должен быть: ${ALLOWED_STATUSES.join(", ")}` });
         }
         const clients = await prisma.client.findMany({
-          where: { masterId, status },
+          where: { masterId, status, deletedAt: null },
           select: { id: true, name: true, phone: true, address: true, updatedAt: true, _count: { select: { estimates: true } } },
           orderBy: { updatedAt: "desc" },
           take: limit,
@@ -331,7 +332,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
         if (!ALLOWED_STATUSES.includes(newStatus)) {
           return JSON.stringify({ error: "Неверный статус" });
         }
-        const c = await prisma.client.findFirst({ where: { id, masterId } });
+        const c = await prisma.client.findFirst({ where: { id, masterId, deletedAt: null } });
         if (!c) return JSON.stringify({ error: "Клиент не найден" });
         const prev = c.status;
         await prisma.$transaction([
@@ -351,7 +352,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
         const id = String(args.client_id || "");
         const note = String(args.note || "").trim();
         if (!note) return JSON.stringify({ error: "Заметка пустая" });
-        const c = await prisma.client.findFirst({ where: { id, masterId }, select: { id: true, name: true } });
+        const c = await prisma.client.findFirst({ where: { id, masterId, deletedAt: null }, select: { id: true, name: true } });
         if (!c) return JSON.stringify({ error: "Клиент не найден" });
         await prisma.clientEvent.create({
           data: { clientId: id, type: "NOTE", content: note },
@@ -362,7 +363,7 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
       case "recent_estimates": {
         const limit = Math.min(Number(args.limit ?? 5), 20);
         const ests = await prisma.estimate.findMany({
-          where: { masterId },
+          where: { masterId, deletedAt: null },
           orderBy: { createdAt: "desc" },
           take: limit,
           select: {
@@ -388,10 +389,10 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
         const [newClients, kpCreated, wonClients] = await Promise.all([
-          prisma.client.count({ where: { masterId, createdAt: { gte: start } } }),
-          prisma.estimate.count({ where: { masterId, createdAt: { gte: start } } }),
+          prisma.client.count({ where: { masterId, createdAt: { gte: start }, deletedAt: null } }),
+          prisma.estimate.count({ where: { masterId, createdAt: { gte: start }, deletedAt: null } }),
           prisma.client.findMany({
-            where: { masterId, status: "WON", updatedAt: { gte: start } },
+            where: { masterId, status: "WON", updatedAt: { gte: start }, deletedAt: null },
             select: { estimates: { select: { total: true } } },
           }),
         ]);

@@ -11,7 +11,7 @@ export async function GET(
     const { id } = await params;
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
 
     if (!estimate) {
@@ -44,7 +44,7 @@ export async function PUT(
     const body = await request.json();
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
 
     if (!existing) {
@@ -115,7 +115,7 @@ export async function DELETE(
     const { id } = await params;
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
 
     if (!existing) {
@@ -125,7 +125,12 @@ export async function DELETE(
       );
     }
 
-    await prisma.estimate.delete({ where: { id } });
+    // Soft-delete: запись остаётся в БД, восстанавливается через /dashboard/trash.
+    // См. PR-A 2026-06-03 — закрывает блокер «удаление КП необратимо» из аудита.
+    await prisma.estimate.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

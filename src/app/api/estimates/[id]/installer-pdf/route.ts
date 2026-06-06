@@ -77,7 +77,7 @@ export async function GET(
     const { id } = await params;
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       include: { master: { select: { companyName: true, firstName: true, phone: true } } },
     });
 

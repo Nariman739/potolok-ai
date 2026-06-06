@@ -121,7 +121,9 @@ const BASE_URL =
 
 export async function buildPdfData(estimateId: string, masterId?: string): Promise<PdfData> {
   const estimate = await prisma.estimate.findFirst({
-    where: masterId ? { id: estimateId, masterId } : { id: estimateId },
+    where: masterId
+      ? { id: estimateId, masterId, deletedAt: null }
+      : { id: estimateId, deletedAt: null },
     include: {
       master: {
         include: {

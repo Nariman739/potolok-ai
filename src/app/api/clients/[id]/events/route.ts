@@ -42,7 +42,7 @@ export async function POST(
     }
 
     const client = await prisma.client.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       select: { id: true },
     });
     if (!client) {

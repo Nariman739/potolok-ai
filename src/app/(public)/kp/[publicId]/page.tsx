@@ -14,8 +14,8 @@ export async function generateMetadata({
   params: Promise<{ publicId: string }>;
 }): Promise<Metadata> {
   const { publicId } = await params;
-  const estimate = await prisma.estimate.findUnique({
-    where: { publicId },
+  const estimate = await prisma.estimate.findFirst({
+    where: { publicId, deletedAt: null },
     include: { master: { select: { companyName: true, firstName: true } } },
   });
 
@@ -46,8 +46,8 @@ export default async function PublicKpPage({
 }) {
   const { publicId } = await params;
 
-  const estimate = await prisma.estimate.findUnique({
-    where: { publicId },
+  const estimate = await prisma.estimate.findFirst({
+    where: { publicId, deletedAt: null },
     include: {
       master: {
         select: {

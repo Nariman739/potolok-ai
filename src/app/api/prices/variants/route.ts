@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
     const master = await requireAuth();
     const category = request.nextUrl.searchParams.get("category");
 
-    const where: { masterId: string; category?: string } = { masterId: master.id };
+    const where: { masterId: string; deletedAt: null; category?: string } = {
+      masterId: master.id,
+      deletedAt: null,
+    };
     if (category && isCategory(category)) where.category = category;
 
     const variants = await prisma.priceVariant.findMany({

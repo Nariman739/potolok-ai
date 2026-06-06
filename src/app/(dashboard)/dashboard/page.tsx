@@ -59,14 +59,14 @@ export default async function DashboardPage() {
     clientsCount,
     masterFull,
   ] = await Promise.all([
-    prisma.estimate.count({ where: { masterId: master.id } }),
+    prisma.estimate.count({ where: { masterId: master.id, deletedAt: null } }),
     prisma.estimate.aggregate({
-      where: { masterId: master.id },
+      where: { masterId: master.id, deletedAt: null },
       _sum: { totalArea: true },
       _avg: { total: true },
     }),
     prisma.estimate.findMany({
-      where: { masterId: master.id },
+      where: { masterId: master.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -81,19 +81,19 @@ export default async function DashboardPage() {
       },
     }),
     prisma.estimate.count({
-      where: { masterId: master.id, createdAt: { gte: monthStart } },
+      where: { masterId: master.id, createdAt: { gte: monthStart }, deletedAt: null },
     }),
     prisma.estimate.count({
-      where: { masterId: master.id, status: "CONFIRMED" },
+      where: { masterId: master.id, status: "CONFIRMED", deletedAt: null },
     }),
     prisma.estimate.aggregate({
-      where: { masterId: master.id, status: "CONFIRMED" },
+      where: { masterId: master.id, status: "CONFIRMED", deletedAt: null },
       _sum: { total: true },
     }),
     prisma.measurementObject.count({
-      where: { masterId: master.id },
+      where: { masterId: master.id, deletedAt: null },
     }),
-    prisma.client.count({ where: { masterId: master.id } }),
+    prisma.client.count({ where: { masterId: master.id, deletedAt: null } }),
     prisma.master.findUnique({
       where: { id: master.id },
       select: {

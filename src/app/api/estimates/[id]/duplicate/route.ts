@@ -11,7 +11,7 @@ export async function POST(
     const { id } = await params;
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
 
     if (!existing) {

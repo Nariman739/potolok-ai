@@ -84,6 +84,7 @@ export type EstimateMinAggregateOutputType = {
   validUntil: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type EstimateMaxAggregateOutputType = {
@@ -124,6 +125,7 @@ export type EstimateMaxAggregateOutputType = {
   validUntil: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type EstimateCountAggregateOutputType = {
@@ -168,6 +170,7 @@ export type EstimateCountAggregateOutputType = {
   validUntil: number
   createdAt: number
   updatedAt: number
+  deletedAt: number
   _all: number
 }
 
@@ -230,6 +233,7 @@ export type EstimateMinAggregateInputType = {
   validUntil?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type EstimateMaxAggregateInputType = {
@@ -270,6 +274,7 @@ export type EstimateMaxAggregateInputType = {
   validUntil?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type EstimateCountAggregateInputType = {
@@ -314,6 +319,7 @@ export type EstimateCountAggregateInputType = {
   validUntil?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
   _all?: true
 }
 
@@ -445,6 +451,7 @@ export type EstimateGroupByOutputType = {
   validUntil: Date | null
   createdAt: Date
   updatedAt: Date
+  deletedAt: Date | null
   _count: EstimateCountAggregateOutputType | null
   _avg: EstimateAvgAggregateOutputType | null
   _sum: EstimateSumAggregateOutputType | null
@@ -512,6 +519,7 @@ export type EstimateWhereInput = {
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
   chatSession?: Prisma.XOR<Prisma.ChatSessionNullableScalarRelationFilter, Prisma.ChatSessionWhereInput> | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -559,6 +567,7 @@ export type EstimateOrderByWithRelationInput = {
   validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   client?: Prisma.ClientOrderByWithRelationInput
   chatSession?: Prisma.ChatSessionOrderByWithRelationInput
   master?: Prisma.MasterOrderByWithRelationInput
@@ -609,6 +618,7 @@ export type EstimateWhereUniqueInput = Prisma.AtLeast<{
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   client?: Prisma.XOR<Prisma.ClientNullableScalarRelationFilter, Prisma.ClientWhereInput> | null
   chatSession?: Prisma.XOR<Prisma.ChatSessionNullableScalarRelationFilter, Prisma.ChatSessionWhereInput> | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
@@ -656,6 +666,7 @@ export type EstimateOrderByWithAggregationInput = {
   validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.EstimateCountOrderByAggregateInput
   _avg?: Prisma.EstimateAvgOrderByAggregateInput
   _max?: Prisma.EstimateMaxOrderByAggregateInput
@@ -708,6 +719,7 @@ export type EstimateScalarWhereWithAggregatesInput = {
   validUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Estimate"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Estimate"> | Date | string | null
 }
 
 export type EstimateCreateInput = {
@@ -750,6 +762,7 @@ export type EstimateCreateInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
   master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
@@ -797,6 +810,7 @@ export type EstimateUncheckedCreateInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedCreateNestedOneWithoutEstimateInput
 }
 
@@ -840,6 +854,7 @@ export type EstimateUpdateInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
@@ -887,6 +902,7 @@ export type EstimateUncheckedUpdateInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedUpdateOneWithoutEstimateNestedInput
 }
 
@@ -932,6 +948,7 @@ export type EstimateCreateManyInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type EstimateUpdateManyMutationInput = {
@@ -974,6 +991,7 @@ export type EstimateUpdateManyMutationInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type EstimateUncheckedUpdateManyInput = {
@@ -1018,6 +1036,7 @@ export type EstimateUncheckedUpdateManyInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type EstimateListRelationFilter = {
@@ -1072,6 +1091,7 @@ export type EstimateCountOrderByAggregateInput = {
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type EstimateAvgOrderByAggregateInput = {
@@ -1122,6 +1142,7 @@ export type EstimateMaxOrderByAggregateInput = {
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type EstimateMinOrderByAggregateInput = {
@@ -1162,6 +1183,7 @@ export type EstimateMinOrderByAggregateInput = {
   validUntil?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type EstimateSumOrderByAggregateInput = {
@@ -1331,6 +1353,7 @@ export type EstimateCreateWithoutMasterInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
 }
@@ -1376,6 +1399,7 @@ export type EstimateUncheckedCreateWithoutMasterInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedCreateNestedOneWithoutEstimateInput
 }
 
@@ -1450,6 +1474,7 @@ export type EstimateScalarWhereInput = {
   validUntil?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Estimate"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Estimate"> | Date | string | null
 }
 
 export type EstimateCreateWithoutChatSessionInput = {
@@ -1492,6 +1517,7 @@ export type EstimateCreateWithoutChatSessionInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   client?: Prisma.ClientCreateNestedOneWithoutEstimatesInput
   master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
 }
@@ -1538,6 +1564,7 @@ export type EstimateUncheckedCreateWithoutChatSessionInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type EstimateCreateOrConnectWithoutChatSessionInput = {
@@ -1596,6 +1623,7 @@ export type EstimateUpdateWithoutChatSessionInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
 }
@@ -1642,6 +1670,7 @@ export type EstimateUncheckedUpdateWithoutChatSessionInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type EstimateCreateWithoutClientInput = {
@@ -1684,6 +1713,7 @@ export type EstimateCreateWithoutClientInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   chatSession?: Prisma.ChatSessionCreateNestedOneWithoutEstimateInput
   master: Prisma.MasterCreateNestedOneWithoutEstimatesInput
 }
@@ -1729,6 +1759,7 @@ export type EstimateUncheckedCreateWithoutClientInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedCreateNestedOneWithoutEstimateInput
 }
 
@@ -1799,6 +1830,7 @@ export type EstimateCreateManyMasterInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type EstimateUpdateWithoutMasterInput = {
@@ -1841,6 +1873,7 @@ export type EstimateUpdateWithoutMasterInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   client?: Prisma.ClientUpdateOneWithoutEstimatesNestedInput
   chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
 }
@@ -1886,6 +1919,7 @@ export type EstimateUncheckedUpdateWithoutMasterInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedUpdateOneWithoutEstimateNestedInput
 }
 
@@ -1930,6 +1964,7 @@ export type EstimateUncheckedUpdateManyWithoutMasterInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type EstimateCreateManyClientInput = {
@@ -1973,6 +2008,7 @@ export type EstimateCreateManyClientInput = {
   validUntil?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type EstimateUpdateWithoutClientInput = {
@@ -2015,6 +2051,7 @@ export type EstimateUpdateWithoutClientInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   chatSession?: Prisma.ChatSessionUpdateOneWithoutEstimateNestedInput
   master?: Prisma.MasterUpdateOneRequiredWithoutEstimatesNestedInput
 }
@@ -2060,6 +2097,7 @@ export type EstimateUncheckedUpdateWithoutClientInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   chatSession?: Prisma.ChatSessionUncheckedUpdateOneWithoutEstimateNestedInput
 }
 
@@ -2104,6 +2142,7 @@ export type EstimateUncheckedUpdateManyWithoutClientInput = {
   validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -2150,6 +2189,7 @@ export type EstimateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
@@ -2197,6 +2237,7 @@ export type EstimateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["estimate"]>
@@ -2243,6 +2284,7 @@ export type EstimateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["estimate"]>
@@ -2289,9 +2331,10 @@ export type EstimateSelectScalar = {
   validUntil?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
 }
 
-export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "clientId" | "contractPublicId" | "contractTextSnapshot" | "contractCreatedAt" | "contractSignedAt" | "contractSignerName" | "contractSignerPassport" | "contractSignerIp" | "contractSignerUserAgent" | "workStartDate" | "workDurationDays" | "paymentSchedule" | "actPublicId" | "actCreatedAt" | "actSignedAt" | "actSignerName" | "actSignerIp" | "actSignerUserAgent" | "actCompletionDate" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["estimate"]>
+export type EstimateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "publicId" | "masterId" | "clientName" | "clientPhone" | "clientAddress" | "clientId" | "contractPublicId" | "contractTextSnapshot" | "contractCreatedAt" | "contractSignedAt" | "contractSignerName" | "contractSignerPassport" | "contractSignerIp" | "contractSignerUserAgent" | "workStartDate" | "workDurationDays" | "paymentSchedule" | "actPublicId" | "actCreatedAt" | "actSignedAt" | "actSignerName" | "actSignerIp" | "actSignerUserAgent" | "actCompletionDate" | "roomsData" | "calculationData" | "totalArea" | "total" | "discountPercent" | "economyTotal" | "standardTotal" | "premiumTotal" | "status" | "recommendedVariant" | "confirmedVariant" | "pdfUrl" | "room3dPreviewUrl" | "validUntil" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["estimate"]>
 export type EstimateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.Estimate$clientArgs<ExtArgs>
   chatSession?: boolean | Prisma.Estimate$chatSessionArgs<ExtArgs>
@@ -2355,6 +2398,7 @@ export type $EstimatePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     validUntil: Date | null
     createdAt: Date
     updatedAt: Date
+    deletedAt: Date | null
   }, ExtArgs["result"]["estimate"]>
   composites: {}
 }
@@ -2822,6 +2866,7 @@ export interface EstimateFieldRefs {
   readonly validUntil: Prisma.FieldRef<"Estimate", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Estimate", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Estimate", 'DateTime'>
+  readonly deletedAt: Prisma.FieldRef<"Estimate", 'DateTime'>
 }
     
 

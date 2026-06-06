@@ -25,8 +25,8 @@ export async function GET() {
         where: { masterId: master.id },
         select: { id: true },
       }),
-      prisma.estimate.count({ where: { masterId: master.id } }),
-      prisma.client.count({ where: { masterId: master.id } }),
+      prisma.estimate.count({ where: { masterId: master.id, deletedAt: null } }),
+      prisma.client.count({ where: { masterId: master.id, deletedAt: null } }),
     ]);
 
     return NextResponse.json({

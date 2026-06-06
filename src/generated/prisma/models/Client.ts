@@ -50,6 +50,7 @@ export type ClientMinAggregateOutputType = {
   nextContactAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ClientMaxAggregateOutputType = {
@@ -66,6 +67,7 @@ export type ClientMaxAggregateOutputType = {
   nextContactAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ClientCountAggregateOutputType = {
@@ -82,6 +84,7 @@ export type ClientCountAggregateOutputType = {
   nextContactAt: number
   createdAt: number
   updatedAt: number
+  deletedAt: number
   _all: number
 }
 
@@ -110,6 +113,7 @@ export type ClientMinAggregateInputType = {
   nextContactAt?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type ClientMaxAggregateInputType = {
@@ -126,6 +130,7 @@ export type ClientMaxAggregateInputType = {
   nextContactAt?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type ClientCountAggregateInputType = {
@@ -142,6 +147,7 @@ export type ClientCountAggregateInputType = {
   nextContactAt?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
   _all?: true
 }
 
@@ -245,6 +251,7 @@ export type ClientGroupByOutputType = {
   nextContactAt: Date | null
   createdAt: Date
   updatedAt: Date
+  deletedAt: Date | null
   _count: ClientCountAggregateOutputType | null
   _avg: ClientAvgAggregateOutputType | null
   _sum: ClientSumAggregateOutputType | null
@@ -284,6 +291,7 @@ export type ClientWhereInput = {
   nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
   estimates?: Prisma.EstimateListRelationFilter
   events?: Prisma.ClientEventListRelationFilter
@@ -305,6 +313,7 @@ export type ClientOrderByWithRelationInput = {
   nextContactAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
   estimates?: Prisma.EstimateOrderByRelationAggregateInput
   events?: Prisma.ClientEventOrderByRelationAggregateInput
@@ -329,6 +338,7 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
   estimates?: Prisma.EstimateListRelationFilter
   events?: Prisma.ClientEventListRelationFilter
@@ -350,6 +360,7 @@ export type ClientOrderByWithAggregationInput = {
   nextContactAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ClientCountOrderByAggregateInput
   _avg?: Prisma.ClientAvgOrderByAggregateInput
   _max?: Prisma.ClientMaxOrderByAggregateInput
@@ -374,6 +385,7 @@ export type ClientScalarWhereWithAggregatesInput = {
   nextContactAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
 }
 
 export type ClientCreateInput = {
@@ -389,6 +401,7 @@ export type ClientCreateInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventCreateNestedManyWithoutClientInput
@@ -410,6 +423,7 @@ export type ClientUncheckedCreateInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutClientInput
@@ -429,6 +443,7 @@ export type ClientUpdateInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUpdateManyWithoutClientNestedInput
@@ -450,6 +465,7 @@ export type ClientUncheckedUpdateInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput
@@ -470,6 +486,7 @@ export type ClientCreateManyInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type ClientUpdateManyMutationInput = {
@@ -485,6 +502,7 @@ export type ClientUpdateManyMutationInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ClientUncheckedUpdateManyInput = {
@@ -501,6 +519,7 @@ export type ClientUncheckedUpdateManyInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ClientListRelationFilter = {
@@ -532,6 +551,7 @@ export type ClientCountOrderByAggregateInput = {
   nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientAvgOrderByAggregateInput = {
@@ -553,6 +573,7 @@ export type ClientMaxOrderByAggregateInput = {
   nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientMinOrderByAggregateInput = {
@@ -569,6 +590,7 @@ export type ClientMinOrderByAggregateInput = {
   nextContactAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientSumOrderByAggregateInput = {
@@ -706,6 +728,7 @@ export type ClientCreateWithoutMasterInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutClientInput
@@ -725,6 +748,7 @@ export type ClientUncheckedCreateWithoutMasterInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutClientInput
@@ -774,6 +798,7 @@ export type ClientScalarWhereInput = {
   nextContactAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
 }
 
 export type ClientCreateWithoutEstimatesInput = {
@@ -789,6 +814,7 @@ export type ClientCreateWithoutEstimatesInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
   events?: Prisma.ClientEventCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutClientInput
@@ -809,6 +835,7 @@ export type ClientUncheckedCreateWithoutEstimatesInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutClientInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutClientInput
@@ -843,6 +870,7 @@ export type ClientUpdateWithoutEstimatesInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
   events?: Prisma.ClientEventUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutClientNestedInput
@@ -863,6 +891,7 @@ export type ClientUncheckedUpdateWithoutEstimatesInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutClientNestedInput
@@ -881,6 +910,7 @@ export type ClientCreateWithoutMeasurementsInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventCreateNestedManyWithoutClientInput
@@ -901,6 +931,7 @@ export type ClientUncheckedCreateWithoutMeasurementsInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutClientInput
@@ -935,6 +966,7 @@ export type ClientUpdateWithoutMeasurementsInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUpdateManyWithoutClientNestedInput
@@ -955,6 +987,7 @@ export type ClientUncheckedUpdateWithoutMeasurementsInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutClientNestedInput
@@ -973,6 +1006,7 @@ export type ClientCreateWithoutEventsInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectCreateNestedManyWithoutClientInput
@@ -993,6 +1027,7 @@ export type ClientUncheckedCreateWithoutEventsInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutClientInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedCreateNestedManyWithoutClientInput
@@ -1027,6 +1062,7 @@ export type ClientUpdateWithoutEventsInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutClientNestedInput
@@ -1047,6 +1083,7 @@ export type ClientUncheckedUpdateWithoutEventsInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput
   objectPhotos?: Prisma.ObjectPhotoUncheckedUpdateManyWithoutClientNestedInput
@@ -1065,6 +1102,7 @@ export type ClientCreateWithoutObjectPhotosInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutClientsInput
   estimates?: Prisma.EstimateCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventCreateNestedManyWithoutClientInput
@@ -1085,6 +1123,7 @@ export type ClientUncheckedCreateWithoutObjectPhotosInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   estimates?: Prisma.EstimateUncheckedCreateNestedManyWithoutClientInput
   events?: Prisma.ClientEventUncheckedCreateNestedManyWithoutClientInput
   measurements?: Prisma.MeasurementObjectUncheckedCreateNestedManyWithoutClientInput
@@ -1119,6 +1158,7 @@ export type ClientUpdateWithoutObjectPhotosInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutClientsNestedInput
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUpdateManyWithoutClientNestedInput
@@ -1139,6 +1179,7 @@ export type ClientUncheckedUpdateWithoutObjectPhotosInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput
@@ -1157,6 +1198,7 @@ export type ClientCreateManyMasterInput = {
   nextContactAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type ClientUpdateWithoutMasterInput = {
@@ -1172,6 +1214,7 @@ export type ClientUpdateWithoutMasterInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUpdateManyWithoutClientNestedInput
@@ -1191,6 +1234,7 @@ export type ClientUncheckedUpdateWithoutMasterInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   estimates?: Prisma.EstimateUncheckedUpdateManyWithoutClientNestedInput
   events?: Prisma.ClientEventUncheckedUpdateManyWithoutClientNestedInput
   measurements?: Prisma.MeasurementObjectUncheckedUpdateManyWithoutClientNestedInput
@@ -1210,6 +1254,7 @@ export type ClientUncheckedUpdateManyWithoutMasterInput = {
   nextContactAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -1284,6 +1329,7 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
   estimates?: boolean | Prisma.Client$estimatesArgs<ExtArgs>
   events?: boolean | Prisma.Client$eventsArgs<ExtArgs>
@@ -1306,6 +1352,7 @@ export type ClientSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["client"]>
 
@@ -1323,6 +1370,7 @@ export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["client"]>
 
@@ -1340,9 +1388,10 @@ export type ClientSelectScalar = {
   nextContactAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
 }
 
-export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "latitude" | "longitude" | "source" | "status" | "notes" | "nextContactAt" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
+export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "name" | "phone" | "address" | "latitude" | "longitude" | "source" | "status" | "notes" | "nextContactAt" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["client"]>
 export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
   estimates?: boolean | Prisma.Client$estimatesArgs<ExtArgs>
@@ -1381,6 +1430,7 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     nextContactAt: Date | null
     createdAt: Date
     updatedAt: Date
+    deletedAt: Date | null
   }, ExtArgs["result"]["client"]>
   composites: {}
 }
@@ -1822,6 +1872,7 @@ export interface ClientFieldRefs {
   readonly nextContactAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Client", 'DateTime'>
+  readonly deletedAt: Prisma.FieldRef<"Client", 'DateTime'>
 }
     
 

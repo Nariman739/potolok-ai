@@ -80,7 +80,7 @@ export async function GET(
       return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
     }
 
-    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id } });
+    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id, deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
 
     const calc = estimate.calculationData as unknown as CalculationResult;

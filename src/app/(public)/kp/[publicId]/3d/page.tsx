@@ -10,8 +10,8 @@ export async function generateMetadata({
   params: Promise<{ publicId: string }>;
 }): Promise<Metadata> {
   const { publicId } = await params;
-  const estimate = await prisma.estimate.findUnique({
-    where: { publicId },
+  const estimate = await prisma.estimate.findFirst({
+    where: { publicId, deletedAt: null },
     include: { master: { select: { companyName: true, firstName: true } } },
   });
   if (!estimate) return { title: "3D-просмотр не найден" };
@@ -40,8 +40,8 @@ export default async function Public3DPage({
 }) {
   const { publicId } = await params;
 
-  const estimate = await prisma.estimate.findUnique({
-    where: { publicId },
+  const estimate = await prisma.estimate.findFirst({
+    where: { publicId, deletedAt: null },
     select: {
       id: true,
       publicId: true,

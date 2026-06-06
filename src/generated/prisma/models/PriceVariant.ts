@@ -52,6 +52,7 @@ export type PriceVariantMinAggregateOutputType = {
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type PriceVariantMaxAggregateOutputType = {
@@ -68,6 +69,7 @@ export type PriceVariantMaxAggregateOutputType = {
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  deletedAt: Date | null
 }
 
 export type PriceVariantCountAggregateOutputType = {
@@ -84,6 +86,7 @@ export type PriceVariantCountAggregateOutputType = {
   sortOrder: number
   createdAt: number
   updatedAt: number
+  deletedAt: number
   _all: number
 }
 
@@ -114,6 +117,7 @@ export type PriceVariantMinAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type PriceVariantMaxAggregateInputType = {
@@ -130,6 +134,7 @@ export type PriceVariantMaxAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
 }
 
 export type PriceVariantCountAggregateInputType = {
@@ -146,6 +151,7 @@ export type PriceVariantCountAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  deletedAt?: true
   _all?: true
 }
 
@@ -249,6 +255,7 @@ export type PriceVariantGroupByOutputType = {
   sortOrder: number
   createdAt: Date
   updatedAt: Date
+  deletedAt: Date | null
   _count: PriceVariantCountAggregateOutputType | null
   _avg: PriceVariantAvgAggregateOutputType | null
   _sum: PriceVariantSumAggregateOutputType | null
@@ -288,6 +295,7 @@ export type PriceVariantWhereInput = {
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"PriceVariant"> | Date | string | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }
 
@@ -305,6 +313,7 @@ export type PriceVariantOrderByWithRelationInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   master?: Prisma.MasterOrderByWithRelationInput
 }
 
@@ -325,6 +334,7 @@ export type PriceVariantWhereUniqueInput = Prisma.AtLeast<{
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"PriceVariant"> | Date | string | null
   master?: Prisma.XOR<Prisma.MasterScalarRelationFilter, Prisma.MasterWhereInput>
 }, "id">
 
@@ -342,6 +352,7 @@ export type PriceVariantOrderByWithAggregationInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.PriceVariantCountOrderByAggregateInput
   _avg?: Prisma.PriceVariantAvgOrderByAggregateInput
   _max?: Prisma.PriceVariantMaxOrderByAggregateInput
@@ -366,6 +377,7 @@ export type PriceVariantScalarWhereWithAggregatesInput = {
   sortOrder?: Prisma.IntWithAggregatesFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"PriceVariant"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"PriceVariant"> | Date | string | null
 }
 
 export type PriceVariantCreateInput = {
@@ -381,6 +393,7 @@ export type PriceVariantCreateInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
   master: Prisma.MasterCreateNestedOneWithoutPriceVariantsInput
 }
 
@@ -398,6 +411,7 @@ export type PriceVariantUncheckedCreateInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type PriceVariantUpdateInput = {
@@ -413,6 +427,7 @@ export type PriceVariantUpdateInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   master?: Prisma.MasterUpdateOneRequiredWithoutPriceVariantsNestedInput
 }
 
@@ -430,6 +445,7 @@ export type PriceVariantUncheckedUpdateInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PriceVariantCreateManyInput = {
@@ -446,6 +462,7 @@ export type PriceVariantCreateManyInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type PriceVariantUpdateManyMutationInput = {
@@ -461,6 +478,7 @@ export type PriceVariantUpdateManyMutationInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PriceVariantUncheckedUpdateManyInput = {
@@ -477,6 +495,7 @@ export type PriceVariantUncheckedUpdateManyInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PriceVariantListRelationFilter = {
@@ -503,6 +522,7 @@ export type PriceVariantCountOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type PriceVariantAvgOrderByAggregateInput = {
@@ -525,6 +545,7 @@ export type PriceVariantMaxOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type PriceVariantMinOrderByAggregateInput = {
@@ -541,6 +562,7 @@ export type PriceVariantMinOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type PriceVariantSumOrderByAggregateInput = {
@@ -604,6 +626,7 @@ export type PriceVariantCreateWithoutMasterInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type PriceVariantUncheckedCreateWithoutMasterInput = {
@@ -619,6 +642,7 @@ export type PriceVariantUncheckedCreateWithoutMasterInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type PriceVariantCreateOrConnectWithoutMasterInput = {
@@ -664,6 +688,7 @@ export type PriceVariantScalarWhereInput = {
   sortOrder?: Prisma.IntFilter<"PriceVariant"> | number
   createdAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PriceVariant"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"PriceVariant"> | Date | string | null
 }
 
 export type PriceVariantCreateManyMasterInput = {
@@ -679,6 +704,7 @@ export type PriceVariantCreateManyMasterInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  deletedAt?: Date | string | null
 }
 
 export type PriceVariantUpdateWithoutMasterInput = {
@@ -694,6 +720,7 @@ export type PriceVariantUpdateWithoutMasterInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PriceVariantUncheckedUpdateWithoutMasterInput = {
@@ -709,6 +736,7 @@ export type PriceVariantUncheckedUpdateWithoutMasterInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PriceVariantUncheckedUpdateManyWithoutMasterInput = {
@@ -724,6 +752,7 @@ export type PriceVariantUncheckedUpdateManyWithoutMasterInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -742,6 +771,7 @@ export type PriceVariantSelect<ExtArgs extends runtime.Types.Extensions.Internal
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["priceVariant"]>
 
@@ -759,6 +789,7 @@ export type PriceVariantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["priceVariant"]>
 
@@ -776,6 +807,7 @@ export type PriceVariantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["priceVariant"]>
 
@@ -793,9 +825,10 @@ export type PriceVariantSelectScalar = {
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  deletedAt?: boolean
 }
 
-export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "installerPrice" | "photoUrl" | "noInsert" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["priceVariant"]>
+export type PriceVariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "masterId" | "category" | "baseCode" | "name" | "unit" | "price" | "installerPrice" | "photoUrl" | "noInsert" | "sortOrder" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["priceVariant"]>
 export type PriceVariantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   master?: boolean | Prisma.MasterDefaultArgs<ExtArgs>
 }
@@ -825,6 +858,7 @@ export type $PriceVariantPayload<ExtArgs extends runtime.Types.Extensions.Intern
     sortOrder: number
     createdAt: Date
     updatedAt: Date
+    deletedAt: Date | null
   }, ExtArgs["result"]["priceVariant"]>
   composites: {}
 }
@@ -1262,6 +1296,7 @@ export interface PriceVariantFieldRefs {
   readonly sortOrder: Prisma.FieldRef<"PriceVariant", 'Int'>
   readonly createdAt: Prisma.FieldRef<"PriceVariant", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"PriceVariant", 'DateTime'>
+  readonly deletedAt: Prisma.FieldRef<"PriceVariant", 'DateTime'>
 }
     
 

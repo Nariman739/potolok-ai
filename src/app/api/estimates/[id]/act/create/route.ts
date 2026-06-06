@@ -15,7 +15,7 @@ export async function POST(
     const { completionDate } = body as { completionDate?: string };
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       select: {
         id: true,
         clientId: true,
