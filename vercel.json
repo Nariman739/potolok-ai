@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/tg-followups",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/backup-data",
+      "schedule": "0 23 * * *"
     }
   ]
 }
