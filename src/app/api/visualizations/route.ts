@@ -65,13 +65,16 @@ export async function POST(request: Request) {
     if (contentType.includes("application/json")) {
       const body = (await request.json()) as {
         sourceType?: "scene3d" | "scene2d";
-        sceneDataUrl?: string; // base64 PNG из R3F-canvas (scene3d) или 2D-плана (scene2d, mobile)
+        sceneDataUrl?: string;
         elements?: RoomElement[];
         finish?: string;
         colorHex?: string;
         colorName?: string;
-        referenceUrl?: string; // опциональное фото комнаты клиента (гибрид)
+        referenceUrl?: string;
         objectId?: string;
+        kelvin?: number;
+        lightTempKey?: "warm" | "neutral" | "cool";
+        lightTempPromptHint?: string;
       };
 
       if (body.sourceType !== "scene3d" && body.sourceType !== "scene2d") {
@@ -114,6 +117,9 @@ export async function POST(request: Request) {
             finish: body.finish,
             colorHex: body.colorHex || null,
             colorName: body.colorName || null,
+            kelvin: typeof body.kelvin === "number" ? body.kelvin : null,
+            lightTempKey: body.lightTempKey || null,
+            lightTempPromptHint: body.lightTempPromptHint || null,
           } as unknown as object,
         },
       });

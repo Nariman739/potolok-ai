@@ -6,9 +6,12 @@ const DROP_M = 0.4;
 interface Chandelier3DProps {
   position: [number, number, number];
   withLight: boolean;
+  lightColor?: string;
 }
 
-export function Chandelier3D({ position, withLight }: Chandelier3DProps) {
+export function Chandelier3D({ position, withLight, lightColor: lightColorOverride }: Chandelier3DProps) {
+  const lightColor = lightColorOverride ?? "#FFE5B4";
+  const bulbColor = lightColorOverride ?? "#FFE9B0";
   return (
     <group position={position}>
       <mesh position={[0, -DROP_M / 2, 0]}>
@@ -18,8 +21,8 @@ export function Chandelier3D({ position, withLight }: Chandelier3DProps) {
       <mesh position={[0, -DROP_M, 0]}>
         <sphereGeometry args={[SPHERE_RADIUS_M, 32, 16]} />
         <meshStandardMaterial
-          color="#FFE9B0"
-          emissive="#FFD37A"
+          color={bulbColor}
+          emissive={lightColor}
           emissiveIntensity={1.4}
           toneMapped={false}
         />
@@ -27,7 +30,7 @@ export function Chandelier3D({ position, withLight }: Chandelier3DProps) {
       {withLight && (
         <pointLight
           position={[0, -DROP_M, 0]}
-          color="#FFE5B4"
+          color={lightColor}
           intensity={4.5}
           distance={7}
           decay={2}

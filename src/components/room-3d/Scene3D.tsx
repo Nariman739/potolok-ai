@@ -5,7 +5,16 @@ import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
-import { DOOR_HEIGHT_M, WINDOW_HEIGHT_M, WINDOW_SILL_M, CEILING_COLORS } from "./constants";
+import {
+  DOOR_HEIGHT_M,
+  WINDOW_HEIGHT_M,
+  WINDOW_SILL_M,
+  CEILING_COLORS,
+  LIGHT_TEMPERATURES,
+  DEFAULT_LIGHT_TEMP,
+  getLightTempByKey,
+  type LightTempKey,
+} from "./constants";
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
 import { ScreenshotCapture } from "./ScreenshotCapture";
 import { Spot3D } from "./Spot3D";
@@ -66,6 +75,11 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     if (typeof window === "undefined") return "white";
     return window.localStorage.getItem("potolok3d.color") ?? "white";
   });
+  const [lightTempKey, setLightTempKey] = useState<LightTempKey>(() => {
+    if (typeof window === "undefined") return DEFAULT_LIGHT_TEMP;
+    const v = window.localStorage.getItem("potolok3d.kelvin");
+    return v === "warm" || v === "neutral" || v === "cool" ? v : DEFAULT_LIGHT_TEMP;
+  });
   const [showCeilingPanel, setShowCeilingPanel] = useState(false);
   // Адаптивное качество: high — с Environment HDR + ContactShadows; low — без них (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
@@ -87,12 +101,18 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     if (typeof window === "undefined") return;
     window.localStorage.setItem("potolok3d.color", ceilingColorId);
   }, [ceilingColorId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("potolok3d.kelvin", lightTempKey);
+  }, [lightTempKey]);
   const lookRef = useRef<LookAroundHandle | null>(null);
 
   const ceilingColor = useMemo(
     () => CEILING_COLORS.find((c) => c.id === ceilingColorId)?.hex ?? "#F8FAFC",
     [ceilingColorId],
   );
+
+  const lightTemp = useMemo(() => getLightTempByKey(lightTempKey), [lightTempKey]);
 
   const { centerOffset, roomSize } = useMemo(() => {
     if (vertices.length === 0) {
@@ -185,6 +205,9 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           finish: ceilingFinish,
           colorHex: colorEntry?.hex ?? "#FFFFFF",
           colorName: colorEntry?.label ?? "белый",
+          kelvin: lightTemp.kelvin,
+          lightTempKey: lightTemp.key,
+          lightTempPromptHint: lightTemp.promptHint,
         }),
       });
       if (!createRes.ok) {
@@ -210,7 +233,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
       setAiState("error");
     }
-  }, [ceilingFinish, ceilingColorId, elements]);
+  }, [ceilingFinish, ceilingColorId, elements, lightTemp]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
@@ -434,9 +457,9 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
 
         {lightFixtures.map((f) =>
           f.kind === "spot" ? (
-            <Spot3D key={f.id} position={f.pos} variant={f.variant} withLight={lightBudget} />
+            <Spot3D key={f.id} position={f.pos} variant={f.variant} withLight={lightBudget} lightColor={lightTemp.hex} />
           ) : (
-            <Chandelier3D key={f.id} position={f.pos} withLight={lightBudget} />
+            <Chandelier3D key={f.id} position={f.pos} withLight={lightBudget} lightColor={lightTemp.hex} />
           ),
         )}
 
@@ -460,6 +483,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
             ceilingM={ceilingM}
             type={w.type}
             variant={w.variant}
+            lightColor={lightTemp.hex}
           />
         ))}
 
@@ -533,6 +557,31 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
                   />
                 ))}
               </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Свет</div>
+              <div className="grid grid-cols-3 gap-1">
+                {LIGHT_TEMPERATURES.map((t) => {
+                  const active = lightTempKey === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => setLightTempKey(t.key)}
+                      title={`${t.label} · ${t.kelvin}K`}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold flex flex-col items-center gap-0.5 ${
+                        active ? "bg-[#1e3a5f] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-300"
+                        style={{ backgroundColor: t.hex }}
+                      />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-gray-400 mt-1 text-center">{lightTemp.kelvin}K</div>
             </div>
           </div>
         )}

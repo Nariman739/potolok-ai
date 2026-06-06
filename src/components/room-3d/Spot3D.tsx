@@ -9,10 +9,12 @@ interface Spot3DProps {
   position: [number, number, number];
   variant?: "ours" | "client";
   withLight: boolean;
+  lightColor?: string;
 }
 
-export function Spot3D({ position, variant = "ours", withLight }: Spot3DProps) {
-  const lightColor = variant === "client" ? "#FFE9CD" : "#FFB46B";
+export function Spot3D({ position, variant = "ours", withLight, lightColor: lightColorOverride }: Spot3DProps) {
+  const defaultColor = variant === "client" ? "#FFE9CD" : "#FFB46B";
+  const lightColor = lightColorOverride ?? defaultColor;
   const r = SPOT_DIAMETER_M / 2;
 
   return (

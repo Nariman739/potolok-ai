@@ -102,6 +102,8 @@ export interface SceneSourcePromptInput {
   extraPrompt?: string;
   /** "scene3d" — perspective-снимок R3F; "scene2d" — top-down план (mobile). */
   sourceType: "scene3d" | "scene2d";
+  /** Готовая фраза про температуру света для добавления в промпт (warm 2700K / neutral 4000K / cool 6500K). */
+  lightTempPromptHint?: string;
 }
 
 /**
@@ -156,10 +158,14 @@ export function buildScenePrompt(input: SceneSourcePromptInput): string {
     parts.push("Architectural elements visible in the room:", ...archElements.map((a) => `  - ${a}`));
   }
 
-  parts.push(
-    "Realistic interior photography, soft natural daylight from windows, accurate textures on walls/floor/furniture",
-    "Warm cozy residential atmosphere, ultra-detailed, sharp focus, 4K",
-  );
+  const lightingPhrase = input.lightTempPromptHint
+    ? `${input.lightTempPromptHint}, soft natural daylight blending with artificial lighting from the ceiling fixtures`
+    : "Realistic interior photography, soft natural daylight from windows, accurate textures on walls/floor/furniture";
+  const moodPhrase = input.lightTempPromptHint
+    ? "Ultra-detailed, sharp focus, 4K, professional interior design photography"
+    : "Warm cozy residential atmosphere, ultra-detailed, sharp focus, 4K";
+
+  parts.push(lightingPhrase, moodPhrase);
 
   if (input.extraPrompt) parts.push(input.extraPrompt);
 
