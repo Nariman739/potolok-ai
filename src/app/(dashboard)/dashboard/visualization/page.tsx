@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MarkupCanvas, type MarkupData } from "@/components/visualization/markup-canvas";
+import { useBilling } from "@/hooks/use-billing";
+import { QuotaBadge } from "@/components/visualization/quota-badge";
+import { UpsellBanner } from "@/components/visualization/upsell-banner";
 
 // Сохраняем состояние формы в sessionStorage — переживает hot-reload, ошибки, F5.
 const STORAGE_KEY = "viz_form_state_v1";
@@ -140,7 +143,7 @@ export default function VisualizationPage() {
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
+  const { billing, refresh: refreshBilling } = useBilling();
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
 
   // hydrated: true после первого client-side mount.
@@ -368,7 +371,7 @@ export default function VisualizationPage() {
       }
       setResultUrl(data.render.url);
       setElapsedMs(data.elapsedMs ?? null);
-      setCreditsLeft(data.creditsLeft ?? null);
+      refreshBilling();
       // обновим список
       loadList();
     } catch (e) {
@@ -417,12 +420,14 @@ export default function VisualizationPage() {
             Фото комнаты клиента → фотореалистичный рендер с натяжным потолком
           </p>
         </div>
-        {creditsLeft !== null && (
-          <div className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
-            Кредиты: {creditsLeft}
-          </div>
-        )}
+        {billing && <QuotaBadge billing={billing} />}
       </div>
+
+      {billing && !billing.allowed && (
+        <div className="mb-6">
+          <UpsellBanner billing={billing} />
+        </div>
+      )}
 
       {/* --- New flow --- */}
       <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
