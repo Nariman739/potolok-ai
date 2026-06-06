@@ -58,7 +58,7 @@ export function EstimateActions({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Удалить этот расчёт? Это действие нельзя отменить.")) return;
+    if (!confirm("Удалить этот расчёт? Он попадёт в Корзину — можно будет восстановить.")) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/estimates/${estimateId}`, { method: "DELETE" });
