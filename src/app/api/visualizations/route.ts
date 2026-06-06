@@ -1,12 +1,18 @@
-// POST  /api/visualizations  — multipart upload фото → создать draft Visualization
+// POST  /api/visualizations  — два режима создания draft Visualization:
+//   1) multipart/form-data: file + (optional) reference + objectId → sourceType="reference"
+//   2) application/json:    sourceType="scene3d"|"scene2d", sceneDataUrl (base64 PNG),
+//      markup, referenceUrl?, objectId?
 // GET   /api/visualizations  — список визуализаций мастера (без фотографий рендеров)
 
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { RoomElement } from "@/lib/room-types";
+import type { CeilingFinish } from "@/lib/ai-visualization";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const VALID_FINISHES: ReadonlySet<CeilingFinish> = new Set(["matte", "satin", "glossy"]);
 
 async function uploadImageToBlob(
   file: File,
@@ -31,10 +37,98 @@ async function uploadImageToBlob(
   return blob.url;
 }
 
+async function uploadDataUrlToBlob(
+  dataUrl: string,
+  masterId: string,
+  kind: "scene3d" | "scene2d",
+): Promise<string> {
+  const match = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error("Невалидный data:image URL");
+  const [, mime, b64] = match;
+  const buf = Buffer.from(b64, "base64");
+  if (buf.byteLength > MAX_FILE_SIZE) throw new Error("Снимок больше 10MB");
+  const ext = mime.split("/")[1] || "png";
+  const blob = await put(`visualization/${masterId}/${kind}/${Date.now()}.${ext}`, buf, {
+    access: "public",
+    contentType: mime,
+    addRandomSuffix: true,
+  });
+  return blob.url;
+}
+
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const contentType = request.headers.get("content-type") || "";
 
+    // --- JSON ветка: scene3d / scene2d ---
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as {
+        sourceType?: "scene3d" | "scene2d";
+        sceneDataUrl?: string; // base64 PNG из R3F-canvas (scene3d) или 2D-плана (scene2d, mobile)
+        elements?: RoomElement[];
+        finish?: string;
+        colorHex?: string;
+        colorName?: string;
+        referenceUrl?: string; // опциональное фото комнаты клиента (гибрид)
+        objectId?: string;
+      };
+
+      if (body.sourceType !== "scene3d" && body.sourceType !== "scene2d") {
+        return NextResponse.json(
+          { error: "sourceType должен быть scene3d или scene2d" },
+          { status: 400 },
+        );
+      }
+      if (!body.sceneDataUrl) {
+        return NextResponse.json({ error: "sceneDataUrl обязателен" }, { status: 400 });
+      }
+      if (!body.finish || !VALID_FINISHES.has(body.finish as CeilingFinish)) {
+        return NextResponse.json(
+          { error: "finish: matte | satin | glossy" },
+          { status: 400 },
+        );
+      }
+      const elements = Array.isArray(body.elements) ? body.elements : [];
+
+      let originalUrl: string;
+      try {
+        originalUrl = await uploadDataUrlToBlob(body.sceneDataUrl, master.id, body.sourceType);
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof Error ? e.message : "Ошибка загрузки снимка" },
+          { status: 400 },
+        );
+      }
+
+      const viz = await prisma.visualization.create({
+        data: {
+          masterId: master.id,
+          objectId: body.objectId || null,
+          sourceType: body.sourceType,
+          originalUrl,
+          referenceUrl: body.referenceUrl || null,
+          status: "draft",
+          markup: {
+            elements,
+            finish: body.finish,
+            colorHex: body.colorHex || null,
+            colorName: body.colorName || null,
+          } as unknown as object,
+        },
+      });
+
+      return NextResponse.json({
+        id: viz.id,
+        sourceType: viz.sourceType,
+        originalUrl: viz.originalUrl,
+        referenceUrl: viz.referenceUrl,
+        status: viz.status,
+        createdAt: viz.createdAt,
+      });
+    }
+
+    // --- multipart ветка: reference (фото клиента + опциональный референс) ---
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const referenceFile = formData.get("reference") as File | null;

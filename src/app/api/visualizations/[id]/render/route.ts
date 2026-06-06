@@ -4,8 +4,17 @@
 
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { randomBytes } from "node:crypto";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Генерирует 8-символьный URL-safe public hash для шеринга /visual/{hash}.
+ * Коллизия base64url(6) ≈ 10^-14 на запись — достаточно для prod-объёмов.
+ */
+function generatePublicHash(): string {
+  return randomBytes(6).toString("base64url");
+}
 import {
   generateVisualization,
   describeReferenceCeiling,
@@ -21,6 +30,14 @@ import {
   compositeWithMask,
   generateMarkupOverlay,
 } from "@/lib/visualization-mask";
+import { buildScenePrompt, buildHybridScenePrompt } from "@/lib/ai-scene-prompt";
+import type { RoomElement } from "@/lib/room-types";
+import {
+  loadBillingState,
+  checkBilling,
+  buildBillingIncrement,
+  type BillingCheckResult,
+} from "@/lib/visualization-billing";
 
 // Nano Banana отвечает за 15-25 сек, FLUX Kontext до 60 сек → ставим 90 для запаса.
 export const maxDuration = 90;
@@ -130,7 +147,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       };
     };
 
-    // --- validate options ---
+    // --- load visualization (нужно ДО валидации options, чтобы знать sourceType) ---
+    const viz = await prisma.visualization.findFirst({
+      where: { id, masterId: master.id },
+    });
+    if (!viz) {
+      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    }
+
+    // --- check billing (trial + tier + legacy credits) ---
+    const billing = await loadBillingState(master.id);
+    if (!billing) {
+      return NextResponse.json({ error: "Не найден мастер" }, { status: 404 });
+    }
+    const decision = checkBilling(billing);
+    if (!decision.allowed) {
+      const msg =
+        decision.reason === "monthly_limit_reached"
+          ? "Месячный лимит визуализаций исчерпан. Обновите до PRO+ или подождите следующего месяца."
+          : "Лимит визуализаций на этот месяц исчерпан. Подождите следующий месяц или обновите до PRO.";
+      return NextResponse.json({ error: msg, bucket: decision.bucket }, { status: 402 });
+    }
+
+    // === scene3d / scene2d ветка ===
+    // Источник — снимок 3D-сцены (scene3d) или 2D-плана (scene2d). markup внутри viz
+    // содержит { elements, finish, colorHex, colorName }. Опции reference-флоу не
+    // требуются — геометрия полностью внутри snapshot'а.
+    if (viz.sourceType === "scene3d" || viz.sourceType === "scene2d") {
+      return renderFromScene(viz, decision, master.id, body.provider);
+    }
+
+    // --- reference flow: validate options ---
     const opts = body.options ?? {};
     if (!opts.attachmentType || !VALID_ATTACHMENT.has(opts.attachmentType)) {
       return NextResponse.json(
@@ -157,26 +204,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json(
         { error: "Provider: nano-banana | replicate-flux-kontext" },
         { status: 400 },
-      );
-    }
-
-    // --- load visualization ---
-    const viz = await prisma.visualization.findFirst({
-      where: { id, masterId: master.id },
-    });
-    if (!viz) {
-      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
-    }
-
-    // --- check credits ---
-    const fresh = await prisma.master.findUnique({
-      where: { id: master.id },
-      select: { visualizationCredits: true },
-    });
-    if (!fresh || fresh.visualizationCredits <= 0) {
-      return NextResponse.json(
-        { error: "Кредиты на визуализацию исчерпаны. Пополните в профиле." },
-        { status: 402 },
       );
     }
 
@@ -409,22 +436,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         where: { id: viz.id },
         data: {
           status: "ready",
+          // Генерируем publicHash при первом успешном render, если его ещё нет.
+          ...(viz.publicHash ? {} : { publicHash: generatePublicHash() }),
           markup: {
             options: options as unknown as object,
             drawing: body.markup ?? null,
           } as unknown as object,
         },
       }),
-      prisma.master.update({
-        where: { id: master.id },
-        data: { visualizationCredits: { decrement: 1 } },
-      }),
+      ...buildBillingUpdate(decision, master.id),
       // Перезаписываем связи: сначала чистим старые, потом создаём новые.
       prisma.visualizationElement.deleteMany({ where: { visualizationId: viz.id } }),
       ...(elementCreateData.length > 0
         ? [prisma.visualizationElement.createMany({ data: elementCreateData })]
         : []),
     ]);
+
+    const finalViz = await prisma.visualization.findUnique({
+      where: { id: viz.id },
+      select: { publicHash: true },
+    });
 
     return NextResponse.json({
       render: {
@@ -434,8 +465,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         costUsd: render.costUsd,
         createdAt: render.createdAt,
       },
+      publicHash: finalViz?.publicHash ?? null,
       elapsedMs: result.elapsedMs,
-      creditsLeft: fresh.visualizationCredits - 1,
+      remaining: decision.remaining,
+      bucket: decision.bucket,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -444,4 +477,187 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     console.error("[visualizations render] error:", error);
     return NextResponse.json({ error: "Ошибка рендера" }, { status: 500 });
   }
+}
+
+// Хелпер для $transaction: возвращает массив из 0-1 prisma update'ов для биллинга.
+function buildBillingUpdate(decision: BillingCheckResult, masterId: string) {
+  const inc = buildBillingIncrement(decision);
+  if (!inc) return [];
+  return [prisma.master.update({ where: { id: masterId }, data: inc.data })];
+}
+
+// === scene3d/scene2d рендер ===
+// Отдельный path без mask/overlay/preparedElements — геометрия передаётся через snapshot.
+// При наличии referenceUrl используется гибридный multi-image flow (фото комнаты + сцена).
+async function renderFromScene(
+  viz: {
+    id: string;
+    sourceType: string;
+    originalUrl: string;
+    referenceUrl: string | null;
+    markup: unknown;
+    publicHash: string | null;
+  },
+  decision: BillingCheckResult,
+  masterId: string,
+  providerOverride?: VisualizationProvider,
+): Promise<NextResponse> {
+  // --- parse markup ---
+  const markup = (viz.markup ?? {}) as {
+    elements?: RoomElement[];
+    finish?: CeilingFinish;
+    colorHex?: string;
+    colorName?: string;
+    extraPrompt?: string;
+  };
+  const elements = Array.isArray(markup.elements) ? markup.elements : [];
+  const finish: CeilingFinish = (markup.finish as CeilingFinish) ?? "matte";
+
+  // --- fetch scene snapshot (PNG из R3F или 2D-плана) как base64 ---
+  const sceneRes = await fetch(viz.originalUrl);
+  if (!sceneRes.ok) {
+    return NextResponse.json({ error: "Не удалось загрузить снимок сцены" }, { status: 500 });
+  }
+  const sceneMime = sceneRes.headers.get("content-type") || "image/png";
+  const sceneBase64 = Buffer.from(await sceneRes.arrayBuffer()).toString("base64");
+
+  // --- (optional) reference: фото реальной комнаты для гибридного режима ---
+  let referenceBase64: string | undefined;
+  let referenceMime: string | undefined;
+  let referenceDescription: string | undefined;
+  if (viz.referenceUrl) {
+    const refRes = await fetch(viz.referenceUrl);
+    if (refRes.ok) {
+      referenceMime = refRes.headers.get("content-type") || "image/jpeg";
+      referenceBase64 = Buffer.from(await refRes.arrayBuffer()).toString("base64");
+      try {
+        referenceDescription = await describeReferenceCeiling(referenceBase64, referenceMime);
+      } catch (e) {
+        console.warn("[scene render] reference description failed:", e);
+      }
+    }
+  }
+
+  const hasReference = Boolean(referenceBase64 && referenceMime);
+  const sourceType = viz.sourceType as "scene3d" | "scene2d";
+
+  const customPrompt = hasReference
+    ? buildHybridScenePrompt({
+        elements,
+        finish,
+        colorHex: markup.colorHex,
+        colorName: markup.colorName,
+        extraPrompt: markup.extraPrompt,
+        sourceType,
+        referenceDescription,
+      })
+    : buildScenePrompt({
+        elements,
+        finish,
+        colorHex: markup.colorHex,
+        colorName: markup.colorName,
+        extraPrompt: markup.extraPrompt,
+        sourceType,
+      });
+
+  // FLUX Kontext не умеет multi-image, при гибриде форсим nano-banana.
+  const provider: VisualizationProvider =
+    hasReference ? "nano-banana" : providerOverride ?? "nano-banana";
+
+  // Заглушка options — реально используется только customPrompt + photo/reference.
+  const options: VisualizationOptions = {
+    attachmentType: "regular",
+    finish,
+    colorName: markup.colorName,
+    spotsCount: 6,
+    chandelierType: "minimalist",
+  };
+
+  await prisma.visualization.update({
+    where: { id: viz.id },
+    data: { status: "rendering" },
+  });
+
+  let result;
+  try {
+    // ВАЖНО: для гибрида фото комнаты передаётся как ПЕРВОЕ изображение (photo*),
+    // снимок 3D-сцены — как ВТОРОЕ (overlay*). Промпт описывает image-1 как
+    // реальную комнату, image-2 как схему потолка.
+    if (hasReference) {
+      result = await generateVisualization({
+        photoUrl: viz.referenceUrl!,
+        photoBase64: referenceBase64,
+        photoMime: referenceMime,
+        overlayBase64: sceneBase64,
+        overlayMime: sceneMime,
+        options,
+        provider,
+        customPrompt,
+      });
+    } else {
+      result = await generateVisualization({
+        photoUrl: viz.originalUrl,
+        photoBase64: sceneBase64,
+        photoMime: sceneMime,
+        options,
+        provider,
+        customPrompt,
+      });
+    }
+  } catch (err) {
+    await prisma.visualization.update({
+      where: { id: viz.id },
+      data: { status: "failed" },
+    });
+    const msg = err instanceof Error ? err.message : "Неизвестная ошибка рендера";
+    console.error("[scene render] generation failed:", err);
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
+
+  const renderBuf = Buffer.from(result.imageBase64, "base64");
+  const renderExt = result.imageMime.includes("png") ? "png" : "jpg";
+  const renderBlob = await put(
+    `visualization/${masterId}/renders/${Date.now()}.${renderExt}`,
+    renderBuf,
+    { access: "public", contentType: result.imageMime, addRandomSuffix: true },
+  );
+
+  const [render] = await prisma.$transaction([
+    prisma.visualizationRender.create({
+      data: {
+        visualizationId: viz.id,
+        url: renderBlob.url,
+        prompt: result.prompt,
+        modelUsed: result.modelUsed,
+        costUsd: result.costUsd,
+      },
+    }),
+    prisma.visualization.update({
+      where: { id: viz.id },
+      data: {
+        status: "ready",
+        ...(viz.publicHash ? {} : { publicHash: generatePublicHash() }),
+      },
+    }),
+    ...buildBillingUpdate(decision, masterId),
+  ]);
+
+  const finalViz = await prisma.visualization.findUnique({
+    where: { id: viz.id },
+    select: { publicHash: true },
+  });
+
+  return NextResponse.json({
+    render: {
+      id: render.id,
+      url: render.url,
+      modelUsed: render.modelUsed,
+      costUsd: render.costUsd,
+      createdAt: render.createdAt,
+    },
+    publicHash: finalViz?.publicHash ?? null,
+    elapsedMs: result.elapsedMs,
+    remaining: decision.remaining,
+    bucket: decision.bucket,
+  });
 }

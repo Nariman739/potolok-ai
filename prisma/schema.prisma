@@ -83,9 +83,13 @@ model Master {
   smmProfile               Json? // {city, tone, audience, usp, style} — индивидуальный SMM-профиль
 
   // AI Visualization (фотореалистичный рендер потолка клиента)
-  visualizationCredits    Int              @default(3) // 3 бесплатных на onboarding
-  visualizationsThisMonth Int              @default(0) // ежемесячный лимит для PRO
+  visualizationCredits    Int              @default(3) // legacy onboarding-кредиты — используются ДО триала, потом игнорируются
+  visualizationsThisMonth Int              @default(0) // ежемесячный счётчик: PRO/PRO+ tier + правило «1/мес после триала» для FREE
   visualizationMonthReset DateTime         @default(now())
+  // Триал 5 рендеров в первый месяц после регистрации. trialRendersUsed НЕ ресетится календарно
+  // (защита: регистрация 28 числа не должна давать 5+5 рендеров в двух месяцах подряд).
+  trialEndAt              DateTime? // null = миграция выставит createdAt + 30 дней для существующих
+  trialRendersUsed        Int              @default(0)
   visualizations          Visualization[]
   ceilingElements         CeilingElement[]
 
@@ -429,9 +433,10 @@ model Visualization {
   id           String   @id @default(uuid())
   masterId     String
   objectId     String? // опциональная связь с MeasurementObject
-  originalUrl  String // исходное фото клиентской комнаты (Vercel Blob)
-  referenceUrl String? // опциональное фото-референс «сделай как тут» (Pinterest / портфолио мастера)
-  markup       Json? // { attachmentType, finish, ledStrip, spotsCount, chandelierType, points?, lines? }
+  sourceType   String   @default("reference") // reference (фото+разметка) | scene3d (3D-снимок конструктора) | scene2d (план + RoomElement[] JSON, mobile)
+  originalUrl  String // фото клиентской комнаты ИЛИ снимок 3D-сцены/2D-плана (Vercel Blob)
+  referenceUrl String? // для reference: вдохновение «как тут». Для scene3d/scene2d: фото реальной комнаты клиента (опционально, гибрид)
+  markup       Json? // reference: { attachmentType, finish, points[], lines[] }. scene3d/scene2d: { elements: RoomElement[], finish, colorHex, colorName }
   publicHash   String?  @unique // для публичной ссылки /visual/<hash>
   status       String   @default("draft") // draft | rendering | ready | failed
   createdAt    DateTime @default(now())

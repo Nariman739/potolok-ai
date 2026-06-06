@@ -164,35 +164,53 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     }
   }, [onScreenshot]);
 
-  // AI-рендер: тот же snapshot отправляется в Flux Kontext Pro через /api/ai-render-scene
+  // AI-рендер: snapshot R3F → /api/visualizations (sourceType=scene3d) → render
+  // → ready Visualization. Это unified pipeline с фото-режимом (sourceType=reference).
+  // Старый /api/ai-render-scene остаётся как deprecated fallback (Этап 1).
   const handleAiCapture = useCallback(async (dataUrl: string) => {
     setAiState("generating");
     setAiError(null);
     setAiResultUrl(null);
     try {
       const colorEntry = CEILING_COLORS.find((c) => c.id === ceilingColorId);
-      const res = await fetch("/api/ai-render-scene", {
+
+      // 1) create draft Visualization (sourceType=scene3d)
+      const createRes = await fetch("/api/visualizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageDataUrl: dataUrl,
+          sourceType: "scene3d",
+          sceneDataUrl: dataUrl,
+          elements,
           finish: ceilingFinish,
           colorHex: colorEntry?.hex ?? "#FFFFFF",
           colorName: colorEntry?.label ?? "белый",
         }),
       });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `HTTP ${res.status}`);
+      if (!createRes.ok) {
+        const j = (await createRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Не удалось создать визуализацию (HTTP ${createRes.status})`);
       }
-      const { url } = (await res.json()) as { url: string };
-      setAiResultUrl(url);
+      const { id: vizId } = (await createRes.json()) as { id: string };
+
+      // 2) run render
+      const renderRes = await fetch(`/api/visualizations/${vizId}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!renderRes.ok) {
+        const j = (await renderRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `Рендер не удался (HTTP ${renderRes.status})`);
+      }
+      const { render } = (await renderRes.json()) as { render: { url: string } };
+      setAiResultUrl(render.url);
       setAiState("result");
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
       setAiState("error");
     }
-  }, [ceilingFinish, ceilingColorId]);
+  }, [ceilingFinish, ceilingColorId, elements]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);

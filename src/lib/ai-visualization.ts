@@ -67,6 +67,8 @@ export interface VisualizationInput {
   maskUrl?: string;
   options: VisualizationOptions;
   provider?: VisualizationProvider; // default: nano-banana
+  /** Если задан — перебивает buildVisualizationPrompt (используется для sourceType=scene3d/scene2d). */
+  customPrompt?: string;
 }
 
 export interface VisualizationResult {
@@ -481,7 +483,7 @@ async function generateNanoBanana(input: VisualizationInput): Promise<Visualizat
   const hasOverlay = Boolean(input.overlayBase64 && input.overlayMime);
   const elements = input.elements ?? [];
   const client = getOpenRouter();
-  const prompt = buildVisualizationPrompt(
+  const prompt = input.customPrompt ?? buildVisualizationPrompt(
     input.options,
     hasReference,
     input.referenceDescription,
@@ -565,7 +567,7 @@ async function generateReplicateFlux(input: VisualizationInput): Promise<Visuali
 
   // FLUX Kontext Pro принимает только одно input_image — reference игнорируется
   const replicate = new Replicate({ auth: token });
-  const prompt = buildVisualizationPrompt(input.options, false);
+  const prompt = input.customPrompt ?? buildVisualizationPrompt(input.options, false);
   const t0 = Date.now();
 
   const output = await replicate.run(FLUX_KONTEXT_MODEL, {
@@ -616,7 +618,7 @@ async function generateFalFluxFill(input: VisualizationInput): Promise<Visualiza
   if (!input.maskUrl) throw new Error("fal-flux-fill требует maskUrl (PNG-маску)");
   if (!input.photoUrl) throw new Error("fal-flux-fill требует publichный photoUrl");
 
-  const prompt = buildVisualizationPrompt(
+  const prompt = input.customPrompt ?? buildVisualizationPrompt(
     input.options,
     Boolean(input.referenceBase64 && input.referenceMime),
     input.referenceDescription,
