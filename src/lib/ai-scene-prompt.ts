@@ -117,6 +117,10 @@ export interface SceneSourcePromptInput {
   lightTempPromptHint?: string;
   /** Конкретные товары из прайса мастера, привязанные к RoomElement'ам — для AI рендера реальных моделей. */
   linkedVariants?: LinkedPriceVariantInfo[];
+  /** Описание пресета пола (oak parquet / light laminate / gray tile / dark parquet). */
+  floorPromptDesc?: string;
+  /** Описание пресета стен (white paint / light gray / beige wallpaper / decorative plaster). */
+  wallPromptDesc?: string;
 }
 
 /**
@@ -167,10 +171,19 @@ export function buildScenePrompt(input: SceneSourcePromptInput): string {
     ? `Ceiling fixtures emit ${input.lightTempPromptHint}. Soft natural daylight from windows blends with the artificial lighting.`
     : "Soft natural daylight from windows; ceiling fixtures emit neutral 4000K white light.";
 
+  const surfaceDescriptors: string[] = [];
+  if (input.floorPromptDesc) surfaceDescriptors.push(`floor: ${input.floorPromptDesc}`);
+  if (input.wallPromptDesc) surfaceDescriptors.push(`walls: ${input.wallPromptDesc}`);
+  const surfacePhrase =
+    surfaceDescriptors.length > 0
+      ? `ROOM SURFACES: ${surfaceDescriptors.join("; ")}. Apply these finishes consistently across the visible room.`
+      : null;
+
   const parts: string[] = [
     "STYLE: professional interior design photography, magazine quality, photorealistic, architectural visualization, wide-angle lens, clean composition, eye-level perspective.",
     sourceHint,
     `CEILING: ${finishDesc}, color ${colorHuman}. The ceiling must look like a real installed натяжной потолок — perfectly flat, no warping, no visible seams.`,
+    ...(surfacePhrase ? [surfacePhrase] : []),
     lightingPhrase,
   ];
 

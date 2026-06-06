@@ -85,6 +85,10 @@ export async function POST(request: Request) {
           colorHex?: string | null;
           mountingType?: string | null;
         }>;
+        floorPresetId?: string;
+        floorPromptDesc?: string;
+        wallPresetId?: string;
+        wallPromptDesc?: string;
       };
 
       if (body.sourceType !== "scene3d" && body.sourceType !== "scene2d") {
@@ -131,6 +135,10 @@ export async function POST(request: Request) {
             lightTempKey: body.lightTempKey || null,
             lightTempPromptHint: body.lightTempPromptHint || null,
             linkedVariants: Array.isArray(body.linkedVariants) ? body.linkedVariants : [],
+            floorPresetId: body.floorPresetId || null,
+            floorPromptDesc: body.floorPromptDesc || null,
+            wallPresetId: body.wallPresetId || null,
+            wallPromptDesc: body.wallPromptDesc || null,
           } as unknown as object,
         },
       });
