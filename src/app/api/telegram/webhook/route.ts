@@ -28,24 +28,30 @@ export const maxDuration = 60;
 
 // TELEGRAM_WEBHOOK_SECRET is REQUIRED — without it any attacker who knows the
 // webhook URL can replay updates and impersonate any linked master.
-// Resolved at module load so an unconfigured prod instance refuses to start.
-const TELEGRAM_WEBHOOK_SECRET = (() => {
-  const v = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!v || v.length < 16) {
-    throw new Error(
-      "TELEGRAM_WEBHOOK_SECRET is not set (need >=16 random chars). " +
-      "Generate with: openssl rand -base64 32, set it on Vercel AND on the " +
-      "webhook via setWebhook?secret_token=...",
-    );
-  }
-  return v;
-})();
+//
+// Проверка перенесена в handler (раньше throw на module-load, что валило
+// КАЖДЫЙ Preview-деплой и блокировало бы Production-деплой если кто-то
+// случайно удалит env). Теперь:
+//   - если env не задана  → возвращаем 503 (видно в Sentry / Vercel logs)
+//   - если задана слишком короткая → тоже 503
+//   - запросы без правильного header → 401 как и раньше
+// Билд проходит независимо.
 
 // Telegram sends POST requests to this endpoint
 export async function POST(request: Request) {
   try {
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (!secret || secret.length < 16) {
+      // Critical misconfiguration — алертим в логи. Возвращаем 503 а не 401,
+      // чтобы оператор сразу понял что это конфиг, а не атака.
+      console.error(
+        "[telegram/webhook] TELEGRAM_WEBHOOK_SECRET is not set or too short. " +
+        "Webhook is REJECTING ALL traffic. Set env on Vercel and reload.",
+      );
+      return NextResponse.json({ ok: false, error: "Webhook misconfigured" }, { status: 503 });
+    }
     const header = request.headers.get("x-telegram-bot-api-secret-token");
-    if (header !== TELEGRAM_WEBHOOK_SECRET) {
+    if (header !== secret) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
 
