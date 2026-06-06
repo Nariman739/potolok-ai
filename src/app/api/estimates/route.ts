@@ -9,7 +9,7 @@ export async function GET() {
     const master = await requireAuth();
 
     const estimates = await prisma.estimate.findMany({
-      where: { masterId: master.id },
+      where: { masterId: master.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -171,11 +171,16 @@ export async function POST(request: Request) {
     if (fromMeasurementId) {
       try {
         const m = await prisma.measurementObject.findFirst({
-          where: { id: fromMeasurementId, masterId: master.id },
+          where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
           select: { id: true },
         });
         if (m) {
-          await prisma.measurementObject.delete({ where: { id: m.id } });
+          // Soft-delete: исходный замер «съеден» — лежит в корзине,
+          // мастер может восстановить если хочет иметь его отдельно.
+          await prisma.measurementObject.update({
+            where: { id: m.id },
+            data: { deletedAt: new Date() },
+          });
         }
       } catch (e) {
         console.warn("Failed to consume measurement after estimate create:", e);

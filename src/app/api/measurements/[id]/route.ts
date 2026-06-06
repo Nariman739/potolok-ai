@@ -12,7 +12,7 @@ export async function GET(
     const { id } = await params;
 
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       include: { rooms: { orderBy: { sortOrder: "asc" } } },
     });
 
@@ -59,7 +59,7 @@ export async function PATCH(
       safeClientId = null;
     } else if (typeof clientId === "string" && clientId) {
       const exists = await prisma.client.findFirst({
-        where: { id: clientId, masterId: master.id },
+        where: { id: clientId, masterId: master.id, deletedAt: null },
         select: { id: true },
       });
       safeClientId = exists?.id ?? null;
@@ -75,7 +75,7 @@ export async function PATCH(
 
     // Проверяем что объект принадлежит мастеру
     const owner = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       select: { id: true },
     });
     if (!owner) {
@@ -140,8 +140,11 @@ export async function DELETE(
     const master = await requireAuth();
     const { id } = await params;
 
-    const result = await prisma.measurementObject.deleteMany({
-      where: { id, masterId: master.id },
+    // Soft-delete: запись остаётся в БД, восстанавливается через /dashboard/trash.
+    // См. PR-A 2026-06-03 — закрывает блокер из аудита 2026-06-01.
+    const result = await prisma.measurementObject.updateMany({
+      where: { id, masterId: master.id, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
 
     if (result.count === 0) {

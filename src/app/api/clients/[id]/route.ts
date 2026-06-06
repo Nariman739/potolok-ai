@@ -35,7 +35,7 @@ export async function GET(
     const { id } = await params;
 
     const client = await prisma.client.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       include: {
         events: {
           orderBy: { createdAt: "desc" },
@@ -97,7 +97,7 @@ export async function PUT(
     const body = await request.json();
 
     const existing = await prisma.client.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json(
@@ -193,7 +193,7 @@ export async function DELETE(
     const { id } = await params;
 
     const existing = await prisma.client.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json(
@@ -202,19 +202,13 @@ export async function DELETE(
       );
     }
 
-    // Явное «обнуление» связанных таблиц до удаления клиента — раньше
-    // полагались только на onDelete:SetNull в schema, но в проде иногда
-    // ловили P2003 (foreign key constraint) при удалении. Транзакция
-    // гарантирует целостность: либо всё прошло, либо ничего не изменилось.
-    // ClientEvent удаляется (cascade в schema), photo/measurement/estimate —
-    // обнуляются (остаются у мастера в общем списке без привязки к клиенту).
-    await prisma.$transaction([
-      prisma.estimate.updateMany({ where: { clientId: id }, data: { clientId: null } }),
-      prisma.measurementObject.updateMany({ where: { clientId: id }, data: { clientId: null } }),
-      prisma.objectPhoto.updateMany({ where: { clientId: id }, data: { clientId: null } }),
-      prisma.clientEvent.deleteMany({ where: { clientId: id } }),
-      prisma.client.delete({ where: { id } }),
-    ]);
+    // Soft-delete: FK к Estimate/MeasurementObject/ObjectPhoto/ClientEvent
+    // НЕ обнуляем — это позволяет на restore вернуть всё в исходное состояние.
+    // См. PR-A 2026-06-03 — закрывает блокер из аудита 2026-06-01.
+    await prisma.client.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

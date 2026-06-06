@@ -22,7 +22,7 @@ export async function PATCH(
     };
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });

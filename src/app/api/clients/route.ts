@@ -31,9 +31,10 @@ export async function GET(request: Request) {
 
     const where: {
       masterId: string;
+      deletedAt: null;
       status?: DealStatus;
       OR?: Array<Record<string, unknown>>;
-    } = { masterId: master.id };
+    } = { masterId: master.id, deletedAt: null };
 
     if (status && (ALLOWED_STATUSES as readonly string[]).includes(status)) {
       where.status = status as DealStatus;

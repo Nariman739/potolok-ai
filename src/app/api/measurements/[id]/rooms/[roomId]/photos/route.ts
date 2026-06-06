@@ -13,7 +13,7 @@ export async function POST(
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       select: { id: true },
     });
     if (!obj) {
@@ -94,7 +94,7 @@ export async function DELETE(
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       select: { id: true },
     });
     if (!obj) {

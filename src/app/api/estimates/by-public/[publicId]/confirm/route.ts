@@ -38,8 +38,8 @@ export async function POST(
       return NextResponse.json({ error: "Слишком много попыток" }, { status: 429 });
     }
 
-    const estimate = await prisma.estimate.findUnique({
-      where: { publicId },
+    const estimate = await prisma.estimate.findFirst({
+      where: { publicId, deletedAt: null },
       select: {
         id: true,
         status: true,

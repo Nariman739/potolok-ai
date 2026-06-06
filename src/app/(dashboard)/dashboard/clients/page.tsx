@@ -13,7 +13,7 @@ export default async function ClientsPage() {
   if (!master) redirect("/api/auth/clear");
 
   const clients = await prisma.client.findMany({
-    where: { masterId: master.id },
+    where: { masterId: master.id, deletedAt: null },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

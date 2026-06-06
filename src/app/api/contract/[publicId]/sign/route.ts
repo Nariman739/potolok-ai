@@ -31,8 +31,8 @@ export async function POST(
       );
     }
 
-    const estimate = await prisma.estimate.findUnique({
-      where: { contractPublicId: publicId },
+    const estimate = await prisma.estimate.findFirst({
+      where: { contractPublicId: publicId, deletedAt: null },
       include: {
         master: { select: { telegramChatId: true, notifyDealWon: true } },
       },

@@ -56,7 +56,7 @@ export async function POST(
     };
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
       include: {
         master: {
           select: {

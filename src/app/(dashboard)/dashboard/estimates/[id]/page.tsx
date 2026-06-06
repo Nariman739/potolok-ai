@@ -37,7 +37,7 @@ export default async function EstimateDetailPage({
 
   const [estimate, kpBrief] = await Promise.all([
     prisma.estimate.findFirst({
-      where: { id, masterId: master.id },
+      where: { id, masterId: master.id, deletedAt: null },
     }),
     prisma.masterBrief.findUnique({
       where: { masterId: master.id },

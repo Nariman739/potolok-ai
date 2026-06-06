@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
     const clients = await prisma.client.findMany({
       where: {
         masterId: m.id,
+        deletedAt: null,
         nextContactAt: { lte: todayEnd },
         status: { notIn: EXCLUDED_STATUSES },
       },

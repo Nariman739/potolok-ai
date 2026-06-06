@@ -74,7 +74,7 @@ export async function GET(
       return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
     }
 
-    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id } });
+    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id, deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     if (estimate.status !== "CONFIRMED") {
       return NextResponse.json({ error: "Акт доступен только для подтверждённых КП" }, { status: 400 });

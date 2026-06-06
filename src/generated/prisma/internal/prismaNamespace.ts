@@ -2673,7 +2673,8 @@ export const PriceVariantScalarFieldEnum = {
   noInsert: 'noInsert',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
 } as const
 
 export type PriceVariantScalarFieldEnum = (typeof PriceVariantScalarFieldEnum)[keyof typeof PriceVariantScalarFieldEnum]
@@ -2720,7 +2721,8 @@ export const EstimateScalarFieldEnum = {
   room3dPreviewUrl: 'room3dPreviewUrl',
   validUntil: 'validUntil',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
 } as const
 
 export type EstimateScalarFieldEnum = (typeof EstimateScalarFieldEnum)[keyof typeof EstimateScalarFieldEnum]
@@ -2752,7 +2754,8 @@ export const MeasurementObjectScalarFieldEnum = {
   latitude: 'latitude',
   longitude: 'longitude',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
 } as const
 
 export type MeasurementObjectScalarFieldEnum = (typeof MeasurementObjectScalarFieldEnum)[keyof typeof MeasurementObjectScalarFieldEnum]
@@ -2971,7 +2974,8 @@ export const ClientScalarFieldEnum = {
   notes: 'notes',
   nextContactAt: 'nextContactAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
 } as const
 
 export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]

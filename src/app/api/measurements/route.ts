@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const objects = await prisma.measurementObject.findMany({
       where: {
         masterId: master.id,
+        deletedAt: null,
         ...(status && { status }),
       },
       include: {

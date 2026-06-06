@@ -1166,7 +1166,7 @@ export async function handleBotCommand(
     case "/kp": {
       // List recent estimates
       const estimates = await prisma.estimate.findMany({
-        where: { masterId },
+        where: { masterId, deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 5,
         select: {
