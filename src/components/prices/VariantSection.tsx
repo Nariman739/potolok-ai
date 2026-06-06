@@ -277,7 +277,7 @@ export function VariantDialog({
 
   const handleDelete = async () => {
     if (!state || state.mode !== "edit") return;
-    if (!confirm(`Удалить вариант «${state.variant.name}»?`)) return;
+    if (!confirm(`Удалить вариант «${state.variant.name}»? Он попадёт в Корзину — можно будет восстановить.`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/prices/variants/${state.variant.id}`, {
