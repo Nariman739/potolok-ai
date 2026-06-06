@@ -185,8 +185,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   }, [onScreenshot]);
 
   // AI-рендер: snapshot R3F → /api/visualizations (sourceType=scene3d) → render
-  // → ready Visualization. Это unified pipeline с фото-режимом (sourceType=reference).
-  // Старый /api/ai-render-scene остаётся как deprecated fallback (Этап 1).
+  // → ready Visualization. Unified pipeline с гибридом (sourceType=reference) для фото клиента.
   const handleAiCapture = useCallback(async (dataUrl: string) => {
     setAiState("generating");
     setAiError(null);

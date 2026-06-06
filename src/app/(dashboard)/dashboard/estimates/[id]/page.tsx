@@ -125,7 +125,7 @@ export default async function EstimateDetailPage({
           </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/dashboard/ai-render?estimateId=${estimate.id}`}>
+          <Link href={`/dashboard/visualization?estimateId=${estimate.id}`}>
             ✨ AI-фото
           </Link>
         </Button>
