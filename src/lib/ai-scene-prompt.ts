@@ -109,6 +109,11 @@ export interface SceneSourcePromptInput {
 /**
  * Промпт для single-image flow (только сцена, без фото комнаты клиента).
  * Используется когда referenceUrl отсутствует.
+ *
+ * Принципы (см. ~/.claude/plans/playful-wishing-parnas.md «Принципы качества»):
+ *  - AI не «придумывает» — жёсткие границы по числу/типу фикстур.
+ *  - 1:1 с замером — точные позиции уже на снимке сцены, текст усиливает.
+ *  - Стиль interior design magazine — фотореализм, не CGI.
  */
 export function buildScenePrompt(input: SceneSourcePromptInput): string {
   const g = groupElements(input.elements);
@@ -116,58 +121,67 @@ export function buildScenePrompt(input: SceneSourcePromptInput): string {
   const colorHuman = input.colorName ?? input.colorHex ?? "white";
 
   const fixtures: string[] = [];
-  if (g.spots > 0) fixtures.push(`EXACTLY ${g.spots} recessed spotlight${g.spots > 1 ? "s" : ""}`);
+  if (g.spots > 0) fixtures.push(`EXACTLY ${g.spots} recessed round LED spotlight${g.spots > 1 ? "s" : ""} (~80mm diameter), white trim, flush-mounted`);
   if (g.pendants > 0)
-    fixtures.push(`EXACTLY ${g.pendants} pendant light${g.pendants > 1 ? "s" : ""}`);
+    fixtures.push(`EXACTLY ${g.pendants} pendant light${g.pendants > 1 ? "s" : ""} hanging from the ceiling`);
   if (g.chandeliers > 0)
     fixtures.push(`EXACTLY ${g.chandeliers} chandelier${g.chandeliers > 1 ? "s" : ""}`);
   if (g.tracks > 0)
-    fixtures.push(`EXACTLY ${g.tracks} magnetic track${g.tracks > 1 ? "s" : ""}`);
+    fixtures.push(`EXACTLY ${g.tracks} magnetic track${g.tracks > 1 ? "s" : ""} (slim black or white aluminum profile, 35-50mm wide, with small LED spotlights along it)`);
   if (g.lightlines > 0)
-    fixtures.push(`EXACTLY ${g.lightlines} linear LED light line${g.lightlines > 1 ? "s" : ""}`);
-  if (g.floating > 0) fixtures.push(`floating-ceiling LED perimeter strip (parящий with LED)`);
+    fixtures.push(`EXACTLY ${g.lightlines} linear LED light line${g.lightlines > 1 ? "s" : ""} (continuous diffused strip, embedded into the ceiling)`);
+  if (g.floating > 0) fixtures.push(`floating-ceiling perimeter with hidden LED strip glow (парящий потолок) — uplit edge around the ceiling`);
 
   const archElements: string[] = [];
   if (g.curtains > 0)
     archElements.push(`${g.curtains} window curtain${g.curtains > 1 ? "s" : ""}`);
   if (g.subcurtains > 0)
     archElements.push(
-      `${g.subcurtains} hidden under-ceiling curtain pocket${g.subcurtains > 1 ? "s" : ""} (подшторник)`,
+      `${g.subcurtains} hidden under-ceiling curtain pocket${g.subcurtains > 1 ? "s" : ""} (подшторник — recessed ceiling channel)`,
     );
   if (g.builtinGardinas > 0)
     archElements.push(
-      `${g.builtinGardinas} built-in gardina${g.builtinGardinas > 1 ? "s" : ""} (recessed curtain rail)`,
+      `${g.builtinGardinas} built-in gardina${g.builtinGardinas > 1 ? "s" : ""} (recessed curtain rail integrated into the ceiling)`,
     );
   if (g.showerCurtains > 0) archElements.push(`shower curtain area`);
 
   const sourceHint =
     input.sourceType === "scene3d"
-      ? "Source image is a 3D rendering preview from a CAD-style room designer — convert it into a photorealistic interior photograph while preserving exact room geometry, walls, doors, windows and furniture positions."
-      : "Source image is a TOP-DOWN 2D plan (floor plan view) of a stretched-ceiling project. Interpret the schematic markers and convert into a realistic perspective interior photograph of a furnished living room with the stretched ceiling installed.";
+      ? "INPUT: a CAD-style 3D preview of a room with the stretched ceiling layout. TASK: render it as a high-end photorealistic interior photograph — keep room geometry, walls, doors, windows and furniture POSITIONS exactly as shown."
+      : "INPUT: a top-down 2D floor plan of a stretched-ceiling project. TASK: render a photorealistic perspective interior photograph of the same room, with the stretched ceiling installed according to the plan.";
 
-  const parts: string[] = [sourceHint, `${finishDesc}, color ${colorHuman}`];
+  const lightingPhrase = input.lightTempPromptHint
+    ? `Ceiling fixtures emit ${input.lightTempPromptHint}. Soft natural daylight from windows blends with the artificial lighting.`
+    : "Soft natural daylight from windows; ceiling fixtures emit neutral 4000K white light.";
+
+  const parts: string[] = [
+    "STYLE: professional interior design photography, magazine quality, photorealistic, architectural visualization, wide-angle lens, clean composition, eye-level perspective.",
+    sourceHint,
+    `CEILING: ${finishDesc}, color ${colorHuman}. The ceiling must look like a real installed натяжной потолок — perfectly flat, no warping, no visible seams.`,
+    lightingPhrase,
+  ];
 
   if (fixtures.length > 0) {
     parts.push(
-      "Ceiling fixtures that MUST appear on the ceiling (do NOT skip, do NOT merge into one fixture):",
-      ...fixtures.map((f) => `  - ${f}`),
+      "MANDATORY ceiling fixtures (render EVERY ONE, do NOT skip, do NOT merge, do NOT add extras):",
+      ...fixtures.map((f) => `  • ${f}`),
     );
   }
 
   if (archElements.length > 0) {
-    parts.push("Architectural elements visible in the room:", ...archElements.map((a) => `  - ${a}`));
+    parts.push("Architectural elements visible in the room:", ...archElements.map((a) => `  • ${a}`));
   }
 
-  const lightingPhrase = input.lightTempPromptHint
-    ? `${input.lightTempPromptHint}, soft natural daylight blending with artificial lighting from the ceiling fixtures`
-    : "Realistic interior photography, soft natural daylight from windows, accurate textures on walls/floor/furniture";
-  const moodPhrase = input.lightTempPromptHint
-    ? "Ultra-detailed, sharp focus, 4K, professional interior design photography"
-    : "Warm cozy residential atmosphere, ultra-detailed, sharp focus, 4K";
+  parts.push(
+    "STRICT CONSTRAINTS (do not violate):",
+    "  • Render ONLY the fixtures and elements listed above. Do NOT add any unspecified lighting, plants, decorations, art, rugs, accessories or extra furniture.",
+    "  • Preserve the EXACT spatial positions and counts shown in the source image.",
+    "  • No people, no pets, no clutter.",
+    "  • No text, no watermarks, no labels.",
+    "QUALITY: ultra-detailed textures (wall paint, flooring grain, fabric, metal), sharp focus, clean shadows, 4K render quality.",
+  );
 
-  parts.push(lightingPhrase, moodPhrase);
-
-  if (input.extraPrompt) parts.push(input.extraPrompt);
+  if (input.extraPrompt) parts.push("MASTER NOTE: " + input.extraPrompt);
 
   return parts.join("\n");
 }
@@ -180,22 +194,37 @@ export interface HybridScenePromptInput extends SceneSourcePromptInput {
 /**
  * Промпт для гибридного flow: сцена конструктора + фото реальной комнаты.
  * Gemini получает 2 изображения: photo (image-1) + scene (image-2).
+ *
+ * Цель — точно вставить потолок мастера в реальное фото клиента, не меняя
+ * мебель/стены. Жёсткий «do not modify» контракт защищает от претензий
+ * клиента после монтажа («а у меня в реале не так выглядит»).
  */
 export function buildHybridScenePrompt(input: HybridScenePromptInput): string {
   const baseScene = buildScenePrompt(input);
   const refHint = input.referenceDescription
-    ? `Reference photo (image-1) shows the actual room: ${input.referenceDescription}`
-    : "Reference photo (image-1) shows the actual room of the client.";
+    ? `Reference photo context: ${input.referenceDescription}`
+    : "";
 
   return [
-    "You receive TWO images:",
-    `  image-1: PHOTO of the real client's room — use this for wall colors/textures, flooring, existing furniture, window positions, lighting direction.`,
-    `  image-2: SCENE from the ceiling designer (${input.sourceType === "scene3d" ? "3D perspective" : "2D top-down plan"}) — use this ONLY for the ceiling layout (fixtures, finish, color, attachment type).`,
+    "TWO INPUT IMAGES:",
+    `  image-1: PHOTO of the real client's room — ground truth for walls, floor, windows, doors, existing furniture, lighting direction, vibe.`,
+    `  image-2: ${input.sourceType === "scene3d" ? "3D perspective" : "2D top-down plan"} from the ceiling designer — ground truth ONLY for the ceiling layout (fixtures, finish, color, mounting type).`,
     "",
-    "Output: a photorealistic interior photograph of the SAME room as in image-1, but with the new stretched ceiling INSTALLED according to image-2. Preserve walls/furniture/windows from image-1, replace ceiling and fixtures with what's specified in image-2 + the description below.",
+    "TASK: produce a photorealistic interior photograph of the SAME room shown in image-1, with the new stretched ceiling and fixtures from image-2 installed.",
+    "",
+    "MANDATORY PRESERVATION from image-1 (do NOT alter):",
+    "  • Walls — colors, textures, paint imperfections, decorative elements stay identical.",
+    "  • Floor — material, pattern, color stay identical.",
+    "  • Windows, doors — positions, frames, glass, view outside stay identical.",
+    "  • Existing furniture — every piece in the same position, same model, same upholstery.",
+    "  • Room geometry, camera angle, perspective — match image-1 exactly.",
+    "",
+    "REPLACE ONLY from image-2:",
+    "  • The ceiling surface (натяжной потолок with the specified finish & color).",
+    "  • Ceiling-mounted fixtures (spotlights, chandeliers, tracks, LED lines, floating perimeter) per counts below.",
     "",
     refHint,
     "",
     baseScene,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
