@@ -41,7 +41,23 @@ export interface PriceVariant {
   photoUrl: string | null;
   sortOrder: number;
   noInsert?: boolean;
+  // 3D / AI-визуализация
+  physicalWidthMm?: number | null;
+  physicalHeightMm?: number | null;
+  colorHex?: string | null;
+  mountingType?: string | null;
+  glbModelUrl?: string | null;
 }
+
+const MOUNTING_OPTIONS = [
+  { value: "recessed", label: "Встраиваемый (recessed)" },
+  { value: "surface", label: "Накладной (surface)" },
+  { value: "pendant", label: "Подвесной (pendant)" },
+  { value: "track-mounted", label: "На треке (track-mounted)" },
+  { value: "profile", label: "В профиле (profile)" },
+] as const;
+
+const CATEGORIES_WITH_3D = new Set(["spot", "chandelier", "track", "lightline", "gardina", "podshtornik", "curtain"]);
 
 export type VariantDialogState =
   | { mode: "create"; category: string }
@@ -175,6 +191,12 @@ export function VariantDialog({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
   const [noInsert, setNoInsert] = useState(false);
+  // 3D-параметры (опц.)
+  const [physicalWidthMm, setPhysicalWidthMm] = useState<string>("");
+  const [physicalHeightMm, setPhysicalHeightMm] = useState<string>("");
+  const [colorHex, setColorHex] = useState<string>("");
+  const [mountingType, setMountingType] = useState<string>("");
+  const [show3dFields, setShow3dFields] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -190,6 +212,13 @@ export function VariantDialog({
       setRemovePhoto(false);
       setCategory(state.variant.category);
       setNoInsert(!!state.variant.noInsert);
+      setPhysicalWidthMm(state.variant.physicalWidthMm != null ? String(state.variant.physicalWidthMm) : "");
+      setPhysicalHeightMm(state.variant.physicalHeightMm != null ? String(state.variant.physicalHeightMm) : "");
+      setColorHex(state.variant.colorHex ?? "");
+      setMountingType(state.variant.mountingType ?? "");
+      setShow3dFields(
+        !!(state.variant.physicalWidthMm || state.variant.colorHex || state.variant.mountingType),
+      );
     } else {
       setName("");
       const def =
@@ -203,6 +232,11 @@ export function VariantDialog({
       setRemovePhoto(false);
       setCategory(state.category);
       setNoInsert(false);
+      setPhysicalWidthMm("");
+      setPhysicalHeightMm("");
+      setColorHex("");
+      setMountingType("");
+      setShow3dFields(false);
     }
   }, [state]);
 
@@ -253,6 +287,11 @@ export function VariantDialog({
       form.append("noInsert", noInsert ? "1" : "0");
       if (photoFile) form.append("photo", photoFile);
       if (removePhoto && state.mode === "edit") form.append("removePhoto", "1");
+      // 3D-параметры (опц.) — отправляем только если заполнены, иначе null
+      form.append("physicalWidthMm", physicalWidthMm.trim() === "" ? "" : String(parseInt(physicalWidthMm, 10) || 0));
+      form.append("physicalHeightMm", physicalHeightMm.trim() === "" ? "" : String(parseInt(physicalHeightMm, 10) || 0));
+      form.append("colorHex", colorHex.trim());
+      form.append("mountingType", mountingType.trim());
 
       const url = state.mode === "create"
         ? "/api/prices/variants"
@@ -446,6 +485,93 @@ export function VariantDialog({
               <p className="text-xs text-muted-foreground">
                 В КП при выборе этого варианта позиция «Вставка» не будет добавлена.
               </p>
+            </div>
+          )}
+
+          {/* 3D / AI-визуализация — collapsible для категорий со спецификой */}
+          {CATEGORIES_WITH_3D.has(state?.mode === "edit" ? category : state?.category ?? "") && (
+            <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+              <button
+                type="button"
+                onClick={() => setShow3dFields((v) => !v)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div>
+                  <Label className="cursor-pointer text-sm font-semibold">🧊 3D-параметры (для AI-визуализации)</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Реальный размер и цвет — рендерим в Scene3D и AI-фото
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground">{show3dFields ? "▴" : "▾"}</span>
+              </button>
+              {show3dFields && (
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="physWidth" className="text-xs">
+                        Диаметр / Ширина (мм)
+                      </Label>
+                      <Input
+                        id="physWidth"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={physicalWidthMm}
+                        onChange={(e) => setPhysicalWidthMm(e.target.value)}
+                        placeholder="напр. 90"
+                        inputMode="numeric"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="physHeight" className="text-xs">
+                        Глубина / Высота (мм)
+                      </Label>
+                      <Input
+                        id="physHeight"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={physicalHeightMm}
+                        onChange={(e) => setPhysicalHeightMm(e.target.value)}
+                        placeholder="напр. 50"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="colorHex" className="text-xs">Цвет корпуса (HEX)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="colorHex"
+                        type="text"
+                        value={colorHex}
+                        onChange={(e) => setColorHex(e.target.value)}
+                        placeholder="#FFFFFF"
+                        maxLength={7}
+                        className="font-mono"
+                      />
+                      <div
+                        className="h-9 w-9 rounded-md border border-slate-300"
+                        style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(colorHex) ? colorHex : "#fff" }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Тип крепления</Label>
+                    <Select value={mountingType || "none"} onValueChange={(v) => setMountingType(v === "none" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— не указан</SelectItem>
+                        {MOUNTING_OPTIONS.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
