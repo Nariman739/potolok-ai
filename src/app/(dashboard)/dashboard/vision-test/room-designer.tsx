@@ -7,6 +7,7 @@ import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, Z
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
+import { PriceVariantPicker } from "@/components/visualization/price-variant-picker";
 import type { ElementType, FurnitureType, CeilingMode, RoomElement } from "@/lib/room-types";
 import { getVertices } from "@/lib/room-geometry";
 
@@ -556,6 +557,13 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   const [alignMode, setAlignMode] = useState(false);
   // Position editor
   const [posEditor, setPosEditor] = useState<{ elId: string; wall1Dist: string; wall2Dist: string } | null>(null);
+  // PriceVariant picker — модал «Выбрать товар из прайса» для текущего selectedEl
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  function applyPriceVariant(variantId: string | null) {
+    if (!selectedId) return;
+    setElements((prev) => prev.map((e) => e.id === selectedId ? { ...e, priceVariantId: variantId ?? undefined } : e));
+  }
   // Fixture width editor (doors/windows)
   const [fixtureEditor, setFixtureEditor] = useState<{ elId: string; width: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -2959,6 +2967,23 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                 <Move className="h-5 w-5" />
               </button>
             )}
+            {/* PriceVariant picker — привязать товар из прайса (для AI-рендера + 3D) */}
+            {(() => {
+              const sel = elements.find(e => e.id === selectedId);
+              if (!sel) return null;
+              const supported = new Set(["spot","chandelier","pendant","track","lightline","curtain","subcurtain","builtin_gardina"]);
+              if (!supported.has(sel.type)) return null;
+              const linked = !!sel.priceVariantId;
+              return (
+                <button onClick={() => setPickerOpen(true)}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-90 active:scale-95 shadow-sm ${
+                    linked ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                  }`}
+                  title={linked ? "Сменить товар" : "Выбрать товар из прайса"}>
+                  {linked ? "✅ Товар" : "📦 Товар"}
+                </button>
+              );
+            })()}
             {/* Width editor for doors/windows */}
             {(elements.find(e => e.id === selectedId)?.type === "door" || elements.find(e => e.id === selectedId)?.type === "window") && (
               <button onClick={() => {
@@ -3990,6 +4015,20 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               </div>
             </div>
           </div>
+        );
+      })()}
+
+      {/* PriceVariant picker modal */}
+      {pickerOpen && (() => {
+        const sel = elements.find(e => e.id === selectedId);
+        if (!sel) return null;
+        return (
+          <PriceVariantPicker
+            elementType={sel.type}
+            currentVariantId={sel.priceVariantId ?? null}
+            onPick={applyPriceVariant}
+            onClose={() => setPickerOpen(false)}
+          />
         );
       })()}
 
