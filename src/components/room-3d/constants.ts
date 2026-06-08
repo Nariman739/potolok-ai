@@ -30,10 +30,10 @@ export function getLightTempByKey(key: string): typeof LIGHT_TEMPERATURES[number
 // (Poly Haven CC0) кладутся в public/textures/floor/{id}.jpg
 // и public/textures/wall/{id}.jpg — компонент Room3D подхватит при наличии.
 export const FLOOR_PRESETS = [
-  { id: "oak_parquet",   label: "Дуб (паркет)",    color: "#A47148", roughness: 0.65, textureUrl: "/textures/floor/oak_parquet.jpg",   promptDesc: "warm oak parquet flooring" },
-  { id: "light_laminate", label: "Светлый ламинат", color: "#C9A876", roughness: 0.70, textureUrl: "/textures/floor/light_laminate.jpg", promptDesc: "light beige laminate flooring" },
-  { id: "gray_tile",     label: "Серая плитка",   color: "#8E8E93", roughness: 0.30, textureUrl: "/textures/floor/gray_tile.jpg",    promptDesc: "matte gray ceramic tile flooring" },
-  { id: "dark_parquet",  label: "Тёмный паркет",   color: "#3E2723", roughness: 0.55, textureUrl: "/textures/floor/dark_parquet.jpg",  promptDesc: "dark walnut parquet flooring" },
+  { id: "oak_parquet",   label: "Дуб (паркет)",    color: "#A47148", roughness: 0.45, textureUrl: "/textures/floor/oak_parquet.jpg",   promptDesc: "warm oak parquet flooring" },
+  { id: "light_laminate", label: "Светлый ламинат", color: "#C9A876", roughness: 0.50, textureUrl: "/textures/floor/light_laminate.jpg", promptDesc: "light beige laminate flooring" },
+  { id: "gray_tile",     label: "Серая плитка",   color: "#8E8E93", roughness: 0.20, textureUrl: "/textures/floor/gray_tile.jpg",    promptDesc: "matte gray ceramic tile flooring" },
+  { id: "dark_parquet",  label: "Тёмный паркет",   color: "#3E2723", roughness: 0.35, textureUrl: "/textures/floor/dark_parquet.jpg",  promptDesc: "dark walnut parquet flooring" },
 ] as const;
 export type FloorPresetId = typeof FLOOR_PRESETS[number]["id"];
 export const DEFAULT_FLOOR: FloorPresetId = "light_laminate";
