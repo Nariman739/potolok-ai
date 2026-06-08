@@ -97,13 +97,33 @@ function Sofa({ width, depth, height, color }: { width: number; depth: number; h
           <meshStandardMaterial color={color} roughness={0.9} metalness={0} />
         </mesh>
       ))}
-      {/* Декоративные подушки */}
-      {[-0.25, 0.25].map((px) => (
-        <mesh key={`pillow-${px}`} position={[width * px, 0.08 + seatH + 0.06, -(depth / 2 - backD - 0.08)]} castShadow>
-          <boxGeometry args={[width * 0.25, 0.12, 0.18]} />
-          <meshStandardMaterial color="#BFBABA" roughness={0.95} metalness={0} />
+      {/* Декоративные подушки (толстые, с другим оттенком ткани) */}
+      {[-0.28, 0.28].map((px) => (
+        <mesh
+          key={`pillow-${px}`}
+          position={[width * px, 0.08 + seatH + 0.13, -(depth / 2 - backD - 0.14)]}
+          rotation={[0, 0, px > 0 ? 0.18 : -0.18]}
+          castShadow
+        >
+          <boxGeometry args={[Math.min(width * 0.28, 0.5), 0.26, 0.28]} />
+          <meshStandardMaterial color="#3F4047" roughness={0.95} metalness={0} />
         </mesh>
       ))}
+      {/* Сидушки — три отдельных подушки сидения сверху */}
+      {[-1, 0, 1].map((sx) => {
+        const seatSlots = width - armW * 2 - 0.06;
+        const slot = seatSlots / 3;
+        return (
+          <mesh
+            key={`seat-${sx}`}
+            position={[sx * slot, 0.08 + seatH + 0.04, 0.02]}
+            castShadow
+          >
+            <boxGeometry args={[slot * 0.95, 0.08, depth - 0.18]} />
+            <meshStandardMaterial color={color} roughness={0.9} metalness={0} />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
