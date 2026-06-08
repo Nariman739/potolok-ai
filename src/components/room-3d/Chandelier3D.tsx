@@ -14,10 +14,22 @@ export function Chandelier3D({ position, withLight, lightColor: lightColorOverri
   const bulbColor = lightColorOverride ?? "#FFE9B0";
   return (
     <group position={position}>
+      {/* Розетка-крепление у потолка */}
+      <mesh position={[0, -0.005, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.01, 16]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.3} metalness={0.6} />
+      </mesh>
+      {/* Подвес */}
       <mesh position={[0, -DROP_M / 2, 0]}>
         <cylinderGeometry args={[0.006, 0.006, DROP_M, 8]} />
-        <meshStandardMaterial color="#3a3a3a" />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.3} metalness={0.7} />
       </mesh>
+      {/* Декоративная муфта */}
+      <mesh position={[0, -DROP_M + SPHERE_RADIUS_M * 0.95, 0]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.03, 12]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.3} metalness={0.6} />
+      </mesh>
+      {/* Шар-плафон */}
       <mesh position={[0, -DROP_M, 0]}>
         <sphereGeometry args={[SPHERE_RADIUS_M, 32, 16]} />
         <meshStandardMaterial
@@ -25,6 +37,7 @@ export function Chandelier3D({ position, withLight, lightColor: lightColorOverri
           emissive={lightColor}
           emissiveIntensity={1.4}
           toneMapped={false}
+          roughness={0.2}
         />
       </mesh>
       {withLight && (
