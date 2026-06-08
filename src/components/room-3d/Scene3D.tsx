@@ -525,8 +525,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           ceilingFinish={ceilingFinish}
           floorColor={floorPreset.color}
           floorRoughness={floorPreset.roughness}
+          floorTextureUrl={floorPreset.textureUrl}
           wallColor={wallPreset.color}
           wallRoughness={wallPreset.roughness}
+          wallTextureUrl={wallPreset.textureUrl}
         />
 
         {/* Контактные тени под мебелью — без shadow maps, работает на iOS */}
