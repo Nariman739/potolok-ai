@@ -591,8 +591,12 @@ async function renderFromScene(
       });
 
   // FLUX Kontext не умеет multi-image, при гибриде форсим nano-banana.
+  // Для чистого scene3d/scene2d (без reference-фото клиента) дефолтом ставим
+  // replicate-flux-kontext — он жёстко держит reference image (3D-снимок),
+  // в отличие от nano-banana, который интерпретирует снимок как "вдохновение"
+  // и рисует свои позиции фикстур.
   const provider: VisualizationProvider =
-    hasReference ? "nano-banana" : providerOverride ?? "nano-banana";
+    hasReference ? "nano-banana" : providerOverride ?? "replicate-flux-kontext";
 
   // Заглушка options — реально используется только customPrompt + photo/reference.
   const options: VisualizationOptions = {
