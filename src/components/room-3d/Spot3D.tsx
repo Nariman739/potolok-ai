@@ -35,16 +35,23 @@ export function Spot3D({
 
   return (
     <group position={position}>
+      {/* Корпус — врезанный в потолок цилиндр */}
       <mesh position={[0, -depthM / 2, 0]}>
         <cylinderGeometry args={[r, r, depthM, 24]} />
         <meshStandardMaterial color={bodyColor ?? "#1f1f1f"} metalness={0.55} roughness={0.45} />
       </mesh>
+      {/* Декоративное кольцо-ободок */}
+      <mesh position={[0, -depthM + 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[r * 0.94, r * 1.04, 32]} />
+        <meshStandardMaterial color="#E5E7EB" metalness={0.7} roughness={0.3} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Свечение — диск из стекла */}
       <mesh position={[0, -depthM - 0.0005, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[r * 0.92, 24]} />
         <meshStandardMaterial
           color={lightColor}
           emissive={lightColor}
-          emissiveIntensity={2.2}
+          emissiveIntensity={3.5}
           side={THREE.DoubleSide}
           toneMapped={false}
         />
@@ -53,8 +60,8 @@ export function Spot3D({
         <pointLight
           position={[0, -depthM - 0.05, 0]}
           color={lightColor}
-          intensity={1.8}
-          distance={3.5}
+          intensity={2.6}
+          distance={4}
           decay={2}
         />
       )}

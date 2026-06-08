@@ -333,12 +333,16 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   }, [elements, vertices, centerOffset.x, centerOffset.z]);
 
   const spots = useMemo<Record<ViewSpot, SpotInfo | null>>(() => {
-    const center = new THREE.Vector3(0, HUMAN_EYE_HEIGHT, 0);
     const ceilLook = ceilingHeight / 100 * 0.55;
+    // Центр-вью теперь из угла комнаты, чтобы в кадре одновременно были
+    // пол, мебель, две стены и потолок. Раньше камера стояла в центре пола
+    // на уровне глаз — приходилось драг-rotate вверх, чтобы увидеть потолок.
+    const half = roomSize / 2;
+    const cornerPos = new THREE.Vector3(-half * 0.75, HUMAN_EYE_HEIGHT, -half * 0.75);
     const result: Record<ViewSpot, SpotInfo | null> = {
       center: {
-        position: center.clone(),
-        lookAt: new THREE.Vector3(2, HUMAN_EYE_HEIGHT - 0.05, 0),
+        position: cornerPos.clone(),
+        lookAt: new THREE.Vector3(0, ceilLook * 0.7, 0),
       },
       door: null,
       window: null,
@@ -358,7 +362,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       };
     }
     return result;
-  }, [findWallAnchor, ceilingHeight]);
+  }, [findWallAnchor, ceilingHeight, roomSize]);
 
   useEffect(() => {
     // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
