@@ -480,7 +480,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           preserveDrawingBuffer: true,
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 1.0 : 0.85,
+          toneMappingExposure: daylight ? 1.15 : 0.85,
         }}
         camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 70, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
@@ -509,11 +509,25 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           onIncline={() => setQuality((q) => (q === "low" ? "high" : q))}
         />
 
-        <ambientLight intensity={daylight ? 0.55 : 0.16} />
-        <hemisphereLight args={["#fffaf0", "#23272f", daylight ? 0.4 : 0.08]} />
+        {/* Дневное освещение в стиле «день за окном»:
+            - ambient: чуть холодноватый общий свет, как от рассеянного неба
+            - hemisphere: голубое сверху / тёплое снизу (sky/ground bounce)
+            - directional: «солнце» под углом, +shadow
+            Цель: чтобы комната выглядела светлой и нейтральной даже когда
+            точечного света мало. */}
+        <ambientLight intensity={daylight ? 0.95 : 0.16} color="#E8F1FB" />
+        <hemisphereLight args={["#CFE3F8", "#8A7560", daylight ? 0.75 : 0.08]} />
         <directionalLight
-          position={[roomSize * 1.5, roomSize * 2, roomSize * 1.2]}
-          intensity={daylight ? 0.7 : 0}
+          position={[roomSize * 1.5, roomSize * 2.2, roomSize * 1.2]}
+          intensity={daylight ? 1.4 : 0}
+          color="#FFF6E6"
+        />
+        {/* Второй directional с противоположной стороны — мягкий fill,
+            убирает «провалы» в тёмные углы. */}
+        <directionalLight
+          position={[-roomSize, roomSize * 1.5, -roomSize]}
+          intensity={daylight ? 0.45 : 0}
+          color="#DCE9F4"
         />
 
         {/* HDR Environment отключён — preset "apartment" грузится через jsdelivr
