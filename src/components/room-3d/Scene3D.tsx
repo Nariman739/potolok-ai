@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, Environment, PerformanceMonitor } from "@react-three/drei";
+import { ContactShadows, PerformanceMonitor } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -60,16 +60,6 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
-// Если Suspense поймал ошибку загрузки HDR — поднимаем флаг, чтобы перестать пытаться.
-// Используется как fallback внутри `<Suspense fallback={...}>`.
-function EnvFailNotifier({ onFail }: { onFail: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onFail, 4000); // 4 сек — если HDR не загрузился, сдаёмся
-    return () => clearTimeout(t);
-  }, [onFail]);
-  return null;
-}
-
 export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly }: Scene3DProps) {
   const [spot, setSpot] = useState<ViewSpot>("center");
   const daylight = true;
@@ -101,10 +91,8 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return WALL_PRESETS.some((w) => w.id === v) ? (v as WallPresetId) : DEFAULT_WALL;
   });
   const [showCeilingPanel, setShowCeilingPanel] = useState(false);
-  // Адаптивное качество: high — с Environment HDR + ContactShadows; low — без них (если FPS падает)
+  // Адаптивное качество: high — с ContactShadows; low — без (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
-  // Если HDR не грузится в Safari — переключаемся в low автоматически через Suspense fallback
-  const [envFailed, setEnvFailed] = useState(false);
 
   // AI-рендер из 3D-сцены через Flux Kontext Pro
   const [aiTrigger, setAiTrigger] = useState(0);
@@ -508,13 +496,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           intensity={daylight ? 0.7 : 0}
         />
 
-        {/* HDR Environment даёт реалистичные рефлексы на глянцевом потолке.
-            Suspense ловит ошибку загрузки в Safari → fallback на null (без env). */}
-        {quality === "high" && !envFailed && (
-          <Suspense fallback={<EnvFailNotifier onFail={() => setEnvFailed(true)} />}>
-            <Environment preset="apartment" environmentIntensity={0.6} />
-          </Suspense>
-        )}
+        {/* HDR Environment отключён — preset "apartment" грузится через jsdelivr
+            CDN, на Safari/iPad падает с "Could not load lebombo_1k.hdr: Load
+            failed" вне Suspense (Error не ловится). На матовом потолке (MVP)
+            рефлексы не нужны. Включим обратно когда добавим satin/glossy. */}
 
         <Room3D
           vertices={vertices}
