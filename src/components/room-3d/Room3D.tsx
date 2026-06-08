@@ -1,8 +1,45 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
+import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { cm2m, type Vertex2D } from "./types";
+
+// Текстурированный материал — монтируется через Suspense только когда URL задан.
+// Если текстура не загрузилась (offline / 404) — Suspense fallback показывает
+// plain color material (как раньше).
+function TexturedMaterial({
+  url,
+  fallbackColor,
+  roughness,
+  tilesX = 4,
+  tilesY = 4,
+}: {
+  url: string;
+  fallbackColor: string;
+  roughness: number;
+  tilesX?: number;
+  tilesY?: number;
+}) {
+  const texture = useLoader(THREE.TextureLoader, url) as THREE.Texture;
+  useEffect(() => {
+    if (!texture) return;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(tilesX, tilesY);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+  }, [texture, tilesX, tilesY]);
+  return (
+    <meshStandardMaterial
+      map={texture}
+      color={fallbackColor}
+      roughness={roughness}
+      metalness={0}
+      side={THREE.DoubleSide}
+    />
+  );
+}
 
 export interface WallCutout {
   uStart: number;
@@ -21,12 +58,16 @@ interface Room3DProps {
   ceilingColor: string;
   ceilingFinish: CeilingFinish;
   hideCeiling?: boolean;
-  /** Цвет пола из пресета (если текстура не загрузилась — fallback). */
+  /** Цвет пола из пресета (fallback если текстура не задана). */
   floorColor?: string;
   floorRoughness?: number;
+  /** URL текстуры пола (1K JPG из /public/textures/floor/). null = plain color. */
+  floorTextureUrl?: string | null;
   /** Цвет стен из пресета. */
   wallColor?: string;
   wallRoughness?: number;
+  /** URL текстуры стен (1K JPG из /public/textures/wall/). null = plain color. */
+  wallTextureUrl?: string | null;
 }
 
 const WALL_THICKNESS = 0.06;
@@ -51,8 +92,10 @@ export function Room3D({
   hideCeiling = false,
   floorColor = "#D6CFC2",
   floorRoughness = 0.85,
+  floorTextureUrl = null,
   wallColor = "#F2EFEA",
   wallRoughness = 0.85,
+  wallTextureUrl = null,
 }: Room3DProps) {
   const ceilingM = cm2m(ceilingHeight);
   const finish = FINISH_PARAMS[ceilingFinish];
@@ -137,7 +180,13 @@ export function Room3D({
     <group>
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <shapeGeometry args={[floorShape]} />
-        <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />
+        {floorTextureUrl ? (
+          <Suspense fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />}>
+            <TexturedMaterial url={floorTextureUrl} fallbackColor="#ffffff" roughness={floorRoughness} tilesX={4} tilesY={4} />
+          </Suspense>
+        ) : (
+          <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />
+        )}
       </mesh>
 
       {!hideCeiling && (
@@ -156,7 +205,13 @@ export function Room3D({
       {wallMeshes.map((w) => (
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <mesh geometry={w.geometry} castShadow receiveShadow>
-            <meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />
+            {wallTextureUrl ? (
+              <Suspense fallback={<meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />}>
+                <TexturedMaterial url={wallTextureUrl} fallbackColor="#ffffff" roughness={wallRoughness} tilesX={2} tilesY={1} />
+              </Suspense>
+            ) : (
+              <meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />
+            )}
           </mesh>
 
           <mesh position={[w.length / 2, SKIRTING_HEIGHT / 2, -WALL_THICKNESS / 2 - SKIRTING_DEPTH / 2]} castShadow>
