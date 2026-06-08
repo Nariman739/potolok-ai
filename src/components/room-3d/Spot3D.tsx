@@ -60,8 +60,8 @@ export function Spot3D({
         <pointLight
           position={[0, -depthM - 0.05, 0]}
           color={lightColor}
-          intensity={2.6}
-          distance={4}
+          intensity={1.2}
+          distance={3.5}
           decay={2}
         />
       )}
