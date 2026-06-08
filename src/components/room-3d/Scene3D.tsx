@@ -596,15 +596,9 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       </Canvas>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
-        {!readOnly && (
-          <button
-            onClick={() => setAiTrigger((t) => t + 1)}
-            disabled={aiState === "generating"}
-            className="h-10 px-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold text-white hover:opacity-90 active:scale-95 disabled:opacity-60"
-          >
-            {aiState === "generating" ? "AI рисует…" : "✨ AI-фото"}
-          </button>
-        )}
+        {/* AI-фото законсервирована — нет провайдера который даёт точность 1:1
+            с чертежом + фотореализм одновременно. Возвращаемся после феста с
+            ControlNet depth pipeline. Mobile/web обе кнопки скрыты. */}
         {!readOnly && (
           <button
             onClick={() => setScreenshotTrigger((t) => t + 1)}

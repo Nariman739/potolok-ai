@@ -16,7 +16,6 @@ import {
   Zap,
   Users,
   Crown,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -31,7 +30,6 @@ const navItems = [
   { href: "/dashboard/estimates", label: "Расчёты", icon: FileText },
   { href: "/dashboard/quick-estimate", label: "Быстрое КП", icon: Zap },
   { href: "/dashboard/portfolio", label: "Портфолио", icon: ImageIcon },
-  { href: "/dashboard/visualization", label: "AI-визуализация", icon: Sparkles },
   { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
   { href: "/dashboard/trash", label: "Корзина", icon: Trash2 },
