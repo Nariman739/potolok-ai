@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, PerformanceMonitor } from "@react-three/drei";
+import { ContactShadows, PerformanceMonitor, Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -482,6 +482,22 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         style={{ touchAction: "none", cursor: "grab" }}
       >
         <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
+
+        {/* Sky procedural — голубое небо вокруг сцены. Через окна и двери
+            клиент видит «улицу», а не чернотy. Не грузит файлов с CDN,
+            на Safari/iPad работает стабильно (только шейдер). */}
+        {daylight && (
+          <Sky
+            distance={450000}
+            sunPosition={[roomSize * 2, roomSize * 4, roomSize * 1.5]}
+            inclination={0.49}
+            azimuth={0.25}
+            mieCoefficient={0.005}
+            mieDirectionalG={0.8}
+            rayleigh={2}
+            turbidity={6}
+          />
+        )}
 
         {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
         <PerformanceMonitor
