@@ -286,23 +286,24 @@ function Track3D({ lengthM, ceilingM, lightColor }: { lengthM: number; ceilingM:
         <meshStandardMaterial color="#0F0F12" metalness={0.5} roughness={0.45} />
       </mesh>
 
-      {/* Плоские светильники 60см заподлицо с потолком */}
+      {/* Плоские светильники 60см — чуть свисают с трека, чтобы плашка
+          была видна снизу. Окантовка над светящейся полосой, не вокруг. */}
       {Array.from({ length: spotCount }).map((_, i) => {
         const t = spotCount === 1 ? 0 : i / (spotCount - 1) - 0.5;
         const x = t * spanForSpots;
         return (
-          <group key={i} position={[x, ceilingM - 0.005, 0]}>
-            {/* Чёрная плоская окантовка светильника */}
-            <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[spotLen + 0.02, 0.01, SPOT_W + 0.008]} />
+          <group key={i} position={[x, ceilingM - 0.012, 0]}>
+            {/* Тонкая чёрная окантовка-плашка */}
+            <mesh position={[0, 0.002, 0]}>
+              <boxGeometry args={[spotLen + 0.02, 0.014, SPOT_W + 0.008]} />
               <meshStandardMaterial color="#0F0F12" metalness={0.55} roughness={0.4} />
             </mesh>
-            {/* Светящаяся плоская полоса внутри светильника, заподлицо */}
-            <mesh position={[0, -0.003, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            {/* Светящаяся плоская полоса СНИЗУ окантовки, видна камере */}
+            <mesh position={[0, -0.0075, 0]} rotation={[Math.PI / 2, 0, 0]}>
               <planeGeometry args={[spotLen, SPOT_W]} />
               <meshBasicMaterial color="#FFFFFF" toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
-            <pointLight position={[0, -0.08, 0]} color={lightColor} intensity={0.5} distance={2} decay={2} />
+            <pointLight position={[0, -0.1, 0]} color={lightColor} intensity={0.7} distance={2.5} decay={2} />
           </group>
         );
       })}
