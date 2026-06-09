@@ -214,7 +214,9 @@ function Window3D({ lengthM }: { lengthM: number }) {
   );
 }
 
-// — Карниз-гардина: настоящий профиль + 2 шторы со складками
+// builtin_gardina = утопленная гардина: ниша в натяжном потолке вдоль стены окна
+//   + карниз внутри ниши. Без штор (шторы — отдельный элемент curtain).
+// curtain = плотные портьеры на настенном карнизе.
 function Curtain3D({
   lengthM,
   ceilingM,
@@ -226,28 +228,59 @@ function Curtain3D({
   variant?: "ours" | "client";
   type: "curtain" | "builtin_gardina";
 }) {
-  // Шторы — до пола. Раньше CURTAIN_HEIGHT_M=0.5 → висели только верхней
-  // частью на 50см. Теперь от (ceilingM - 0.08) до 0.05м над полом.
+  if (type === "builtin_gardina") {
+    // Ниша: 15см глубины (по Z, в комнату) × 10см высоты (углубление в потолок)
+    const NICHE_DEPTH = 0.15;
+    const NICHE_HEIGHT = 0.10;
+    const nicheCenterZ = -NICHE_DEPTH / 2;
+    const nicheFloorY = ceilingM - NICHE_HEIGHT;
+
+    return (
+      <group>
+        {/* Дно ниши — потолок поднят на 10см вглубь. Видно снизу из комнаты. */}
+        <mesh position={[0, nicheFloorY, nicheCenterZ]}>
+          <boxGeometry args={[lengthM, 0.005, NICHE_DEPTH]} />
+          <meshStandardMaterial color="#F2F2F0" roughness={0.85} />
+        </mesh>
+        {/* Передний бортик ниши — вертикальная ступенька (виден со стороны комнаты). */}
+        <mesh position={[0, ceilingM - NICHE_HEIGHT / 2, -NICHE_DEPTH]}>
+          <boxGeometry args={[lengthM, NICHE_HEIGHT, 0.005]} />
+          <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+        </mesh>
+        {/* Боковые торцы ниши */}
+        {[-1, 1].map((side) => (
+          <mesh
+            key={`end-${side}`}
+            position={[(side * lengthM) / 2, ceilingM - NICHE_HEIGHT / 2, nicheCenterZ]}
+          >
+            <boxGeometry args={[0.005, NICHE_HEIGHT, NICHE_DEPTH]} />
+            <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+          </mesh>
+        ))}
+        {/* Карниз — плоский алюминиевый профиль внутри ниши */}
+        <mesh position={[0, nicheFloorY + 0.025, -0.08]}>
+          <boxGeometry args={[lengthM - 0.04, 0.015, 0.03]} />
+          <meshStandardMaterial color="#2A2A2E" roughness={0.5} metalness={0.7} />
+        </mesh>
+      </group>
+    );
+  }
+
+  // curtain — плотные портьеры с настенным карнизом
   const carnizY = ceilingM - 0.04;
-  const drapeTop = ceilingM - 0.08;
   const drapeBottom = 0.05;
+  const drapeTop = ceilingM - 0.08;
   const drapeH = Math.max(0.3, drapeTop - drapeBottom);
   const drapeColor = variant === "client" ? "#A8A29E" : "#D6BFA4";
+  const drapeZ = -(CURTAIN_THICKNESS_M / 2 + 0.11);
 
-  const isBuiltin = type === "builtin_gardina";
   return (
     <group>
-      {/* Карниз: для builtin_gardina — встроенный, для curtain — настенный.
-          Z-смещение ОТРИЦАТЕЛЬНОЕ (в сторону комнаты). */}
-      {!isBuiltin && (
-        <mesh position={[0, carnizY, -0.06]}>
-          <boxGeometry args={[lengthM, 0.05, 0.12]} />
-          <meshStandardMaterial color="#3F3F46" roughness={0.4} metalness={0.5} />
-        </mesh>
-      )}
+      <mesh position={[0, carnizY, -0.06]}>
+        <boxGeometry args={[lengthM, 0.05, 0.12]} />
+        <meshStandardMaterial color="#3F3F46" roughness={0.4} metalness={0.5} />
+      </mesh>
 
-      {/* 2 шторы — левая и правая половины со складками. Складки чаще +
-          тоньше диаметром, чтобы выглядели как ткань а не столбики. */}
       {[-1, 1].map((side) => {
         const halfW = lengthM / 2 - 0.04;
         const folds = Math.max(10, Math.round(halfW / 0.08));
@@ -256,7 +289,7 @@ function Curtain3D({
         return Array.from({ length: folds }).map((_, i) => {
           const x = baseX + side * (foldW * (i + 0.5));
           return (
-            <mesh key={`s-${side}-${i}`} position={[x, drapeBottom + drapeH / 2, -(CURTAIN_THICKNESS_M / 2 + 0.06)]}>
+            <mesh key={`s-${side}-${i}`} position={[x, drapeBottom + drapeH / 2, drapeZ]}>
               <cylinderGeometry args={[foldW * 0.4, foldW * 0.4, drapeH, 8]} />
               <meshStandardMaterial color={drapeColor} roughness={0.95} metalness={0} />
             </mesh>
