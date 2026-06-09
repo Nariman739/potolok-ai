@@ -267,53 +267,42 @@ function Curtain3D({
   );
 }
 
-// — Магнитный трек: тонкая чёрная рейка + 1-3 цилиндрических спота-трубки
-// вдоль трека (горизонтальные). Референс: Liberty/__potolki_astana —
-// чёрный профиль с длинными цилиндрами-светильниками.
+// — Магнитный трек: тонкая чёрная рейка ЗАПОДЛИЦО с потолком +
+// 1-3 плоских светильника 60см, тоже заподлицо. Не выступают.
 function Track3D({ lengthM, ceilingM, lightColor }: { lengthM: number; ceilingM: number; lightColor: string }) {
-  const spotCount = Math.max(1, Math.min(3, Math.round(lengthM / 0.8)));
-  const spotLen = Math.min(0.3, lengthM * 0.28);
-  const spanForSpots = Math.max(0, lengthM - spotLen - 0.15);
+  // По 1 светильнику на 1.2м длины трека, минимум 1, максимум 3
+  const spotCount = Math.max(1, Math.min(3, Math.round(lengthM / 1.2)));
+  // Целевая длина одного светильника 60см, но не больше 80% трека
+  const spotLen = Math.min(0.6, lengthM * 0.8);
+  const spanForSpots = Math.max(0, lengthM - spotLen - 0.1);
+  // Светильник «заподлицо» — чуть-чуть утоплен в потолок (по Y -0.005)
+  const TRACK_W = 0.045; // ширина магнитного профиля
+  const SPOT_W = 0.04;   // ширина светильника (чуть уже трека)
   return (
     <group>
-      {/* Профиль трека — тонкая чёрная рейка */}
-      <mesh position={[0, ceilingM - 0.018, 0]}>
-        <boxGeometry args={[lengthM, 0.025, 0.032]} />
+      {/* Профиль трека — плоская чёрная рейка заподлицо */}
+      <mesh position={[0, ceilingM - 0.005, 0]}>
+        <boxGeometry args={[lengthM, 0.01, TRACK_W]} />
         <meshStandardMaterial color="#0F0F12" metalness={0.5} roughness={0.45} />
       </mesh>
-      {/* Боковые медные контакты */}
-      <mesh position={[0, ceilingM - 0.03, 0]}>
-        <boxGeometry args={[lengthM, 0.004, 0.038]} />
-        <meshStandardMaterial color="#B87333" metalness={0.85} roughness={0.3} />
-      </mesh>
 
-      {/* Цилиндрические споты-трубки вдоль трека (горизонтальные) */}
+      {/* Плоские светильники 60см заподлицо с потолком */}
       {Array.from({ length: spotCount }).map((_, i) => {
         const t = spotCount === 1 ? 0 : i / (spotCount - 1) - 0.5;
         const x = t * spanForSpots;
         return (
-          <group key={i} position={[x, ceilingM - 0.04, 0]}>
-            {/* Каретка-крепление */}
-            <mesh position={[0, 0.005, 0]}>
-              <boxGeometry args={[0.035, 0.018, 0.025]} />
-              <meshStandardMaterial color="#0A0A0E" metalness={0.6} roughness={0.4} />
-            </mesh>
-            {/* Чёрный корпус-трубка (горизонтальный цилиндр вдоль трека) */}
-            <mesh position={[0, -0.018, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.014, 0.014, spotLen, 20]} />
+          <group key={i} position={[x, ceilingM - 0.005, 0]}>
+            {/* Чёрная плоская окантовка светильника */}
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry args={[spotLen + 0.02, 0.01, SPOT_W + 0.008]} />
               <meshStandardMaterial color="#0F0F12" metalness={0.55} roughness={0.4} />
             </mesh>
-            {/* Светящаяся полоса внутри трубки */}
-            <mesh position={[0, -0.022, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.009, 0.009, spotLen - 0.02, 20]} />
-              <meshStandardMaterial
-                color={lightColor}
-                emissive={lightColor}
-                emissiveIntensity={1.6}
-                toneMapped={false}
-              />
+            {/* Светящаяся плоская полоса внутри светильника, заподлицо */}
+            <mesh position={[0, -0.003, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[spotLen, SPOT_W]} />
+              <meshBasicMaterial color="#FFFFFF" toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
-            <pointLight position={[0, -0.06, 0]} color={lightColor} intensity={0.6} distance={2.5} decay={2} />
+            <pointLight position={[0, -0.08, 0]} color={lightColor} intensity={0.5} distance={2} decay={2} />
           </group>
         );
       })}
