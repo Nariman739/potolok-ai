@@ -267,45 +267,53 @@ function Curtain3D({
   );
 }
 
-// — Магнитный трек: профильная рейка + 3-5 мини-спотов вдоль
+// — Магнитный трек: тонкая чёрная рейка + 1-3 цилиндрических спота-трубки
+// вдоль трека (горизонтальные). Референс: Liberty/__potolki_astana —
+// чёрный профиль с длинными цилиндрами-светильниками.
 function Track3D({ lengthM, ceilingM, lightColor }: { lengthM: number; ceilingM: number; lightColor: string }) {
-  const spotCount = Math.max(3, Math.min(6, Math.round(lengthM / 0.5)));
-  const spotSpan = lengthM * 0.85;
-  const startX = -spotSpan / 2;
+  const spotCount = Math.max(1, Math.min(3, Math.round(lengthM / 0.8)));
+  const spotLen = Math.min(0.3, lengthM * 0.28);
+  const spanForSpots = Math.max(0, lengthM - spotLen - 0.15);
   return (
     <group>
-      {/* Профиль трека — тонкий рейл */}
-      <mesh position={[0, ceilingM - 0.03, 0]}>
-        <boxGeometry args={[lengthM, 0.04, 0.045]} />
-        <meshStandardMaterial color="#15171C" metalness={0.7} roughness={0.35} />
+      {/* Профиль трека — тонкая чёрная рейка */}
+      <mesh position={[0, ceilingM - 0.018, 0]}>
+        <boxGeometry args={[lengthM, 0.025, 0.032]} />
+        <meshStandardMaterial color="#0F0F12" metalness={0.5} roughness={0.45} />
       </mesh>
-      {/* Боковые «контакты» — тонкие медные полоски */}
-      <mesh position={[0, ceilingM - 0.045, 0]}>
-        <boxGeometry args={[lengthM, 0.005, 0.05]} />
+      {/* Боковые медные контакты */}
+      <mesh position={[0, ceilingM - 0.03, 0]}>
+        <boxGeometry args={[lengthM, 0.004, 0.038]} />
         <meshStandardMaterial color="#B87333" metalness={0.85} roughness={0.3} />
       </mesh>
 
-      {/* Мини-споты вдоль трека */}
+      {/* Цилиндрические споты-трубки вдоль трека (горизонтальные) */}
       {Array.from({ length: spotCount }).map((_, i) => {
-        const t = spotCount === 1 ? 0.5 : i / (spotCount - 1);
-        const x = startX + t * spotSpan;
+        const t = spotCount === 1 ? 0 : i / (spotCount - 1) - 0.5;
+        const x = t * spanForSpots;
         return (
-          <group key={i} position={[x, ceilingM - 0.06, 0]}>
-            {/* Каретка */}
+          <group key={i} position={[x, ceilingM - 0.04, 0]}>
+            {/* Каретка-крепление */}
             <mesh position={[0, 0.005, 0]}>
-              <boxGeometry args={[0.05, 0.035, 0.045]} />
-              <meshStandardMaterial color="#0F1116" metalness={0.6} roughness={0.4} />
+              <boxGeometry args={[0.035, 0.018, 0.025]} />
+              <meshStandardMaterial color="#0A0A0E" metalness={0.6} roughness={0.4} />
             </mesh>
-            {/* Цилиндр-плафон спота */}
-            <mesh position={[0, -0.035, 0]}>
-              <cylinderGeometry args={[0.025, 0.025, 0.05, 16]} />
-              <meshStandardMaterial color="#15171C" metalness={0.6} roughness={0.4} />
+            {/* Чёрный корпус-трубка (горизонтальный цилиндр вдоль трека) */}
+            <mesh position={[0, -0.018, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.014, 0.014, spotLen, 20]} />
+              <meshStandardMaterial color="#0F0F12" metalness={0.55} roughness={0.4} />
             </mesh>
-            {/* Стекло-свечение мини-спота на треке */}
-            <mesh position={[0, -0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[0.022, 24]} />
-              <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={1.0} toneMapped={false} />
+            {/* Светящаяся полоса внутри трубки */}
+            <mesh position={[0, -0.022, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.009, 0.009, spotLen - 0.02, 20]} />
+              <meshStandardMaterial
+                color={lightColor}
+                emissive={lightColor}
+                emissiveIntensity={1.6}
+                toneMapped={false}
+              />
             </mesh>
+            <pointLight position={[0, -0.06, 0]} color={lightColor} intensity={0.6} distance={2.5} decay={2} />
           </group>
         );
       })}
