@@ -234,9 +234,12 @@ function Curtain3D({
   const isBuiltin = type === "builtin_gardina";
   return (
     <group>
-      {/* Карниз: для builtin_gardina — встроенный, для curtain — настенный */}
+      {/* Карниз: для builtin_gardina — встроенный, для curtain — настенный.
+          Z-смещение ОТРИЦАТЕЛЬНОЕ (в сторону комнаты) — стены замкнуты CW,
+          нормаль внутрь = -Z локальной системы. Раньше было +0.06 → шторы
+          уходили за стену наружу и были невидимы из камеры в комнате. */}
       {!isBuiltin && (
-        <mesh position={[0, carnizY, 0.06]}>
+        <mesh position={[0, carnizY, -0.06]}>
           <boxGeometry args={[lengthM, 0.05, 0.12]} />
           <meshStandardMaterial color="#3F3F46" roughness={0.4} metalness={0.5} />
         </mesh>
@@ -252,7 +255,7 @@ function Curtain3D({
         return Array.from({ length: folds }).map((_, i) => {
           const x = baseX + side * (foldW * (i + 0.5));
           return (
-            <mesh key={`s-${side}-${i}`} position={[x, drapeTop - drapeH / 2, CURTAIN_THICKNESS_M / 2 + 0.06]}>
+            <mesh key={`s-${side}-${i}`} position={[x, drapeTop - drapeH / 2, -(CURTAIN_THICKNESS_M / 2 + 0.06)]}>
               <cylinderGeometry args={[foldW * 0.55, foldW * 0.55, drapeH, 8]} />
               <meshStandardMaterial color={drapeColor} roughness={0.95} metalness={0} />
             </mesh>
