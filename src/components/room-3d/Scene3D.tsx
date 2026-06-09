@@ -463,7 +463,15 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     const items: FreeItem[] = [];
     for (const el of elements) {
       if (el.wallIndex !== undefined) continue; // wall-element обрабатывается отдельно
-      if (el.type !== "track" && el.type !== "lightline" && el.type !== "floating") continue;
+      const supportedFreeTypes: ElementType[] = [
+        "track",
+        "lightline",
+        "floating",
+        "curtain",
+        "builtin_gardina",
+        "subcurtain",
+      ];
+      if (!supportedFreeTypes.includes(el.type)) continue;
 
       // Вариант А: points[] из 2D-конструктора (линия start→end)
       if (el.points && el.points.length >= 2) {
