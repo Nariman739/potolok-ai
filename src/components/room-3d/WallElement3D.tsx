@@ -309,7 +309,9 @@ function Track3D({ lengthM, ceilingM, lightColor }: { lengthM: number; ceilingM:
   );
 }
 
-// — Световая линия: алюминиевый профиль + матовый светящийся диффузор внутри
+// — Световая линия: тонкая яркая полоса ЗАПОДЛИЦО с потолком (как
+// прорезь). Без выступающего профиля. Референс: реальные натяжные потолки
+// со встроенной LED-лентой в линию.
 function LightLine3D({
   lengthM,
   ceilingM,
@@ -321,25 +323,36 @@ function LightLine3D({
   lightColor: string;
   emissiveColor: string;
 }) {
+  void emissiveColor;
+  // Сама светящаяся часть — почти plane заподлицо с потолком, чуть-чуть
+  // под ним чтобы не было z-fighting. Толщина по высоте минимальная.
+  const LED_WIDTH = 0.035;
+  const Y_OFFSET = 0.002;
   return (
     <group>
-      {/* Профиль-рейка (алюминий) */}
-      <mesh position={[0, ceilingM - 0.018, 0]}>
-        <boxGeometry args={[lengthM, 0.025, 0.06]} />
-        <meshStandardMaterial color="#E5E7EB" metalness={0.7} roughness={0.35} />
+      {/* Тёмный «нижний контур» — окантовка от тени */}
+      <mesh position={[0, ceilingM - Y_OFFSET - 0.001, 0]}>
+        <boxGeometry args={[lengthM + 0.01, 0.002, LED_WIDTH + 0.01]} />
+        <meshStandardMaterial color="#202022" roughness={0.8} metalness={0.1} />
       </mesh>
-      {/* Внутренний матовый диффузор — источник света */}
-      <mesh position={[0, ceilingM - 0.028, 0]}>
-        <boxGeometry args={[lengthM - 0.02, 0.008, 0.04]} />
+      {/* Светящаяся LED-полоса — очень яркая, белая */}
+      <mesh position={[0, ceilingM - Y_OFFSET, 0]}>
+        <boxGeometry args={[lengthM, 0.002, LED_WIDTH]} />
         <meshStandardMaterial
-          color={lightColor}
-          emissive={emissiveColor}
-          emissiveIntensity={3.2}
+          color="#FFFFFF"
+          emissive={lightColor}
+          emissiveIntensity={6.5}
           toneMapped={false}
         />
       </mesh>
-      {/* Мягкий рассеянный свет вниз */}
-      <pointLight position={[0, ceilingM - 0.06, 0]} color={lightColor} intensity={0.5} distance={Math.max(lengthM * 0.7, 1.5)} decay={2} />
+      {/* Мягкий свет вниз — освещает что под линией */}
+      <pointLight
+        position={[0, ceilingM - 0.05, 0]}
+        color={lightColor}
+        intensity={0.8}
+        distance={Math.max(lengthM * 0.9, 2)}
+        decay={2}
+      />
     </group>
   );
 }
