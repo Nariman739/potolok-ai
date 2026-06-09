@@ -324,30 +324,24 @@ function LightLine3D({
   emissiveColor: string;
 }) {
   void emissiveColor;
-  // Сама светящаяся часть — почти plane заподлицо с потолком, чуть-чуть
-  // под ним чтобы не было z-fighting. Толщина по высоте минимальная.
-  const LED_WIDTH = 0.035;
-  const Y_OFFSET = 0.002;
+  // Светящаяся LED-полоса заподлицо с потолком — выглядит как «прорезь»
+  // в потолке которая светится. Без выступающего профиля.
+  //
+  // meshBasicMaterial гарантирует яркий цвет независимо от освещения сцены,
+  // toneMapped:false — не приглушается ACES tone mapping.
+  // DoubleSide — видна и сверху и снизу.
+  // Белый цвет даёт максимальную яркость / контраст с потолком, а Kelvin
+  // лежит на pointLight ниже (тонирует стены).
+  const LED_WIDTH = 0.04;
   return (
     <group>
-      {/* Тёмный «нижний контур» — окантовка от тени */}
-      <mesh position={[0, ceilingM - Y_OFFSET - 0.001, 0]}>
-        <boxGeometry args={[lengthM + 0.01, 0.002, LED_WIDTH + 0.01]} />
-        <meshStandardMaterial color="#202022" roughness={0.8} metalness={0.1} />
+      <mesh position={[0, ceilingM - 0.003, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[lengthM, LED_WIDTH]} />
+        <meshBasicMaterial color="#FFFFFF" toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* Светящаяся LED-полоса — очень яркая, белая */}
-      <mesh position={[0, ceilingM - Y_OFFSET, 0]}>
-        <boxGeometry args={[lengthM, 0.002, LED_WIDTH]} />
-        <meshStandardMaterial
-          color="#FFFFFF"
-          emissive={lightColor}
-          emissiveIntensity={6.5}
-          toneMapped={false}
-        />
-      </mesh>
-      {/* Мягкий свет вниз — освещает что под линией */}
+      {/* Свет вниз — тонирует ближайшую поверхность Kelvin-цветом */}
       <pointLight
-        position={[0, ceilingM - 0.05, 0]}
+        position={[0, ceilingM - 0.08, 0]}
         color={lightColor}
         intensity={0.8}
         distance={Math.max(lengthM * 0.9, 2)}
