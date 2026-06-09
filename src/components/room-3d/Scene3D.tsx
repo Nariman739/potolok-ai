@@ -446,6 +446,65 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return items;
   }, [elements, vertices, centerOffset.x, centerOffset.z]);
 
+  // Свободные элементы внутри комнаты (не привязаны к стене):
+  // магнитный трек / световая линия / парящий — могут лежать поперёк потолка
+  // от точки А до точки Б (points[0] и points[1]) либо как одиночная линия
+  // вокруг x/y с rotation. Раньше эти типы рендерились ТОЛЬКО как wall-elements,
+  // поэтому in-room треки пропадали из 3D.
+  const freeRoomElements = useMemo(() => {
+    type FreeItem = {
+      id: string;
+      type: ElementType;
+      pos: [number, number, number];
+      rotationY: number;
+      lengthM: number;
+      variant?: "ours" | "client";
+    };
+    const items: FreeItem[] = [];
+    for (const el of elements) {
+      if (el.wallIndex !== undefined) continue; // wall-element обрабатывается отдельно
+      if (el.type !== "track" && el.type !== "lightline" && el.type !== "floating") continue;
+
+      // Вариант А: points[] из 2D-конструктора (линия start→end)
+      if (el.points && el.points.length >= 2) {
+        const a = el.points[0];
+        const b = el.points[1];
+        const ax = cm2m(a.x) - centerOffset.x;
+        const az = cm2m(a.y) - centerOffset.z;
+        const bx = cm2m(b.x) - centerOffset.x;
+        const bz = cm2m(b.y) - centerOffset.z;
+        const dx = bx - ax;
+        const dz = bz - az;
+        const lengthM = Math.hypot(dx, dz);
+        if (lengthM < 0.05) continue;
+        items.push({
+          id: el.id,
+          type: el.type,
+          pos: [(ax + bx) / 2, 0, (az + bz) / 2],
+          rotationY: -Math.atan2(dz, dx),
+          lengthM,
+          variant: el.variant,
+        });
+        continue;
+      }
+
+      // Вариант Б: x/y центр + length + rotation (deg)
+      if (el.x !== undefined && el.y !== undefined && el.length) {
+        const cx = cm2m(el.x) - centerOffset.x;
+        const cz = cm2m(el.y) - centerOffset.z;
+        items.push({
+          id: el.id,
+          type: el.type,
+          pos: [cx, 0, cz],
+          rotationY: -((el.rotation ?? 0) * Math.PI) / 180,
+          lengthM: cm2m(el.length),
+          variant: el.variant,
+        });
+      }
+    }
+    return items;
+  }, [elements, centerOffset.x, centerOffset.z]);
+
   const furnitureItems = useMemo(() => {
     const items: Array<{
       id: string;
@@ -601,6 +660,21 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         ))}
 
         {wallElements.map((w) => (
+          <WallElement3D
+            key={w.id}
+            position={w.pos}
+            rotationY={w.rotationY}
+            lengthM={w.lengthM}
+            ceilingM={ceilingM}
+            type={w.type}
+            variant={w.variant}
+            lightColor={lightTemp.hex}
+          />
+        ))}
+
+        {/* Свободные элементы потолка: магнитный трек / световая линия /
+            парящий, которые мастер рисует поперёк комнаты (не на стене). */}
+        {freeRoomElements.map((w) => (
           <WallElement3D
             key={w.id}
             position={w.pos}
