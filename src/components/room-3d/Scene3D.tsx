@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, PerformanceMonitor, Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
@@ -704,10 +704,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader. */}
         {quality === "high" && (
           <EffectComposer>
-            {/* Bloom приглушён: было intensity=0.55, threshold=0.78 — слишком
-                раздувало halo вокруг каждого спота, видны были только
-                «облака свечения», сами фикстуры терялись. Сейчас лёгкий
-                эффект только на очень ярких пикселях. */}
+            {/* N8AO = ambient occlusion. Добавляет тени в углах где сходятся
+                стены/пол/потолок, под мебелью, в нишах. Даёт ощущение
+                «глубины» — комната выглядит на порядок реалистичнее без
+                добавления геометрии. Параметры умеренные чтобы не было
+                грязных пятен. */}
+            <N8AO aoRadius={0.6} intensity={3.0} distanceFalloff={0.3} screenSpaceRadius={false} />
             <Bloom mipmapBlur intensity={0.18} luminanceThreshold={0.92} luminanceSmoothing={0.4} />
             <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
             <Vignette eskil={false} offset={0.2} darkness={0.35} />
