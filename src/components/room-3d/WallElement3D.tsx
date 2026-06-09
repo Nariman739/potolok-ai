@@ -237,15 +237,15 @@ function Curtain3D({
 
     return (
       <group>
-        {/* Дно ниши — потолок поднят на 10см вглубь. Видно снизу из комнаты. */}
+        {/* Дно ниши — тёмное (имитация тени внутри углубления). */}
         <mesh position={[0, nicheFloorY, nicheCenterZ]}>
           <boxGeometry args={[lengthM, 0.005, NICHE_DEPTH]} />
-          <meshStandardMaterial color="#F2F2F0" roughness={0.85} />
+          <meshStandardMaterial color="#6E6E72" roughness={0.95} />
         </mesh>
-        {/* Передний бортик ниши — вертикальная ступенька (виден со стороны комнаты). */}
-        <mesh position={[0, ceilingM - NICHE_HEIGHT / 2, -NICHE_DEPTH]}>
+        {/* Передний бортик ниши — белая ступенька с лёгкой тенью снизу. */}
+        <mesh position={[0, ceilingM - NICHE_HEIGHT / 2, -NICHE_DEPTH + 0.003]}>
           <boxGeometry args={[lengthM, NICHE_HEIGHT, 0.005]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+          <meshStandardMaterial color="#D9D9D9" roughness={0.9} />
         </mesh>
         {/* Боковые торцы ниши */}
         {[-1, 1].map((side) => (
@@ -254,7 +254,7 @@ function Curtain3D({
             position={[(side * lengthM) / 2, ceilingM - NICHE_HEIGHT / 2, nicheCenterZ]}
           >
             <boxGeometry args={[0.005, NICHE_HEIGHT, NICHE_DEPTH]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+            <meshStandardMaterial color="#9A9A9E" roughness={0.9} />
           </mesh>
         ))}
         {/* Карниз — плоский алюминиевый профиль внутри ниши */}
