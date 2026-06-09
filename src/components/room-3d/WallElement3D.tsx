@@ -229,9 +229,10 @@ function Curtain3D({
   type: "curtain" | "builtin_gardina";
 }) {
   if (type === "builtin_gardina") {
-    // Ниша: 15см глубины (по Z, в комнату) × 10см высоты (углубление в потолок)
-    const NICHE_DEPTH = 0.15;
-    const NICHE_HEIGHT = 0.10;
+    // Ниша: 25см глубины (по Z, в комнату) × 15см высоты (углубление в потолок).
+    // Сделана крупной и контрастной чтобы была чётко видна с любого ракурса.
+    const NICHE_DEPTH = 0.25;
+    const NICHE_HEIGHT = 0.15;
     const nicheCenterZ = -NICHE_DEPTH / 2;
     const nicheFloorY = ceilingM - NICHE_HEIGHT;
 
@@ -240,12 +241,12 @@ function Curtain3D({
         {/* Дно ниши — тёмное (имитация тени внутри углубления). */}
         <mesh position={[0, nicheFloorY, nicheCenterZ]}>
           <boxGeometry args={[lengthM, 0.005, NICHE_DEPTH]} />
-          <meshStandardMaterial color="#6E6E72" roughness={0.95} />
+          <meshStandardMaterial color="#2A2A2A" roughness={0.95} />
         </mesh>
-        {/* Передний бортик ниши — белая ступенька с лёгкой тенью снизу. */}
+        {/* Передний бортик ниши — тёмно-серая вертикальная ступенька. */}
         <mesh position={[0, ceilingM - NICHE_HEIGHT / 2, -NICHE_DEPTH + 0.003]}>
           <boxGeometry args={[lengthM, NICHE_HEIGHT, 0.005]} />
-          <meshStandardMaterial color="#D9D9D9" roughness={0.9} />
+          <meshStandardMaterial color="#454545" roughness={0.9} />
         </mesh>
         {/* Боковые торцы ниши */}
         {[-1, 1].map((side) => (
@@ -254,13 +255,13 @@ function Curtain3D({
             position={[(side * lengthM) / 2, ceilingM - NICHE_HEIGHT / 2, nicheCenterZ]}
           >
             <boxGeometry args={[0.005, NICHE_HEIGHT, NICHE_DEPTH]} />
-            <meshStandardMaterial color="#9A9A9E" roughness={0.9} />
+            <meshStandardMaterial color="#5A5A5A" roughness={0.9} />
           </mesh>
         ))}
         {/* Карниз — плоский алюминиевый профиль внутри ниши */}
-        <mesh position={[0, nicheFloorY + 0.025, -0.08]}>
-          <boxGeometry args={[lengthM - 0.04, 0.015, 0.03]} />
-          <meshStandardMaterial color="#2A2A2E" roughness={0.5} metalness={0.7} />
+        <mesh position={[0, nicheFloorY + 0.04, -0.13]}>
+          <boxGeometry args={[lengthM - 0.04, 0.02, 0.04]} />
+          <meshStandardMaterial color="#1A1A1E" roughness={0.5} metalness={0.7} />
         </mesh>
       </group>
     );
