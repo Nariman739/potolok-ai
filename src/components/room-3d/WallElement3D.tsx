@@ -226,18 +226,19 @@ function Curtain3D({
   variant?: "ours" | "client";
   type: "curtain" | "builtin_gardina";
 }) {
+  // Шторы — до пола. Раньше CURTAIN_HEIGHT_M=0.5 → висели только верхней
+  // частью на 50см. Теперь от (ceilingM - 0.08) до 0.05м над полом.
   const carnizY = ceilingM - 0.04;
   const drapeTop = ceilingM - 0.08;
-  const drapeH = CURTAIN_HEIGHT_M;
+  const drapeBottom = 0.05;
+  const drapeH = Math.max(0.3, drapeTop - drapeBottom);
   const drapeColor = variant === "client" ? "#A8A29E" : "#D6BFA4";
 
   const isBuiltin = type === "builtin_gardina";
   return (
     <group>
       {/* Карниз: для builtin_gardina — встроенный, для curtain — настенный.
-          Z-смещение ОТРИЦАТЕЛЬНОЕ (в сторону комнаты) — стены замкнуты CW,
-          нормаль внутрь = -Z локальной системы. Раньше было +0.06 → шторы
-          уходили за стену наружу и были невидимы из камеры в комнате. */}
+          Z-смещение ОТРИЦАТЕЛЬНОЕ (в сторону комнаты). */}
       {!isBuiltin && (
         <mesh position={[0, carnizY, -0.06]}>
           <boxGeometry args={[lengthM, 0.05, 0.12]} />
@@ -245,18 +246,18 @@ function Curtain3D({
         </mesh>
       )}
 
-      {/* 2 шторы — левая и правая половины со складками. Складки эмулируем
-          через цилиндры разделённые лёгкими щелями. */}
+      {/* 2 шторы — левая и правая половины со складками. Складки чаще +
+          тоньше диаметром, чтобы выглядели как ткань а не столбики. */}
       {[-1, 1].map((side) => {
         const halfW = lengthM / 2 - 0.04;
-        const folds = Math.max(6, Math.round(halfW / 0.12));
+        const folds = Math.max(10, Math.round(halfW / 0.08));
         const foldW = halfW / folds;
         const baseX = side * 0.04;
         return Array.from({ length: folds }).map((_, i) => {
           const x = baseX + side * (foldW * (i + 0.5));
           return (
-            <mesh key={`s-${side}-${i}`} position={[x, drapeTop - drapeH / 2, -(CURTAIN_THICKNESS_M / 2 + 0.06)]}>
-              <cylinderGeometry args={[foldW * 0.55, foldW * 0.55, drapeH, 8]} />
+            <mesh key={`s-${side}-${i}`} position={[x, drapeBottom + drapeH / 2, -(CURTAIN_THICKNESS_M / 2 + 0.06)]}>
+              <cylinderGeometry args={[foldW * 0.4, foldW * 0.4, drapeH, 8]} />
               <meshStandardMaterial color={drapeColor} roughness={0.95} metalness={0} />
             </mesh>
           );
