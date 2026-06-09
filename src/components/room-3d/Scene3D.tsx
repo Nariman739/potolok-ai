@@ -704,9 +704,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader. */}
         {quality === "high" && (
           <EffectComposer>
-            <Bloom mipmapBlur intensity={0.55} luminanceThreshold={0.78} luminanceSmoothing={0.5} />
+            {/* Bloom приглушён: было intensity=0.55, threshold=0.78 — слишком
+                раздувало halo вокруг каждого спота, видны были только
+                «облака свечения», сами фикстуры терялись. Сейчас лёгкий
+                эффект только на очень ярких пикселях. */}
+            <Bloom mipmapBlur intensity={0.18} luminanceThreshold={0.92} luminanceSmoothing={0.4} />
             <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            <Vignette eskil={false} offset={0.15} darkness={0.45} />
+            <Vignette eskil={false} offset={0.2} darkness={0.35} />
           </EffectComposer>
         )}
       </Canvas>

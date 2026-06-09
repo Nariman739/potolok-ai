@@ -45,13 +45,15 @@ export function Spot3D({
         <ringGeometry args={[r * 0.94, r * 1.04, 32]} />
         <meshStandardMaterial color="#E5E7EB" metalness={0.7} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
-      {/* Свечение — диск из стекла */}
+      {/* Свечение — диск из стекла. emissiveIntensity снижен с 3.5 до 1.4 —
+          без раздутого halo вокруг спота при Bloom. Достаточно яркий чтобы
+          было видно «спот горит», но не размывается на всю стену. */}
       <mesh position={[0, -depthM - 0.0005, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[r * 0.92, 24]} />
         <meshStandardMaterial
           color={lightColor}
           emissive={lightColor}
-          emissiveIntensity={3.5}
+          emissiveIntensity={1.4}
           side={THREE.DoubleSide}
           toneMapped={false}
         />

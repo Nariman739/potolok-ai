@@ -297,10 +297,10 @@ function Track3D({ lengthM, ceilingM, lightColor }: { lengthM: number; ceilingM:
               <cylinderGeometry args={[0.025, 0.025, 0.05, 16]} />
               <meshStandardMaterial color="#15171C" metalness={0.6} roughness={0.4} />
             </mesh>
-            {/* Стекло-свечение */}
+            {/* Стекло-свечение мини-спота на треке */}
             <mesh position={[0, -0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
               <circleGeometry args={[0.022, 24]} />
-              <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={2.8} toneMapped={false} />
+              <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={1.0} toneMapped={false} />
             </mesh>
           </group>
         );

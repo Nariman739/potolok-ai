@@ -29,13 +29,14 @@ export function Chandelier3D({ position, withLight, lightColor: lightColorOverri
         <cylinderGeometry args={[0.025, 0.025, 0.03, 12]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.3} metalness={0.6} />
       </mesh>
-      {/* Шар-плафон */}
+      {/* Шар-плафон. emissiveIntensity снижен 1.4 → 0.7 — без раздутого
+          halo вокруг люстры при Bloom. */}
       <mesh position={[0, -DROP_M, 0]}>
         <sphereGeometry args={[SPHERE_RADIUS_M, 32, 16]} />
         <meshStandardMaterial
           color={bulbColor}
           emissive={lightColor}
-          emissiveIntensity={1.4}
+          emissiveIntensity={0.7}
           toneMapped={false}
           roughness={0.2}
         />
