@@ -13,6 +13,7 @@ import {
   downloadTelegramFile,
 } from "@/lib/telegram";
 import { runVisionAgents, formatVisionResults } from "@/lib/vision-agents";
+import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import {
   processInstagramPhotos,
   handleInstagramCallback,
@@ -48,6 +49,8 @@ export async function handleTelegramBotMessage(
       id: true,
       firstName: true,
       companyName: true,
+      isOwner: true,
+      subscriptionTier: true,
     },
   });
 
@@ -90,12 +93,24 @@ export async function handleTelegramBotMessage(
     return;
   }
 
+  // Дневной AI cost-cap — общий для CRM-agent и фото-flow. Без него
+  // PRO-аккаунт может прокачать $2k+/сутки через CRM tool-calling.
+  const aiBudget = await checkAiBudget(master.id, masterRole(master));
+  if (!aiBudget.allowed) {
+    await sendTelegramMessage(
+      chatId,
+      "🔴 Дневной лимит AI на сегодня исчерпан.\n\nВосстановится в 00:00 UTC (≈ 05:00 по Астане).",
+    );
+    return;
+  }
+
   // Текст БЕЗ фото → CRM agent с tool calling (запись событий, поиск клиентов,
   // смена статусов, план дня и т.д.). Фото → старый flow расчёта потолков.
   if (messageText && !imageUrl) {
     try {
       const { processCRMAgent } = await import("@/lib/telegram-agent");
-      const response = await processCRMAgent(master.id, messageText);
+      const { response, costUsd } = await processCRMAgent(master.id, messageText);
+      await recordAiUsage(master.id, costUsd);
       await sendTelegramMessage(chatId, response);
       return;
     } catch (error) {
@@ -108,12 +123,14 @@ export async function handleTelegramBotMessage(
 
   // Process through AI
   try {
+    let totalCostUsd = 0;
     // If photo → run multi-agent vision first, then conversation without photo
     let visionContext: string | null = null;
     if (imageUrl) {
       try {
         const visionResult = await runVisionAgents(imageUrl);
         visionContext = formatVisionResults(visionResult);
+        totalCostUsd += visionResult.__costUsd ?? 0;
         console.log("[Multi-agent] Vision context:", visionContext);
       } catch (visionErr) {
         console.error("Vision agents error:", visionErr);
@@ -128,6 +145,8 @@ export async function handleTelegramBotMessage(
       visionContext ? null : imageUrl, // No photo if vision agents succeeded
       visionContext
     );
+    totalCostUsd += result.costUsd;
+    await recordAiUsage(master.id, totalCostUsd);
     await sendTelegramMessage(chatId, result.response);
 
     // If client_data was extracted and we have a calculation → auto-create КП
@@ -157,6 +176,7 @@ interface AIResult {
   calculationResult: CalculationResult | null;
   clientData: { name?: string; phone?: string; address?: string } | null;
   sessionId: string;
+  costUsd: number;
 }
 
 async function processAIChat(
@@ -251,6 +271,7 @@ async function processAIChat(
     stream: false,
     max_tokens: visionContext ? 1200 : 2000,
   });
+  const costUsd = computeCostFromUsage(result.usage, AI_MODEL);
 
   const fullContent = result.choices[0]?.message?.content?.trim() || "Нет ответа от AI";
 
@@ -354,6 +375,7 @@ async function processAIChat(
     calculationResult,
     clientData,
     sessionId: chatSession.id,
+    costUsd,
   };
 }
 

@@ -12,6 +12,7 @@ import type {
 } from "openai/resources/chat/completions";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
+import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type { DealStatus, EventType } from "@/generated/prisma/client";
 
 const ALLOWED_EVENT_TYPES: EventType[] = [
@@ -443,7 +444,10 @@ const SYSTEM_PROMPT = (masterName: string, nowIso: string) => `Ты — личн
 - Показывать план дня/завтра
 - Список последних КП, статистику за месяц`;
 
-export async function processCRMAgent(masterId: string, userText: string): Promise<string> {
+export async function processCRMAgent(
+  masterId: string,
+  userText: string,
+): Promise<{ response: string; costUsd: number }> {
   const master = await prisma.master.findUnique({
     where: { id: masterId },
     select: { firstName: true, companyName: true },
@@ -457,6 +461,7 @@ export async function processCRMAgent(masterId: string, userText: string): Promi
   ];
 
   const client = getOpenRouter();
+  let totalCostUsd = 0;
   // Iterative loop — Claude может вызывать tools несколько раз
   for (let step = 0; step < 5; step++) {
     const completion = await client.chat.completions.create({
@@ -468,8 +473,9 @@ export async function processCRMAgent(masterId: string, userText: string): Promi
       max_tokens: 1200,
       temperature: 0.2,
     });
+    totalCostUsd += computeCostFromUsage(completion.usage, AI_MODEL);
     const msg = completion.choices[0]?.message;
-    if (!msg) return "⚠️ Что-то пошло не так. Попробуй ещё раз.";
+    if (!msg) return { response: "⚠️ Что-то пошло не так. Попробуй ещё раз.", costUsd: totalCostUsd };
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       messages.push({
@@ -490,7 +496,7 @@ export async function processCRMAgent(masterId: string, userText: string): Promi
       continue;
     }
     // Финальный ответ
-    return (msg.content ?? "").trim() || "Готово.";
+    return { response: (msg.content ?? "").trim() || "Готово.", costUsd: totalCostUsd };
   }
-  return "⚠️ Слишком много шагов — упрости запрос.";
+  return { response: "⚠️ Слишком много шагов — упрости запрос.", costUsd: totalCostUsd };
 }
