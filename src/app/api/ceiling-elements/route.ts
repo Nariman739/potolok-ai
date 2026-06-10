@@ -7,6 +7,7 @@ import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { describeCeilingElement } from "@/lib/ai-visualization";
+import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const VALID_CATEGORIES = new Set([
@@ -87,12 +88,21 @@ export async function POST(request: Request) {
     );
 
     // Сразу прогоняем через Claude vision — кэшируем описание чтобы не считать при каждом рендере.
+    // Только если есть бюджет; иначе сохраняем без описания (рендер позже сделает на лету).
     let description: string | null = null;
-    try {
-      const buf = Buffer.from(await file.arrayBuffer());
-      description = await describeCeilingElement(buf.toString("base64"), contentType);
-    } catch (e) {
-      console.warn("[ceiling-elements POST] describe failed, saving without description:", e);
+    const budget = await checkAiBudget(master.id, masterRole(master));
+    if (budget.allowed) {
+      try {
+        const buf = Buffer.from(await file.arrayBuffer());
+        const { description: desc, costUsd } = await describeCeilingElement(
+          buf.toString("base64"),
+          contentType,
+        );
+        description = desc;
+        await recordAiUsage(master.id, costUsd);
+      } catch (e) {
+        console.warn("[ceiling-elements POST] describe failed, saving without description:", e);
+      }
     }
 
     const element = await prisma.ceilingElement.create({

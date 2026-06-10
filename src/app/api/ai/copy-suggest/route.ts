@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const budget = await checkAiBudget(master.id, masterRole(master));
     if (!budget.allowed) {
       return NextResponse.json(
-        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
         { status: 429 },
       );
     }
@@ -75,8 +75,8 @@ export async function POST(req: NextRequest) {
       city: body.context?.city || master.address || undefined,
     };
 
-    const suggestions = await suggestCopy(field, context, n);
-    await recordAiUsage(master.id);
+    const { suggestions, costUsd } = await suggestCopy(field, context, n);
+    await recordAiUsage(master.id, costUsd);
 
     return NextResponse.json({ suggestions });
   } catch (err) {

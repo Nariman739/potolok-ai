@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const budget = await checkAiBudget(master.id, masterRole(master));
   if (!budget.allowed) {
     return NextResponse.json(
-      { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+      { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
       { status: 429 },
     );
   }
@@ -54,8 +54,10 @@ export async function POST(request: Request) {
     }
 
     const result = await runVisionAgents(imageBase64Url);
-    await recordAiUsage(master.id);
-    return NextResponse.json(result);
+    await recordAiUsage(master.id, result.__costUsd ?? 0);
+    const { __costUsd: _drop, ...payload } = result;
+    void _drop;
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Vision test error:", error);
     const message = error instanceof Error ? error.message : "Ошибка";

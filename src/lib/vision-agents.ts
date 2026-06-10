@@ -6,6 +6,7 @@
 //   4. Fallback: use P= and S= values from sketch if solver fails
 
 import { getOpenRouter, VISION_MODEL } from "@/lib/openrouter";
+import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 
 // ─────────────────────────────────────────────────────
 // AI prompt — step-by-step reading with verification
@@ -101,12 +102,18 @@ export interface MultiAgentResult {
   totalCorners: number;
   totalPerimeter: number;
   totalArea: number;
+  // Реальная стоимость в USD от ответа OpenRouter, заполняется
+  // helper'ами для AI cost-cap. Не нужно показывать клиенту —
+  // используется только в роуте перед recordAiUsage.
+  __costUsd?: number;
 }
 
 // ─────────────────────────────────────────────────────
 // Call the vision agent
 // ─────────────────────────────────────────────────────
-async function callVisionAgent(imageBase64Url: string): Promise<string> {
+async function callVisionAgent(
+  imageBase64Url: string,
+): Promise<{ text: string; costUsd: number }> {
   const result = await getOpenRouter().chat.completions.create({
     model: VISION_MODEL,
     messages: [
@@ -120,11 +127,14 @@ async function callVisionAgent(imageBase64Url: string): Promise<string> {
       },
     ],
     stream: false,
-    max_tokens: 4000, // More tokens for step-by-step analysis
+    max_tokens: 4000,
     temperature: 0.1,
   });
 
-  return result.choices[0]?.message?.content?.trim() || "";
+  return {
+    text: result.choices[0]?.message?.content?.trim() || "",
+    costUsd: computeCostFromUsage(result.usage, VISION_MODEL),
+  };
 }
 
 // ─────────────────────────────────────────────────────
@@ -275,7 +285,7 @@ function calculatePerimeter(walls_cm: number[]): number {
 // Main: run vision agent + calculate + auto-correct + fallback
 // ─────────────────────────────────────────────────────
 export async function runVisionAgents(imageBase64Url: string): Promise<MultiAgentResult> {
-  const raw = await callVisionAgent(imageBase64Url);
+  const { text: raw, costUsd } = await callVisionAgent(imageBase64Url);
   console.log("[Vision Agent] Response received, length:", raw.length);
 
   const data = extractJson(raw) as AIReadingResult;
@@ -353,6 +363,7 @@ export async function runVisionAgents(imageBase64Url: string): Promise<MultiAgen
     totalCorners,
     totalPerimeter,
     totalArea,
+    __costUsd: costUsd,
   };
 }
 

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const budget = await checkAiBudget(master.id, masterRole(master));
     if (!budget.allowed) {
       return NextResponse.json(
-        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
         { status: 429 },
       );
     }
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await recordAiUsage(master.id);
+    await recordAiUsage(master.id, result.__costUsd ?? 0);
 
     return NextResponse.json({
       rooms: result.rooms.map((r) => ({

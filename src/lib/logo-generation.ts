@@ -3,15 +3,17 @@
 import Replicate from "replicate";
 import { put } from "@vercel/blob";
 import { getOpenRouter, AI_MODEL } from "./openrouter";
+import { computeCostFromUsage } from "./ai-cost-cap";
 
 export type LogoChatMessage = {
   role: "assistant" | "user";
   content: string;
 };
 
-export type LogoChatResult =
+export type LogoChatResult = (
   | { ready: false; nextQuestion: string }
-  | { ready: true; brief: LogoBrief; promptEnglish: string };
+  | { ready: true; brief: LogoBrief; promptEnglish: string }
+) & { __costUsd?: number };
 
 export type LogoBrief = {
   companyName: string | null;
@@ -75,16 +77,15 @@ export async function continueLogoChat(
     temperature: 0.7,
     max_tokens: 800,
   });
+  const costUsd = computeCostFromUsage(response.usage, AI_MODEL);
 
   const text = response.choices[0]?.message?.content?.trim() ?? "";
   let parsed: unknown;
   try {
-    // Удаляем возможные markdown-обёртки ```json ... ```
     const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
     parsed = JSON.parse(cleaned);
   } catch {
-    // Если LLM вернул просто текст — считаем что это next question
-    return { ready: false, nextQuestion: text || "Попробуй ещё раз" };
+    return { ready: false, nextQuestion: text || "Попробуй ещё раз", __costUsd: costUsd };
   }
 
   const obj = parsed as Record<string, unknown>;
@@ -99,6 +100,7 @@ export async function continueLogoChat(
         hasIconOrText: "",
       },
       promptEnglish: typeof obj.promptEnglish === "string" ? obj.promptEnglish : "",
+      __costUsd: costUsd,
     };
   }
 
@@ -108,6 +110,7 @@ export async function continueLogoChat(
       typeof obj.nextQuestion === "string"
         ? obj.nextQuestion
         : "Расскажи ещё немного о компании",
+    __costUsd: costUsd,
   };
 }
 

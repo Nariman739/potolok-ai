@@ -13,6 +13,7 @@
 
 import { getOpenRouter, VISION_MODEL } from "@/lib/openrouter";
 import type { MultiAgentResult, MergedRoom } from "@/lib/vision-agents";
+import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 
 const TECHPASSPORT_READER_PROMPT = `Ты — анализатор планов квартир (тех.паспортов БТИ или планов от застройщика).
 
@@ -115,7 +116,9 @@ function extractJson(text: string): unknown {
   throw new Error("No JSON found in agent response");
 }
 
-async function callVisionAgent(imageBase64Url: string): Promise<string> {
+async function callVisionAgent(
+  imageBase64Url: string,
+): Promise<{ text: string; costUsd: number }> {
   const result = await getOpenRouter().chat.completions.create({
     model: VISION_MODEL,
     messages: [
@@ -137,7 +140,10 @@ async function callVisionAgent(imageBase64Url: string): Promise<string> {
     temperature: 0.1,
   });
 
-  return result.choices[0]?.message?.content?.trim() || "";
+  return {
+    text: result.choices[0]?.message?.content?.trim() || "",
+    costUsd: computeCostFromUsage(result.usage, VISION_MODEL),
+  };
 }
 
 function roundTo10cm(cm: number): number {
@@ -181,7 +187,7 @@ function normalizeRoom(r: ParsedRoom): MergedRoom | null {
 }
 
 export async function runTechpassportVision(imageBase64Url: string): Promise<MultiAgentResult> {
-  const raw = await callVisionAgent(imageBase64Url);
+  const { text: raw, costUsd } = await callVisionAgent(imageBase64Url);
   console.log("[Techpassport Vision] Response length:", raw.length);
 
   const data = extractJson(raw) as ParsedResult;
@@ -208,5 +214,6 @@ export async function runTechpassportVision(imageBase64Url: string): Promise<Mul
     totalCorners,
     totalPerimeter,
     totalArea,
+    __costUsd: costUsd,
   };
 }

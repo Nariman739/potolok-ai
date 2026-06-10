@@ -17,7 +17,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const budget = await checkAiBudget(master.id, masterRole(master));
     if (!budget.allowed) {
       return NextResponse.json(
-        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
         { status: 429 },
       );
     }
@@ -39,8 +39,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const photoMime = photoRes.headers.get("content-type") || "image/jpeg";
     const photoBase64 = Buffer.from(await photoRes.arrayBuffer()).toString("base64");
 
-    const polygon = await detectCeilingPolygon(photoBase64, photoMime);
-    await recordAiUsage(master.id);
+    const { polygon, costUsd } = await detectCeilingPolygon(photoBase64, photoMime);
+    await recordAiUsage(master.id, costUsd);
 
     return NextResponse.json({ polygon });
   } catch (error) {
