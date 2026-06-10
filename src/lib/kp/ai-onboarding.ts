@@ -1,4 +1,5 @@
 import { AI_MODEL, getOpenRouter } from "@/lib/openrouter";
+import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type {
   KpConfig,
   KpTemplateId,
@@ -47,7 +48,8 @@ export type OnboardingResult = {
   template: KpTemplateId;
   tagline: string;
   config: KpConfig;
-  rationale: string; // короткое объяснение почему выбрана такая тема и тексты
+  rationale: string;
+  __costUsd?: number;
 };
 
 // ============================================
@@ -138,6 +140,7 @@ ${brief.differentiator ? `— Чем отличается от других: ${b
     max_tokens: 2500,
     response_format: { type: "json_object" },
   });
+  const costUsd = computeCostFromUsage(completion.usage, AI_MODEL);
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
   // OpenRouter с моделью Claude иногда игнорирует response_format и возвращает
@@ -194,5 +197,6 @@ ${brief.differentiator ? `— Чем отличается от других: ${b
     rationale:
       parsed.rationale ??
       `Тема ${template} подобрана под сегмент ${brief.segment} и стиль ${brief.communicationStyle ?? "по умолчанию"}.`,
+    __costUsd: costUsd,
   };
 }

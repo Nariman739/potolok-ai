@@ -24,6 +24,7 @@ import {
   type CeilingFinish,
   type ChandelierType,
 } from "@/lib/ai-visualization";
+import { recordAiUsage } from "@/lib/ai-cost-cap";
 import {
   generatePolygonMask,
   getImageDimensions,
@@ -329,7 +330,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // Двухступенчатый AI: сначала Claude vision детально описывает референс
         // → потом Nano Banana получает фото + описание = точнее копирует светильники.
         try {
-          referenceDescription = await describeReferenceCeiling(referenceBase64, referenceMime);
+          const refResult = await describeReferenceCeiling(referenceBase64, referenceMime);
+          referenceDescription = refResult.description;
+          await recordAiUsage(master.id, refResult.costUsd);
           console.log("[render] reference description:", referenceDescription.slice(0, 200));
         } catch (e) {
           console.warn("[render] reference description failed, continuing:", e);
@@ -548,7 +551,9 @@ async function renderFromScene(
       referenceMime = refRes.headers.get("content-type") || "image/jpeg";
       referenceBase64 = Buffer.from(await refRes.arrayBuffer()).toString("base64");
       try {
-        referenceDescription = await describeReferenceCeiling(referenceBase64, referenceMime);
+        const refResult = await describeReferenceCeiling(referenceBase64, referenceMime);
+        referenceDescription = refResult.description;
+        await recordAiUsage(masterId, refResult.costUsd);
       } catch (e) {
         console.warn("[scene render] reference description failed:", e);
       }

@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
-import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
+import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { buildSystemPrompt, VISION_EXTRACTION_PROMPT, computeRoomSummary } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
@@ -11,7 +11,9 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 export const maxDuration = 60;
 
 // Agent 1: Vision Extractor — extracts all rooms from photo document
-async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
+async function extractRoomsFromPhoto(
+  imageUrl: string,
+): Promise<{ data: string | null; costUsd: number }> {
   try {
     const result = await getOpenRouter().chat.completions.create({
       model: AI_MODEL,
@@ -28,22 +30,21 @@ async function extractRoomsFromPhoto(imageUrl: string): Promise<string | null> {
       stream: false,
       max_tokens: 2000,
     });
+    const costUsd = computeCostFromUsage(result.usage, AI_MODEL);
     const raw = result.choices[0]?.message?.content?.trim() || null;
-    if (!raw) return null;
+    if (!raw) return { data: null, costUsd };
 
-    // Extract JSON — supports chain-of-thought (find first { to last })
     const jsonStart = raw.indexOf("{");
     const jsonEnd = raw.lastIndexOf("}");
     const cleaned = jsonStart !== -1 && jsonEnd > jsonStart
       ? raw.slice(jsonStart, jsonEnd + 1).trim()
       : raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
-    // Validate it's parseable JSON before returning
     JSON.parse(cleaned);
-    return cleaned;
+    return { data: cleaned, costUsd };
   } catch (e) {
     console.error("Vision extraction failed:", e);
-    return null;
+    return { data: null, costUsd: 0 };
   }
 }
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     const budget = await checkAiBudget(master.id, masterRole(master));
     if (!budget.allowed) {
       return new Response(
-        JSON.stringify({ error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt }),
+        JSON.stringify({ error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt }),
         { status: 429, headers: { "Content-Type": "application/json" } },
       );
     }
@@ -139,13 +140,16 @@ export async function POST(request: Request) {
           // Agent 1: Vision Extractor (if photo present)
           // Send indicator first so user sees immediate feedback during ~3-5s extraction
           let visionData: string | null = null;
+          let totalCostUsd = 0;
           if (imageUrl) {
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ type: "text", content: "🔍 Анализирую документ..." })}\n\n`
               )
             );
-            visionData = await extractRoomsFromPhoto(imageUrl);
+            const visionResult = await extractRoomsFromPhoto(imageUrl);
+            visionData = visionResult.data;
+            totalCostUsd += visionResult.costUsd;
             // Clear the indicator — send replacement signal so frontend resets this message
             controller.enqueue(
               encoder.encode(
@@ -196,12 +200,15 @@ export async function POST(request: Request) {
             }
           }
 
-          // Stream conversation agent response
+          // Stream conversation agent response.
+          // stream_options.include_usage заставляет OpenRouter прислать
+          // финальный chunk с usage — без него токены не отсчитаются.
           const stream = await getOpenRouter().chat.completions.create({
             model: AI_MODEL,
             messages: openaiMessages,
             stream: true,
             max_tokens: 2000,
+            stream_options: { include_usage: true },
           });
 
           for await (const chunk of stream) {
@@ -213,6 +220,9 @@ export async function POST(request: Request) {
                   `data: ${JSON.stringify({ type: "text", content: delta })}\n\n`
                 )
               );
+            }
+            if (chunk.usage) {
+              totalCostUsd += computeCostFromUsage(chunk.usage, AI_MODEL);
             }
           }
 
@@ -330,7 +340,7 @@ export async function POST(request: Request) {
             data: updateData,
           });
 
-          await recordAiUsage(master.id);
+          await recordAiUsage(master.id, totalCostUsd);
 
           // Send done
           controller.enqueue(

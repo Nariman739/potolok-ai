@@ -9,6 +9,7 @@
 
 import Replicate from "replicate";
 import { getOpenRouter, AI_MODEL } from "./openrouter";
+import { computeCostFromUsage } from "./ai-cost-cap";
 
 export type AttachmentType = "regular" | "shadow" | "floating";
 export type CeilingFinish = "matte" | "satin" | "glossy";
@@ -123,7 +124,7 @@ Output a SINGLE dense paragraph in English. Be EXTREMELY specific about shape an
 export async function describeCeilingElement(
   imageBase64: string,
   imageMime: string,
-): Promise<string> {
+): Promise<{ description: string; costUsd: number }> {
   const client = getOpenRouter();
   const res = await client.chat.completions.create({
     model: AI_MODEL,
@@ -141,7 +142,10 @@ export async function describeCeilingElement(
       },
     ],
   });
-  return res.choices?.[0]?.message?.content?.trim() ?? "";
+  return {
+    description: res.choices?.[0]?.message?.content?.trim() ?? "",
+    costUsd: computeCostFromUsage(res.usage, AI_MODEL),
+  };
 }
 
 // ============================================
@@ -170,7 +174,7 @@ Output ONLY valid JSON, no markdown, no explanation, no commentary. Just the JSO
 export async function detectCeilingPolygon(
   photoBase64: string,
   photoMime: string,
-): Promise<Array<{ x: number; y: number }>> {
+): Promise<{ polygon: Array<{ x: number; y: number }>; costUsd: number }> {
   const client = getOpenRouter();
   const res = await client.chat.completions.create({
     model: AI_MODEL,
@@ -188,8 +192,8 @@ export async function detectCeilingPolygon(
       },
     ],
   });
+  const costUsd = computeCostFromUsage(res.usage, AI_MODEL);
   const text = res.choices?.[0]?.message?.content?.trim() ?? "";
-  // Извлекаем JSON даже если модель добавила markdown-обёртку
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error(`Не получилось распарсить ответ Claude: ${text.slice(0, 200)}`);
@@ -199,22 +203,24 @@ export async function detectCeilingPolygon(
   if (!Array.isArray(polygon) || polygon.length < 3) {
     throw new Error("Claude вернул polygon с менее чем 3 точками");
   }
-  // Валидируем и нормализуем координаты
-  return polygon
-    .map((p) => ({
-      x: Math.max(0, Math.min(100, Number(p.x))),
-      y: Math.max(0, Math.min(100, Number(p.y))),
-    }))
-    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  return {
+    polygon: polygon
+      .map((p) => ({
+        x: Math.max(0, Math.min(100, Number(p.x))),
+        y: Math.max(0, Math.min(100, Number(p.y))),
+      }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
+    costUsd,
+  };
 }
 
 export async function describeReferenceCeiling(
   referenceBase64: string,
   referenceMime: string,
-): Promise<string> {
+): Promise<{ description: string; costUsd: number }> {
   const client = getOpenRouter();
   const res = await client.chat.completions.create({
-    model: AI_MODEL, // anthropic/claude-sonnet-4
+    model: AI_MODEL,
     max_tokens: 600,
     messages: [
       {
@@ -229,7 +235,10 @@ export async function describeReferenceCeiling(
       },
     ],
   });
-  return res.choices?.[0]?.message?.content?.trim() ?? "";
+  return {
+    description: res.choices?.[0]?.message?.content?.trim() ?? "",
+    costUsd: computeCostFromUsage(res.usage, AI_MODEL),
+  };
 }
 
 // ============================================

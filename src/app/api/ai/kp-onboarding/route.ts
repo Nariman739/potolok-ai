@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const budget = await checkAiBudget(master.id, masterRole(master));
     if (!budget.allowed) {
       return NextResponse.json(
-        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
         { status: 429 },
       );
     }
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     };
 
     const result = await generateKpConfigFromBrief(brief);
-    await recordAiUsage(master.id);
+    await recordAiUsage(master.id, result.__costUsd ?? 0);
 
     // Сохраняем бриф + результат AI в БД — для последующей аналитики рынка
     // (какие сегменты популярны в каких городах, какие гарантии типичны, и т.д.)

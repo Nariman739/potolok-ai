@@ -1,4 +1,5 @@
 import { AI_MODEL, getOpenRouter } from "@/lib/openrouter";
+import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type { KpTemplateId } from "./types";
 
 // ============================================
@@ -203,7 +204,7 @@ export async function suggestCopy(
   field: CopyFieldKind,
   context: CopyContext,
   n = 3
-): Promise<CopySuggestion[]> {
+): Promise<{ suggestions: CopySuggestion[]; costUsd: number }> {
   const spec = FIELD_SPECS[field];
   const tone =
     (context.template && TONE_BY_TEMPLATE[context.template]) ||
@@ -223,6 +224,7 @@ export async function suggestCopy(
     max_tokens: 800,
     response_format: { type: "json_object" },
   });
+  const costUsd = computeCostFromUsage(completion.usage, AI_MODEL);
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
   try {
@@ -230,11 +232,18 @@ export async function suggestCopy(
     const suggestions = (parsed.suggestions ?? [])
       .filter((s) => s && typeof s.text === "string" && s.text.trim().length > 0)
       .slice(0, n);
-    return suggestions.length > 0
-      ? suggestions
-      : [{ text: "Не удалось сгенерировать варианты, попробуйте ещё раз." }];
+    return {
+      suggestions:
+        suggestions.length > 0
+          ? suggestions
+          : [{ text: "Не удалось сгенерировать варианты, попробуйте ещё раз." }],
+      costUsd,
+    };
   } catch {
-    return [{ text: "Ошибка парсинга ответа AI. Попробуйте ещё раз." }];
+    return {
+      suggestions: [{ text: "Ошибка парсинга ответа AI. Попробуйте ещё раз." }],
+      costUsd,
+    };
   }
 }
 

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const budget = await checkAiBudget(masterAuth.id, masterRole(masterAuth));
     if (!budget.allowed) {
       return NextResponse.json(
-        { error: "AI daily limit reached", remaining: 0, resetAt: budget.resetAt },
+        { error: "AI daily limit reached", remainingUsd: 0, resetAt: budget.resetAt },
         { status: 429 },
       );
     }
@@ -32,8 +32,10 @@ export async function POST(request: Request) {
     }
 
     const result = await continueLogoChat(master, history);
-    await recordAiUsage(masterAuth.id);
-    return NextResponse.json(result);
+    await recordAiUsage(masterAuth.id, result.__costUsd ?? 0);
+    const { __costUsd: _drop, ...payload } = result;
+    void _drop;
+    return NextResponse.json(payload);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
