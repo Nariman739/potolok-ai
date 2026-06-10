@@ -25,6 +25,7 @@ import {
 import {
   ArrowLeft,
   Copy,
+  FileDown,
   Plus,
   Radar,
   Search,
@@ -146,9 +147,30 @@ export function RangefindersPanel({
             <Badge variant="outline">{rangefinders.length}</Badge>
           </div>
         </div>
-        <Button onClick={() => setCreating(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Добавить рулетку
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const eligible = filtered.filter((r) => r.qrCode);
+              if (!eligible.length) {
+                alert("В фильтре нет рулеток с QR-кодом для печати.");
+                return;
+              }
+              const ids = eligible.map((r) => r.id).join(",");
+              window.open(
+                `/api/admin/rangefinders/stickers?ids=${encodeURIComponent(ids)}`,
+                "_blank",
+              );
+            }}
+            className="gap-2"
+            title="Распечатать QR-стикеры для текущего фильтра"
+          >
+            <FileDown className="w-4 h-4" /> PDF стикеров
+          </Button>
+          <Button onClick={() => setCreating(true)} className="gap-2">
+            <Plus className="w-4 h-4" /> Добавить рулетку
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
