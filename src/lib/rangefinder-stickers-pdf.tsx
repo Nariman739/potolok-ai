@@ -145,7 +145,7 @@ function StickersDocument({ stickers }: { stickers: StickerReady[] }) {
                     <Text style={styles.nameBig}>{s.name}</Text>
                     <Text style={styles.codeSmall}>{s.qrCode}</Text>
                     <Text style={styles.hint}>
-                      Скачай potolok.ai app — отсканируй этот QR
+                      Scan in potolok.ai mobile app
                     </Text>
                   </View>
                 </View>
