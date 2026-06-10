@@ -17,6 +17,13 @@ import {
   sendTelegramPhoto,
 } from "@/lib/telegram";
 import { linkContentPlanByPostId, fetchTopicById } from "@/lib/content-plan";
+import {
+  checkAiBudget,
+  recordAiUsage,
+  masterRole,
+  estimateCostUsd,
+} from "@/lib/ai-cost-cap";
+import { VISION_MODEL } from "@/lib/openrouter";
 
 // ─────────────────────────────────────────────────────
 // Upload photos to Vercel Blob
@@ -77,6 +84,29 @@ export async function processInstagramPhotos(
     return null;
   }
 
+  // Дневной AI cost-cap. Pipeline из 5 LLM-вызовов стоит ~$0.20-0.50,
+  // блокируем заранее если не влезет в дневной лимит мастера.
+  const masterForCap = await prisma.master.findUnique({
+    where: { id: masterId },
+    select: { isOwner: true, subscriptionTier: true },
+  });
+  if (masterForCap) {
+    const upperBound = estimateCostUsd({
+      model: VISION_MODEL,
+      inputTokens: 8000,
+      maxOutputTokens: 8200,
+      imageCount: photoBase64Urls.length,
+    });
+    const budget = await checkAiBudget(masterId, masterRole(masterForCap));
+    if (!budget.allowed || budget.remainingUsd < upperBound) {
+      await sendTelegramMessage(
+        chatId,
+        "🔴 Дневной лимит AI на сегодня исчерпан.\n\nВосстановится в 00:00 UTC (≈ 05:00 по Астане).",
+      );
+      return null;
+    }
+  }
+
   const recentPostDates = account.posts
     .filter((p) => p.publishedAt)
     .map((p) => p.publishedAt!.toISOString());
@@ -111,6 +141,7 @@ export async function processInstagramPhotos(
     );
     return null;
   }
+  await recordAiUsage(masterId, pipelineResult.costUsd);
 
   // Reorder photos based on visual editor recommendation, keeping videos in place
   const types = mediaTypes || blobUrls.map(() => "photo" as const);
