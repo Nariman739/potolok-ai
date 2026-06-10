@@ -238,11 +238,6 @@ function Curtain3D({
 
     return (
       <group>
-        {/* DEBUG MARKER — ярко-красный куб для проверки рендеринга */}
-        <mesh position={[0, ceilingM - 0.3, -0.3]}>
-          <boxGeometry args={[0.4, 0.4, 0.4]} />
-          <meshBasicMaterial color="#FF0000" toneMapped={false} />
-        </mesh>
         {/* Дно ниши — тёмное (имитация тени внутри углубления). */}
         <mesh position={[0, nicheFloorY, nicheCenterZ]}>
           <boxGeometry args={[lengthM, 0.005, NICHE_DEPTH]} />

@@ -667,27 +667,6 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           />
         ))}
 
-        {/* DEBUG индикатор: куб 30см в углу комнаты — видим = код задеплоен */}
-        <mesh position={[-roomSize / 2 + 0.5, ceilingM - 0.3, -roomSize / 2 + 0.5]}>
-          <boxGeometry args={[0.3, 0.3, 0.3]} />
-          <meshBasicMaterial color="#00FFFF" toneMapped={false} />
-        </mesh>
-        {(() => {
-          if (typeof window !== "undefined") {
-            const summary = elements.map((e) => ({
-              type: e.type,
-              wallIndex: e.wallIndex,
-              hasPoints: !!e.points?.length,
-              length: e.length,
-              x: e.x,
-              y: e.y,
-            }));
-            (window as unknown as { __scene3dElements?: unknown }).__scene3dElements = summary;
-            console.log("[Scene3D] elements", summary);
-          }
-          return null;
-        })()}
-
         {wallElements.map((w) => (
           <WallElement3D
             key={w.id}
