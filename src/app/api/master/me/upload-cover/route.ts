@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         : file.type || "image/jpeg";
 
     const path = `kp-cover/${master.id}/${Date.now()}.${blobExt}`;
-    const blob = await put(path, file, { access: "public", contentType });
+    const blob = await put(path, file, { access: "public", contentType, addRandomSuffix: true });
 
     await prisma.master.update({
       where: { id: master.id },

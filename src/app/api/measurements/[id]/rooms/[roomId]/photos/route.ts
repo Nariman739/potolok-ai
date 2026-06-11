@@ -61,6 +61,7 @@ export async function POST(
     const blob = await put(path, file, {
       access: "public",
       contentType,
+      addRandomSuffix: true,
     });
 
     // Add URL to room's photoUrls

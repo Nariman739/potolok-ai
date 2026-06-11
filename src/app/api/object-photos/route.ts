@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     const blob = await put(path, file, {
       access: "public",
       contentType,
+      addRandomSuffix: true,
     });
 
     const photo = await prisma.objectPhoto.create({

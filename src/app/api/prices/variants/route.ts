@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
         const path = `price-variants/${master.id}/${Date.now()}.${ext === "heic" || ext === "heif" ? "jpg" : ext}`;
         const ct = file.type === "image/heic" || file.type === "image/heif" ? "image/jpeg" : file.type || "image/jpeg";
-        const blob = await put(path, file, { access: "public", contentType: ct });
+        const blob = await put(path, file, { access: "public", contentType: ct, addRandomSuffix: true });
         photoUrl = blob.url;
       }
     } else {

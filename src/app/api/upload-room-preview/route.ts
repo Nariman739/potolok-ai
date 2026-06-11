@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const blob = await put(path, buffer, {
       access: "public",
       contentType: "image/png",
+      addRandomSuffix: true,
     });
 
     return NextResponse.json({ url: blob.url });

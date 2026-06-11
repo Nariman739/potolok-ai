@@ -99,27 +99,30 @@ export async function PATCH(
     // полностью заменяются на новые (фото в Vercel Blob остаются,
     // но ссылки в БД пропадают — это допустимо, мастер пересохраняет
     // замер только при добавлении новой комнаты).
-    if (rooms && Array.isArray(rooms)) {
+    //
+    // ВАЖНО: пустой массив rooms игнорируется и НЕ стирает существующие.
+    // Раньше mobile-баг с гонкой/малфункцией UI мог отправить rooms:[]
+    // и обнулить весь объект. Для очистки списка нужно явно использовать
+    // DELETE /api/measurements/[id]/rooms (отдельный endpoint).
+    if (rooms && Array.isArray(rooms) && rooms.length > 0) {
       await prisma.measurementRoom.deleteMany({
         where: { objectId: id },
       });
-      if (rooms.length > 0) {
-        await prisma.measurementRoom.createMany({
-          data: rooms.map((r, i) => ({
-            objectId: id,
-            name: r.name,
-            walls: r.walls,
-            normalCorners: r.normalCorners || r.walls.map(() => true),
-            angles: r.angles ?? undefined,
-            arcBulges: r.arcBulges ?? undefined,
-            columns: r.columns ?? undefined,
-            area: r.area,
-            perimeter: r.perimeter,
-            elements: r.elements || [],
-            sortOrder: i,
-          })),
-        });
-      }
+      await prisma.measurementRoom.createMany({
+        data: rooms.map((r, i) => ({
+          objectId: id,
+          name: r.name,
+          walls: r.walls,
+          normalCorners: r.normalCorners || r.walls.map(() => true),
+          angles: r.angles ?? undefined,
+          arcBulges: r.arcBulges ?? undefined,
+          columns: r.columns ?? undefined,
+          area: r.area,
+          perimeter: r.perimeter,
+          elements: r.elements || [],
+          sortOrder: i,
+        })),
+      });
     }
 
     return NextResponse.json({ success: true });

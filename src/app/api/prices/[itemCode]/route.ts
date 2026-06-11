@@ -52,7 +52,7 @@ export async function PUT(
           file.type === "image/heic" || file.type === "image/heif"
             ? "image/jpeg"
             : file.type || "image/jpeg";
-        const blob = await put(path, file, { access: "public", contentType: ct });
+        const blob = await put(path, file, { access: "public", contentType: ct, addRandomSuffix: true });
         newPhotoUrl = blob.url;
       }
     } else {
