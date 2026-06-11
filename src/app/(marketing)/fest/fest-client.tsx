@@ -30,6 +30,7 @@ export default function FestClient() {
     city: "",
     type: "master" as LeadType,
     objectsPerMonth: "",
+    website: "", // honeypot — реальный юзер не видит
   });
 
   useEffect(() => {
@@ -274,6 +275,30 @@ export default function FestClient() {
               onSubmit={handleSubmit}
               className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 space-y-4"
             >
+              {/* Honeypot — невидимый для людей, ловит ботов */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: "-9999px",
+                  width: 1,
+                  height: 1,
+                  overflow: "hidden",
+                }}
+              >
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={form.website}
+                  onChange={(e) =>
+                    setForm({ ...form, website: e.target.value })
+                  }
+                />
+              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#94A3B8] mb-2">
