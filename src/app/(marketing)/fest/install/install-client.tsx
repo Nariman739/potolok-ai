@@ -1,0 +1,240 @@
+"use client";
+
+import Image from "next/image";
+import {
+  Apple,
+  Smartphone,
+  Sparkles,
+  CheckCircle2,
+  Instagram,
+  Send,
+  MessageCircle,
+  Clock,
+} from "lucide-react";
+
+type Props = {
+  qrDataUrl: string;
+  androidOptInUrl: string;
+  iosAppStoreUrl: string;
+  groupInviteUrl: string;
+};
+
+export default function InstallClient({
+  qrDataUrl,
+  androidOptInUrl,
+  iosAppStoreUrl,
+  groupInviteUrl,
+}: Props) {
+  return (
+    <div className="relative">
+      <style>{`
+        @keyframes orb-install {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(30px, -20px) scale(1.05); }
+        }
+        .orb-install { animation: orb-install 16s ease-in-out infinite; }
+      `}</style>
+
+      <section className="relative py-12 md:py-16 px-4 overflow-hidden">
+        <div className="orb-install absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full bg-orange-500/15 blur-[120px] pointer-events-none" />
+        <div className="orb-install absolute -top-16 -right-16 w-[360px] h-[360px] rounded-full bg-blue-600/15 blur-[100px] pointer-events-none" />
+
+        <div className="container mx-auto max-w-3xl relative z-10">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-sm text-orange-300 mb-6">
+              <Sparkles className="h-4 w-4" />
+              Потолок Фест Астана · 18-19 июня
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+              Установи{" "}
+              <span className="bg-gradient-to-r from-[#F97316] to-[#FB923C] bg-clip-text text-transparent">
+                Potolok.ai
+              </span>{" "}
+              на телефон
+            </h1>
+
+            <p className="text-base sm:text-lg text-[#94A3B8] max-w-xl mx-auto">
+              Замер по фото, 3D-конструктор, КП и договор —{" "}
+              <span className="text-[#F1F5F9]">в одном приложении</span>.
+              Выбери свою платформу:
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-10">
+            <a
+              href={iosAppStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4 rounded-2xl border border-[#334155] bg-[#1A2332] p-6 hover:border-orange-500/40 hover:bg-[#1e2d45] transition-all"
+            >
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-white text-black shrink-0 group-hover:scale-105 transition-transform">
+                <Apple className="h-7 w-7" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#94A3B8] mb-1">Скачать в</p>
+                <p className="text-lg font-semibold text-[#F1F5F9]">App Store</p>
+                <p className="text-xs text-[#64748B] mt-1">для iPhone и iPad</p>
+              </div>
+            </a>
+
+            <a
+              href={androidOptInUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4 rounded-2xl border border-orange-500/30 bg-gradient-to-br from-[#1A2332] to-[#1e2d45] p-6 hover:border-orange-500/60 hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all"
+            >
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#F97316] to-[#FB923C] text-white shrink-0 group-hover:scale-105 transition-transform">
+                <Smartphone className="h-7 w-7" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-orange-300 mb-1">Скачать на</p>
+                <p className="text-lg font-semibold text-[#F1F5F9]">Android</p>
+                <p className="text-xs text-[#64748B] mt-1">через Google Play</p>
+              </div>
+            </a>
+          </div>
+
+          <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 mb-8">
+            <h2 className="text-xl font-semibold mb-5 text-[#F1F5F9] flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-orange-400" />
+              Как установить на Android — 2 шага
+            </h2>
+            <ol className="space-y-4 text-[#94A3B8]">
+              <li className="flex gap-4">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20 text-orange-300 text-sm font-semibold shrink-0">
+                  1
+                </span>
+                <div className="flex-1">
+                  <p className="text-[#F1F5F9] font-medium mb-1">
+                    Вступи в группу тестировщиков
+                  </p>
+                  <p className="text-sm">
+                    Нужен Google-аккаунт (тот же, что в Play Store на твоём
+                    телефоне).
+                  </p>
+                  <a
+                    href={groupInviteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-orange-400 hover:text-orange-300 mt-2 underline underline-offset-4"
+                  >
+                    Открыть группу →
+                  </a>
+                </div>
+              </li>
+              <li className="flex gap-4">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20 text-orange-300 text-sm font-semibold shrink-0">
+                  2
+                </span>
+                <div className="flex-1">
+                  <p className="text-[#F1F5F9] font-medium mb-1">
+                    Открой Google Play и установи
+                  </p>
+                  <p className="text-sm">
+                    Кнопка «Android» выше откроет страницу установки в Play
+                    Store. Жми «Установить» — обновляется автоматически как
+                    обычное приложение.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+            <p className="text-sm text-[#94A3B8] leading-relaxed">
+              <span className="text-[#F1F5F9] font-medium">
+                Промокод FEST2026
+              </span>{" "}
+              даёт{" "}
+              <span className="text-emerald-300 font-medium">
+                3 месяца Pro бесплатно
+              </span>
+              . Введи в приложении при регистрации.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 mb-8">
+            <h2 className="text-xl font-semibold mb-2 text-[#F1F5F9]">
+              Присоединяйся к сообществу мастеров
+            </h2>
+            <p className="text-sm text-[#94A3B8] mb-5">
+              Обмен опытом, советы, обратная связь и анонсы новых функций.
+            </p>
+
+            <div className="grid sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                disabled
+                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+              >
+                <Instagram className="h-6 w-6 text-pink-400 shrink-0" />
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-[#F1F5F9]">Instagram</p>
+                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                    <Clock className="h-2.5 w-2.5" />
+                    Скоро
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+              >
+                <Send className="h-6 w-6 text-sky-400 shrink-0" />
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-[#F1F5F9]">
+                    Telegram-чат
+                  </p>
+                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                    <Clock className="h-2.5 w-2.5" />
+                    Скоро
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+              >
+                <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-[#F1F5F9]">
+                    WhatsApp-чат
+                  </p>
+                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                    <Clock className="h-2.5 w-2.5" />
+                    Скоро
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-xs text-[#64748B] mt-4">
+              Ссылки появятся к 18 июня, перед фестом.
+            </p>
+          </div>
+
+          <div className="hidden md:block rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 text-center">
+            <p className="text-sm text-[#94A3B8] mb-4">
+              Сканируй QR со своего телефона
+            </p>
+            <div className="inline-block rounded-2xl bg-white p-4">
+              <Image
+                src={qrDataUrl}
+                alt="QR код установки Potolok.ai"
+                width={240}
+                height={240}
+                unoptimized
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

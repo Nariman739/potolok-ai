@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         : null,
       `<b>Источник:</b> ${source || "direct"}`,
       ``,
-      `Промокод <code>FEST2026</code> → 30 дней Pro`,
+      `Промокод <code>FEST2026</code> → 3 месяца Pro`,
     ]
       .filter(Boolean)
       .join("\n");

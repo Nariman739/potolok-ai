@@ -36,7 +36,7 @@ export default function FestClient() {
     const utm = searchParams.get("utm_source");
     if (utm === "qr" || utm === "fest") {
       toast.success(`Промокод ${PROMO_CODE} активирован`, {
-        description: "30 дней Pro после регистрации",
+        description: "3 месяца Pro после регистрации",
       });
     }
   }, [searchParams]);
@@ -219,14 +219,15 @@ export default function FestClient() {
             </div>
 
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              30 дней{" "}
+              3 месяца{" "}
               <span className="bg-gradient-to-r from-[#F97316] to-[#FB923C] bg-clip-text text-transparent">
                 бесплатно
               </span>
             </h2>
             <p className="text-[#94A3B8] mb-8 max-w-xl mx-auto">
               Полный доступ к тарифу Pro: AI-замер, 3D-конструктор, договоры с
-              эл. подписью, мобильное приложение. Действует до 30 июня 2026.
+              эл. подписью, мобильное приложение. Активируется при регистрации
+              по промокоду.
             </p>
 
             <button
