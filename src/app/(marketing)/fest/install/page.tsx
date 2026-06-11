@@ -11,8 +11,7 @@ export const metadata: Metadata = {
 
 const ANDROID_OPTIN_URL =
   "https://play.google.com/apps/testing/ai.potolok.app";
-const IOS_APP_STORE_URL =
-  "https://apps.apple.com/kz/app/potolok-ai/id0000000000";
+const IOS_APP_STORE_URL = "https://apps.apple.com/kz/app/id6766588501";
 const GROUP_INVITE_URL = "https://groups.google.com/g/potolok-ai-testers";
 const LANDING_URL = "https://potolok.ai/fest/install";
 
