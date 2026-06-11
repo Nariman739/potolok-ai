@@ -12,6 +12,10 @@ export const FOUNDER_DISCOUNT_MONTHS = Number(process.env.FOUNDER_DISCOUNT_MONTH
 export const STANDARD_PRICE = Number(process.env.STANDARD_PRICE ?? 9999);
 export const SUBSCRIPTION_DAYS_PER_PAYMENT = 30;
 
+// FEST2026 — фестивальный промокод: 3 месяца Pro бесплатно
+export const FEST_TRIAL_PROMOCODE = (process.env.FEST_TRIAL_PROMOCODE ?? "FEST2026").toUpperCase();
+export const FEST_TRIAL_MONTHS = Number(process.env.FEST_TRIAL_MONTHS ?? 3);
+
 function getAdminChatId(): string | null {
   return process.env.ADMIN_TG_CHAT_ID ?? null;
 }

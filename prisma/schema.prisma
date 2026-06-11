@@ -64,6 +64,7 @@ model Master {
   isFounder            Boolean          @default(false) // активировал POTOLOKFEST (бейдж + скидка 3 месяца)
   founderActivatedAt   DateTime? // когда применил POTOLOKFEST
   founderMonthsPaid    Int              @default(0) // счётчик 3000₸-оплат, после 3 → переход на STANDARD_PRICE
+  festPromoActivatedAt DateTime? // когда применил FEST2026 (3 месяца Pro бесплатно)
   welcomeSent          Boolean          @default(false) // отправили ли инвайты в TG+WA группы
   hasUsedTrial         Boolean          @default(false) // защита от повторной регистрации с trial
 

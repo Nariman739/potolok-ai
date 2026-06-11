@@ -2,7 +2,18 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { FOUNDER_PROMOCODE, FOUNDER_DISCOUNT_PRICE } from "@/lib/payment";
+import {
+  FOUNDER_PROMOCODE,
+  FOUNDER_DISCOUNT_PRICE,
+  FEST_TRIAL_PROMOCODE,
+  FEST_TRIAL_MONTHS,
+} from "@/lib/payment";
+
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
+}
 
 export async function POST(request: Request) {
   try {
@@ -23,41 +34,89 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Введите промокод" }, { status: 400 });
     }
 
-    if (code !== FOUNDER_PROMOCODE) {
-      return NextResponse.json({ error: "Промокод не найден" }, { status: 404 });
+    // ── FEST2026: 3 месяца Pro бесплатно ──────────────────────────────
+    if (code === FEST_TRIAL_PROMOCODE) {
+      const master = await prisma.master.findUnique({
+        where: { id: me.id },
+        select: {
+          id: true,
+          festPromoActivatedAt: true,
+          paidUntil: true,
+          subscriptionTier: true,
+        },
+      });
+      if (!master) {
+        return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
+      }
+      if (master.festPromoActivatedAt) {
+        return NextResponse.json({ error: "Промокод уже применён" }, { status: 409 });
+      }
+
+      const now = new Date();
+      const baseDate =
+        master.paidUntil && master.paidUntil > now ? master.paidUntil : now;
+      const newPaidUntil = addMonths(baseDate, FEST_TRIAL_MONTHS);
+
+      const updated = await prisma.master.update({
+        where: { id: master.id },
+        data: {
+          festPromoActivatedAt: now,
+          paidUntil: newPaidUntil,
+          subscriptionTier: "PRO",
+        },
+        select: {
+          subscriptionTier: true,
+          paidUntil: true,
+          festPromoActivatedAt: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        type: "fest_trial",
+        subscriptionTier: updated.subscriptionTier,
+        paidUntil: updated.paidUntil,
+        message: `${FEST_TRIAL_MONTHS} месяца Pro активированы`,
+      });
     }
 
-    const master = await prisma.master.findUnique({
-      where: { id: me.id },
-      select: { id: true, isFounder: true },
-    });
-    if (!master) {
-      return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
-    }
-    if (master.isFounder) {
-      return NextResponse.json({ error: "Промокод уже применён" }, { status: 409 });
+    // ── POTOLOKFEST: Founder bagde + скидка ───────────────────────────
+    if (code === FOUNDER_PROMOCODE) {
+      const master = await prisma.master.findUnique({
+        where: { id: me.id },
+        select: { id: true, isFounder: true },
+      });
+      if (!master) {
+        return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
+      }
+      if (master.isFounder) {
+        return NextResponse.json({ error: "Промокод уже применён" }, { status: 409 });
+      }
+
+      const updated = await prisma.master.update({
+        where: { id: master.id },
+        data: {
+          isFounder: true,
+          founderActivatedAt: new Date(),
+          monthlyPrice: FOUNDER_DISCOUNT_PRICE,
+        },
+        select: {
+          isFounder: true,
+          monthlyPrice: true,
+          founderMonthsPaid: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        type: "founder",
+        isFounder: updated.isFounder,
+        monthlyPrice: updated.monthlyPrice,
+        founderMonthsPaid: updated.founderMonthsPaid,
+      });
     }
 
-    const updated = await prisma.master.update({
-      where: { id: master.id },
-      data: {
-        isFounder: true,
-        founderActivatedAt: new Date(),
-        monthlyPrice: FOUNDER_DISCOUNT_PRICE,
-      },
-      select: {
-        isFounder: true,
-        monthlyPrice: true,
-        founderMonthsPaid: true,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      isFounder: updated.isFounder,
-      monthlyPrice: updated.monthlyPrice,
-      founderMonthsPaid: updated.founderMonthsPaid,
-    });
+    return NextResponse.json({ error: "Промокод не найден" }, { status: 404 });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
