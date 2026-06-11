@@ -107,19 +107,33 @@ export default function ProfilePage() {
       "Удалить аккаунт?\n\nБудут удалены навсегда: профиль, цены, КП, договоры, акты, замеры, фото объектов, портфолио и все клиенты. Это действие необратимо."
     );
     if (!first) return;
-    const second = window.confirm(
-      "Точно удалить?\n\nПодтвердите ещё раз. Все данные исчезнут безвозвратно. Восстановить будет невозможно."
+
+    const password = window.prompt(
+      "Введите ваш пароль для подтверждения удаления аккаунта:"
     );
-    if (!second) return;
+    if (!password) return;
+
+    const confirmPhrase = window.prompt(
+      "Чтобы подтвердить удаление, введите ровно (заглавными буквами):\n\nУДАЛИТЬ АККАУНТ"
+    );
+    if (!confirmPhrase) return;
 
     setDeleting(true);
     try {
-      const res = await fetch("/api/account", { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, confirmPhrase }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Ошибка удаления");
+      }
       toast.success("Аккаунт удалён");
       router.push("/auth/login");
-    } catch {
-      toast.error("Не удалось удалить аккаунт. Попробуйте позже.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Не удалось удалить аккаунт";
+      toast.error(msg);
       setDeleting(false);
     }
   }
