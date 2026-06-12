@@ -17,7 +17,8 @@ const LANDING_URL = "https://potolok.ai/fest/install";
 
 const INSTAGRAM_URL = "https://instagram.com/potolok.ai";
 const TELEGRAM_GROUP_URL: string | null = null;
-const WHATSAPP_GROUP_URL: string | null = null;
+const WHATSAPP_GROUP_URL =
+  "https://chat.whatsapp.com/LWqjL7j1ABj7fAz1UQsHZv";
 
 export default async function InstallPage() {
   const qrDataUrl = await QRCode.toDataURL(LANDING_URL, {
