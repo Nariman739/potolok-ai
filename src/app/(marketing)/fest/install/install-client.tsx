@@ -17,6 +17,9 @@ type Props = {
   androidOptInUrl: string;
   iosAppStoreUrl: string;
   groupInviteUrl: string;
+  instagramUrl?: string | null;
+  telegramGroupUrl?: string | null;
+  whatsappGroupUrl?: string | null;
 };
 
 export default function InstallClient({
@@ -24,7 +27,13 @@ export default function InstallClient({
   androidOptInUrl,
   iosAppStoreUrl,
   groupInviteUrl,
+  instagramUrl,
+  telegramGroupUrl,
+  whatsappGroupUrl,
 }: Props) {
+  const anyCommunityLink = Boolean(
+    instagramUrl || telegramGroupUrl || whatsappGroupUrl,
+  );
   return (
     <div className="relative">
       <style>{`
@@ -164,59 +173,122 @@ export default function InstallClient({
             </p>
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                disabled
-                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
-              >
-                <Instagram className="h-6 w-6 text-pink-400 shrink-0" />
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-[#F1F5F9]">Instagram</p>
-                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                    <Clock className="h-2.5 w-2.5" />
-                    Скоро
-                  </p>
-                </div>
-              </button>
+              {instagramUrl ? (
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex items-center gap-3 rounded-xl border border-pink-500/30 bg-gradient-to-br from-[#1A2332] to-[#1e2d45] p-4 hover:border-pink-500/60 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all"
+                >
+                  <Instagram className="h-6 w-6 text-pink-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      Instagram
+                    </p>
+                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                      @potolok.ai
+                    </p>
+                  </div>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+                >
+                  <Instagram className="h-6 w-6 text-pink-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      Instagram
+                    </p>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      Скоро
+                    </p>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                disabled
-                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
-              >
-                <Send className="h-6 w-6 text-sky-400 shrink-0" />
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-[#F1F5F9]">
-                    Telegram-чат
-                  </p>
-                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                    <Clock className="h-2.5 w-2.5" />
-                    Скоро
-                  </p>
-                </div>
-              </button>
+              {telegramGroupUrl ? (
+                <a
+                  href={telegramGroupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex items-center gap-3 rounded-xl border border-sky-500/30 bg-gradient-to-br from-[#1A2332] to-[#1e2d45] p-4 hover:border-sky-500/60 hover:shadow-[0_0_20px_rgba(14,165,233,0.2)] transition-all"
+                >
+                  <Send className="h-6 w-6 text-sky-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      Telegram-чат
+                    </p>
+                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                      Сообщество
+                    </p>
+                  </div>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+                >
+                  <Send className="h-6 w-6 text-sky-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      Telegram-чат
+                    </p>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      Скоро
+                    </p>
+                  </div>
+                </button>
+              )}
 
-              <button
-                type="button"
-                disabled
-                className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
-              >
-                <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-[#F1F5F9]">
-                    WhatsApp-чат
-                  </p>
-                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                    <Clock className="h-2.5 w-2.5" />
-                    Скоро
-                  </p>
-                </div>
-              </button>
+              {whatsappGroupUrl ? (
+                <a
+                  href={whatsappGroupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-[#1A2332] to-[#1e2d45] p-4 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all"
+                >
+                  <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      WhatsApp-чат
+                    </p>
+                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                      Сообщество
+                    </p>
+                  </div>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="group relative flex items-center gap-3 rounded-xl border border-[#334155] bg-[#0F1724]/60 p-4 cursor-not-allowed opacity-80"
+                >
+                  <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-[#F1F5F9]">
+                      WhatsApp-чат
+                    </p>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      Скоро
+                    </p>
+                  </div>
+                </button>
+              )}
             </div>
 
-            <p className="text-xs text-[#64748B] mt-4">
-              Ссылки появятся к 18 июня, перед фестом.
-            </p>
+            {!(telegramGroupUrl && whatsappGroupUrl) && (
+              <p className="text-xs text-[#64748B] mt-4">
+                {anyCommunityLink
+                  ? "Остальные каналы откроются к 18 июня, перед фестом."
+                  : "Ссылки появятся к 18 июня, перед фестом."}
+              </p>
+            )}
           </div>
 
           <div className="hidden md:block rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 text-center">

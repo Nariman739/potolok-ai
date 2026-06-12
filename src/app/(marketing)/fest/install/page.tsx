@@ -15,6 +15,10 @@ const IOS_APP_STORE_URL = "https://apps.apple.com/kz/app/id6766588501";
 const GROUP_INVITE_URL = "https://groups.google.com/g/potolok-ai-testers";
 const LANDING_URL = "https://potolok.ai/fest/install";
 
+const INSTAGRAM_URL = "https://instagram.com/potolok.ai";
+const TELEGRAM_GROUP_URL: string | null = null;
+const WHATSAPP_GROUP_URL: string | null = null;
+
 export default async function InstallPage() {
   const qrDataUrl = await QRCode.toDataURL(LANDING_URL, {
     width: 360,
@@ -28,6 +32,9 @@ export default async function InstallPage() {
       androidOptInUrl={ANDROID_OPTIN_URL}
       iosAppStoreUrl={IOS_APP_STORE_URL}
       groupInviteUrl={GROUP_INVITE_URL}
+      instagramUrl={INSTAGRAM_URL}
+      telegramGroupUrl={TELEGRAM_GROUP_URL}
+      whatsappGroupUrl={WHATSAPP_GROUP_URL}
     />
   );
 }
