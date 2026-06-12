@@ -166,10 +166,15 @@ export default function InstallClient({
 
           <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 mb-8">
             <h2 className="text-xl font-semibold mb-2 text-[#F1F5F9]">
-              Присоединяйся к сообществу мастеров
+              Делаем Potolok.AI вместе
             </h2>
-            <p className="text-sm text-[#94A3B8] mb-5">
-              Обмен опытом, советы, обратная связь и анонсы новых функций.
+            <p className="text-sm text-[#94A3B8] mb-2 leading-relaxed">
+              Здесь мастера говорят что добавить или поменять в программе —
+              и мы это делаем. Твой голос правда важен 🙌
+            </p>
+            <p className="text-sm text-[#94A3B8] mb-5 leading-relaxed">
+              Шеберлер программаға не қосу керектігін айтады — біз орындаймыз.
+              Сіздің пікіріңіз шынында маңызды.
             </p>
 
             <div className="grid sm:grid-cols-3 gap-3">
