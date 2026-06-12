@@ -5,7 +5,6 @@ import {
   Apple,
   Smartphone,
   Sparkles,
-  CheckCircle2,
   Instagram,
   Send,
   MessageCircle,
@@ -141,9 +140,9 @@ export default function InstallClient({
                     Открой Google Play и установи
                   </p>
                   <p className="text-sm">
-                    Кнопка «Android» выше откроет страницу установки в Play
-                    Store. Жми «Установить» — обновляется автоматически как
-                    обычное приложение.
+                    Тапни оранжевую кнопку <span className="text-orange-400 font-medium">Android</span> в начале страницы →
+                    откроется Play Store → жми «Установить». Дальше
+                    обновляется автоматически, как обычное приложение.
                   </p>
                 </div>
               </li>
@@ -151,7 +150,7 @@ export default function InstallClient({
           </div>
 
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8 flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+            <span className="text-xl shrink-0">🎁</span>
             <p className="text-sm text-[#94A3B8] leading-relaxed">
               <span className="text-[#F1F5F9] font-medium">
                 Промокод FEST2026
@@ -224,10 +223,10 @@ export default function InstallClient({
                   <Send className="h-6 w-6 text-sky-400 shrink-0" />
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium text-[#F1F5F9]">
-                      Telegram-чат
+                      Telegram
                     </p>
                     <p className="text-[11px] text-[#94A3B8] mt-0.5">
-                      Сообщество
+                      t.me/potolok_ai
                     </p>
                   </div>
                 </a>
@@ -240,7 +239,7 @@ export default function InstallClient({
                   <Send className="h-6 w-6 text-sky-400 shrink-0" />
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium text-[#F1F5F9]">
-                      Telegram-чат
+                      Telegram
                     </p>
                     <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
                       <Clock className="h-2.5 w-2.5" />
@@ -260,10 +259,10 @@ export default function InstallClient({
                   <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium text-[#F1F5F9]">
-                      WhatsApp-чат
+                      WhatsApp
                     </p>
                     <p className="text-[11px] text-[#94A3B8] mt-0.5">
-                      Сообщество
+                      Группа мастеров
                     </p>
                   </div>
                 </a>
@@ -276,7 +275,7 @@ export default function InstallClient({
                   <MessageCircle className="h-6 w-6 text-emerald-400 shrink-0" />
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium text-[#F1F5F9]">
-                      WhatsApp-чат
+                      WhatsApp
                     </p>
                     <p className="text-[10px] text-[#64748B] uppercase tracking-wider flex items-center gap-1 mt-0.5">
                       <Clock className="h-2.5 w-2.5" />
