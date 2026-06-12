@@ -16,7 +16,7 @@ const GROUP_INVITE_URL = "https://groups.google.com/g/potolok-ai-testers";
 const LANDING_URL = "https://potolok.ai/fest/install";
 
 const INSTAGRAM_URL = "https://instagram.com/potolok.ai";
-const TELEGRAM_GROUP_URL: string | null = null;
+const TELEGRAM_GROUP_URL = "https://t.me/potolok_ai";
 const WHATSAPP_GROUP_URL =
   "https://chat.whatsapp.com/LWqjL7j1ABj7fAz1UQsHZv";
 
