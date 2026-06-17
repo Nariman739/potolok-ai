@@ -9,6 +9,7 @@ import {
   Send,
   MessageCircle,
   Clock,
+  Download,
 } from "lucide-react";
 
 type Props = {
@@ -54,18 +55,24 @@ export default function InstallClient({
               Потолок Фест Астана · 18-19 июня
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-2 leading-tight">
               Установи{" "}
               <span className="bg-gradient-to-r from-[#F97316] to-[#FB923C] bg-clip-text text-transparent">
                 Potolok.ai
               </span>{" "}
               на телефон
             </h1>
+            <p className="text-sm sm:text-base text-[#64748B] mb-4">
+              Potolok.ai-ды телефонға орнат
+            </p>
 
             <p className="text-base sm:text-lg text-[#94A3B8] max-w-xl mx-auto">
               Замер по фото, 3D-конструктор, КП и договор —{" "}
               <span className="text-[#F1F5F9]">в одном приложении</span>.
               Выбери свою платформу:
+            </p>
+            <p className="text-sm text-[#64748B] max-w-xl mx-auto mt-2">
+              Фото бойынша өлшеу, 3D-конструктор, КП және шарт — бір қосымшада. Платформаңды таңда.
             </p>
           </div>
 
@@ -103,23 +110,54 @@ export default function InstallClient({
             </a>
           </div>
 
+          <div className="mb-10">
+            <a
+              href="/app.apk"
+              className="group flex items-center gap-4 rounded-2xl border border-[#334155] bg-[#0F1724]/60 p-5 hover:border-[#475569] hover:bg-[#1A2332] transition-all"
+            >
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#1A2332] border border-[#334155] text-[#94A3B8] shrink-0 group-hover:text-[#F1F5F9] transition-colors">
+                <Download className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#F1F5F9]">
+                  Нет Google Play? Скачай APK напрямую
+                </p>
+                <p className="text-[11px] text-[#64748B] mt-0.5">
+                  Google Play жоқ па? APK-ны тікелей жүктеп ал
+                </p>
+                <p className="text-xs text-[#64748B] mt-1.5">
+                  Для китайских планшетов и устройств без Google-сервисов
+                </p>
+              </div>
+            </a>
+          </div>
+
           <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 mb-8">
-            <h2 className="text-xl font-semibold mb-5 text-[#F1F5F9] flex items-center gap-2">
+            <h2 className="text-xl font-semibold mb-1 text-[#F1F5F9] flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-orange-400" />
               Как установить на Android — 2 шага
             </h2>
+            <p className="text-xs text-[#64748B] mb-5 ml-7">
+              Android-қа қалай орнату — 2 қадам
+            </p>
             <ol className="space-y-4 text-[#94A3B8]">
               <li className="flex gap-4">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20 text-orange-300 text-sm font-semibold shrink-0">
                   1
                 </span>
                 <div className="flex-1">
-                  <p className="text-[#F1F5F9] font-medium mb-1">
+                  <p className="text-[#F1F5F9] font-medium mb-0.5">
                     Вступи в группу тестировщиков
+                  </p>
+                  <p className="text-xs text-[#64748B] mb-1.5">
+                    Тест тобына кір
                   </p>
                   <p className="text-sm">
                     Нужен Google-аккаунт (тот же, что в Play Store на твоём
                     телефоне).
+                  </p>
+                  <p className="text-xs text-[#64748B] mt-0.5">
+                    Google аккаунты керек (телефондағы Play Store-дағы сол аккаунт).
                   </p>
                   <a
                     href={groupInviteUrl}
@@ -127,7 +165,7 @@ export default function InstallClient({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm text-orange-400 hover:text-orange-300 mt-2 underline underline-offset-4"
                   >
-                    Открыть группу →
+                    Открыть группу · Топты ашу →
                   </a>
                 </div>
               </li>
@@ -136,13 +174,19 @@ export default function InstallClient({
                   2
                 </span>
                 <div className="flex-1">
-                  <p className="text-[#F1F5F9] font-medium mb-1">
+                  <p className="text-[#F1F5F9] font-medium mb-0.5">
                     Открой Google Play и установи
+                  </p>
+                  <p className="text-xs text-[#64748B] mb-1.5">
+                    Google Play-ді ашып орнат
                   </p>
                   <p className="text-sm">
                     Тапни оранжевую кнопку <span className="text-orange-400 font-medium">Android</span> в начале страницы →
                     откроется Play Store → жми «Установить». Дальше
                     обновляется автоматически, как обычное приложение.
+                  </p>
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Беттің басындағы қызғылт сары <span className="text-orange-400 font-medium">Android</span> батырмасын бас → Play Store ашылады → «Орнату» басасың. Әрі қарай қосымша секілді автоматты жаңарып отырады.
                   </p>
                 </div>
               </li>
@@ -151,16 +195,23 @@ export default function InstallClient({
 
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8 flex items-start gap-3">
             <span className="text-xl shrink-0">🎁</span>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">
-              <span className="text-[#F1F5F9] font-medium">
-                Промокод FEST2026
-              </span>{" "}
-              даёт{" "}
-              <span className="text-emerald-300 font-medium">
-                3 месяца Pro бесплатно
-              </span>
-              . Введи в приложении при регистрации.
-            </p>
+            <div className="flex-1">
+              <p className="text-sm text-[#94A3B8] leading-relaxed">
+                <span className="text-[#F1F5F9] font-medium">
+                  Промокод FEST2026
+                </span>{" "}
+                даёт{" "}
+                <span className="text-emerald-300 font-medium">
+                  3 месяца Pro бесплатно
+                </span>
+                . Введи в приложении при регистрации.
+              </p>
+              <p className="text-xs text-[#64748B] leading-relaxed mt-1.5">
+                <span className="text-[#94A3B8]">FEST2026 промокоды</span>{" "}
+                <span className="text-emerald-400/80">3 ай Pro тегін</span>{" "}
+                береді. Тіркелу кезінде қосымшаға енгіз.
+              </p>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 mb-8">
@@ -287,17 +338,27 @@ export default function InstallClient({
             </div>
 
             {!(telegramGroupUrl && whatsappGroupUrl) && (
-              <p className="text-xs text-[#64748B] mt-4">
-                {anyCommunityLink
-                  ? "Остальные каналы откроются к 18 июня, перед фестом."
-                  : "Ссылки появятся к 18 июня, перед фестом."}
-              </p>
+              <div className="mt-4">
+                <p className="text-xs text-[#64748B]">
+                  {anyCommunityLink
+                    ? "Остальные каналы откроются к 18 июня, перед фестом."
+                    : "Ссылки появятся к 18 июня, перед фестом."}
+                </p>
+                <p className="text-xs text-[#64748B]/70 mt-0.5">
+                  {anyCommunityLink
+                    ? "Қалған арналар 18 маусымға, фест алдында ашылады."
+                    : "Сілтемелер 18 маусымға, фест алдында пайда болады."}
+                </p>
+              </div>
             )}
           </div>
 
           <div className="hidden md:block rounded-2xl border border-[#334155] bg-[#1A2332] p-6 md:p-8 text-center">
-            <p className="text-sm text-[#94A3B8] mb-4">
+            <p className="text-sm text-[#94A3B8] mb-1">
               Сканируй QR со своего телефона
+            </p>
+            <p className="text-xs text-[#64748B] mb-4">
+              QR-ды телефоныңмен сканерле
             </p>
             <div className="inline-block rounded-2xl bg-white p-4">
               <Image

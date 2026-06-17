@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/app.apk",
+        destination:
+          "https://expo.dev/artifacts/eas/ILCikh_pCSKYetT2TYULAFSt6E0sU4RQ826Kvv7rw0k.apk",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 // Sentry wrapper:
