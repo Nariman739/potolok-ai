@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       {
         source: "/app.apk",
         destination:
-          "https://expo.dev/artifacts/eas/ILCikh_pCSKYetT2TYULAFSt6E0sU4RQ826Kvv7rw0k.apk",
+          "https://fair9vfim2s9dykm.public.blob.vercel-storage.com/app-1.0.38-34.apk",
         permanent: false,
       },
     ];
