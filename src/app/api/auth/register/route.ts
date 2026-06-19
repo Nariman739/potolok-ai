@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const phone = normalizePhone(rawPhone);
     if (!phone) {
       return NextResponse.json(
-        { error: "Неверный формат телефона. Пример: +7 700 123 4567" },
+        { error: "Неверный формат телефона. Выберите страну и введите номер полностью" },
         { status: 400 }
       );
     }
