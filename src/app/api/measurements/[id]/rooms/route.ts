@@ -32,11 +32,14 @@ export async function POST(
         normalCorners: boolean[];
         angles?: number[];
         arcBulges?: number[];
+        cornerRadii?: number[];
         columns?: unknown[];
         area: number;
         perimeter: number;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         elements?: any;
+        wallProfiles?: Record<number, string>;
+        variantOverrides?: Record<string, string>;
         previewUrl3d?: string;
       };
 
@@ -48,10 +51,13 @@ export async function POST(
           normalCorners: r.normalCorners,
           angles: r.angles ?? undefined,
           arcBulges: r.arcBulges ?? undefined,
+          cornerRadii: r.cornerRadii ?? undefined,
           columns: r.columns as any ?? undefined,
           area: r.area,
           perimeter: r.perimeter,
           elements: r.elements ?? [],
+          wallProfiles: r.wallProfiles ?? undefined,
+          variantOverrides: r.variantOverrides ?? undefined,
           previewUrl3d: r.previewUrl3d ?? undefined,
           sortOrder: obj._count.rooms + i,
         },

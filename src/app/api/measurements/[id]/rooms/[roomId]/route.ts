@@ -10,16 +10,19 @@ export async function PATCH(
     const master = await requireAuth();
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, angles, arcBulges, columns, area, perimeter, elements, previewUrl3d } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
       angles?: number[];
       arcBulges?: number[];
+      cornerRadii?: number[];
       columns?: unknown[];
       area?: number;
       perimeter?: number;
       elements?: unknown;
+      wallProfiles?: Record<number, string>;
+      variantOverrides?: Record<string, string>;
       previewUrl3d?: string | null;
     };
 
@@ -39,10 +42,13 @@ export async function PATCH(
     if (normalCorners !== undefined) data.normalCorners = normalCorners;
     if (angles !== undefined) data.angles = angles;
     if (arcBulges !== undefined) data.arcBulges = arcBulges;
+    if (cornerRadii !== undefined) data.cornerRadii = cornerRadii;
     if (columns !== undefined) data.columns = columns;
     if (area !== undefined) data.area = area;
     if (perimeter !== undefined) data.perimeter = perimeter;
     if (elements !== undefined) data.elements = elements;
+    if (wallProfiles !== undefined) data.wallProfiles = wallProfiles;
+    if (variantOverrides !== undefined) data.variantOverrides = variantOverrides;
     if (previewUrl3d !== undefined) data.previewUrl3d = previewUrl3d;
 
     const result = await prisma.measurementRoom.updateMany({

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       clientName?: string;
       clientPhone?: string;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[] }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
     };
 
     const totalArea = rooms
@@ -87,10 +87,13 @@ export async function POST(request: Request) {
                 normalCorners: r.normalCorners || r.walls.map(() => true),
                 angles: r.angles ?? undefined,
                 arcBulges: r.arcBulges ?? undefined,
+                cornerRadii: r.cornerRadii ?? undefined,
                 columns: r.columns ?? undefined,
                 area: r.area,
                 perimeter: r.perimeter,
                 elements: r.elements || [],
+                wallProfiles: r.wallProfiles ?? undefined,
+                variantOverrides: r.variantOverrides ?? undefined,
                 sortOrder: i,
               })),
             }

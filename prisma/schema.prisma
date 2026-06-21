@@ -411,10 +411,20 @@ model MeasurementRoom {
   normalCorners Json // boolean[] — тип углов
   angles        Json? // number[] — углы поворота (90, -90, custom)
   arcBulges     Json? // number[] — дуги стен (bulge factor)
+  cornerRadii   Json? // number[] — радиусы скругления углов (см)
   columns       Json? // RoomColumn[] — колонны в комнате
   area          Float
   perimeter     Float
   elements      Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
+  // Per-стена тип профиля периметра: Record<wallIndex, WallProfileType>.
+  // "floating" = парящий, "subcurtain" = подшторник, ldsp/eurobrus и т.д.
+  // Default = "pvc_insert" для отсутствующих ключей. Хранить надо чтобы
+  // выбор «парящий на стене 1» переживал save→load с сервера (раньше терялся).
+  wallProfiles     Json? // Record<number, WallProfileType | variantId>
+  // Per-комната выбор кастомных вариантов из прайса мастера:
+  // Record<positionType, variantId>. При расчёте КП в estimate.tsx
+  // переопределяет дефолтные позиции (canvas, profile, spot, etc.).
+  variantOverrides Json? // Record<string, string>
   photoUrls     String[] @default([]) // Фото потолка комнаты (Vercel Blob URLs)
   previewUrl3d  String? // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
   sortOrder     Int      @default(0)
