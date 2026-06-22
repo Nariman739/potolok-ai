@@ -31,20 +31,28 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
 
   async function handleDone(
     elements: RoomElement[],
-    updates?: { walls: number[]; area: number; perimeter: number; name?: string }
+    updates?: { walls: number[]; area: number; perimeter: number; name?: string; normalCorners?: boolean[]; angles?: number[] }
   ) {
     setSaving(true);
     const walls = updates?.walls ?? room.walls;
     const area = updates?.area ?? room.area;
     const perimeter = updates?.perimeter ?? room.perimeter;
     const name = updates?.name ?? room.name;
-    // normalCorners привязан к стенам — если стену удалили, отрезаем хвост.
-    const normalCorners =
-      walls.length === room.normalCorners.length
+    // 2026-06-22 (фикс рассинхрона walls/angles): теперь RoomDesigner держит
+    // нормальные nC/angles в локальном state и сам передаёт их синхронно с
+    // walls (когда удаляет выступ — удаляет правильный индекс из всех трёх).
+    // Раньше тут был slice(0, walls.length) от старого room.normalCorners —
+    // это отрезало от КОНЦА, а не от удалённого индекса, и теряло -90 углов
+    // в средних позициях. Если updates с normalCorners/angles пришли —
+    // используем их как есть. Иначе оставляем старую защитную логику.
+    const normalCorners = updates?.normalCorners
+      ? updates.normalCorners
+      : walls.length === room.normalCorners.length
         ? room.normalCorners
         : room.normalCorners.slice(0, walls.length);
-    const angles =
-      !room.angles || room.angles.length === walls.length
+    const angles = updates?.angles
+      ? updates.angles
+      : !room.angles || room.angles.length === walls.length
         ? room.angles
         : room.angles.slice(0, walls.length);
     const res = await fetch(

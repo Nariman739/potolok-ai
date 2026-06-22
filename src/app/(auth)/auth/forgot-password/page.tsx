@@ -36,7 +36,12 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ phone: "+7" + phone.replace(/\D/g, "") }),
       });
       if (res.ok) {
-        toast.success("Если аккаунт привязан к Telegram — код отправлен");
+        // Нариман 2026-06-22: раньше «Если привязан — код отправлен» вводило в
+        // заблуждение мастеров без telegramChatId — они ждали SMS которое никогда
+        // не придёт. Теперь явно подсказываем альтернативный путь через
+        // /start reset (большая синяя кнопка выше), который работает БЕЗ
+        // предварительной привязки — бот сам линкует chat_id по contact share.
+        toast.success("Код отправлен в Telegram. Если не пришёл за минуту — нажми синюю кнопку «Восстановить через Telegram» выше, она работает даже без привязки.", { duration: 8000 });
         setStep("otp");
       } else {
         const d = await res.json();

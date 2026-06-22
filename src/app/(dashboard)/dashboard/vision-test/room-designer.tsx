@@ -478,7 +478,7 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }: {
   room: Room;
-  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string }) => void;
+  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string; normalCorners?: boolean[]; angles?: number[] }) => void;
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
 }) {
@@ -492,6 +492,23 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   // Локальное редактирование размеров стен. Меняется через тап на цифру.
   // При onDone передаём новые walls + пересчитанные area/perimeter родителю.
   const [editableWalls, setEditableWalls] = useState<number[]>(room.walls);
+  // Корневой фикс рассинхрона геометрии (Нариман 2026-06-22):
+  // раньше «Удалить выступ» удалял только из walls, а normalCorners/angles
+  // оставались старой длины → в БД попадал замер с walls.length !== angles.length,
+  // потом mobile рендерил кривую форму (все +90° вместо смеси +90/-90).
+  // Теперь держим эти массивы в локальном state параллельно с editableWalls
+  // и удаляем синхронно. onDone передаёт обновлённые normalCorners/angles
+  // родителю, который сохраняет их через recalc-room API.
+  const [editableNormalCorners, setEditableNormalCorners] = useState<boolean[]>(
+    room.normalCorners.length === room.walls.length
+      ? room.normalCorners
+      : room.walls.map((_, i) => room.normalCorners[i] ?? true)
+  );
+  const [editableAngles, setEditableAngles] = useState<number[]>(() => {
+    const src = room.angles ?? room.normalCorners.map((nc) => (nc ? 90 : -90));
+    if (src.length === room.walls.length) return src;
+    return room.walls.map((_, i) => src[i] ?? 90);
+  });
   // Индекс стены, у которой открыт инлайн-инпут редактирования размера.
   const [wallSizeEdit, setWallSizeEdit] = useState<{ index: number; value: string } | null>(null);
   // Название комнаты — редактируется по тапу на заголовок.
@@ -2936,7 +2953,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           {editableName} · {computedArea.toFixed(2)} м²
           <Pencil className="h-3 w-3 text-muted-foreground" />
         </button>
-        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName })}
+        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName, normalCorners: editableNormalCorners, angles: editableAngles })}
           className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
@@ -3456,9 +3473,13 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
                     if (!wallSizeEdit) return;
                     // Удаление выступа: убираем эту короткую стену из массива.
                     // Это упрощает форму комнаты на одну сторону.
-                    setEditableWalls((prev) =>
-                      prev.filter((_, j) => j !== wallSizeEdit.index)
-                    );
+                    // СИНХРОННО удаляем и из normalCorners/angles (Нариман 2026-06-22):
+                    // без этого walls.length расходился с angles.length, потом mobile
+                    // рендерил кривую форму и +90 затирал реальные -90 в КП.
+                    const idx = wallSizeEdit.index;
+                    setEditableWalls((prev) => prev.filter((_, j) => j !== idx));
+                    setEditableNormalCorners((prev) => prev.filter((_, j) => j !== idx));
+                    setEditableAngles((prev) => prev.filter((_, j) => j !== idx));
                     setWallSizeEdit(null);
                   }}
                   className="w-full py-2 rounded-lg border border-red-200 text-red-700 text-sm font-medium hover:bg-red-50"

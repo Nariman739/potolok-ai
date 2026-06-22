@@ -28,6 +28,16 @@ export async function POST(request: Request) {
 
     // Always return ok to avoid user enumeration
     if (!master || !master.telegramChatId) {
+      // Нариман 2026-06-22: логируем тихие отказы чтобы видеть масштаб
+      // через Vercel logs / Sentry. Сами по себе случаи безобидны (UX
+      // подсказывает мастеру использовать большую синюю кнопку Telegram
+      // которая работает без предварительной привязки), но нам важно
+      // понимать сколько мастеров застряли на этом пути.
+      console.warn("[forgot-password] silent skip", {
+        hasMaster: !!master,
+        hasTelegramLink: !!(master && master.telegramChatId),
+        phoneSuffix: phone.slice(-4),
+      });
       return NextResponse.json({ ok: true });
     }
 
