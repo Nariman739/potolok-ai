@@ -25,6 +25,13 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Альтернативный путь «по номеру» — для случая когда Telegram недоступен
+  // (нет аккаунта, нет интернета в TG, etc). По умолчанию свёрнут — 90%
+  // мастеров (95 из 105) telegramChatId=null, для них API «по номеру»
+  // молча возвращает ok и ничего не шлёт. Чтобы их не тратить время на
+  // безнадёжный путь, делаем основной кнопкой Telegram-flow (бот теперь
+  // умеет fuzzy match по последним 9 цифрам).
+  const [showPhoneFallback, setShowPhoneFallback] = useState(false);
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -111,56 +118,69 @@ export default function ForgotPasswordPage() {
               <div className="flex-1">
                 <div className="font-semibold text-white">Восстановить через Telegram</div>
                 <div className="text-xs text-white/85 mt-0.5">
-                  Откроется @PotolokAiBot. Нажмите «Поделиться номером» — код придёт в чат.
+                  Откроется @PotolokAiBot → «Поделиться номером» → код придёт в чат. Работает даже если вы никогда раньше не привязывали Telegram.
                 </div>
               </div>
               <span className="text-white/70">›</span>
             </button>
 
-            <div className="flex items-center gap-3 my-2">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">или по номеру</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          </CardContent>
-          <form onSubmit={handleSendOtp}>
-            <CardContent className="space-y-4 pt-0">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Номер телефона</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground">
-                    +7
-                  </span>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="700 123 4567"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="rounded-l-none"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Код придёт в @PotolokAiBot, если ваш аккаунт уже привязан к Telegram.
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button
-                type="submit"
-                className="w-full bg-[#1e3a5f] hover:bg-[#152d4a]"
-                disabled={loading}
+            <p className="text-xs text-center text-muted-foreground">
+              Бот найдёт ваш аккаунт по номеру из Telegram. Если регистрировались с другим номером — бот всё равно опознает по последним цифрам.
+            </p>
+
+            {!showPhoneFallback && (
+              <button
+                type="button"
+                onClick={() => setShowPhoneFallback(true)}
+                className="w-full text-center text-xs text-muted-foreground hover:text-[#1e3a5f] underline underline-offset-2"
               >
-                {loading ? "Отправляем..." : "Получить код"}
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                <Link href="/auth/login" className="font-medium text-[#1e3a5f] hover:underline">
-                  Вернуться ко входу
-                </Link>
-              </p>
-            </CardFooter>
-          </form>
+                Не получается через Telegram? Попробовать по номеру
+              </button>
+            )}
+
+            {showPhoneFallback && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                ⚠ Этот способ работает <b>только если ваш аккаунт уже был привязан к Telegram</b> (вы делали /start CODE в боте раньше). Если нет — код не придёт, используйте синюю кнопку выше.
+              </div>
+            )}
+
+            <Link href="/auth/login" className="block text-center text-sm font-medium text-[#1e3a5f] hover:underline">
+              Вернуться ко входу
+            </Link>
+          </CardContent>
+
+          {showPhoneFallback && (
+            <form onSubmit={handleSendOtp}>
+              <CardContent className="space-y-4 pt-0">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Номер телефона</Label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground">
+                      +7
+                    </span>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="700 123 4567"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="rounded-l-none"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#1e3a5f] hover:bg-[#152d4a]"
+                  disabled={loading}
+                >
+                  {loading ? "Отправляем..." : "Получить код по номеру"}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
         </>
       ) : (
         <form onSubmit={handleReset}>

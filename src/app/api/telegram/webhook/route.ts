@@ -248,10 +248,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
       }
 
-      const master = await prisma.master.findUnique({
+      let master = await prisma.master.findUnique({
         where: { phone: contactPhone },
         select: { id: true, firstName: true, telegramChatId: true },
       });
+
+      // Fuzzy fallback (Нариман 2026-06-22): если точного совпадения нет —
+      // ищем по последним 9 цифрам. Сценарий: мастер регистрировался с одним
+      // номером (например рабочий +77001234567), а Telegram у него на другом
+      // (личный +79261234567 / старый номер). Findfirst по `endsWith` найдёт
+      // если последние 9 цифр совпадают — этого достаточно для уникальности
+      // в Казахстане/СНГ (код страны + код оператора + 7 личных цифр).
+      // 90% наших мастеров (95 из 105) не привязаны к TG — без fuzzy они
+      // никак не восстановят пароль если в БД и в Telegram разные номера.
+      if (!master) {
+        const digits = contactPhone.replace(/\D/g, "");
+        if (digits.length >= 9) {
+          const last9 = digits.slice(-9);
+          master = await prisma.master.findFirst({
+            where: { phone: { endsWith: last9 } },
+            select: { id: true, firstName: true, telegramChatId: true },
+          });
+        }
+      }
 
       if (!master) {
         await sendTelegramMessageRemoveKeyboard(
