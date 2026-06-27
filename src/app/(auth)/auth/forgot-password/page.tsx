@@ -25,41 +25,11 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  // Альтернативный путь «по номеру» — для случая когда Telegram недоступен
-  // (нет аккаунта, нет интернета в TG, etc). По умолчанию свёрнут — 90%
-  // мастеров (95 из 105) telegramChatId=null, для них API «по номеру»
-  // молча возвращает ok и ничего не шлёт. Чтобы их не тратить время на
-  // безнадёжный путь, делаем основной кнопкой Telegram-flow (бот теперь
-  // умеет fuzzy match по последним 9 цифрам).
-  const [showPhoneFallback, setShowPhoneFallback] = useState(false);
-
-  async function handleSendOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: "+7" + phone.replace(/\D/g, "") }),
-      });
-      if (res.ok) {
-        // Нариман 2026-06-22: раньше «Если привязан — код отправлен» вводило в
-        // заблуждение мастеров без telegramChatId — они ждали SMS которое никогда
-        // не придёт. Теперь явно подсказываем альтернативный путь через
-        // /start reset (большая синяя кнопка выше), который работает БЕЗ
-        // предварительной привязки — бот сам линкует chat_id по contact share.
-        toast.success("Код отправлен в Telegram. Если не пришёл за минуту — нажми синюю кнопку «Восстановить через Telegram» выше, она работает даже без привязки.", { duration: 8000 });
-        setStep("otp");
-      } else {
-        const d = await res.json();
-        toast.error(d.error || "Ошибка");
-      }
-    } catch {
-      toast.error("Ошибка соединения");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Форма «по номеру» убрана (Нариман 2026-06-23) — у 95 из 105 мастеров
+  // telegramChatId=null, API молча проваливал отправку. SMS не подключали.
+  // Единственный путь восстановления — Telegram bot (handleTelegramReset).
+  // Если когда-нибудь подключим SMS — handleSendOtp восстановить из git history
+  // (commit dca4f52 / 7d58c0e).
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
@@ -128,59 +98,16 @@ export default function ForgotPasswordPage() {
               Бот найдёт ваш аккаунт по номеру из Telegram. Если регистрировались с другим номером — бот всё равно опознает по последним цифрам.
             </p>
 
-            {!showPhoneFallback && (
-              <button
-                type="button"
-                onClick={() => setShowPhoneFallback(true)}
-                className="w-full text-center text-xs text-muted-foreground hover:text-[#1e3a5f] underline underline-offset-2"
-              >
-                Не получается через Telegram? Попробовать по номеру
-              </button>
-            )}
-
-            {showPhoneFallback && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                ⚠ Этот способ работает <b>только если ваш аккаунт уже был привязан к Telegram</b> (вы делали /start CODE в боте раньше). Если нет — код не придёт, используйте синюю кнопку выше.
-              </div>
-            )}
+            {/* Форма «по номеру» убрана (Нариман 2026-06-23). У 95 из 105 мастеров
+                telegramChatId=null — для них этот путь молча проваливался ничего
+                не отправляя. SMS мы не подключали, поэтому единственный рабочий
+                путь восстановления — через Telegram бота выше. Если в будущем
+                подключим SMS-провайдера, форму вернуть с реальной отправкой. */}
 
             <Link href="/auth/login" className="block text-center text-sm font-medium text-[#1e3a5f] hover:underline">
               Вернуться ко входу
             </Link>
           </CardContent>
-
-          {showPhoneFallback && (
-            <form onSubmit={handleSendOtp}>
-              <CardContent className="space-y-4 pt-0">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Номер телефона</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground">
-                      +7
-                    </span>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="700 123 4567"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="rounded-l-none"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  type="submit"
-                  className="w-full bg-[#1e3a5f] hover:bg-[#152d4a]"
-                  disabled={loading}
-                >
-                  {loading ? "Отправляем..." : "Получить код по номеру"}
-                </Button>
-              </CardFooter>
-            </form>
-          )}
         </>
       ) : (
         <form onSubmit={handleReset}>
