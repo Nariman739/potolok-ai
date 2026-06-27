@@ -67,9 +67,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
   const [ceilingFinish, setCeilingFinish] = useState<CeilingFinish>(() => {
-    if (typeof window === "undefined") return "satin";
+    if (typeof window === "undefined") return "matte";
     const v = window.localStorage.getItem("potolok3d.finish");
-    return v === "matte" || v === "glossy" || v === "satin" ? v : "satin";
+    // Sanity: матовый — единственный показываемый сейчас (Нариман 2026-06-27).
+    // 80% клиентов выбирают матовый, фокусируемся на нём. Глянец/сатин вернём
+    // когда дотюним материалы (cleancoat нужны под сильный HDRI).
+    return v === "matte" ? v : "matte";
   });
   const [ceilingColorId, setCeilingColorId] = useState<string>(() => {
     if (typeof window === "undefined") return "white";
@@ -752,26 +755,11 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         </button>
         {showCeilingPanel && (
           <div className="bg-white/98 backdrop-blur rounded-2xl shadow-xl border p-3 space-y-3 min-w-[220px]">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Финиш</div>
-              <div className="grid grid-cols-3 gap-1">
-                {(["matte", "satin", "glossy"] as const).map((f) => {
-                  const labels: Record<CeilingFinish, string> = { matte: "Матовый", satin: "Сатин", glossy: "Глянец" };
-                  const active = ceilingFinish === f;
-                  return (
-                    <button
-                      key={f}
-                      onClick={() => setCeilingFinish(f)}
-                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold ${
-                        active ? "bg-[#1e3a5f] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {labels[f]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Финиш потолка скрыт (Нариман 2026-06-27): сейчас только
+                матовый — он у 80% клиентов и его проще довести до wow.
+                Сатин/глянец вернём когда дотюним материалы и появится
+                clearcoat фокус. ceilingFinish жёстко = "matte" через
+                useState initializer выше. */}
             <div>
               <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Цвет</div>
               <div className="flex flex-wrap gap-1.5">
