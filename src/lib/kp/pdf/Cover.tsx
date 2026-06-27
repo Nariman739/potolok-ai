@@ -57,6 +57,89 @@ function fmtPriceParts(n: number): { num: string; cur: string } {
   return { num: fmtPriceNum(n), cur: "₸" };
 }
 
+// Helper для блока «было/стало» (Нариман 27.06): отображается над
+// большой ценой если КП со скидкой. Используется во всех 5 темах Cover.
+// Параметры:
+//   accentColor — цвет бейджа со %, обычно акцент темы (GOLD/TERRA/etc)
+//   strikeColor — цвет зачёркнутой исходной цены (muted темы)
+//   savedColor — цвет надписи «Экономия −X ₸», обычно accentColor
+//   strikeFontFamily — шрифт display-семьи темы
+//   bodyFontFamily — шрифт body-семьи темы
+//   badgeTextColor — что писать поверх accentColor бейджа (обычно белый)
+function CoverDiscountBlock({
+  estimate,
+  accentColor,
+  strikeColor,
+  savedColor,
+  strikeFontFamily,
+  bodyFontFamily,
+  badgeTextColor = "#FFFFFF",
+}: {
+  estimate: PdfData["estimate"];
+  accentColor: string;
+  strikeColor: string;
+  savedColor: string;
+  strikeFontFamily: string;
+  bodyFontFamily: string;
+  badgeTextColor?: string;
+}) {
+  const dp = estimate.discountPercent ?? 0;
+  if (dp <= 0) return null;
+  // estimate.total — сумма СО скидкой; восстанавливаем «было».
+  const original = Math.round(estimate.total / (1 - dp / 100));
+  const saved = original - estimate.total;
+  const originalParts = fmtPriceParts(original);
+  const savedParts = fmtPriceParts(saved);
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+        <Text
+          style={{
+            fontFamily: strikeFontFamily,
+            fontWeight: 400,
+            fontSize: 18,
+            color: strikeColor,
+            textDecoration: "line-through",
+          }}
+        >
+          {originalParts.num} {originalParts.cur}
+        </Text>
+        <View
+          style={{
+            marginLeft: 10,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            backgroundColor: accentColor,
+            borderRadius: 3,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: bodyFontFamily,
+              fontSize: 9,
+              color: badgeTextColor,
+              fontWeight: 800,
+              letterSpacing: 0.8,
+            }}
+          >
+            −{dp}%
+          </Text>
+        </View>
+      </View>
+      <Text
+        style={{
+          fontFamily: bodyFontFamily,
+          fontSize: 9,
+          color: savedColor,
+          letterSpacing: 0.5,
+        }}
+      >
+        Экономия −{savedParts.num} {savedParts.cur}
+      </Text>
+    </View>
+  );
+}
+
 // ============================================
 // MINIMAL — Apple-минимализм
 // Белый фон, минимум элементов, цена в правом углу, тонкая линия.
@@ -321,6 +404,16 @@ function CoverMinimal({
               Цена действительна{"\n"}до {fmtDate(estimate.validUntil)}
             </Text>
           )}
+        </View>
+        <View>
+          <CoverDiscountBlock
+            estimate={estimate}
+            accentColor={theme.palette.accent}
+            strikeColor={theme.palette.pageMuted}
+            savedColor={theme.palette.accent}
+            strikeFontFamily={fonts.display.family}
+            bodyFontFamily={fonts.body.family}
+          />
         </View>
         <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
           <Text
@@ -715,6 +808,16 @@ function CoverPremiumDark({
         >
           Стоимость работ под ключ
         </Text>
+        <View style={{ alignItems: "center" }}>
+          <CoverDiscountBlock
+            estimate={estimate}
+            accentColor={GOLD}
+            strikeColor="#FFFFFF60"
+            savedColor={GOLD}
+            strikeFontFamily={fonts.display.family}
+            bodyFontFamily={fonts.body.family}
+          />
+        </View>
         <View
           style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "center" }}
         >
@@ -1086,6 +1189,14 @@ function CoverWarmHandmade({
         >
           Стоимость работ под ключ
         </Text>
+        <CoverDiscountBlock
+          estimate={estimate}
+          accentColor={TERRA}
+          strikeColor={theme.palette.coverMuted}
+          savedColor={TERRA}
+          strikeFontFamily={fonts.display.family}
+          bodyFontFamily={fonts.body.family}
+        />
         <View style={{ flexDirection: "row" }}>
           <Text
             style={{
@@ -1483,6 +1594,15 @@ function CoverClassicArchitectural({
             </Text>
           )}
         </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <CoverDiscountBlock
+            estimate={estimate}
+            accentColor={BORDO}
+            strikeColor="#888888"
+            savedColor={BORDO}
+            strikeFontFamily={fonts.display.family}
+            bodyFontFamily={fonts.body.family}
+          />
         <View style={{ flexDirection: "row", alignItems: "baseline" }}>
           <Text
             style={{
@@ -1507,6 +1627,7 @@ function CoverClassicArchitectural({
           >
             ₸
           </Text>
+        </View>
         </View>
       </View>
 
@@ -1795,6 +1916,14 @@ function CoverBoldColor({
           >
             Цена под ключ
           </Text>
+          <CoverDiscountBlock
+            estimate={estimate}
+            accentColor={ACCENT}
+            strikeColor={SOFT_TEXT}
+            savedColor={ACCENT}
+            strikeFontFamily={fonts.display.family}
+            bodyFontFamily={fonts.body.family}
+          />
           <View style={{ flexDirection: "row", alignItems: "baseline" }}>
             <Text
               style={{
