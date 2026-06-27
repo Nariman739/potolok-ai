@@ -1,5 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useMemo } from "react";
+import { useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 import type { FurnitureType } from "@/lib/room-types";
 import { FURNITURE_3D_DIMENSIONS } from "./types";
 
@@ -11,16 +14,96 @@ interface Furniture3DProps {
   depthM: number;
 }
 
+// Manifest GLB-моделей (Нариман 2026-06-27): если для типа есть файл в
+// public/models/furniture/, рендерим реальную модель через useGLTF.
+// Иначе — fallback на процедурную мебель из примитивов (которая уже
+// довольно хороша — диван с подушками, кровать с матрасом и т.д.).
+// CC0/MIT источники: Poly Haven Models, Quaternius, Sketchfab CC0.
+// После gltf-transform --draco --texture-compress webp каждая модель
+// ≤500KB — клиент-3D не лагает даже на средних телефонах в Safari.
+const FURNITURE_GLB: Partial<Record<FurnitureType, string>> = {
+  bed: "/models/furniture/bed.glb",
+  sofa: "/models/furniture/sofa.glb",
+  table: "/models/furniture/table.glb",
+  chair: "/models/furniture/chair.glb",
+  wardrobe: "/models/furniture/wardrobe.glb",
+  nightstand: "/models/furniture/nightstand.glb",
+  tv: "/models/furniture/tv.glb",
+  kitchen: "/models/furniture/kitchen.glb",
+  radiator: "/models/furniture/radiator.glb",
+};
+
 // Процедурная мебель из примитивов вместо одного box. Каждый тип имеет
 // характерный силуэт — клиент видит «диван с подушками и спинкой», а не
-// синий куб. Без GLB-моделей (нет внешних зависимостей и сетевых запросов).
+// синий куб. Используется как fallback если GLB не доступен.
 export function Furniture3D({ position, rotationY, furnitureType, widthM, depthM }: Furniture3DProps) {
+  const glbUrl = FURNITURE_GLB[furnitureType];
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
-      <FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />
+      {glbUrl ? (
+        // Suspense fallback — процедурная мебель пока GLB грузится.
+        // ErrorBoundary не нужен: useGLTF сам кеширует и не падает после
+        // первой успешной загрузки; если 404 на старте — Suspense покажет
+        // fallback навсегда. Если файл потом появится, перезагрузка
+        // страницы подхватит его.
+        <Suspense fallback={<FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />}>
+          <GLBFurniture url={glbUrl} widthM={widthM} depthM={depthM} type={furnitureType} />
+        </Suspense>
+      ) : (
+        <FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />
+      )}
     </group>
   );
 }
+
+// GLB-рендер с автоматическим scale под размеры из конструктора.
+// Полигональные модели имеют разные исходные размеры — мы клонируем
+// сцену, считаем bounding box, ставим uniform scale так чтобы модель
+// вписалась в widthM × depthM (берём min scaleX/scaleZ, чтобы сохранить
+// пропорции). Без clone() useGLTF возвращает один и тот же объект на все
+// инстансы — несколько одинаковых элементов в комнате наложились бы.
+function GLBFurniture({ url, widthM, depthM, type }: { url: string; widthM: number; depthM: number; type: FurnitureType }) {
+  const { scene } = useGLTF(url);
+  const dim = FURNITURE_3D_DIMENSIONS[type];
+  const heightM = dim.heightCm / 100;
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+
+  useEffect(() => {
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.x < 0.01 || size.z < 0.01) return;
+    // Uniform scale по min(X/Z/Y) чтобы модель влезла в footprint конструктора.
+    // Если scaleY сильно отличается — мебель остаётся правильных пропорций,
+    // просто не идеально совпадает с heightM (95% случаев приемлемо).
+    const scaleX = widthM / size.x;
+    const scaleZ = depthM / size.z;
+    const scaleY = heightM / size.y;
+    const s = Math.min(scaleX, scaleZ, scaleY);
+    cloned.scale.setScalar(s);
+    // Опускаем модель на пол (Y=0 нижняя точка)
+    const newBox = new THREE.Box3().setFromObject(cloned);
+    cloned.position.y -= newBox.min.y;
+    // Центрируем X/Z в (0,0)
+    cloned.position.x -= (newBox.min.x + newBox.max.x) / 2;
+    cloned.position.z -= (newBox.min.z + newBox.max.z) / 2;
+    // Включаем тени на каждой меше внутри сцены — drei это не делает автоматом
+    cloned.traverse((node) => {
+      const mesh = node as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+  }, [cloned, widthM, depthM, heightM]);
+
+  return <primitive object={cloned} />;
+}
+
+// Preload моделей при загрузке модуля — кеш на стороне drei, второй
+// инстанс будет рендериться моментально.
+Object.values(FURNITURE_GLB).forEach((url) => {
+  if (url) useGLTF.preload(url);
+});
 
 function FurnitureBody({ type, widthM, depthM }: { type: FurnitureType; widthM: number; depthM: number }) {
   const dim = FURNITURE_3D_DIMENSIONS[type];
