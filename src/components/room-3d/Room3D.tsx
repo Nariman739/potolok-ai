@@ -76,10 +76,21 @@ const SKIRTING_DEPTH = 0.012;
 const CORNICE_HEIGHT = 0.06;
 const CORNICE_DEPTH = 0.025;
 
-const FINISH_PARAMS: Record<CeilingFinish, { roughness: number; metalness: number; envIntensity: number }> = {
-  matte:  { roughness: 0.9,  metalness: 0.0,  envIntensity: 0.3 },
-  satin:  { roughness: 0.45, metalness: 0.05, envIntensity: 0.7 },
-  glossy: { roughness: 0.08, metalness: 0.15, envIntensity: 1.6 },
+// FINISH_PARAMS для MeshPhysicalMaterial (Нариман 2026-06-27).
+// Секрет «не-пластика» (research Агента C):
+//   matte: sheen 0.3 + sheenColor=#fff — даёт эффект ткани вместо пластика
+//   satin: clearcoat 0.3 — лёгкий лак, мягкие рефлексы
+//   glossy: clearcoat 1.0 + reflectivity 0.6 — настоящий глянцевый потолок
+// envIntensity — насколько сильно HDRI отражается от потолка.
+const FINISH_PARAMS: Record<CeilingFinish, {
+  roughness: number; metalness: number; envIntensity: number;
+  clearcoat: number; clearcoatRoughness: number;
+  sheen: number; sheenColor: string;
+  reflectivity: number;
+}> = {
+  matte:  { roughness: 0.9,  metalness: 0.0,  envIntensity: 0.4, clearcoat: 0,    clearcoatRoughness: 1.0, sheen: 0.3,  sheenColor: "#ffffff", reflectivity: 0.1 },
+  satin:  { roughness: 0.45, metalness: 0.05, envIntensity: 0.8, clearcoat: 0.3,  clearcoatRoughness: 0.4, sheen: 0.0,  sheenColor: "#ffffff", reflectivity: 0.3 },
+  glossy: { roughness: 0.08, metalness: 0.0,  envIntensity: 1.4, clearcoat: 1.0,  clearcoatRoughness: 0.05, sheen: 0.0, sheenColor: "#ffffff", reflectivity: 0.6 },
 };
 
 export function Room3D({
@@ -192,11 +203,20 @@ export function Room3D({
       {!hideCeiling && (
         <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ceilingM, 0]}>
           <shapeGeometry args={[floorShape]} />
-          <meshStandardMaterial
+          {/* MeshPhysicalMaterial для натяжного потолка (Нариман 2026-06-27).
+              clearcoat = реалистичный лак на сатине/глянце.
+              sheen = эффект ткани на матовом (не «пластиковый»).
+              envMapIntensity = силе HDRI рефлексов от Environment в Scene3D. */}
+          <meshPhysicalMaterial
             color={ceilingColor}
             roughness={finish.roughness}
             metalness={finish.metalness}
             envMapIntensity={finish.envIntensity}
+            clearcoat={finish.clearcoat}
+            clearcoatRoughness={finish.clearcoatRoughness}
+            sheen={finish.sheen}
+            sheenColor={finish.sheenColor}
+            reflectivity={finish.reflectivity}
             side={THREE.DoubleSide}
           />
         </mesh>

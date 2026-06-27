@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, PerformanceMonitor, Sky } from "@react-three/drei";
+import { ContactShadows, Environment, PerformanceMonitor, Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -597,10 +597,22 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           color="#DCE9F4"
         />
 
-        {/* HDR Environment отключён — preset "apartment" грузится через jsdelivr
-            CDN, на Safari/iPad падает с "Could not load lebombo_1k.hdr: Load
-            failed" вне Suspense (Error не ловится). На матовом потолке (MVP)
-            рефлексы не нужны. Включим обратно когда добавим satin/glossy. */}
+        {/* HDR Environment — главный рычаг реализма (Нариман 2026-06-27).
+            Без него глянцевый/сатиновый потолок выглядит пластиком, металл
+            мебели — серой пластмассой. Файлы лежат локально в /public/hdri/
+            (Poly Haven CC0, 1K HDR ~1.5MB каждый) — Safari больше не падает
+            на jsdelivr CDN. Подбираем под Kelvin температуру света:
+              warm (2700K) → studio_warm  — тёплая атмосфера вечер
+              neutral (4000K) → studio_neutral — сбалансированный день
+              cool (6500K) → studio_cool — холодный модерн
+            background={false} — НЕ заливаем небо, только envMap для рефлексов. */}
+        <Suspense fallback={null}>
+          <Environment
+            files={`/hdri/studio_${lightTempKey === "warm" ? "warm" : lightTempKey === "cool" ? "cool" : "neutral"}_1k.hdr`}
+            background={false}
+            environmentIntensity={0.8}
+          />
+        </Suspense>
 
         <Room3D
           vertices={vertices}
