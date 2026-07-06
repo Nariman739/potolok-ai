@@ -140,6 +140,13 @@ export default function ProfilePage() {
 
   async function handleSave() {
     setSaving(true);
+    // Нормализация KZ-номера: последние 10 цифр (нац. номер) + префикс +7.
+    // Отсекает лишний код страны (7/8/77), который мог продублироваться поверх
+    // «+7» (инцидент 06.07). Пустой whatsapp остаётся пустым.
+    const normKz = (v: string) => {
+      const d = (v || "").replace(/\D/g, "").slice(-10);
+      return d.length === 10 ? "+7" + d : v;
+    };
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -147,11 +154,11 @@ export default function ProfilePage() {
         body: JSON.stringify({
           firstName,
           lastName,
-          phone,
+          phone: normKz(phone),
           companyName,
           brandColor,
           instagramUrl,
-          whatsappPhone,
+          whatsappPhone: whatsappPhone ? normKz(whatsappPhone) : whatsappPhone,
           address,
           contractType: contractType || null,
           bin: bin || null,

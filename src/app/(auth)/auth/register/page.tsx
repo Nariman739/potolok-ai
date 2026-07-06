@@ -24,7 +24,11 @@ export default function RegisterPage() {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
-    const phone = "+7" + (formData.get("phone") as string).replace(/\D/g, "");
+    // Берём последние 10 цифр (нац. номер) + префикс +7. Так лишний код страны
+    // (7/8/77), который мастер мог дописать поверх готового «+7», отсекается —
+    // иначе получалась лишняя 7 (инцидент 06.07: propotolokkz +777... вместо +7707...).
+    const phoneDigits = (formData.get("phone") as string).replace(/\D/g, "").slice(-10);
+    const phone = "+7" + phoneDigits;
     const password = formData.get("password") as string;
     const passwordConfirm = formData.get("passwordConfirm") as string;
     const firstName = formData.get("firstName") as string;
