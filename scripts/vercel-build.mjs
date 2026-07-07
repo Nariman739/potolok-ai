@@ -65,6 +65,22 @@ function extendDatabaseTimeouts() {
   }
 }
 
+// Neon pooled endpoint (PgBouncer, transaction mode) НЕ держит session-level
+// advisory locks, которые Prisma migrate берёт на старте → P1002 «timed out
+// acquiring advisory lock», деплой падает (инцидент 07.07.2026). Миграции
+// должны идти через ПРЯМОЕ (non-pooled) соединение: у Neon это тот же host
+// без суффикса `-pooler`. Рантайму оставляем pooled (лучше держит нагрузку).
+function toDirectUrl(url) {
+  try {
+    const u = new URL(url);
+    u.hostname = u.hostname.replace("-pooler.", ".");
+    u.searchParams.delete("pgbouncer");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 function wakeUpNeon() {
   // ВАЖНО: без --schema! В Prisma 7 с prisma.config.ts флаг --schema
   // конфликтует с datasource из конфига и команда падает (status=1) —
@@ -114,8 +130,14 @@ run("prisma generate");
 
 if (process.env.VERCEL_ENV === "production") {
   extendDatabaseTimeouts();
+  // Миграции — через прямое (non-pooled) соединение, иначе advisory lock
+  // таймаутит на pgbouncer. Рантайм/next build остаются на pooled URL.
+  const pooledUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = toDirectUrl(pooledUrl);
+  console.log("[vercel-build] migrate via direct (non-pooled) connection");
   wakeUpNeon();
   migrateWithRetry();
+  process.env.DATABASE_URL = pooledUrl;
 } else {
   console.log("[vercel-build] skipping prisma migrate deploy (not Production)");
 }
