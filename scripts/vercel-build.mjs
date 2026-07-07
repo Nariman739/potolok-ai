@@ -66,10 +66,15 @@ function extendDatabaseTimeouts() {
 }
 
 function wakeUpNeon() {
+  // ВАЖНО: без --schema! В Prisma 7 с prisma.config.ts флаг --schema
+  // конфликтует с datasource из конфига и команда падает (status=1) —
+  // Neon не будился, migrate deploy таймаутил на advisory lock (P1002)
+  // пока холодная база просыпалась. Инцидент 07.07.2026. Config.ts сам
+  // даёт datasource, поэтому достаточно `prisma db execute --stdin`.
   console.log("[vercel-build] $ prisma db execute --stdin  # SELECT 1 wake-up");
   const result = spawnSync(
     "npx",
-    ["prisma", "db", "execute", "--schema=prisma/schema.prisma", "--stdin"],
+    ["prisma", "db", "execute", "--stdin"],
     {
       input: "SELECT 1;\n",
       stdio: ["pipe", "inherit", "inherit"],
@@ -96,6 +101,9 @@ function migrateWithRetry(maxAttempts = 3, backoffMs = 5_000) {
     if (attempt < maxAttempts) {
       console.log(`[vercel-build] sleeping ${backoffMs}ms before retry`);
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, backoffMs);
+      // Повторно будим Neon перед следующей попыткой — если база успела
+      // снова заснуть между ретраями, advisory lock опять таймаутил бы.
+      wakeUpNeon();
     }
   }
   console.error("[vercel-build] migrate deploy failed after all retries");
