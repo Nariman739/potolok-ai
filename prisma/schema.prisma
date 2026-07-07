@@ -387,6 +387,12 @@ model MeasurementObject {
   latitude  Float?
   longitude Float?
 
+  // Когда мастер физически замерял на объекте (= момент создания 1-й комнаты
+  // на клиенте). НЕ меняется при пересчёте/правках дома — в отличие от
+  // updatedAt. Показывается в списке как «дата замера». null у старых записей
+  // → клиент делает fallback на createdAt.
+  measuredAt DateTime?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   // Soft-delete (см. /dashboard/trash). null = живая запись.

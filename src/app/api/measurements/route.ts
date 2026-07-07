@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const body = await request.json();
-    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone } = body as {
+    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt } = body as {
       address?: string;
       status?: string;
       latitude?: number;
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       clientId?: string;
       clientName?: string;
       clientPhone?: string;
+      measuredAt?: string; // ISO — когда мастер замерял на объекте (1-я комната)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
     };
@@ -79,6 +80,9 @@ export async function POST(request: Request) {
         totalArea,
         ...(latitude != null && { latitude }),
         ...(longitude != null && { longitude }),
+        // Дата замера (когда был на объекте). Если клиент не прислал —
+        // остаётся null, и в списке fallback на createdAt.
+        ...(measuredAt && { measuredAt: new Date(measuredAt) }),
         rooms: rooms
           ? {
               create: rooms.map((r, i) => ({

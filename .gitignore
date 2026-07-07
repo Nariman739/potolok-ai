@@ -54,5 +54,8 @@ next-env.d.ts
 /spike-pairs/
 /spike-results/
 
+# Голосовые фидбеки мастеров из WhatsApp — аудио живых людей, НЕ коммитить (приватность)
+/feedback-audio/
+
 .vercel
 .env*.local
