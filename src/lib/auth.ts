@@ -65,6 +65,20 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     return null;
   }
 
+  // Sliding session: продлеваем срок при активности, чтобы мастер, который
+  // регулярно пользуется приложением, НЕ разлогинивался через 30 дней и не
+  // терял синхронизацию замеров (401 → замеры копились локально, инцидент
+  // 16.07). Обновляем не чаще раза в сутки (throttle): только если до
+  // истечения осталось меньше SESSION_DURATION_DAYS-1, иначе лишние writes.
+  const renewThreshold = new Date();
+  renewThreshold.setDate(renewThreshold.getDate() + SESSION_DURATION_DAYS - 1);
+  if (session.expiresAt < renewThreshold) {
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + SESSION_DURATION_DAYS);
+    // Не критично если упадёт (гонка/сеть) — сессия всё равно ещё валидна.
+    await prisma.session.update({ where: { id: session.id }, data: { expiresAt: newExpiry } }).catch(() => {});
+  }
+
   const m = session.master;
   if (!m.isActive) {
     return null;
