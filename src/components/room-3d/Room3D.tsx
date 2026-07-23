@@ -16,6 +16,7 @@ function SafeTexturedMaterial({
   tilesX,
   tilesY,
   envMapIntensity,
+  bumpScale,
 }: {
   url: string;
   fallback: ReactNode;
@@ -23,11 +24,12 @@ function SafeTexturedMaterial({
   tilesX?: number;
   tilesY?: number;
   envMapIntensity?: number;
+  bumpScale?: number;
 }) {
   return (
     <R3FErrorBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
-        <TexturedMaterial url={url} fallbackColor="#ffffff" roughness={roughness} tilesX={tilesX} tilesY={tilesY} envMapIntensity={envMapIntensity} />
+        <TexturedMaterial url={url} fallbackColor="#ffffff" roughness={roughness} tilesX={tilesX} tilesY={tilesY} envMapIntensity={envMapIntensity} bumpScale={bumpScale} />
       </Suspense>
     </R3FErrorBoundary>
   );
@@ -41,6 +43,7 @@ function TexturedMaterial({
   tilesX = 4,
   tilesY = 4,
   envMapIntensity = 1,
+  bumpScale = 0,
 }: {
   url: string;
   fallbackColor: string;
@@ -48,6 +51,7 @@ function TexturedMaterial({
   tilesX?: number;
   tilesY?: number;
   envMapIntensity?: number;
+  bumpScale?: number;
 }) {
   const texture = useLoader(THREE.TextureLoader, url) as THREE.Texture;
   useEffect(() => {
@@ -56,11 +60,17 @@ function TexturedMaterial({
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(tilesX, tilesY);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8; // резче текстура под углом (пол в перспективе)
     texture.needsUpdate = true;
   }, [texture, tilesX, tilesY]);
   return (
     <meshStandardMaterial
       map={texture}
+      // Тот же jpg как bumpMap — дешёвый рельеф (текстура дерева/штукатурки
+      // перестаёт быть «наклейкой», ловит свет по фактуре). Не физически точно,
+      // но глазу читается как настоящая поверхность.
+      bumpMap={bumpScale > 0 ? texture : undefined}
+      bumpScale={bumpScale}
       color={fallbackColor}
       roughness={roughness}
       metalness={0}
@@ -229,6 +239,7 @@ export function Room3D({
             tilesX={4}
             tilesY={4}
             envMapIntensity={1.25}
+            bumpScale={0.04}
           />
         ) : (
           <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} envMapIntensity={1.25} side={THREE.DoubleSide} />
@@ -267,6 +278,7 @@ export function Room3D({
                 roughness={wallRoughness}
                 tilesX={2}
                 tilesY={1}
+                bumpScale={0.015}
               />
             ) : (
               <meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />

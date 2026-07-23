@@ -3,7 +3,7 @@
 import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, PerformanceMonitor, Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO, BrightnessContrast, HueSaturation } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
@@ -830,9 +830,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
                 «глубины» — комната выглядит на порядок реалистичнее без
                 добавления геометрии. Параметры умеренные чтобы не было
                 грязных пятен. */}
-            <N8AO aoRadius={0.6} intensity={3.0} distanceFalloff={0.3} screenSpaceRadius={false} />
-            <Bloom mipmapBlur intensity={0.18} luminanceThreshold={0.92} luminanceSmoothing={0.4} />
+            <N8AO aoRadius={0.7} intensity={3.4} distanceFalloff={0.4} screenSpaceRadius={false} />
+            <Bloom mipmapBlur intensity={0.22} luminanceThreshold={0.9} luminanceSmoothing={0.4} />
             <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+            {/* Лёгкая цветокоррекция — «журнальный» тон: чуть контраста и
+                насыщенности, чтобы картинка была сочной, а не блёклой. */}
+            <BrightnessContrast brightness={0.0} contrast={0.09} />
+            <HueSaturation saturation={0.12} />
             <Vignette eskil={false} offset={0.25} darkness={0.28} />
           </EffectComposer>
         )}
