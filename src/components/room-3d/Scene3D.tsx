@@ -625,14 +625,15 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
       <Canvas
-        dpr={isMobile ? [1, 1.25] : [1, 1.5]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        shadows={quality === "high" ? "soft" : false}
         gl={{
           preserveDrawingBuffer: true,
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 1.02 : 0.85,
+          toneMappingExposure: daylight ? 1.0 : 0.85,
         }}
-        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 70, near: 0.05, far: 100 }}
+        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 68, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
       >
         <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
@@ -668,18 +669,32 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {/* Ambient снижен (было 0.95 — «молочно» и плоско, съедало объём).
             Теперь основной объём даёт directional + HDRI, ambient только
             подсвечивает тени чтобы не проваливались в чёрное. */}
-        <ambientLight intensity={daylight ? 0.5 : 0.16} color="#EEF2F7" />
-        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.55 : 0.08]} />
+        <ambientLight intensity={daylight ? 0.38 : 0.16} color="#EEF2F7" />
+        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.5 : 0.08]} />
+        {/* Ключевой свет — «солнце из окна» с настоящими мягкими тенями.
+            Тени от мебели/стен на полу — главный скачок реализма против
+            плоского «детсадовского» рендера. Тень-камера охватывает комнату. */}
         <directionalLight
-          position={[roomSize * 1.5, roomSize * 2.2, roomSize * 1.2]}
-          intensity={daylight ? 1.85 : 0}
-          color="#FFF4E0"
+          position={[roomSize * 1.4, roomSize * 2.4, roomSize * 1.1]}
+          intensity={daylight ? 2.1 : 0}
+          color="#FFF3DC"
+          castShadow={quality === "high"}
+          shadow-mapSize-width={isMobile ? 1024 : 2048}
+          shadow-mapSize-height={isMobile ? 1024 : 2048}
+          shadow-camera-near={0.5}
+          shadow-camera-far={roomSize * 10}
+          shadow-camera-left={-roomSize * 1.2}
+          shadow-camera-right={roomSize * 1.2}
+          shadow-camera-top={roomSize * 1.2}
+          shadow-camera-bottom={-roomSize * 1.2}
+          shadow-bias={-0.0004}
+          shadow-normalBias={0.025}
         />
-        {/* Второй directional с противоположной стороны — мягкий fill,
-            убирает «провалы» в тёмные углы. */}
+        {/* Мягкий fill с противоположной стороны — без теней, только
+            подсветить тёмные углы чтобы тени были «мягкие», а не чёрные. */}
         <directionalLight
           position={[-roomSize, roomSize * 1.5, -roomSize]}
-          intensity={daylight ? 0.5 : 0}
+          intensity={daylight ? 0.45 : 0}
           color="#DCE9F4"
         />
 
@@ -720,14 +735,15 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           wallTextureUrl={wallPreset.textureUrl}
         />
 
-        {/* Контактные тени под мебелью — без shadow maps, работает на iOS */}
+        {/* Контактные тени — теперь как мягкий AO поверх настоящих shadow-maps
+            (укрепляют контакт мебели с полом в самой точке касания). */}
         {quality === "high" && (
           <ContactShadows
-            position={[0, 0.005, 0]}
-            opacity={0.55}
+            position={[0, 0.004, 0]}
+            opacity={0.3}
             scale={Math.max(roomSize * 1.2, 8)}
-            blur={2.0}
-            far={2.2}
+            blur={2.6}
+            far={1.4}
             resolution={512}
             color="#14100c"
           />

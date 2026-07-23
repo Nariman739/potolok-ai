@@ -15,17 +15,19 @@ function SafeTexturedMaterial({
   roughness,
   tilesX,
   tilesY,
+  envMapIntensity,
 }: {
   url: string;
   fallback: ReactNode;
   roughness: number;
   tilesX?: number;
   tilesY?: number;
+  envMapIntensity?: number;
 }) {
   return (
     <R3FErrorBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
-        <TexturedMaterial url={url} fallbackColor="#ffffff" roughness={roughness} tilesX={tilesX} tilesY={tilesY} />
+        <TexturedMaterial url={url} fallbackColor="#ffffff" roughness={roughness} tilesX={tilesX} tilesY={tilesY} envMapIntensity={envMapIntensity} />
       </Suspense>
     </R3FErrorBoundary>
   );
@@ -38,12 +40,14 @@ function TexturedMaterial({
   roughness,
   tilesX = 4,
   tilesY = 4,
+  envMapIntensity = 1,
 }: {
   url: string;
   fallbackColor: string;
   roughness: number;
   tilesX?: number;
   tilesY?: number;
+  envMapIntensity?: number;
 }) {
   const texture = useLoader(THREE.TextureLoader, url) as THREE.Texture;
   useEffect(() => {
@@ -60,6 +64,7 @@ function TexturedMaterial({
       color={fallbackColor}
       roughness={roughness}
       metalness={0}
+      envMapIntensity={envMapIntensity}
       side={THREE.DoubleSide}
     />
   );
@@ -218,13 +223,15 @@ export function Room3D({
         {floorTextureUrl ? (
           <SafeTexturedMaterial
             url={floorTextureUrl}
-            fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />}
-            roughness={floorRoughness}
+            fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} envMapIntensity={1.25} side={THREE.DoubleSide} />}
+            // Пол чуть более гладкий → ловит отражения окна/светильников (дорогой вид).
+            roughness={Math.min(floorRoughness, 0.42)}
             tilesX={4}
             tilesY={4}
+            envMapIntensity={1.25}
           />
         ) : (
-          <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} envMapIntensity={1.25} side={THREE.DoubleSide} />
         )}
       </mesh>
 
