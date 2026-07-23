@@ -112,6 +112,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return () => window.clearTimeout(t);
   }, []);
 
+  // Подсказка «проведите пальцем» сама гаснет через 4с — чтобы не мешала картинке.
+  const [showHint, setShowHint] = useState(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowHint(false), 4000);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // «Картинки для клиента» — 2-3 готовых ракурса для отправки в WhatsApp.
   const grabberRef = useRef<CanvasGrabberHandle | null>(null);
   const [clientShots, setClientShots] = useState<{ open: boolean; loading: boolean; images: string[] }>({
@@ -828,21 +835,25 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
             {savingShot ? "Сохраняю…" : "📸 Снимок"}
           </button>
         )}
-        <button
-          onClick={() => setShowCeilingPanel((v) => !v)}
-          className={`h-10 px-3 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold active:scale-95 ${
-            showCeilingPanel ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "bg-white/95 text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          🎨 Потолок
-        </button>
-        <button
-          onClick={handleClientImages}
-          disabled={clientShots.loading}
-          className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
-        >
-          {clientShots.loading ? "Снимаю…" : "📷 Клиенту"}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setShowCeilingPanel((v) => !v)}
+            className={`h-10 px-3 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold active:scale-95 ${
+              showCeilingPanel ? "bg-[#1e3a5f] text-white border-[#1e3a5f]" : "bg-white/95 text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            🎨 Потолок
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            onClick={handleClientImages}
+            disabled={clientShots.loading}
+            className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
+          >
+            {clientShots.loading ? "Снимаю…" : "📷 Клиенту"}
+          </button>
+        )}
         {showCeilingPanel && (
           <div className="bg-white/98 backdrop-blur rounded-2xl shadow-xl border p-3 space-y-3 min-w-[220px]">
             {/* Финиш потолка скрыт (Нариман 2026-06-27): сейчас только
@@ -924,20 +935,30 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         )}
       </div>
 
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-wrap justify-center gap-1.5 bg-white/95 backdrop-blur rounded-2xl shadow-lg border px-2 py-1.5 max-w-[95%]">
-        <SpotButton current={spot} value="center" label="🧍 Центр" onSelect={setSpot} enabled={true} />
-        <SpotButton current={spot} value="door" label="🚪 От двери" onSelect={setSpot} enabled={spots.door !== null} />
-        <SpotButton current={spot} value="window" label="🪟 От окна" onSelect={setSpot} enabled={spots.window !== null} />
-      </div>
+      {/* Переключатель ракурса. В клиентском режиме показываем ТОЛЬКО если есть
+          куда переключиться (дверь/окно) — иначе одна кнопка «Центр» = лишний
+          шум. В редакторе показываем всегда. */}
+      {(!readOnly || spots.door !== null || spots.window !== null) && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-wrap justify-center gap-1.5 bg-white/90 backdrop-blur rounded-full shadow-lg border px-2 py-1.5 max-w-[95%]">
+          <SpotButton current={spot} value="center" label="🧍 Центр" onSelect={setSpot} enabled={true} />
+          <SpotButton current={spot} value="door" label="🚪 От двери" onSelect={setSpot} enabled={spots.door !== null} />
+          <SpotButton current={spot} value="window" label="🪟 От окна" onSelect={setSpot} enabled={spots.window !== null} />
+        </div>
+      )}
 
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 bg-black/40 text-white text-[11px] rounded-full pointer-events-none backdrop-blur">
-        Тяните пальцем чтобы крутить головой
-      </div>
+      {/* Подсказка сама исчезает через 4с чтобы не мешать картинке. */}
+      {showHint && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 bg-black/35 text-white text-[11px] rounded-full pointer-events-none backdrop-blur transition-opacity">
+          Проведите пальцем, чтобы осмотреться
+        </div>
+      )}
 
-      {/* Debug overlay — небольшая сводка по сцене, помогает дебажить пустой 3D */}
-      <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
-        v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
-      </div>
+      {/* Debug overlay — только в разработке, в проде убран (выглядел «дёшево»). */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
+          v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
+        </div>
+      )}
 
       {/* Картинки для клиента: набор ракурсов + отправка/скачивание */}
       {clientShots.open && (
