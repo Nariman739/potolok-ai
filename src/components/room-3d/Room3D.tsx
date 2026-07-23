@@ -35,6 +35,56 @@ function SafeTexturedMaterial({
   );
 }
 
+// Полноценный PBR-материал: базовый цвет + карта нормалей (рельеф) + карта
+// шероховатости. Даёт настоящую фактуру поверхности (дерево/штукатурка ловят
+// свет по рельефу), а не «наклейку». Карты — CC0 ambientCG в /textures/pbr/.
+function PBRMaterial({
+  colorUrl, normalUrl, roughUrl, tilesX, tilesY, envMapIntensity = 1, normalScale = 0.6,
+}: {
+  colorUrl: string; normalUrl: string; roughUrl: string;
+  tilesX: number; tilesY: number; envMapIntensity?: number; normalScale?: number;
+}) {
+  const [colorMap, normalMap, roughMap] = useLoader(THREE.TextureLoader, [colorUrl, normalUrl, roughUrl]) as THREE.Texture[];
+  useEffect(() => {
+    for (const t of [colorMap, normalMap, roughMap]) {
+      if (!t) continue;
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(tilesX, tilesY);
+      t.anisotropy = 8;
+      t.needsUpdate = true;
+    }
+    colorMap.colorSpace = THREE.SRGBColorSpace; // цвет в sRGB, карты — линейные
+  }, [colorMap, normalMap, roughMap, tilesX, tilesY]);
+  return (
+    <meshStandardMaterial
+      map={colorMap}
+      normalMap={normalMap}
+      normalScale={[normalScale, normalScale]}
+      roughnessMap={roughMap}
+      roughness={1}
+      metalness={0}
+      envMapIntensity={envMapIntensity}
+      side={THREE.DoubleSide}
+    />
+  );
+}
+
+function PBRSurface({
+  colorUrl, normalUrl, roughUrl, fallback, tilesX, tilesY, envMapIntensity, normalScale,
+}: {
+  colorUrl: string; normalUrl: string; roughUrl: string; fallback: ReactNode;
+  tilesX: number; tilesY: number; envMapIntensity?: number; normalScale?: number;
+}) {
+  return (
+    <R3FErrorBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <PBRMaterial colorUrl={colorUrl} normalUrl={normalUrl} roughUrl={roughUrl} tilesX={tilesX} tilesY={tilesY} envMapIntensity={envMapIntensity} normalScale={normalScale} />
+      </Suspense>
+    </R3FErrorBoundary>
+  );
+}
+
 // Текстурированный материал — монтируется только когда URL задан.
 function TexturedMaterial({
   url,
@@ -102,11 +152,17 @@ interface Room3DProps {
   floorRoughness?: number;
   /** URL текстуры пола (1K JPG из /public/textures/floor/). null = plain color. */
   floorTextureUrl?: string | null;
+  /** PBR-карты пола (рельеф/шероховатость). null = обычная текстура + bump. */
+  floorNormalUrl?: string | null;
+  floorRoughUrl?: string | null;
   /** Цвет стен из пресета. */
   wallColor?: string;
   wallRoughness?: number;
   /** URL текстуры стен (1K JPG из /public/textures/wall/). null = plain color. */
   wallTextureUrl?: string | null;
+  /** PBR-карты стен. */
+  wallNormalUrl?: string | null;
+  wallRoughUrl?: string | null;
 }
 
 const WALL_THICKNESS = 0.06;
@@ -143,9 +199,13 @@ export function Room3D({
   floorColor = "#D6CFC2",
   floorRoughness = 0.85,
   floorTextureUrl = null,
+  floorNormalUrl = null,
+  floorRoughUrl = null,
   wallColor = "#F2EFEA",
   wallRoughness = 0.85,
   wallTextureUrl = null,
+  wallNormalUrl = null,
+  wallRoughUrl = null,
 }: Room3DProps) {
   const ceilingM = cm2m(ceilingHeight);
   const finish = FINISH_PARAMS[ceilingFinish];
@@ -230,11 +290,21 @@ export function Room3D({
     <group>
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <shapeGeometry args={[floorShape]} />
-        {floorTextureUrl ? (
+        {floorTextureUrl && floorNormalUrl && floorRoughUrl ? (
+          <PBRSurface
+            colorUrl={floorTextureUrl}
+            normalUrl={floorNormalUrl}
+            roughUrl={floorRoughUrl}
+            fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} envMapIntensity={1.25} side={THREE.DoubleSide} />}
+            tilesX={3}
+            tilesY={3}
+            envMapIntensity={1.3}
+            normalScale={0.8}
+          />
+        ) : floorTextureUrl ? (
           <SafeTexturedMaterial
             url={floorTextureUrl}
             fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} envMapIntensity={1.25} side={THREE.DoubleSide} />}
-            // Пол чуть более гладкий → ловит отражения окна/светильников (дорогой вид).
             roughness={Math.min(floorRoughness, 0.42)}
             tilesX={4}
             tilesY={4}
@@ -271,7 +341,18 @@ export function Room3D({
       {wallMeshes.map((w) => (
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <mesh geometry={w.geometry} castShadow receiveShadow>
-            {wallTextureUrl ? (
+            {wallTextureUrl && wallNormalUrl && wallRoughUrl ? (
+              <PBRSurface
+                colorUrl={wallTextureUrl}
+                normalUrl={wallNormalUrl}
+                roughUrl={wallRoughUrl}
+                fallback={<meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />}
+                tilesX={2}
+                tilesY={2}
+                envMapIntensity={1.0}
+                normalScale={0.32}
+              />
+            ) : wallTextureUrl ? (
               <SafeTexturedMaterial
                 url={wallTextureUrl}
                 fallback={<meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />}

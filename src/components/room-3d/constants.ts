@@ -29,20 +29,32 @@ export function getLightTempByKey(key: string): typeof LIGHT_TEMPERATURES[number
 // textureUrl null → используется plain color. Реальные PBR-текстуры
 // (Poly Haven CC0) кладутся в public/textures/floor/{id}.jpg
 // и public/textures/wall/{id}.jpg — компонент Room3D подхватит при наличии.
+// normalUrl/roughUrl — настоящие PBR-карты (рельеф + шероховатость) с ambientCG
+// (CC0). Где заданы — материал перестаёт быть «наклейкой»: дерево ловит свет по
+// фактуре доски, штукатурка — по зерну. null = обычная текстура + дешёвый bump.
+const WOOD_PBR = {
+  color: "/textures/pbr/floor_wood_color.jpg",
+  normal: "/textures/pbr/floor_wood_normal.jpg",
+  rough: "/textures/pbr/floor_wood_rough.jpg",
+};
 export const FLOOR_PRESETS = [
-  { id: "oak_parquet",   label: "Дуб (паркет)",    color: "#A47148", roughness: 0.45, textureUrl: "/textures/floor/oak_parquet.jpg",   promptDesc: "warm oak parquet flooring" },
-  { id: "light_laminate", label: "Светлый ламинат", color: "#C9A876", roughness: 0.50, textureUrl: "/textures/floor/light_laminate.jpg", promptDesc: "light beige laminate flooring" },
-  { id: "gray_tile",     label: "Серая плитка",   color: "#8E8E93", roughness: 0.20, textureUrl: "/textures/floor/gray_tile.jpg",    promptDesc: "matte gray ceramic tile flooring" },
-  { id: "dark_parquet",  label: "Тёмный паркет",   color: "#3E2723", roughness: 0.35, textureUrl: "/textures/floor/dark_parquet.jpg",  promptDesc: "dark walnut parquet flooring" },
+  { id: "wood_premium",  label: "Дерево (реализм)", color: "#B08856", roughness: 0.55, textureUrl: WOOD_PBR.color, normalUrl: WOOD_PBR.normal as string | null, roughUrl: WOOD_PBR.rough as string | null, promptDesc: "realistic wood plank flooring" },
+  { id: "oak_parquet",   label: "Дуб (паркет)",    color: "#A47148", roughness: 0.45, textureUrl: "/textures/floor/oak_parquet.jpg",   normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "warm oak parquet flooring" },
+  { id: "light_laminate", label: "Светлый ламинат", color: "#C9A876", roughness: 0.50, textureUrl: "/textures/floor/light_laminate.jpg", normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "light beige laminate flooring" },
+  { id: "gray_tile",     label: "Серая плитка",   color: "#8E8E93", roughness: 0.20, textureUrl: "/textures/floor/gray_tile.jpg",    normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "matte gray ceramic tile flooring" },
+  { id: "dark_parquet",  label: "Тёмный паркет",   color: "#3E2723", roughness: 0.35, textureUrl: "/textures/floor/dark_parquet.jpg",  normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "dark walnut parquet flooring" },
 ] as const;
 export type FloorPresetId = typeof FLOOR_PRESETS[number]["id"];
-export const DEFAULT_FLOOR: FloorPresetId = "light_laminate";
+export const DEFAULT_FLOOR: FloorPresetId = "wood_premium";
 
+// Общий рельеф штукатурки для всех стен — микрофактура вместо плоской заливки.
+const WALL_NORMAL = "/textures/pbr/wall_plaster_normal.jpg";
+const WALL_ROUGH = "/textures/pbr/wall_plaster_rough.jpg";
 export const WALL_PRESETS = [
-  { id: "white_paint",   label: "Белая краска",   color: "#F5F5F5", roughness: 0.90, textureUrl: "/textures/wall/white_paint.jpg",   promptDesc: "smooth white matte painted walls" },
-  { id: "light_gray",    label: "Светло-серый",   color: "#D7D7D7", roughness: 0.90, textureUrl: "/textures/wall/light_gray.jpg",    promptDesc: "light gray matte painted walls" },
-  { id: "beige_wallpaper", label: "Бежевые обои", color: "#E8DCC4", roughness: 0.95, textureUrl: "/textures/wall/beige_wallpaper.jpg", promptDesc: "beige neutral wallpaper" },
-  { id: "decorative_plaster", label: "Декор. штукатурка", color: "#E0D9CC", roughness: 0.85, textureUrl: "/textures/wall/decorative_plaster.jpg", promptDesc: "subtle decorative plaster walls" },
+  { id: "white_paint",   label: "Белая краска",   color: "#F5F5F5", roughness: 0.90, textureUrl: "/textures/wall/white_paint.jpg",   normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "smooth white matte painted walls" },
+  { id: "light_gray",    label: "Светло-серый",   color: "#D7D7D7", roughness: 0.90, textureUrl: "/textures/wall/light_gray.jpg",    normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "light gray matte painted walls" },
+  { id: "beige_wallpaper", label: "Бежевые обои", color: "#E8DCC4", roughness: 0.95, textureUrl: "/textures/wall/beige_wallpaper.jpg", normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "beige neutral wallpaper" },
+  { id: "decorative_plaster", label: "Декор. штукатурка", color: "#E0D9CC", roughness: 0.85, textureUrl: "/textures/wall/decorative_plaster.jpg", normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "subtle decorative plaster walls" },
 ] as const;
 export type WallPresetId = typeof WALL_PRESETS[number]["id"];
 export const DEFAULT_WALL: WallPresetId = "white_paint";

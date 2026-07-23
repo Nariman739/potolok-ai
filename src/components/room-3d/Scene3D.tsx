@@ -631,7 +631,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           preserveDrawingBuffer: true,
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 1.0 : 0.85,
+          toneMappingExposure: daylight ? 0.88 : 0.85,
         }}
         camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 68, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
@@ -669,14 +669,14 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {/* Ambient снижен (было 0.95 — «молочно» и плоско, съедало объём).
             Теперь основной объём даёт directional + HDRI, ambient только
             подсвечивает тени чтобы не проваливались в чёрное. */}
-        <ambientLight intensity={daylight ? 0.38 : 0.16} color="#EEF2F7" />
-        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.5 : 0.08]} />
+        <ambientLight intensity={daylight ? 0.32 : 0.16} color="#EEF2F7" />
+        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.42 : 0.08]} />
         {/* Ключевой свет — «солнце из окна» с настоящими мягкими тенями.
             Тени от мебели/стен на полу — главный скачок реализма против
             плоского «детсадовского» рендера. Тень-камера охватывает комнату. */}
         <directionalLight
           position={[roomSize * 1.4, roomSize * 2.4, roomSize * 1.1]}
-          intensity={daylight ? 2.1 : 0}
+          intensity={daylight ? 1.65 : 0}
           color="#FFF3DC"
           castShadow={quality === "high"}
           shadow-mapSize-width={isMobile ? 1024 : 2048}
@@ -730,9 +730,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           floorColor={floorPreset.color}
           floorRoughness={floorPreset.roughness}
           floorTextureUrl={floorPreset.textureUrl}
+          floorNormalUrl={floorPreset.normalUrl}
+          floorRoughUrl={floorPreset.roughUrl}
           wallColor={wallPreset.color}
           wallRoughness={wallPreset.roughness}
           wallTextureUrl={wallPreset.textureUrl}
+          wallNormalUrl={wallPreset.normalUrl}
+          wallRoughUrl={wallPreset.roughUrl}
         />
 
         {/* Контактные тени — теперь как мягкий AO поверх настоящих shadow-maps
