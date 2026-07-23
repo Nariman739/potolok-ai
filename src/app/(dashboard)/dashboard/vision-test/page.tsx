@@ -1596,6 +1596,10 @@ export default function ZameryPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // Публичная 3D-ссылка замера для клиента (/z/[shareId]).
+  const [share3d, setShare3d] = useState<{ open: boolean; loading: boolean; url: string | null; error: string | null }>({
+    open: false, loading: false, url: null, error: null,
+  });
   const calcModeInitRef = useRef(false);
   const addressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeObjectIdRef = useRef<string | null>(null);
@@ -2009,6 +2013,22 @@ export default function ZameryPage() {
     const footer = `\nИТОГО: ${totalArea} м², P = ${totalPerimeter} м`;
     const text = [header, "", ...lines, footer].join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
+  // ── Публичная 3D-ссылка для клиента (/z/[shareId]) ──
+  // Клиент открывает без логина и сам крутит комнату в 3D.
+  async function handleShare3D() {
+    setShare3d({ open: true, loading: true, url: null, error: null });
+    try {
+      const objId = await ensureActiveObject();
+      const res = await fetch(`/api/measurements/${objId}/share`, { method: "POST" });
+      if (!res.ok) throw new Error("Не удалось создать ссылку");
+      const { path } = (await res.json()) as { path: string };
+      const url = `${window.location.origin}${path}`;
+      setShare3d({ open: true, loading: false, url, error: null });
+    } catch (e) {
+      setShare3d({ open: true, loading: false, url: null, error: e instanceof Error ? e.message : "Ошибка" });
+    }
   }
 
   // ── Share factory image (PNG with room drawings) ──
@@ -2544,6 +2564,60 @@ export default function ZameryPage() {
         />
       )}
 
+      {share3d.open && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShare3d(s => ({ ...s, open: false }))}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-base font-bold text-gray-800">🧊 3D для клиента</span>
+              <button onClick={() => setShare3d(s => ({ ...s, open: false }))} className="text-gray-400 text-xl leading-none">×</button>
+            </div>
+
+            {share3d.loading && (
+              <div className="py-6 text-center text-sm text-gray-500 animate-pulse">Готовлю ссылку…</div>
+            )}
+
+            {share3d.error && (
+              <div className="py-4 text-center">
+                <div className="text-sm text-red-600 mb-3">{share3d.error}</div>
+                <button onClick={handleShare3D} className="px-4 py-2 rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold">
+                  Повторить
+                </button>
+              </div>
+            )}
+
+            {share3d.url && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Клиент откроет ссылку без входа и сам покрутит потолок в 3D.
+                </p>
+                <div className="text-xs font-mono bg-gray-50 border rounded-lg px-3 py-2 break-all text-gray-700">
+                  {share3d.url}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { if (share3d.url) navigator.clipboard?.writeText(share3d.url); }}
+                    className="px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95">
+                    Скопировать
+                  </button>
+                  <a
+                    href={share3d.url} target="_blank" rel="noopener noreferrer"
+                    className="text-center px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold active:scale-95">
+                    Открыть
+                  </a>
+                  <a
+                    href={`https://wa.me/${(activeClientPhone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Вот 3D-визуализация вашего потолка: ${share3d.url}`)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="col-span-2 text-center px-3 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold active:scale-95">
+                    Отправить в WhatsApp 📤
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-5">
         {/* Header with history button */}
         <div className="flex items-center justify-between gap-2">
@@ -2641,6 +2715,10 @@ export default function ZameryPage() {
                 <button onClick={handleShare}
                   className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 active:opacity-80">
                   WhatsApp 📤
+                </button>
+                <button onClick={handleShare3D}
+                  className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700 active:opacity-80">
+                  3D клиенту 🧊
                 </button>
                 <button onClick={handleCreateEstimate}
                   className="rounded-lg bg-[#1e3a5f] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#152d4a]">

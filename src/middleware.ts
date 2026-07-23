@@ -11,11 +11,16 @@ const securityHeaders = {
     "camera=(), microphone=(), geolocation=(self), browsing-topics=()",
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    // blob: — воркер Draco-декодера (3D-мебель) создаётся через createObjectURL;
+    // Safari проверяет worker по script-src.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com",
+    // blob: — three грузит встроенные текстуры GLB как blob:-URL через fetch.
+    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com",
+    // worker-src — DRACOLoader запускает Web Worker из blob:.
+    "worker-src 'self' blob:",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",

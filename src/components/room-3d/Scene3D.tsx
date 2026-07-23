@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, PerformanceMonitor, Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
@@ -26,6 +26,7 @@ import {
   type WallPresetId,
 } from "./constants";
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
+import { R3FErrorBoundary } from "./R3FErrorBoundary";
 import { ScreenshotCapture } from "./ScreenshotCapture";
 import { Spot3D } from "./Spot3D";
 import { Chandelier3D } from "./Chandelier3D";
@@ -96,6 +97,26 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   const [showCeilingPanel, setShowCeilingPanel] = useState(false);
   // Адаптивное качество: high — с ContactShadows; low — без (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
+
+  // Мобильный Safari: агрессивнее по памяти WebGL. На телефоне режем dpr и
+  // включаем тяжёлый постпроцессинг (N8AO/Bloom) НЕ на первом кадре, а через
+  // ~0.7с — сначала даём WebGL-контексту встать и текстурам подгрузиться, иначе
+  // на слабых iPhone контекст может упасть сразу (пустой экран).
+  const isMobile = useMemo(
+    () => typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+    [],
+  );
+  const [heavyFxReady, setHeavyFxReady] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setHeavyFxReady(true), 700);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // «Картинки для клиента» — 2-3 готовых ракурса для отправки в WhatsApp.
+  const grabberRef = useRef<CanvasGrabberHandle | null>(null);
+  const [clientShots, setClientShots] = useState<{ open: boolean; loading: boolean; images: string[] }>({
+    open: false, loading: false, images: [],
+  });
 
   // AI-рендер из 3D-сцены через Flux Kontext Pro
   const [aiTrigger, setAiTrigger] = useState(0);
@@ -341,11 +362,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     // пол, мебель, две стены и потолок. Раньше камера стояла в центре пола
     // на уровне глаз — приходилось драг-rotate вверх, чтобы увидеть потолок.
     const half = roomSize / 2;
-    const cornerPos = new THREE.Vector3(-half * 0.75, HUMAN_EYE_HEIGHT, -half * 0.75);
+    const cornerPos = new THREE.Vector3(-half * 0.78, HUMAN_EYE_HEIGHT, -half * 0.78);
     const result: Record<ViewSpot, SpotInfo | null> = {
       center: {
         position: cornerPos.clone(),
-        lookAt: new THREE.Vector3(0, ceilLook * 0.7, 0),
+        // Взгляд почти горизонтальный, чуть выше центра — в кадре и потолок
+        // со светильниками, и две стены, и пол с мебелью (сбалансированно).
+        lookAt: new THREE.Vector3(0, ceilLook * 0.92, 0),
       },
       door: null,
       window: null,
@@ -542,15 +565,65 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return items;
   }, [elements, centerOffset.x, centerOffset.z]);
 
+  // Прогоняем 2-3 пресет-ракурса и снимаем каждый → набор красивых картинок
+  // для клиента (WhatsApp). Ждём пока камера «долетит» (lerp в LookAroundControls)
+  // и кадр отрисуется, потом читаем скомпонованный буфер.
+  const handleClientImages = useCallback(async () => {
+    setClientShots({ open: true, loading: true, images: [] });
+    const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+    const seq: ViewSpot[] = ["center"];
+    if (spots.door) seq.push("door");
+    if (spots.window) seq.push("window");
+    const imgs: string[] = [];
+    for (const v of seq.slice(0, 3)) {
+      setSpot(v);
+      await sleep(750);
+      const d = grabberRef.current?.grab();
+      if (d) imgs.push(d);
+    }
+    setClientShots({ open: true, loading: false, images: imgs });
+  }, [spots]);
+
+  const shareClientImages = useCallback(async () => {
+    const images = clientShots.images;
+    if (!images.length) return;
+    try {
+      const files = await Promise.all(
+        images.map(async (d, i) => {
+          const blob = await (await fetch(d)).blob();
+          return new File([blob], `potolok-${i + 1}.jpg`, { type: "image/jpeg" });
+        }),
+      );
+      const nav = navigator as Navigator & {
+        canShare?: (data?: ShareData) => boolean;
+        share?: (data?: ShareData) => Promise<void>;
+      };
+      if (nav.canShare && nav.canShare({ files }) && nav.share) {
+        await nav.share({ files, title: "Ваш потолок", text: "Вот как будет выглядеть ваш потолок" });
+        return;
+      }
+    } catch {
+      // отменили шэр или не поддерживается — падаем на скачивание ниже
+      return;
+    }
+    // Фолбэк (десктоп / старый браузер): скачиваем по одному
+    images.forEach((d, i) => {
+      const a = document.createElement("a");
+      a.href = d;
+      a.download = `potolok-${i + 1}.jpg`;
+      a.click();
+    });
+  }, [clientShots.images]);
+
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={isMobile ? [1, 1.25] : [1, 1.5]}
         gl={{
           preserveDrawingBuffer: true,
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 1.15 : 0.85,
+          toneMappingExposure: daylight ? 1.02 : 0.85,
         }}
         camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 70, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
@@ -585,18 +658,21 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
             - directional: «солнце» под углом, +shadow
             Цель: чтобы комната выглядела светлой и нейтральной даже когда
             точечного света мало. */}
-        <ambientLight intensity={daylight ? 0.95 : 0.16} color="#E8F1FB" />
-        <hemisphereLight args={["#CFE3F8", "#8A7560", daylight ? 0.75 : 0.08]} />
+        {/* Ambient снижен (было 0.95 — «молочно» и плоско, съедало объём).
+            Теперь основной объём даёт directional + HDRI, ambient только
+            подсвечивает тени чтобы не проваливались в чёрное. */}
+        <ambientLight intensity={daylight ? 0.5 : 0.16} color="#EEF2F7" />
+        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.55 : 0.08]} />
         <directionalLight
           position={[roomSize * 1.5, roomSize * 2.2, roomSize * 1.2]}
-          intensity={daylight ? 1.4 : 0}
-          color="#FFF6E6"
+          intensity={daylight ? 1.85 : 0}
+          color="#FFF4E0"
         />
         {/* Второй directional с противоположной стороны — мягкий fill,
             убирает «провалы» в тёмные углы. */}
         <directionalLight
           position={[-roomSize, roomSize * 1.5, -roomSize]}
-          intensity={daylight ? 0.45 : 0}
+          intensity={daylight ? 0.5 : 0}
           color="#DCE9F4"
         />
 
@@ -609,13 +685,18 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
               neutral (4000K) → studio_neutral — сбалансированный день
               cool (6500K) → studio_cool — холодный модерн
             background={false} — НЕ заливаем небо, только envMap для рефлексов. */}
-        <Suspense fallback={null}>
-          <Environment
-            files={`/hdri/studio_${lightTempKey === "warm" ? "warm" : lightTempKey === "cool" ? "cool" : "neutral"}_1k.hdr`}
-            background={false}
-            environmentIntensity={0.8}
-          />
-        </Suspense>
+        {/* R3FErrorBoundary: если HDRI не дотянулся (флаки-мобильный интернет),
+            деградируем на обычное освещение выше вместо падения всей сцены
+            («Load failed» на Safari). */}
+        <R3FErrorBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <Environment
+              files={`/hdri/studio_${lightTempKey === "warm" ? "warm" : lightTempKey === "cool" ? "cool" : "neutral"}_1k.hdr`}
+              background={false}
+              environmentIntensity={1.05}
+            />
+          </Suspense>
+        </R3FErrorBoundary>
 
         <Room3D
           vertices={vertices}
@@ -636,12 +717,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {quality === "high" && (
           <ContactShadows
             position={[0, 0.005, 0]}
-            opacity={0.35}
+            opacity={0.55}
             scale={Math.max(roomSize * 1.2, 8)}
-            blur={2.4}
-            far={2}
+            blur={2.0}
+            far={2.2}
             resolution={512}
-            color="#1a1a1a"
+            color="#14100c"
           />
         )}
 
@@ -714,10 +795,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
         <ScreenshotCapture trigger={aiTrigger} onCapture={handleAiCapture} />
+        <CanvasGrabber ref={grabberRef} />
 
         {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
-        {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader. */}
-        {quality === "high" && (
+        {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader,
+            и не включается на первом кадре (heavyFxReady) — даём сцене встать. */}
+        {quality === "high" && heavyFxReady && (
           <EffectComposer>
             {/* N8AO = ambient occlusion. Добавляет тени в углах где сходятся
                 стены/пол/потолок, под мебелью, в нишах. Даёт ощущение
@@ -727,7 +810,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
             <N8AO aoRadius={0.6} intensity={3.0} distanceFalloff={0.3} screenSpaceRadius={false} />
             <Bloom mipmapBlur intensity={0.18} luminanceThreshold={0.92} luminanceSmoothing={0.4} />
             <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            <Vignette eskil={false} offset={0.2} darkness={0.35} />
+            <Vignette eskil={false} offset={0.25} darkness={0.28} />
           </EffectComposer>
         )}
       </Canvas>
@@ -752,6 +835,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           }`}
         >
           🎨 Потолок
+        </button>
+        <button
+          onClick={handleClientImages}
+          disabled={clientShots.loading}
+          className="h-10 px-3 bg-white/95 rounded-xl shadow border flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-60"
+        >
+          {clientShots.loading ? "Снимаю…" : "📷 Клиенту"}
         </button>
         {showCeilingPanel && (
           <div className="bg-white/98 backdrop-blur rounded-2xl shadow-xl border p-3 space-y-3 min-w-[220px]">
@@ -848,6 +938,54 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
         v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
       </div>
+
+      {/* Картинки для клиента: набор ракурсов + отправка/скачивание */}
+      {clientShots.open && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-[600px] w-full max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="text-sm font-bold text-gray-800">📷 Картинки для клиента</div>
+              <button
+                onClick={() => setClientShots((s) => ({ ...s, open: false }))}
+                className="text-gray-400 hover:text-gray-700 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {clientShots.loading ? (
+              <div className="py-10 text-center text-sm text-gray-500 animate-pulse">
+                Снимаю ракурсы… крутить не нужно
+              </div>
+            ) : clientShots.images.length === 0 ? (
+              <div className="py-10 text-center text-sm text-gray-500">Не удалось снять кадры</div>
+            ) : (
+              <>
+                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {clientShots.images.map((d, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={d} alt={`Ракурс ${i + 1}`} className="w-full rounded-xl border" />
+                  ))}
+                </div>
+                <div className="p-3 pt-0 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={shareClientImages}
+                    className="col-span-2 px-3 py-2.5 rounded-xl bg-green-600 text-white font-semibold text-sm active:scale-95"
+                  >
+                    Отправить клиенту 📤
+                  </button>
+                  <button
+                    onClick={() => setClientShots((s) => ({ ...s, open: false }))}
+                    className="col-span-2 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold text-xs"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* AI-рендер: прогресс и результат */}
       {aiState === "generating" && (
@@ -959,4 +1097,25 @@ function SpotButton({
     </button>
   );
 }
+
+export interface CanvasGrabberHandle {
+  /** Читает текущий кадр холста как JPEG data-URL. Благодаря preserveDrawingBuffer
+      это последний СКОМПОНОВАННЫЙ кадр (с постпроцессингом — bloom/AO), а не
+      «сырой» gl.render как в ScreenshotCapture. */
+  grab: () => string | null;
+}
+
+const CanvasGrabber = forwardRef<CanvasGrabberHandle>(function CanvasGrabber(_props, ref) {
+  const { gl } = useThree();
+  useImperativeHandle(ref, () => ({
+    grab: () => {
+      try {
+        return gl.domElement.toDataURL("image/jpeg", 0.92);
+      } catch {
+        return null;
+      }
+    },
+  }), [gl]);
+  return null;
+});
 

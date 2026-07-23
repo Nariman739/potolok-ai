@@ -5,6 +5,7 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { FurnitureType } from "@/lib/room-types";
 import { FURNITURE_3D_DIMENSIONS } from "./types";
+import { R3FErrorBoundary } from "./R3FErrorBoundary";
 
 interface Furniture3DProps {
   position: [number, number, number];
@@ -38,19 +39,21 @@ const FURNITURE_GLB: Partial<Record<FurnitureType, string>> = {
 // синий куб. Используется как fallback если GLB не доступен.
 export function Furniture3D({ position, rotationY, furnitureType, widthM, depthM }: Furniture3DProps) {
   const glbUrl = FURNITURE_GLB[furnitureType];
+  const procedural = <FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />;
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {glbUrl ? (
-        // Suspense fallback — процедурная мебель пока GLB грузится.
-        // ErrorBoundary не нужен: useGLTF сам кеширует и не падает после
-        // первой успешной загрузки; если 404 на старте — Suspense покажет
-        // fallback навсегда. Если файл потом появится, перезагрузка
-        // страницы подхватит его.
-        <Suspense fallback={<FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />}>
-          <GLBFurniture url={glbUrl} widthM={widthM} depthM={depthM} type={furnitureType} />
-        </Suspense>
+        // Suspense — процедурная мебель ПОКА GLB грузится.
+        // R3FErrorBoundary — процедурная мебель НАВСЕГДА если fetch GLB сорвался
+        // (флаки-сеть / 404). Без boundary ошибка useGLTF убивала бы всю сцену
+        // (Safari «Load failed»), а не только одну мебель.
+        <R3FErrorBoundary fallback={procedural}>
+          <Suspense fallback={procedural}>
+            <GLBFurniture url={glbUrl} widthM={widthM} depthM={depthM} type={furnitureType} />
+          </Suspense>
+        </R3FErrorBoundary>
       ) : (
-        <FurnitureBody type={furnitureType} widthM={widthM} depthM={depthM} />
+        procedural
       )}
     </group>
   );
@@ -63,7 +66,9 @@ export function Furniture3D({ position, rotationY, furnitureType, widthM, depthM
 // пропорции). Без clone() useGLTF возвращает один и тот же объект на все
 // инстансы — несколько одинаковых элементов в комнате наложились бы.
 function GLBFurniture({ url, widthM, depthM, type }: { url: string; widthM: number; depthM: number; type: FurnitureType }) {
-  const { scene } = useGLTF(url);
+  // Локальный Draco-декодер (/public/draco/) вместо gstatic CDN — иначе CSP
+  // connect-src блокирует декодер и GLB не грузится (Safari «Load failed»).
+  const { scene } = useGLTF(url, "/draco/");
   const dim = FURNITURE_3D_DIMENSIONS[type];
   const heightM = dim.heightCm / 100;
   const cloned = useMemo(() => scene.clone(true), [scene]);
@@ -102,7 +107,7 @@ function GLBFurniture({ url, widthM, depthM, type }: { url: string; widthM: numb
 // Preload моделей при загрузке модуля — кеш на стороне drei, второй
 // инстанс будет рендериться моментально.
 Object.values(FURNITURE_GLB).forEach((url) => {
-  if (url) useGLTF.preload(url);
+  if (url) useGLTF.preload(url, "/draco/");
 });
 
 function FurnitureBody({ type, widthM, depthM }: { type: FurnitureType; widthM: number; depthM: number }) {

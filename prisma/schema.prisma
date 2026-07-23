@@ -398,6 +398,10 @@ model MeasurementObject {
   // Soft-delete (см. /dashboard/trash). null = живая запись.
   deletedAt DateTime?
 
+  // Токен публичной 3D-ссылки (/z/[shareId]). Генерируется лениво когда мастер
+  // жмёт «Поделиться 3D» — клиент крутит комнату без логина, до создания КП.
+  publicShareId String? @unique
+
   rooms          MeasurementRoom[]
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
   client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)

@@ -21,6 +21,26 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    // Явные MIME-типы для 3D-ассетов. Safari бывает капризен к .hdr/.glb без
+    // корректного Content-Type; заодно длинный кэш — файлы иммутабельны.
+    return [
+      {
+        source: "/hdri/:path*.hdr",
+        headers: [
+          { key: "Content-Type", value: "image/vnd.radiance" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/models/:path*.glb",
+        headers: [
+          { key: "Content-Type", value: "model/gltf-binary" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
+  },
 };
 
 // Sentry wrapper:

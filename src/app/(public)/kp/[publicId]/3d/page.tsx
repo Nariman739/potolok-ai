@@ -46,6 +46,7 @@ export default async function Public3DPage({
       id: true,
       publicId: true,
       roomsData: true,
+      room3dPreviewUrl: true,
       master: { select: { brandColor: true, companyName: true, firstName: true } },
     },
   });
@@ -65,12 +66,14 @@ export default async function Public3DPage({
 
   return (
     <Public3DViewer
-      publicId={publicId}
       brandColor={brandColor}
       vertices={sceneProps.vertices}
       walls={sceneProps.walls}
       ceilingHeight={sceneProps.ceilingHeight}
       elements={sceneProps.elements}
+      fallbackImageUrl={estimate.room3dPreviewUrl}
+      backHref={`/kp/${publicId}`}
+      backLabel="К КП"
     />
   );
 }

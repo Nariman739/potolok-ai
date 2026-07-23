@@ -1,13 +1,37 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { cm2m, type Vertex2D } from "./types";
+import { R3FErrorBoundary } from "./R3FErrorBoundary";
 
-// Текстурированный материал — монтируется через Suspense только когда URL задан.
-// Если текстура не загрузилась (offline / 404) — Suspense fallback показывает
-// plain color material (как раньше).
+// Обёртка над текстурой: Suspense показывает plain-цвет ПОКА грузится, а
+// R3FErrorBoundary — plain-цвет НАВСЕГДА если fetch сорвался (offline/404).
+// Без boundary ошибка загрузчика убивала бы всю сцену (Safari «Load failed»).
+function SafeTexturedMaterial({
+  url,
+  fallback,
+  roughness,
+  tilesX,
+  tilesY,
+}: {
+  url: string;
+  fallback: ReactNode;
+  roughness: number;
+  tilesX?: number;
+  tilesY?: number;
+}) {
+  return (
+    <R3FErrorBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <TexturedMaterial url={url} fallbackColor="#ffffff" roughness={roughness} tilesX={tilesX} tilesY={tilesY} />
+      </Suspense>
+    </R3FErrorBoundary>
+  );
+}
+
+// Текстурированный материал — монтируется только когда URL задан.
 function TexturedMaterial({
   url,
   fallbackColor,
@@ -192,9 +216,13 @@ export function Room3D({
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <shapeGeometry args={[floorShape]} />
         {floorTextureUrl ? (
-          <Suspense fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />}>
-            <TexturedMaterial url={floorTextureUrl} fallbackColor="#ffffff" roughness={floorRoughness} tilesX={4} tilesY={4} />
-          </Suspense>
+          <SafeTexturedMaterial
+            url={floorTextureUrl}
+            fallback={<meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />}
+            roughness={floorRoughness}
+            tilesX={4}
+            tilesY={4}
+          />
         ) : (
           <meshStandardMaterial color={floorColor} roughness={floorRoughness} metalness={0.0} side={THREE.DoubleSide} />
         )}
@@ -226,9 +254,13 @@ export function Room3D({
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <mesh geometry={w.geometry} castShadow receiveShadow>
             {wallTextureUrl ? (
-              <Suspense fallback={<meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />}>
-                <TexturedMaterial url={wallTextureUrl} fallbackColor="#ffffff" roughness={wallRoughness} tilesX={2} tilesY={1} />
-              </Suspense>
+              <SafeTexturedMaterial
+                url={wallTextureUrl}
+                fallback={<meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />}
+                roughness={wallRoughness}
+                tilesX={2}
+                tilesY={1}
+              />
             ) : (
               <meshStandardMaterial color={wallColor} roughness={wallRoughness} metalness={0.0} side={THREE.DoubleSide} />
             )}
