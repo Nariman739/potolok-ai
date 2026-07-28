@@ -31,6 +31,7 @@ import { ScreenshotCapture } from "./ScreenshotCapture";
 import { Spot3D } from "./Spot3D";
 import { Chandelier3D } from "./Chandelier3D";
 import { Furniture3D } from "./Furniture3D";
+import { Plant3D, Rug, PLANT_MODELS } from "./Decor3D";
 import { WallElement3D } from "./WallElement3D";
 import { cm2m, type Scene3DProps, type ViewSpot } from "./types";
 import type { FurnitureType, ElementType } from "@/lib/room-types";
@@ -572,6 +573,22 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return items;
   }, [elements, centerOffset.x, centerOffset.z]);
 
+  // Место для растения — в углу комнаты (у vertex[0]), смещённое внутрь, чтобы
+  // не втыкалось в стену. Углы обычно свободны от мебели.
+  const plantSpot = useMemo<[number, number, number] | null>(() => {
+    if (vertices.length < 3) return null;
+    const v = vertices[0];
+    const vx = cm2m(v.x) - centerOffset.x;
+    const vz = cm2m(v.y) - centerOffset.z;
+    const len = Math.hypot(vx, vz) || 1;
+    return [vx - (vx / len) * 0.5, 0, vz - (vz / len) * 0.5];
+  }, [vertices, centerOffset.x, centerOffset.z]);
+
+  const rugSize = useMemo<[number, number]>(
+    () => [Math.min(roomSize * 0.55, 2.6), Math.min(roomSize * 0.42, 1.8)],
+    [roomSize],
+  );
+
   // Прогоняем 2-3 пресет-ракурса и снимаем каждый → набор красивых картинок
   // для клиента (WhatsApp). Ждём пока камера «долетит» (lerp в LookAroundControls)
   // и кадр отрисуется, потом читаем скомпонованный буфер.
@@ -789,6 +806,17 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
             depthM={f.depthM}
           />
         ))}
+
+        {/* Стайлинг-декор — «дизайнерская обжитость»: ковёр под центром +
+            растение в углу. Только на high-quality (не тащим на слабых). */}
+        {quality === "high" && (
+          <>
+            <Rug position={[0, 0.012, 0]} width={rugSize[0]} depth={rugSize[1]} />
+            {plantSpot && (
+              <Plant3D position={plantSpot} url={PLANT_MODELS[0]} targetHeightM={0.95} />
+            )}
+          </>
+        )}
 
         {wallElements.map((w) => (
           <WallElement3D
