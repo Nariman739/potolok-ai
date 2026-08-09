@@ -10,6 +10,11 @@ export interface Scene3DProps {
   onScreenshot?: (dataUrl: string) => void;
   /** Скрыть мастер-инструменты (кнопку «Снимок для КП»). Используется на публичной КП. */
   readOnly?: boolean;
+  /** DEV-конвейер: если задан — AI-захват НЕ идёт в API, а отдаёт сырые snapshot+маски
+   * сюда (для локальной покадровой отладки каждого элемента). См. /vision-capture. */
+  devCapture?: (sceneDataUrl: string, ceilingMaskDataUrl: string, floatingMaskDataUrl: string) => void;
+  /** DEV-конвейер: авто-запустить AI-захват через N мс после монтирования сцены. */
+  devAutoCaptureMs?: number;
 }
 
 export const cm2m = (cm: number) => cm / 100;

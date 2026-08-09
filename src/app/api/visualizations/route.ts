@@ -40,7 +40,7 @@ async function uploadImageToBlob(
 async function uploadDataUrlToBlob(
   dataUrl: string,
   masterId: string,
-  kind: "scene3d" | "scene2d",
+  kind: string,
 ): Promise<string> {
   const match = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dataUrl);
   if (!match) throw new Error("Невалидный data:image URL");
@@ -66,6 +66,10 @@ export async function POST(request: Request) {
       const body = (await request.json()) as {
         sourceType?: "scene3d" | "scene2d";
         sceneDataUrl?: string;
+        /** PNG-маска потолка из Three.js (белый потолок на чёрном) — для заморозки точного потолка. */
+        ceilingMaskDataUrl?: string;
+        /** PNG-маска свечения парящего (белый периметр на чёрном) — для детерминированного пост-glow. */
+        floatingMaskDataUrl?: string;
         elements?: RoomElement[];
         finish?: string;
         colorHex?: string;
@@ -109,8 +113,18 @@ export async function POST(request: Request) {
       const elements = Array.isArray(body.elements) ? body.elements : [];
 
       let originalUrl: string;
+      let ceilingMaskUrl: string | null = null;
+      let floatingMaskUrl: string | null = null;
       try {
         originalUrl = await uploadDataUrlToBlob(body.sceneDataUrl, master.id, body.sourceType);
+        // Маска потолка (опционально) — тот же размер что и снимок сцены.
+        if (body.ceilingMaskDataUrl) {
+          ceilingMaskUrl = await uploadDataUrlToBlob(body.ceilingMaskDataUrl, master.id, "ceiling-mask");
+        }
+        // Маска свечения парящего (опционально) — тот же размер.
+        if (body.floatingMaskDataUrl) {
+          floatingMaskUrl = await uploadDataUrlToBlob(body.floatingMaskDataUrl, master.id, "floating-mask");
+        }
       } catch (e) {
         return NextResponse.json(
           { error: e instanceof Error ? e.message : "Ошибка загрузки снимка" },
@@ -129,6 +143,8 @@ export async function POST(request: Request) {
           markup: {
             elements,
             finish: body.finish,
+            ceilingMaskUrl,
+            floatingMaskUrl,
             colorHex: body.colorHex || null,
             colorName: body.colorName || null,
             kelvin: typeof body.kelvin === "number" ? body.kelvin : null,

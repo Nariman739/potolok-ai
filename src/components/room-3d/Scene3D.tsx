@@ -28,6 +28,7 @@ import {
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
 import { R3FErrorBoundary } from "./R3FErrorBoundary";
 import { ScreenshotCapture } from "./ScreenshotCapture";
+import { AiSceneCapture, type HeroCam } from "./AiSceneCapture";
 import { Spot3D } from "./Spot3D";
 import { Chandelier3D } from "./Chandelier3D";
 import { Furniture3D } from "./Furniture3D";
@@ -62,7 +63,7 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
-export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly }: Scene3DProps) {
+export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly, devCapture, devAutoCaptureMs }: Scene3DProps) {
   const [spot, setSpot] = useState<ViewSpot>("center");
   const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
@@ -164,11 +165,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   const floorPreset = useMemo(() => getFloorPreset(floorId), [floorId]);
   const wallPreset = useMemo(() => getWallPreset(wallId), [wallId]);
 
-  const { centerOffset, roomSize } = useMemo(() => {
+  const { centerOffset, roomSize, halfX, halfZ } = useMemo(() => {
     if (vertices.length === 0) {
       return {
         centerOffset: { x: 0, z: 0 },
         roomSize: 5,
+        halfX: 2.5,
+        halfZ: 2.5,
       };
     }
     const xs = vertices.map((v) => cm2m(v.x));
@@ -182,6 +185,10 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return {
       centerOffset: { x: cx, z: cz },
       roomSize: Math.max(maxX - minX, maxY - minY, 2),
+      // Настоящие полу-размеры по КАЖДОЙ оси (м). heroCam обязан их использовать,
+      // иначе на неквадратной комнате камера по короткой оси вылезает за стену.
+      halfX: Math.max((maxX - minX) / 2, 1),
+      halfZ: Math.max((maxY - minY) / 2, 1),
     };
   }, [vertices]);
 
@@ -273,7 +280,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
 
   // AI-рендер: snapshot R3F → /api/visualizations (sourceType=scene3d) → render
   // → ready Visualization. Unified pipeline с гибридом (sourceType=reference) для фото клиента.
-  const handleAiCapture = useCallback(async (dataUrl: string) => {
+  const handleAiCapture = useCallback(async (dataUrl: string, maskDataUrl?: string, floatingMaskDataUrl?: string) => {
+    // DEV-конвейер: отдаём сырые snapshot+маски наружу и НЕ трогаем API/биллинг.
+    if (devCapture) {
+      devCapture(dataUrl, maskDataUrl ?? "", floatingMaskDataUrl ?? "");
+      return;
+    }
     setAiState("generating");
     setAiError(null);
     setAiResultUrl(null);
@@ -299,6 +311,8 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         body: JSON.stringify({
           sourceType: "scene3d",
           sceneDataUrl: dataUrl,
+          ceilingMaskDataUrl: maskDataUrl,
+          floatingMaskDataUrl: floatingMaskDataUrl || undefined,
           elements,
           finish: ceilingFinish,
           colorHex: colorEntry?.hex ?? "#FFFFFF",
@@ -336,7 +350,15 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       setAiError(e instanceof Error ? e.message : "Ошибка AI-рендера");
       setAiState("error");
     }
-  }, [ceilingFinish, ceilingColorId, elements, lightTemp, priceVariants, floorPreset, wallPreset]);
+  }, [ceilingFinish, ceilingColorId, elements, lightTemp, priceVariants, floorPreset, wallPreset, devCapture]);
+
+  // DEV-конвейер: авто-снимок через devAutoCaptureMs после монтирования (даём HDRI/
+  // текстурам/heavyFx подгрузиться), затем один раз дёргаем AI-захват.
+  useEffect(() => {
+    if (!devCapture || !devAutoCaptureMs) return;
+    const t = window.setTimeout(() => setAiTrigger((n) => n + 1), devAutoCaptureMs);
+    return () => window.clearTimeout(t);
+  }, [devCapture, devAutoCaptureMs]);
 
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
@@ -397,6 +419,39 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     }
     return result;
   }, [findWallAnchor, ceilingHeight, roomSize]);
+
+  // «Геройский» ракурс для AI-кадра: из угла, чуть выше уровня глаз и с наклоном
+  // ВВЕРХ на потолок + шире угол обзора → потолок (наш продукт) крупно в кадре,
+  // при этом видны пол/мебель/две стены. Одинаково работает на любой комнате.
+  const heroCam = useMemo<HeroCam>(() => {
+    // Ставим камеру ВНУТРИ комнаты у ближнего угла (по каждой оси отдельно, иначе
+    // на неквадратной комнате вылезаем за стену), на уровне глаз, с лёгким наклоном
+    // ВВЕРХ на потолок (наш продукт крупно), но так, чтобы читались пол/мебель/две
+    // стены и линия примыкания потолка (важно для парящего/периметра).
+    //
+    // АДАПТИВНО по размеру комнаты: маленькая комната → камеру дальше в угол + шире
+    // fov + ниже точка взгляда (иначе кадр = один потолок и близкие стены); большая →
+    // ýже fov. Опорные точки: 2.4м(мал.) / 4.0м(средн., проверенный кадр) / 7.0м(бол.).
+    const roomMax = 2 * Math.max(halfX, halfZ);
+    // Кусочно-линейная интерполяция между тремя опорами.
+    const lerp3 = (x: number, y0: number, y1: number, y2: number): number => {
+      if (x <= 2.4) return y0;
+      if (x >= 7) return y2;
+      if (x <= 4) return y0 + (y1 - y0) * ((x - 2.4) / (4 - 2.4));
+      return y1 + (y2 - y1) * ((x - 4) / (7 - 4));
+    };
+    const fov = lerp3(roomMax, 75, 62, 56);
+    const frac = lerp3(roomMax, 0.93, 0.86, 0.82);
+    const lookYf = lerp3(roomMax, 0.52, 0.6, 0.62);
+    const eye = HUMAN_EYE_HEIGHT - 0.05;
+    return {
+      pos: [-halfX * frac, eye, -halfZ * frac],
+      // смотрим чуть за центр к дальнему углу, целясь в верхнюю треть стены —
+      // потолок ложится в верх кадра, перспектива уходит вглубь комнаты.
+      look: [halfX * 0.15, ceilingM * lookYf, halfZ * 0.15],
+      fov,
+    };
+  }, [halfX, halfZ, ceilingM]);
 
   useEffect(() => {
     // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
@@ -849,7 +904,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         <LookAroundControls ref={lookRef} />
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
-        <ScreenshotCapture trigger={aiTrigger} onCapture={handleAiCapture} />
+        <AiSceneCapture trigger={aiTrigger} hero={heroCam} onCapture={handleAiCapture} />
         <CanvasGrabber ref={grabberRef} />
 
         {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
@@ -875,9 +930,18 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       </Canvas>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
-        {/* AI-фото законсервирована — нет провайдера который даёт точность 1:1
-            с чертежом + фотореализм одновременно. Возвращаемся после феста с
-            ControlNet depth pipeline. Mobile/web обе кнопки скрыты. */}
+        {/* AI-фото ВЕРНУЛИ (06.08): точность 1:1 теперь держим заморозкой потолка
+            из 3D по маске (AiSceneCapture → compositeWithMask), AI красит только
+            комнату. Раньше было законсервировано из-за «уплывающего» потолка. */}
+        {!readOnly && (
+          <button
+            onClick={() => setAiTrigger((t) => t + 1)}
+            disabled={aiState === "generating"}
+            className="h-10 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow border border-purple-700 flex items-center gap-1.5 text-xs font-bold hover:opacity-90 active:scale-95 disabled:opacity-60"
+          >
+            {aiState === "generating" ? "AI рисует…" : "✨ AI-фото"}
+          </button>
+        )}
         {!readOnly && (
           <button
             onClick={() => setScreenshotTrigger((t) => t + 1)}
@@ -987,16 +1051,8 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         )}
       </div>
 
-      {/* Переключатель ракурса. В клиентском режиме показываем ТОЛЬКО если есть
-          куда переключиться (дверь/окно) — иначе одна кнопка «Центр» = лишний
-          шум. В редакторе показываем всегда. */}
-      {(!readOnly || spots.door !== null || spots.window !== null) && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-wrap justify-center gap-1.5 bg-white/90 backdrop-blur rounded-full shadow-lg border px-2 py-1.5 max-w-[95%]">
-          <SpotButton current={spot} value="center" label="🧍 Центр" onSelect={setSpot} enabled={true} />
-          <SpotButton current={spot} value="door" label="🚪 От двери" onSelect={setSpot} enabled={spots.door !== null} />
-          <SpotButton current={spot} value="window" label="🪟 От окна" onSelect={setSpot} enabled={spots.window !== null} />
-        </div>
-      )}
+      {/* Пресеты ракурса (Центр/От двери/От окна) убраны — обзор крутится пальцем,
+          а AI-кадр снимается с фиксированного «геройского» ракурса (heroCam). */}
 
       {/* Подсказка сама исчезает через 4с чтобы не мешать картинке. */}
       {showHint && (
@@ -1137,37 +1193,6 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         </div>
       )}
     </div>
-  );
-}
-
-function SpotButton({
-  current,
-  value,
-  label,
-  onSelect,
-  enabled,
-}: {
-  current: ViewSpot;
-  value: ViewSpot;
-  label: string;
-  onSelect: (p: ViewSpot) => void;
-  enabled: boolean;
-}) {
-  const active = current === value;
-  return (
-    <button
-      onClick={() => enabled && onSelect(value)}
-      disabled={!enabled}
-      className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors ${
-        active
-          ? "bg-[#1e3a5f] text-white"
-          : enabled
-            ? "text-gray-700 hover:bg-gray-100 active:scale-95"
-            : "text-gray-300 cursor-not-allowed"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

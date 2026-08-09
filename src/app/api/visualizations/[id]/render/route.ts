@@ -30,8 +30,9 @@ import {
   getImageDimensions,
   compositeWithMask,
   generateMarkupOverlay,
+  addPerimeterGlow,
 } from "@/lib/visualization-mask";
-import { buildScenePrompt, buildHybridScenePrompt } from "@/lib/ai-scene-prompt";
+import { buildScenePrompt, buildHybridScenePrompt, buildFrozenCeilingScenePrompt } from "@/lib/ai-scene-prompt";
 import type { RoomElement } from "@/lib/room-types";
 import {
   loadBillingState,
@@ -509,6 +510,8 @@ async function renderFromScene(
   const markup = (viz.markup ?? {}) as {
     elements?: RoomElement[];
     finish?: CeilingFinish;
+    ceilingMaskUrl?: string | null;
+    floatingMaskUrl?: string | null;
     colorHex?: string;
     colorName?: string;
     extraPrompt?: string;
@@ -568,6 +571,10 @@ async function renderFromScene(
   const floorPromptDesc = typeof markup.floorPromptDesc === "string" ? markup.floorPromptDesc : undefined;
   const wallPromptDesc = typeof markup.wallPromptDesc === "string" ? markup.wallPromptDesc : undefined;
 
+  // Путь «заморозка потолка» (scene3d + маска, без reference-фото): точный потолок
+  // вернём из 3D → промпту не надо беречь фикстуры, гоним максимум фотореализма комнаты.
+  const useFrozenPath = !hasReference && sourceType === "scene3d" && Boolean(markup.ceilingMaskUrl);
+
   const customPrompt = hasReference
     ? buildHybridScenePrompt({
         elements,
@@ -578,6 +585,20 @@ async function renderFromScene(
         sourceType,
         referenceDescription,
         lightTempPromptHint,
+        linkedVariants,
+        floorPromptDesc,
+        wallPromptDesc,
+      })
+    : useFrozenPath
+    ? buildFrozenCeilingScenePrompt({
+        elements,
+        finish,
+        colorHex: markup.colorHex,
+        colorName: markup.colorName,
+        extraPrompt: markup.extraPrompt,
+        sourceType,
+        lightTempPromptHint,
+        kelvin: typeof markup.kelvin === "number" ? markup.kelvin : undefined,
         linkedVariants,
         floorPromptDesc,
         wallPromptDesc,
@@ -595,13 +616,13 @@ async function renderFromScene(
         wallPromptDesc,
       });
 
-  // FLUX Kontext не умеет multi-image, при гибриде форсим nano-banana.
-  // Для чистого scene3d/scene2d (без reference-фото клиента) дефолтом ставим
-  // replicate-flux-kontext — он жёстко держит reference image (3D-снимок),
-  // в отличие от nano-banana, который интерпретирует снимок как "вдохновение"
-  // и рисует свои позиции фикстур.
+  // Провайдер = nano-banana (Gemini 2.5 Flash Image) — он реально фотореалит комнату
+  // (flux-kontext держал геометрию, но оставлял «CG-вид»). Раньше боялись, что nano
+  // «уплывёт» по потолку — теперь это не важно: точный потолок мы ВОЗВРАЩАЕМ заморозкой
+  // по маске из 3D (см. compositeWithMask ниже). Значит nano свободно делает красоту
+  // комнаты, а потолок остаётся 1:1.
   const provider: VisualizationProvider =
-    hasReference ? "nano-banana" : providerOverride ?? "replicate-flux-kontext";
+    providerOverride ?? "nano-banana";
 
   // Заглушка options — реально используется только customPrompt + photo/reference.
   const options: VisualizationOptions = {
@@ -653,12 +674,72 @@ async function renderFromScene(
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
-  const renderBuf = Buffer.from(result.imageBase64, "base64");
-  const renderExt = result.imageMime.includes("png") ? "png" : "jpg";
+  let renderBuf: Buffer = Buffer.from(result.imageBase64, "base64");
+  let renderMime = result.imageMime;
+
+  // === ЗАМОРОЗКА ПОТОЛКА ===
+  // Для чистого scene3d (без reference-фото клиента) держим потолок ТОЧНО из 3D:
+  // AI фотореалит комнату, а зону потолка (по маске из Three.js) возвращаем
+  // пиксель-в-пиксель из 3D-снимка. Гарантия: клиент видит ровно тот потолок,
+  // что мастер напроектировал — AI его не «переизобретает».
+  // compositeWithMask(original, rendered, mask): белое в маске → rendered, чёрное → original.
+  // Маска = белый потолок на чёрном → берём original=AI-рендер, rendered=3D-снимок.
+  if (!hasReference && markup.ceilingMaskUrl) {
+    try {
+      const maskRes = await fetch(markup.ceilingMaskUrl);
+      if (maskRes.ok) {
+        const maskBuf = Buffer.from(await maskRes.arrayBuffer());
+        const sceneBuf = Buffer.from(sceneBase64, "base64");
+        // Композитим в РОДНОМ разрешении 3D-снимка (потолок/софиты остаются чёткими),
+        // а AI-рендер комнаты подтягиваем вверх до него. Иначе 3D ужимался под меньший
+        // AI-кадр → софиты замыливались и сплющивались (разные аспекты).
+        const sceneMeta = await (await import("sharp")).default(sceneBuf).metadata();
+        const upscaledAi = await (await import("sharp")).default(renderBuf)
+          .resize(sceneMeta.width, sceneMeta.height, { fit: "fill" })
+          .jpeg({ quality: 95 })
+          .toBuffer();
+        renderBuf = upscaledAi;
+        renderBuf = await compositeWithMask(renderBuf, sceneBuf, maskBuf);
+        renderMime = "image/jpeg";
+        console.log("[scene render] ceiling frozen from 3D via mask");
+      } else {
+        console.warn(`[scene render] mask fetch failed HTTP ${maskRes.status} — skip freeze`);
+      }
+    } catch (e) {
+      console.warn("[scene render] ceiling freeze failed, using raw AI render:", e);
+    }
+  }
+
+  // === ДЕТЕРМИНИРОВАННОЕ СВЕЧЕНИЕ ПАРЯЩЕГО ===
+  // Свечение LED-периметра живёт на кромке/верху стены (ВНЕ маски потолка) → его AI
+  // рисует по промпту, но НЕточно. Поверх добавляем мягкий тёплый glow по РЕАЛЬНОЙ
+  // маске периметра из 3D (цвет по Кельвину) → парящий гарантированно светится там,
+  // где мастер его поставил, независимо от seed модели.
+  if (!hasReference && markup.floatingMaskUrl) {
+    try {
+      const glowRes = await fetch(markup.floatingMaskUrl);
+      if (glowRes.ok) {
+        const glowMaskBuf = Buffer.from(await glowRes.arrayBuffer());
+        renderBuf = await addPerimeterGlow(
+          renderBuf,
+          glowMaskBuf,
+          typeof markup.kelvin === "number" ? markup.kelvin : undefined,
+        );
+        renderMime = "image/jpeg";
+        console.log("[scene render] floating perimeter glow applied");
+      } else {
+        console.warn(`[scene render] floating mask fetch failed HTTP ${glowRes.status} — skip glow`);
+      }
+    } catch (e) {
+      console.warn("[scene render] floating glow failed, continuing:", e);
+    }
+  }
+
+  const renderExt = renderMime.includes("png") ? "png" : "jpg";
   const renderBlob = await put(
     `visualization/${masterId}/renders/${Date.now()}.${renderExt}`,
     renderBuf,
-    { access: "public", contentType: result.imageMime, addRandomSuffix: true },
+    { access: "public", contentType: renderMime, addRandomSuffix: true },
   );
 
   const [render] = await prisma.$transaction([

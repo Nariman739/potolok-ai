@@ -158,6 +158,69 @@ export async function generateMarkupOverlay(
     .toBuffer();
 }
 
+/** Приблизительный цвет свечения по цветовой температуре (Кельвины) — тёплый→холодный. */
+function kelvinToGlowRGB(kelvin?: number): { r: number; g: number; b: number } {
+  const k = typeof kelvin === "number" ? kelvin : 2850;
+  if (k <= 3300) return { r: 255, g: 200, b: 142 }; // тёплый янтарь 2700-3000K
+  if (k >= 5000) return { r: 214, g: 228, b: 255 }; // холодный дневной 6000-6500K
+  return { r: 255, g: 244, b: 232 };                // нейтральный 4000K
+}
+
+/** Один тонированный слой glow: маска периметра → blur → тон по Кельвину × интенсивность.
+ * Возвращает RGB (чёрный фон + тёплое ядро), готов к screen-композиту. */
+async function tintedGlowLayer(
+  maskBuffer: Buffer,
+  width: number,
+  height: number,
+  blurRadius: number,
+  intensity: number,
+  tint: { r: number; g: number; b: number },
+): Promise<Buffer> {
+  const gray = await sharp(maskBuffer)
+    .resize(width, height, { fit: "fill" })
+    .greyscale()
+    .blur(blurRadius)
+    .toColourspace("srgb") // 1 канал → 3 одинаковых канала
+    .toBuffer();
+  // Пер-канальный множитель = интенсивность × доля тона. Чёрный фон остаётся чёрным
+  // (под screen ничего не добавляет), периметр приобретает тёплый цвет нужной яркости.
+  return sharp(gray)
+    .linear([(intensity * tint.r) / 255, (intensity * tint.g) / 255, (intensity * tint.b) / 255], [0, 0, 0])
+    .toBuffer();
+}
+
+/** Детерминированное свечение парящего: по маске периметра из 3D добавляем мягкий тёплый
+ * glow (два слоя — широкий ореол + яркое ядро) поверх картинки через blend "screen".
+ * Не зависит от seed модели → парящий гарантированно светится в ПРАВИЛЬНОМ месте.
+ * Если маска пустая (парящего нет) — возвращает исходник без изменений. */
+export async function addPerimeterGlow(
+  baseBuffer: Buffer,
+  floatingMaskBuffer: Buffer,
+  kelvin?: number,
+): Promise<Buffer> {
+  const meta = await sharp(baseBuffer).metadata();
+  const width = meta.width ?? 1024;
+  const height = meta.height ?? 1024;
+
+  // Пустая маска (парящего нет) → пропускаем.
+  const stats = await sharp(floatingMaskBuffer).greyscale().stats();
+  const maxVal = stats.channels[0]?.max ?? 0;
+  if (maxVal < 20) return baseBuffer;
+
+  const tint = kelvinToGlowRGB(kelvin);
+  const minDim = Math.min(width, height);
+  const halo = await tintedGlowLayer(floatingMaskBuffer, width, height, Math.max(8, Math.round(minDim * 0.03)), 0.65, tint);
+  const core = await tintedGlowLayer(floatingMaskBuffer, width, height, Math.max(3, Math.round(minDim * 0.008)), 0.9, tint);
+
+  return await sharp(baseBuffer)
+    .composite([
+      { input: halo, blend: "screen" },
+      { input: core, blend: "screen" },
+    ])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
 /** Composite: где маска БЕЛАЯ → пиксели из rendered, где ЧЁРНАЯ → пиксели из original.
  * Это даёт hard-constraint: AI-результат "вырезается" из rendered ТОЛЬКО внутри polygon,
  * а вся комната (стены/пол/мебель) остаётся пиксель-в-пиксель из original.
@@ -172,8 +235,12 @@ export async function compositeWithMask(
   const width = origMeta.width ?? 1024;
   const height = origMeta.height ?? 1024;
 
+  // removeAlpha() ЗДЕСЬ, отдельным вызовом (не в одном пайплайне с joinChannel ниже) —
+  // ровно 3 канала (RGB). Если removeAlpha и joinChannel в одном пайплайне sharp,
+  // добавленный маской канал теряется (на выходе снова 3 канала, без альфы).
   const renderedResized = await sharp(renderedBuffer)
     .resize(width, height, { fit: "fill" })
+    .removeAlpha()
     .toBuffer();
 
   // Умеренный feather 0.6% — мягкий переход на границе, но не съедает фикстуры
@@ -186,10 +253,11 @@ export async function compositeWithMask(
     .blur(featherRadius)
     .toBuffer();
 
-  // Шаг 1: вырезаем из rendered только зону маски (dest-in делает прозрачным где mask чёрная)
+  // Шаг 1: делаем маску АЛЬФА-каналом rendered (где mask бело → непрозрачно → rendered,
+  // где чёрно → прозрачно → проступает original). renderedResized уже RGB (3 канала,
+  // см. выше), поэтому joinChannel(mask) даёт ровно 4 канала = RGBA с маской в альфе.
   const renderedWithAlpha = await sharp(renderedResized)
-    .ensureAlpha()
-    .joinChannel(maskResized) // маска становится альфа-каналом
+    .joinChannel(maskResized)
     .png()
     .toBuffer();
 

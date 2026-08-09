@@ -115,6 +115,8 @@ export interface SceneSourcePromptInput {
   sourceType: "scene3d" | "scene2d";
   /** Готовая фраза про температуру света для добавления в промпт (warm 2700K / neutral 4000K / cool 6500K). */
   lightTempPromptHint?: string;
+  /** Температура света в Кельвинах — фолбэк, если lightTempPromptHint не передан. */
+  kelvin?: number;
   /** Конкретные товары из прайса мастера, привязанные к RoomElement'ам — для AI рендера реальных моделей. */
   linkedVariants?: LinkedPriceVariantInfo[];
   /** Описание пресета пола (oak parquet / light laminate / gray tile / dark parquet). */
@@ -225,6 +227,115 @@ export function buildScenePrompt(input: SceneSourcePromptInput): string {
 
   if (input.extraPrompt) parts.push("MASTER NOTE: " + input.extraPrompt);
 
+  return parts.join("\n");
+}
+
+/**
+ * Промпт для пути «заморозка потолка»: точный потолок мы возвращаем из 3D по маске
+ * ПОСЛЕ рендера (compositeWithMask). Потолок = наш продукт (заморожен), а МЕБЕЛЬ в 3D —
+ * это лишь болванки-плейсхолдеры, НЕ наш продукт. Поэтому даём модели свободу ЗАМЕНИТЬ
+ * болванки на реальную красивую мебель того же типа в тех же местах — так nano делает
+ * настоящее «журнальное» фото, а не осторожно перекрашивает CG-кубики (вариант V3,
+ * подтверждён на реальных кадрах 06.08 — заметно живее «сохрани точь-в-точь»).
+ */
+/** Двойной якорь температуры (Кельвин + слово) из готовой фразы или из kelvin.
+ * Двойной якорь надёжнее одиночного: nano уверенно ловит и число, и настроение. */
+function resolveLightTempHint(input: SceneSourcePromptInput): string {
+  if (input.lightTempPromptHint) return input.lightTempPromptHint;
+  const k = input.kelvin;
+  if (typeof k === "number") {
+    if (k <= 3300) return "very warm cozy 2700-3000K light (golden, amber, inviting)";
+    if (k >= 5000) return "cool crisp 6000-6500K daylight (bright, clean, slightly bluish, modern)";
+    return "neutral clean 4000K white light (balanced, true colors)";
+  }
+  return "warm interior light";
+}
+
+export function buildFrozenCeilingScenePrompt(input: SceneSourcePromptInput): string {
+  const g = groupElements(input.elements);
+  const surfaces: string[] = [];
+  if (input.floorPromptDesc) surfaces.push(`real ${input.floorPromptDesc} with visible grain and soft natural reflections`);
+  if (input.wallPromptDesc) surfaces.push(`real matte ${input.wallPromptDesc} with subtle plaster texture and soft light gradients`);
+  const tempHint = resolveLightTempHint(input);
+  // Привязываем температуру и к дневному свету, и к САМИМ фикстурам (не только ambient) —
+  // иначе выбор мастера читается слабо.
+  const lighting = `soft natural daylight from the window blended with ${tempHint}; ALL ceiling fixtures and LED glow emit exactly this ${tempHint} color temperature`;
+
+  // Финиш влияет на блики потолка. При глянце просим отражения светильников/окна.
+  const finishLine =
+    input.finish === "glossy"
+      ? "The ceiling surface is HIGH-GLOSS lacquered stretch fabric — add soft mirror-like reflections of the room, fixtures and window on it."
+      : input.finish === "satin"
+      ? "The ceiling surface is SATIN stretch fabric — very soft, gentle sheen, faint reflections."
+      : "The ceiling surface is MATTE stretch fabric — soft, non-reflective, even.";
+
+  // Инструкция по потолку зависит от типа. Парящий (floating) — свечение живёт на
+  // ПЕРИМЕТРЕ / верху стены, ВНЕ маски заморозки → его обязан нарисовать AI, иначе
+  // потолок выходит плоско-белым (проверено 08.08). Описываем периметр как ПЕРВИЧНЫЙ
+  // источник света. Для остального ПЛОСКОГО потолка поле отдаём заморозке.
+  const ceilingLine =
+    g.floating > 0
+      ? `CEILING — THIS IS THE HERO, render it precisely: a modern FLOATING stretch ceiling («парящий потолок»). Around the ENTIRE perimeter, where the flat ceiling meets the walls, a HIDDEN LED cove strip sits in a recessed reveal gap and acts as the PRIMARY light source of the room: render a continuous, even ${tempHint} glow tracing the whole ceiling edge, spilling softly into the wall recess and onto the ceiling edge, with a clear halo/gradient fading down the upper walls. The ceiling field itself stays clean flat and appears to «float», detached from the walls by the glowing reveal. This perimeter LED glow must be clearly visible and beautiful — it is the main selling feature.`
+      : `The ceiling is a flat stretch ceiling; its surface is composited back separately afterward, so keep it a clean plain light surface and spend the effort on the ROOM. ${finishLine}`;
+
+  // Фикстуры НА плоскости потолка (споты/трек/линия/люстра/подвес) точный вид держит
+  // заморозка из 3D, но перечисляем их, чтобы AI выдержал согласованное освещение и
+  // НЕ дорисовывал случайных светильников (наблюдали ложный спот на стене).
+  const ceilingFixtures: string[] = [];
+  if (g.spots > 0) ceilingFixtures.push(`${g.spots} small recessed round LED spotlight${g.spots > 1 ? "s" : ""} flush in the ceiling`);
+  if (g.tracks > 0) ceilingFixtures.push(`${g.tracks} slim magnetic track${g.tracks > 1 ? "s" : ""} with tiny LED spots`);
+  if (g.lightlines > 0) ceilingFixtures.push(`${g.lightlines} recessed linear LED light line${g.lightlines > 1 ? "s" : ""}`);
+  if (g.pendants > 0) ceilingFixtures.push(`${g.pendants} pendant light${g.pendants > 1 ? "s" : ""}`);
+  if (g.chandeliers > 0) ceilingFixtures.push(`${g.chandeliers} chandelier${g.chandeliers > 1 ? "s" : ""}`);
+
+  // Архитектурные элементы ВНЕ потолка (шторы/гардина/подшторник) — их заморозка НЕ
+  // возвращает (они на стенах/окне), поэтому их обязан нарисовать AI, иначе исчезнут.
+  const archNotes: string[] = [];
+  if (g.curtains > 0) archNotes.push(`real floor-length fabric curtains framing the window`);
+  if (g.builtinGardinas > 0) archNotes.push(`a recessed ceiling curtain niche (gardina) running along the window wall with drapes`);
+  if (g.subcurtains > 0) archNotes.push(`a slim recessed curtain pocket where the ceiling meets the window wall`);
+  if (g.showerCurtains > 0) archNotes.push(`a glass shower partition in that spot`);
+
+  const parts: string[] = [
+    "Turn this 3D CAD room preview into a REAL, professionally photographed interior — high-end magazine quality, indistinguishable from a real full-frame DSLR photo. The 3D furniture pieces are only PLACEHOLDERS.",
+    "",
+    "You MAY replace each placeholder object with a REAL, photorealistic furniture piece of the SAME type and roughly the SAME position & size, styled beautifully and consistently:",
+    "  • grey placeholder sofa → real fabric sofa (weave, folds, cushions) in that spot;",
+    "  • placeholder chair → real designer chair (wood/metal/upholstery);",
+    "  • placeholder table → real wood or marble table, lightly styled (a book, a vase);",
+    "  • placeholder wardrobe/cabinets → real matte or wood furniture with realistic edges & handles;",
+    "  • door → real painted/veneer door with realistic frame & handle; windows → real glass with a soft hint of view outside.",
+    ...(surfaces.length ? ["", "Room surfaces: " + surfaces.join("; ") + "."] : []),
+    ...(archNotes.length ? ["", "Also render these room elements (they belong to this project): " + archNotes.join("; ") + "."] : []),
+    "",
+    `LIGHTING: ${lighting}. Real soft shadows cast by furniture, gentle ambient occlusion in corners and under objects, warm indirect bounce light, subtle highlights — photographic depth, NOT flat even CG shading.`,
+    ...(ceilingFixtures.length
+      ? ["", `The ceiling has ONLY these fixtures (do not invent extra lights): ${ceilingFixtures.join("; ")}.`]
+      : []),
+    ...(input.linkedVariants && input.linkedVariants.length > 0
+      ? [
+          "",
+          "REAL PRODUCTS from the master's catalog — match the appearance (shape, color, mounting) of the corresponding fixtures:",
+          ...input.linkedVariants.map((v) => {
+            const spec: string[] = [];
+            if (v.physicalWidthMm) spec.push(`${v.physicalWidthMm}mm wide/diameter`);
+            if (v.physicalHeightMm) spec.push(`${v.physicalHeightMm}mm depth/height`);
+            if (v.colorHex) spec.push(`body color ${v.colorHex}`);
+            if (v.mountingType) spec.push(`${v.mountingType}-mounted`);
+            const specStr = spec.length > 0 ? ` — ${spec.join(", ")}` : "";
+            return `  • ${v.category}: «${v.name}»${specStr}`;
+          }),
+        ]
+      : []),
+    "",
+    "PALETTE: calm, cohesive, warm-minimalist — a tight neutral designer palette (warm whites, greige, natural oak, one soft muted accent). Tasteful and uncluttered, serene editorial mood. No garish colors, no busy patterns, no visual noise.",
+    "",
+    "KEEP THE SAME: overall room layout & proportions, wall positions, window & door positions, and the CAMERA angle & perspective. Do NOT add extra rooms or change the architecture. No people, no pets, no text, no watermark, no UI.",
+    "",
+    ceilingLine,
+    "Ultra photorealistic, sharp focus, natural photographic lighting, 4K.",
+  ];
+  if (input.extraPrompt) parts.push("", "MASTER NOTE: " + input.extraPrompt);
   return parts.join("\n");
 }
 

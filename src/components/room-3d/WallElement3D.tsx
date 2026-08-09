@@ -2,7 +2,7 @@
 
 import * as THREE from "three";
 import type { ElementType } from "@/lib/room-types";
-import { DOOR_HEIGHT_M, DOOR_THICKNESS_M, WINDOW_HEIGHT_M, WINDOW_SILL_M } from "./constants";
+import { DOOR_HEIGHT_M, DOOR_THICKNESS_M, WINDOW_HEIGHT_M, WINDOW_SILL_M, FLOATING_MASK_LAYER } from "./constants";
 
 interface WallElement3DProps {
   position: [number, number, number];
@@ -55,7 +55,14 @@ export function WallElement3D({
 
       {type === "floating" && (
         <>
-          <mesh position={[0, ceilingM - 0.05, -0.05]}>
+          <mesh
+            position={[0, ceilingM - 0.05, -0.05]}
+            // Помечаем свечение слоем FLOATING_MASK_LAYER → отдельный проход даёт маску
+            // периметра для детерминированного пост-свечения (см. AiSceneCapture/addGlow).
+            ref={(m) => {
+              if (m) m.layers.enable(FLOATING_MASK_LAYER);
+            }}
+          >
             <boxGeometry args={[lengthM, 0.012, 0.05]} />
             <meshStandardMaterial
               color="#FFEFD5"
@@ -63,6 +70,21 @@ export function WallElement3D({
               emissiveIntensity={2.0}
               toneMapped={false}
             />
+          </mesh>
+          {/* Невидимая в beauty полоса-помощник ТОЛЬКО на слое маски (layer 4, без 0):
+              делает маску периметра выше/заметнее (глубина ниши + верх стены), чтобы
+              пост-свечение легло красивым мягким градиентом, а не ниткой. */}
+          <mesh
+            position={[0, ceilingM - 0.12, -0.03]}
+            ref={(m) => {
+              if (m) {
+                m.layers.disableAll();
+                m.layers.set(FLOATING_MASK_LAYER);
+              }
+            }}
+          >
+            <boxGeometry args={[lengthM, 0.16, 0.02]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
           <pointLight
             position={[0, ceilingM - 0.06, -0.08]}

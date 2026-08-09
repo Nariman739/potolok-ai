@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { cm2m, type Vertex2D } from "./types";
+import { CEILING_MASK_LAYER } from "./constants";
 import { R3FErrorBoundary } from "./R3FErrorBoundary";
 
 // Обёртка над текстурой: Suspense показывает plain-цвет ПОКА грузится, а
@@ -317,7 +318,16 @@ export function Room3D({
       </mesh>
 
       {!hideCeiling && (
-        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ceilingM, 0]}>
+        <mesh
+          rotation={[Math.PI / 2, 0, 0]}
+          position={[0, ceilingM, 0]}
+          name="ceiling-surface"
+          // Помечаем потолок доп. слоем CEILING_MASK_LAYER → при AI-захвате
+          // рендерим его отдельным проходом как силуэт-маску (см. AiSceneCapture).
+          ref={(m) => {
+            if (m) m.layers.enable(CEILING_MASK_LAYER);
+          }}
+        >
           <shapeGeometry args={[floorShape]} />
           {/* MeshPhysicalMaterial для натяжного потолка (Нариман 2026-06-27).
               clearcoat = реалистичный лак на сатине/глянце.
