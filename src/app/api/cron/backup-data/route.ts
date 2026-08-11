@@ -17,6 +17,18 @@ import { prisma } from "@/lib/prisma";
 //
 // Восстановление при инциденте — ручное (одноразовый скрипт). Backup лежит
 // в Vercel Blob как gzipped JSON, читается любым `gunzip | jq`.
+//
+// ⚠️ SECURITY (фикс CRIT-1 после аудита 2026-06-06):
+//   Vercel Blob API не поддерживает `access: "private"` — все blob'ы
+//   технически отдаются по CDN URL. Защита через:
+//     1. `addRandomSuffix: true` → URL содержит ~24-байтный random,
+//        неугадываемый. По имени `backups/2026-06-06.json.gz` файл больше
+//        НЕ открывается публично.
+//     2. URL'ы НИКУДА не логгируем и не возвращаем в response.
+//     3. Cron возвращает только counts/bytes, не key.
+//   Дополнительно: владелец проекта (owner) может получить список через
+//   `list({ prefix: "backups/" })` — это требует auth-токен Vercel,
+//   доступен только из backend по BLOB_READ_WRITE_TOKEN.
 
 export const maxDuration = 60;
 
@@ -65,24 +77,38 @@ export async function GET(request: NextRequest) {
   const json = JSON.stringify(dump);
   const gzipped = gzipSync(Buffer.from(json, "utf8"));
 
-  const key = `${BACKUP_PREFIX}${todayKeyAlmaty()}.json.gz`;
+  // ⚠️ CRIT-1 fix: НЕ используем allowOverwrite + дата-имя, иначе URL
+  // предсказуем. Вместо этого: addRandomSuffix → URL содержит random,
+  // плюс retention ниже сначала удалит старые today-файлы.
+  const datePart = todayKeyAlmaty();
+  const key = `${BACKUP_PREFIX}${datePart}.json.gz`;
+
+  // Сначала удаляем все ранее залитые сегодня дампы (если retry случился).
+  // Раньше allowOverwrite справлялся, но теперь имена с random-суффиксом,
+  // поэтому overwrite не работает — чистим вручную.
+  try {
+    const { blobs: todayBlobs } = await list({ prefix: `${BACKUP_PREFIX}${datePart}` });
+    for (const b of todayBlobs) {
+      await del(b.url);
+    }
+  } catch (err) {
+    console.error("[backup-data] cleanup of today's prior dumps failed (continuing):", err);
+  }
 
   await put(key, gzipped, {
-    access: "public",
+    access: "public", // единственный поддерживаемый Vercel Blob mode (см. блок выше)
     contentType: "application/gzip",
-    // allowOverwrite чтобы повторный запуск в тот же день (например, retry
-    // после сетевой ошибки) перезаписал, а не плодил суффиксы.
-    allowOverwrite: true,
+    addRandomSuffix: true, // ← ключевая защита: URL непредсказуем
   });
 
   // ── Retention: удаляем дампы старше 30 дней ─────────────────────────
+  // Имя теперь `backups/YYYY-MM-DD-RANDOMSUFFIX.json.gz` — regex обновлён.
   const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   let purged = 0;
   try {
     const { blobs } = await list({ prefix: BACKUP_PREFIX });
     for (const blob of blobs) {
-      // Имя формата backups/YYYY-MM-DD.json.gz — парсим дату из имени.
-      const m = blob.pathname.match(/backups\/(\d{4}-\d{2}-\d{2})\.json\.gz$/);
+      const m = blob.pathname.match(/backups\/(\d{4}-\d{2}-\d{2})-?[A-Za-z0-9]*\.json\.gz$/);
       if (!m) continue;
       const date = new Date(m[1] + "T00:00:00Z");
       if (date.getTime() < cutoff) {
@@ -94,9 +120,10 @@ export async function GET(request: NextRequest) {
     console.error("[backup-data] retention cleanup failed (continuing):", err);
   }
 
+  // ⚠️ В response НЕ возвращаем `key` или URL — это снижает риск утечки.
+  // Только метаданные. Owner может найти бэкап через `list()` из backend.
   return NextResponse.json({
     ok: true,
-    key,
     bytes: gzipped.length,
     counts: dump.counts,
     purged,

@@ -3,24 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatPrice } from "@/lib/format";
 import { changeClientStatus, addClientEvent } from "@/lib/clients";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-// In-memory rate limit (best-effort; fine for a single-instance Vercel function).
-// 5 attempts per IP per 15 minutes — enough to keep enumeration noise down
-// without blocking legit "double-tap" confirms.
+// HIGH-1 fix (аудит 2026-06-06): был in-memory Map, сбрасывался на каждом
+// cold-start Vercel Lambda → защита от перебора publicId по факту не работала
+// под нагрузкой. Перешли на Upstash (distributed) через checkRateLimit.
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
-const attempts = new Map<string, { count: number; firstAt: number }>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const rec = attempts.get(ip);
-  if (!rec || now - rec.firstAt > WINDOW_MS) {
-    attempts.set(ip, { count: 1, firstAt: now });
-    return false;
-  }
-  rec.count += 1;
-  return rec.count > MAX_ATTEMPTS;
-}
 
 export async function POST(
   request: Request,
@@ -34,8 +23,12 @@ export async function POST(
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       "unknown";
-    if (rateLimited(ip)) {
-      return NextResponse.json({ error: "Слишком много попыток" }, { status: 429 });
+    const rl = await checkRateLimit(`confirm:${ip}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Слишком много попыток" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const estimate = await prisma.estimate.findFirst({
