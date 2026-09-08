@@ -25,7 +25,8 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden">
+    // pb с safe-area — чтобы на iPhone кнопки меню не лезли под системную полоску
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const isActive =

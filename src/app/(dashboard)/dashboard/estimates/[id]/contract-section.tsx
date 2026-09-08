@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,8 @@ type Props = {
   contractSignerName: string | null;
   clientPhone: string | null;
   contractConfigured: boolean;
+  /** Незаполненные реквизиты — показываем мастеру, чего не хватает. */
+  missingRequisites: string[];
   defaultPrepaymentPercent: number;
   workStartDate: string | null;
   workDurationDays: number | null;
@@ -42,6 +45,7 @@ export function ContractSection({
   contractSignerName,
   clientPhone,
   contractConfigured,
+  missingRequisites,
   defaultPrepaymentPercent,
   workStartDate,
   workDurationDays,
@@ -114,10 +118,14 @@ export function ContractSection({
             Электронный договор
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Заполните реквизиты в профиле, чтобы создать электронный договор.
+            Договор подставит ваши реквизиты автоматически — заполните их один
+            раз в профиле, дальше всё будет собираться само.
           </p>
+          <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+            <Link href="/dashboard/profile">Заполнить реквизиты</Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -136,6 +144,19 @@ export function ContractSection({
           <p className="text-sm text-muted-foreground">
             Создайте договор и отправьте клиенту ссылку. Клиент откроет в браузере и подпишет электронно — без распечатки. Все данные сохранятся в карточке клиента.
           </p>
+          {missingRequisites.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-medium">
+                В договоре не хватит: {missingRequisites.join(", ")}
+              </p>
+              <p className="text-xs mt-1 text-amber-800">
+                Договор создастся и так, но клиент увидит документ без этих данных.{" "}
+                <Link href="/dashboard/profile" className="underline font-medium">
+                  Заполнить в профиле
+                </Link>
+              </p>
+            </div>
+          )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
             onClick={() => setTermsOpen(true)}

@@ -1,6 +1,10 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import {
+  isContractConfigured,
+  missingContractFields,
+} from "@/lib/contract-requirements";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +138,7 @@ export default async function EstimateDetailPage({
           publicId={estimate.publicId}
           clientPhone={estimate.clientPhone}
           status={estimate.status}
-          contractConfigured={!!master.contractType && master.contractType !== "none"}
+          contractConfigured={isContractConfigured(master)}
           validUntil={estimate.validUntil}
         />
       </div>
@@ -167,7 +171,8 @@ export default async function EstimateDetailPage({
         contractSignedAt={estimate.contractSignedAt ? estimate.contractSignedAt.toISOString() : null}
         contractSignerName={estimate.contractSignerName}
         clientPhone={estimate.clientPhone}
-        contractConfigured={!!master.contractType && master.contractType !== "none"}
+        contractConfigured={isContractConfigured(master)}
+        missingRequisites={missingContractFields(master)}
         defaultPrepaymentPercent={master.prepaymentPercent ?? 50}
         workStartDate={estimate.workStartDate ? estimate.workStartDate.toISOString() : null}
         workDurationDays={estimate.workDurationDays}
@@ -187,7 +192,7 @@ export default async function EstimateDetailPage({
         actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
         clientPhone={estimate.clientPhone}
         estimateStatus={estimate.status}
-        contractConfigured={!!master.contractType && master.contractType !== "none"}
+        contractConfigured={isContractConfigured(master)}
       />
 
       {/* Total summary */}

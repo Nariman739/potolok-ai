@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     if (kpCount >= limit) {
       return NextResponse.json(
         {
-          error: `Лимит КП исчерпан (${limit}/мес). Перейдите на PRO для безлимита.`,
+          error: `Лимит КП исчерпан (${limit}/мес). Напишите нам — поднимем.`,
         },
         { status: 403 }
       );

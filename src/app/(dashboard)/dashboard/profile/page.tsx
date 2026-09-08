@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
 import type { MasterProfile } from "@/lib/types";
 import { LogoGeneratorDialog } from "@/components/logo/logo-generator-dialog";
@@ -46,6 +46,8 @@ export default function ProfilePage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   // Contract settings state
   const [contractType, setContractType] = useState("");
@@ -135,6 +137,25 @@ export default function ProfilePage() {
       const msg = err instanceof Error ? err.message : "Не удалось удалить аккаунт";
       toast.error(msg);
       setDeleting(false);
+    }
+  }
+
+  async function handleLogoFile(file: File | null) {
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/logo/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Не удалось загрузить логотип");
+      setLogoUrl(data.url);
+      toast.success("Логотип загружен");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка загрузки");
+    } finally {
+      setUploadingLogo(false);
+      if (logoFileRef.current) logoFileRef.current.value = "";
     }
   }
 
@@ -361,14 +382,41 @@ export default function ProfilePage() {
                 </div>
               )}
               <div className="flex-1 min-w-[150px] space-y-2">
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml,image/heic"
+                  className="hidden"
+                  onChange={(e) => handleLogoFile(e.target.files?.[0] ?? null)}
+                />
                 <Button
                   type="button"
-                  onClick={() => setLogoDialogOpen(true)}
+                  onClick={() => logoFileRef.current?.click()}
+                  disabled={uploadingLogo}
                   className="bg-[#1e3a5f] hover:bg-[#152d4a] w-full sm:w-auto"
                   size="sm"
                 >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Загружаю...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {logoUrl ? "Загрузить другой" : "Загрузить свой логотип"}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLogoDialogOpen(true)}
+                  className="w-full sm:w-auto"
+                  size="sm"
+                >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  {logoUrl ? "Создать новый с AI" : "Создать с AI"}
+                  {logoUrl ? "Нарисовать новый с AI" : "Нет логотипа — нарисовать с AI"}
                 </Button>
                 {logoUrl && (
                   <Button
@@ -397,7 +445,8 @@ export default function ProfilePage() {
                   </Button>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  AI задаст пару вопросов о вашей компании и нарисует логотип
+                  PNG, JPG, WEBP или SVG до 5 МБ. Логотип попадёт в КП, договор и
+                  акт. Своего логотипа нет — AI нарисует по паре вопросов.
                 </p>
               </div>
             </div>

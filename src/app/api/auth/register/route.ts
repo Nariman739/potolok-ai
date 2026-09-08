@@ -4,6 +4,7 @@ import { hashPassword, createSession } from "@/lib/auth";
 import { PRODUCT_ITEMS } from "@/lib/constants";
 import { normalizePhone } from "@/lib/phone";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { BILLING_ENABLED } from "@/lib/billing";
 
 export async function POST(request: Request) {
   try {
@@ -73,7 +74,10 @@ export async function POST(request: Request) {
       suffix++;
     }
 
-    // Trial 7 дней при регистрации (выдаём PRO на 7 дней)
+    // Пока монетизация выключена — доступ бессрочный, без триала и без
+    // счётчика дней (paidUntil = null). Иначе через 7 дней мастера упирались
+    // в «оформите подписку» и уходили — так мы теряли почти всех новичков.
+    // Когда включим оплату (BILLING_ENABLED=true), снова выдаём trial 7 дней.
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 7);
 
@@ -85,9 +89,9 @@ export async function POST(request: Request) {
         companyName: companyName || null,
         portfolioSlug,
         subscriptionTier: "PRO",
-        paidUntil: trialEndsAt,
-        billingNotes: "trial 7d",
-        hasUsedTrial: true,
+        paidUntil: BILLING_ENABLED ? trialEndsAt : null,
+        billingNotes: BILLING_ENABLED ? "trial 7d" : null,
+        hasUsedTrial: BILLING_ENABLED,
         prices: {
           create: PRODUCT_ITEMS.map((item) => ({
             itemCode: item.code,

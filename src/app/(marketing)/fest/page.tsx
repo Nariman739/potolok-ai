@@ -1,24 +1,13 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import FestClient from "./fest-client";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Потолок Фест Астана 2026 — promo FEST2026 для мастеров",
-  description:
-    "Замер по фото за 30 сек, КП в PDF с 3D, договор с электронной подписью. 3 месяца Pro бесплатно по промокоду FEST2026. Встречаемся 18-19 июня в Астане.",
-  openGraph: {
-    title: "Потолок Фест Астана 2026 — promo FEST2026",
-    description:
-      "Замер по фото, 3D-конструктор, договор с эл. подписью. 3 месяца Pro бесплатно для участников феста.",
-    type: "website",
-    locale: "ru_KZ",
-  },
-};
-
+/**
+ * Потолок Фест 2026 прошёл (18–19 июня), а промокод FEST2026 давал «3 месяца
+ * Pro» — тариф, которого сейчас нет: сервис бесплатный для всех. Страница вводила
+ * мастеров в заблуждение, поэтому уводим на главную.
+ *
+ * Сам лендинг феста остался в репозитории (fest-client.tsx) — к следующему
+ * фестивалю достаточно вернуть сюда рендер FestClient и обновить даты с промо.
+ */
 export default function FestPage() {
-  return (
-    <Suspense fallback={null}>
-      <FestClient />
-    </Suspense>
-  );
+  redirect("/");
 }

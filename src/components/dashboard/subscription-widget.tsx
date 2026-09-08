@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
+import { BILLING_ENABLED } from "@/lib/billing";
 
 function daysUntil(date: Date | null | undefined): number | null {
   if (!date) return null;
@@ -29,8 +30,12 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
 
   const days = daysUntil(m.paidUntil);
   const isTrial = m.billingNotes === "trial 7d";
-  const showTrialBanner = !m.isOwner && days !== null && days >= 0 && days <= 3;
-  const showExpiredBanner = !m.isOwner && days !== null && days < 0;
+  // Пока монетизация выключена — не пугаем мастера истёкшей подпиской.
+  // Остаётся только блок сообщества.
+  const showTrialBanner =
+    BILLING_ENABLED && !m.isOwner && days !== null && days >= 0 && days <= 3;
+  const showExpiredBanner =
+    BILLING_ENABLED && !m.isOwner && days !== null && days < 0;
 
   if (!showCommunity && !showTrialBanner && !showExpiredBanner) {
     return null;

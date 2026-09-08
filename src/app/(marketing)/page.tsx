@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import { FaqList } from "./faq-list";
 
+// Мобильное приложение — то, чем мастер пользуется на объекте.
+const IOS_APP_URL = "https://apps.apple.com/kz/app/potolok-ai/id6766588501";
+const ANDROID_APP_URL =
+  "https://play.google.com/store/apps/details?id=ai.potolok.app";
+
 export default function HomePage() {
   return (
     <div className="relative">
@@ -97,6 +102,28 @@ export default function HomePage() {
                   className="inline-flex items-center justify-center rounded-xl border border-[#334155] px-7 py-3.5 text-base font-medium text-[#F1F5F9] hover:border-[#3B82F6] hover:text-[#3B82F6] transition-all"
                 >
                   Как это работает
+                </a>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#64748B]">
+                <span>Замеряете на объекте? Ставьте приложение:</span>
+                <a
+                  href={IOS_APP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[#94A3B8] hover:text-[#F1F5F9] underline underline-offset-4 transition-colors"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  App Store
+                </a>
+                <a
+                  href={ANDROID_APP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[#94A3B8] hover:text-[#F1F5F9] underline underline-offset-4 transition-colors"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  Google Play
                 </a>
               </div>
             </div>
@@ -450,83 +477,98 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
-        {/* Orange glow behind PRO card */}
-        <div className="orb-2 absolute right-1/4 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
+      {/* Мобильное приложение */}
+      <section id="app" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        <div className="orb-2 absolute left-1/4 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-blue-500/10 blur-[100px] pointer-events-none" />
 
-        <div className="container mx-auto max-w-3xl relative z-10">
-          <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
-            Простые тарифы
+        <div className="container mx-auto max-w-3xl relative z-10 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#334155] bg-[#1A2332] px-4 py-1.5 text-sm text-[#94A3B8] mb-6">
+            <Smartphone className="h-4 w-4" />
+            Приложение для замерщика
+          </div>
+
+          <h2 className="text-2xl md:text-4xl font-bold mb-4">
+            Замер, чертёж и КП — прямо на объекте
           </h2>
-          <p className="text-center text-[#94A3B8] mb-14">
-            Начните бесплатно — переходите на PRO когда будете готовы
+          <p className="text-[#94A3B8] mb-10 max-w-xl mx-auto leading-relaxed">
+            Рисуете комнату пальцем, вводите стены, приложение само строит потолок
+            и считает площадь. КП клиент видит ещё до того, как вы вышли из квартиры.
+            Аккаунт общий с сайтом — что сделали в приложении, сразу видно в браузере.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {/* Free */}
-            <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-6">
-              <h3 className="font-bold text-xl mb-1 text-[#F1F5F9]">Старт</h3>
-              <p className="text-3xl font-bold text-[#F1F5F9] mb-1">0 ₸</p>
-              <p className="text-sm text-[#64748B] mb-6">бесплатно навсегда</p>
-              <ul className="space-y-3 text-sm text-[#94A3B8] mb-6">
-                {[
-                  "5 КП в месяц",
-                  "Калькулятор 28+ позиций",
-                  "Публичная ссылка КП",
-                  "PDF скачивание",
-                  "Сложные формы (Г/Т)",
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-[#10B981] shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="/auth/register"
-                className="block w-full text-center rounded-xl border border-[#334155] py-3 text-sm font-medium text-[#F1F5F9] hover:border-[#3B82F6] transition-colors"
-              >
-                Начать бесплатно
-              </a>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <a
+              href={IOS_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F1F5F9] px-7 py-3.5 text-base font-semibold text-[#0F1724] hover:shadow-[0_0_30px_rgba(241,245,249,0.25)] hover:-translate-y-0.5 transition-all"
+            >
+              <Smartphone className="h-5 w-5" />
+              Скачать на iPhone
+            </a>
+            <a
+              href={ANDROID_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#334155] px-7 py-3.5 text-base font-medium text-[#F1F5F9] hover:border-[#3B82F6] hover:text-[#3B82F6] transition-all"
+            >
+              <Smartphone className="h-5 w-5" />
+              Скачать на Android
+            </a>
+          </div>
+        </div>
+      </section>
 
-            {/* Pro — highlighted */}
-            <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-6 relative overflow-hidden">
-              {/* Inner glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
+      {/* Pricing — пока сервис бесплатный, тарифов нет */}
+      <section id="pricing" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
+        {/* Orange glow */}
+        <div className="orb-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
 
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-gradient-to-r from-[#F97316] to-[#FB923C] px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-orange-500/30">
-                  Популярный
-                </span>
-              </div>
-              <h3 className="font-bold text-xl mb-1 text-[#F1F5F9] relative z-10">Мастер PRO</h3>
-              <p className="text-3xl font-bold text-[#F1F5F9] mb-1 relative z-10">1 990 ₸</p>
-              <p className="text-sm text-[#64748B] mb-6 relative z-10">в месяц</p>
-              <ul className="space-y-3 text-sm text-[#94A3B8] mb-6 relative z-10">
-                {[
-                  "Безлимит КП",
-                  "Свои цены + кастомные позиции",
-                  "Авто-договор и акт",
-                  "AI-ассистент",
-                  "Telegram уведомления",
-                  "Брендинг (лого, цвет)",
-                  "Приоритетная поддержка",
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-[#10B981] shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="/auth/register"
-                className="relative z-10 block w-full text-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.35)] transition-all"
-              >
-                Попробовать бесплатно
-              </a>
-            </div>
+        <div className="container mx-auto max-w-2xl relative z-10">
+          <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
+            Сколько стоит
+          </h2>
+          <p className="text-center text-[#94A3B8] mb-12">
+            Сейчас — нисколько. Мы развиваем сервис вместе с мастерами.
+          </p>
+
+          <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-8 relative overflow-hidden text-center">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
+
+            <p className="text-4xl md:text-5xl font-bold text-[#F1F5F9] mb-2 relative z-10">
+              0 ₸
+            </p>
+            <p className="text-sm text-[#94A3B8] mb-8 relative z-10">
+              Все функции открыты. Без карты и без ограничений по количеству КП.
+            </p>
+
+            <ul className="grid sm:grid-cols-2 gap-3 text-sm text-[#94A3B8] mb-8 text-left relative z-10">
+              {[
+                "Замер по фото и с телефона",
+                "Безлимит КП с вашим брендом",
+                "Свои цены + свои позиции",
+                "Договор и акт с подписью",
+                "3D-конструктор потолка",
+                "AI-ассистент и Telegram",
+              ].map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-[#10B981] shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <a
+              href="/auth/register"
+              className="relative z-10 inline-block w-full sm:w-auto rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-10 py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.35)] transition-all"
+            >
+              Начать бесплатно
+            </a>
+
+            <p className="text-xs text-[#64748B] mt-6 relative z-10">
+              Когда сервис станет платным — предупредим заранее, а не поставим
+              перед фактом. Всё, что вы успели сделать, останется вашим.
+            </p>
           </div>
         </div>
       </section>

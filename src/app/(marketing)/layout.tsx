@@ -34,8 +34,11 @@ export default function MarketingLayout({
             <Link href="#features" className="hover:text-[#F1F5F9] transition-colors">
               Возможности
             </Link>
+            <Link href="#app" className="hover:text-[#F1F5F9] transition-colors">
+              Приложение
+            </Link>
             <Link href="#pricing" className="hover:text-[#F1F5F9] transition-colors">
-              Тарифы
+              Цена
             </Link>
             <Link href="#faq" className="hover:text-[#F1F5F9] transition-colors">
               FAQ
@@ -84,10 +87,18 @@ export default function MarketingLayout({
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
+                      href="#app"
+                      className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
+                    >
+                      Приложение
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
                       href="#pricing"
                       className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors py-3 text-base"
                     >
-                      Тарифы
+                      Цена
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
@@ -133,7 +144,8 @@ export default function MarketingLayout({
             </div>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
               <a href="#features" className="hover:text-[#94A3B8] transition-colors">Возможности</a>
-              <a href="#pricing" className="hover:text-[#94A3B8] transition-colors">Тарифы</a>
+              <a href="#app" className="hover:text-[#94A3B8] transition-colors">Приложение</a>
+              <a href="#pricing" className="hover:text-[#94A3B8] transition-colors">Цена</a>
               <a href="#faq" className="hover:text-[#94A3B8] transition-colors">FAQ</a>
               <a
                 href="https://t.me/potolokaiBot"

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     if (count >= limit) {
       return NextResponse.json(
         {
-          error: `Лимит генераций исчерпан (${limit}/мес). Перейдите на PRO для безлимита.`,
+          error: `Лимит генераций логотипа исчерпан (${limit}/мес). Обновится в начале месяца — или напишите нам, добавим.`,
         },
         { status: 403 },
       );

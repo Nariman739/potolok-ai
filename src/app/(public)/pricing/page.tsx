@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaymentConfig, getMasterPriceForNextPayment, FOUNDER_DISCOUNT_MONTHS } from "@/lib/payment";
+import { BILLING_ENABLED } from "@/lib/billing";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
@@ -11,6 +12,12 @@ export const metadata = {
 
 export default async function PricingPage() {
   const me = await getCurrentMaster();
+
+  // Монетизация выключена — тарифов не существует. Кто попал по старой ссылке
+  // (или из закладки), просто идёт работать дальше.
+  if (!BILLING_ENABLED) {
+    redirect(me ? "/dashboard" : "/");
+  }
 
   // Без логина — показываем публичные карточки
   if (!me) {

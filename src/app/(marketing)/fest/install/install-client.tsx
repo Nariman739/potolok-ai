@@ -198,18 +198,13 @@ export default function InstallClient({
             <div className="flex-1">
               <p className="text-sm text-[#94A3B8] leading-relaxed">
                 <span className="text-[#F1F5F9] font-medium">
-                  Промокод FEST2026
+                  Сейчас всё бесплатно
                 </span>{" "}
-                даёт{" "}
-                <span className="text-emerald-300 font-medium">
-                  3 месяца Pro бесплатно
-                </span>
-                . Введи в приложении при регистрации.
+                — функции открыты, промокод вводить не нужно.
               </p>
               <p className="text-xs text-[#64748B] leading-relaxed mt-1.5">
-                <span className="text-[#94A3B8]">FEST2026 промокоды</span>{" "}
-                <span className="text-emerald-400/80">3 ай Pro тегін</span>{" "}
-                береді. Тіркелу кезінде қосымшаға енгіз.
+                <span className="text-[#94A3B8]">Қазір бәрі тегін</span> —
+                мүмкіндіктер ашық, промокод қажет емес.
               </p>
             </div>
           </div>

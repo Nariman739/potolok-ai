@@ -9,9 +9,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Приложение давно в проде — ведём в обычный Google Play, а не в закрытый тест.
 const ANDROID_OPTIN_URL =
-  "https://play.google.com/apps/testing/ai.potolok.app";
-const IOS_APP_STORE_URL = "https://apps.apple.com/kz/app/id6766588501";
+  "https://play.google.com/store/apps/details?id=ai.potolok.app";
+const IOS_APP_STORE_URL = "https://apps.apple.com/kz/app/potolok-ai/id6766588501";
 const GROUP_INVITE_URL = "https://groups.google.com/g/potolok-ai-testers";
 const LANDING_URL = "https://potolok.ai/fest/install";
 
