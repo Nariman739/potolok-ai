@@ -3,9 +3,11 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   generateKpConfigFromBrief,
+  buildFallbackConfigFromBrief,
   type MasterBrief,
 } from "@/lib/kp/ai-onboarding";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
+import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,7 +83,17 @@ export async function POST(req: NextRequest) {
       commonQuestions: body.commonQuestions?.filter((q) => q?.trim()),
     };
 
-    const result = await generateKpConfigFromBrief(brief);
+    // Если AI недоступен — не теряем семь шагов анкеты: собираем КП по теме,
+    // подобранной без модели, и честно говорим, что тексты пока стандартные.
+    let aiUnavailable = false;
+    let result;
+    try {
+      result = await generateKpConfigFromBrief(brief);
+    } catch (aiErr) {
+      console.error("[kp-onboarding] AI недоступен:", safeAiErrorLog(aiErr));
+      result = buildFallbackConfigFromBrief(brief);
+      aiUnavailable = true;
+    }
     await recordAiUsage(master.id, result.__costUsd ?? 0);
 
     // Сохраняем бриф + результат AI в БД — для последующей аналитики рынка
@@ -109,13 +121,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, aiUnavailable });
   } catch (err) {
-    const e = err as Error;
-    console.error("[kp-onboarding] error:", e);
-    return NextResponse.json(
-      { error: e.message || "Failed to generate config" },
-      { status: 500 }
-    );
+    console.error("[kp-onboarding] error:", safeAiErrorLog(err));
+    const { message, status } = userFacingAiError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

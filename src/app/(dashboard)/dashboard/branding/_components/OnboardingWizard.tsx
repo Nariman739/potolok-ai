@@ -113,8 +113,18 @@ export function OnboardingWizard({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || "Ошибка генерации");
       }
-      const result = (await res.json()) as OnboardingResult;
-      toast.success("КП собран. Можно править");
+      const result = (await res.json()) as OnboardingResult & {
+        aiUnavailable?: boolean;
+      };
+      if (result.aiUnavailable) {
+        toast.success("КП собран — тема подобрана под вас", {
+          description:
+            "AI сейчас недоступен, поэтому тексты стандартные. Их можно поправить руками или пересобрать позже.",
+          duration: 8000,
+        });
+      } else {
+        toast.success("КП собран. Можно править");
+      }
       onDone(result);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не получилось");

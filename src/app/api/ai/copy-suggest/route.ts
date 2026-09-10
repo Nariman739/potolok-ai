@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
 import { requireAuth } from "@/lib/auth";
 import { suggestCopy, type CopyFieldKind, type CopyContext } from "@/lib/kp/ai-copy";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
@@ -80,11 +81,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ suggestions });
   } catch (err) {
-    const e = err as Error;
-    console.error("[copy-suggest] error:", e);
-    return NextResponse.json(
-      { error: e.message || "Failed to suggest copy" },
-      { status: 500 }
-    );
+    console.error("[copy-suggest] error:", safeAiErrorLog(err));
+    const { message, status } = userFacingAiError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

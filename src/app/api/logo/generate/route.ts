@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateLogo } from "@/lib/logo-generation";
 import { LOGO_LIMITS } from "@/lib/constants";
+import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
 
 export async function POST(request: Request) {
   try {
@@ -83,12 +84,8 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Logo generate error:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Ошибка генерации",
-      },
-      { status: 500 },
-    );
+    console.error("Logo generate error:", safeAiErrorLog(error));
+    const { message, status } = userFacingAiError(error);
+    return NextResponse.json({ error: message }, { status });
   }
 }

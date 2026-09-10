@@ -66,6 +66,59 @@ function suggestTemplate(brief: MasterBrief): KpTemplateId {
   return "minimal";
 }
 
+/**
+ * Запасной вариант, когда AI недоступен (кончился лимит, таймаут).
+ *
+ * Тему подбирает не AI, а suggestTemplate по сегменту и стилю общения —
+ * значит КП можно собрать и без модели: мастер получает рабочее оформление
+ * с дефолтными текстами вместо потерянных семи шагов анкеты. Тексты потом
+ * дописываются вручную или тем же AI, когда он снова доступен.
+ */
+export function buildFallbackConfigFromBrief(brief: MasterBrief): OnboardingResult {
+  const template = suggestTemplate(brief);
+  const config = getDefaultConfigForTemplate(template);
+
+  const warranties: WarrantyItem[] = [];
+  if (brief.warrantyMaterialsYears) {
+    warranties.push({
+      title: "Гарантия на материалы",
+      value: `${brief.warrantyMaterialsYears} лет`,
+    });
+  }
+  if (brief.warrantyInstallYears) {
+    warranties.push({
+      title: "Гарантия на монтаж",
+      value: `${brief.warrantyInstallYears} года`,
+    });
+  }
+
+  const withTexts: KpConfig = {
+    ...config,
+    sections: config.sections.map((s) => {
+      if (s.type === "warranties" && warranties.length) {
+        return { ...s, items: warranties };
+      }
+      if (s.type === "about" && brief.differentiator) {
+        return {
+          ...s,
+          enabled: true,
+          title: s.title ?? "О нас",
+          body: brief.differentiator,
+        };
+      }
+      return s;
+    }),
+  };
+
+  return {
+    template,
+    tagline: `Натяжные потолки${brief.city ? ` в ${brief.city}` : ""}`,
+    config: withTexts,
+    rationale: `Тема ${template} подобрана под ваш сегмент. Тексты пока стандартные — AI допишет их, когда снова будет доступен.`,
+    __costUsd: 0,
+  };
+}
+
 // ============================================
 // Основная функция
 // ============================================
