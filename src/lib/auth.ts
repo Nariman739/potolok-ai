@@ -8,7 +8,10 @@ const SESSION_COOKIE = "session_token";
 const SESSION_DURATION_DAYS = 30;
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  // 10 раундов — рекомендованный дефолт bcrypt. На 12 хеширование занимало
+  // несколько секунд прямо в форме регистрации, а выигрыш в стойкости для
+  // нашей модели угроз нулевой (пароли всё равно за rate-limit'ом).
+  return bcrypt.hash(password, 10);
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {

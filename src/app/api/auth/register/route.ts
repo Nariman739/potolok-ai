@@ -67,9 +67,19 @@ export async function POST(request: Request) {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
 
+    // Один запрос вместо цикла findUnique — на регистрации каждый round-trip
+    // до Neon стоит сотни миллисекунд.
+    const takenSlugs = new Set(
+      (
+        await prisma.master.findMany({
+          where: { portfolioSlug: { startsWith: baseSlug } },
+          select: { portfolioSlug: true },
+        })
+      ).map((m) => m.portfolioSlug),
+    );
     let portfolioSlug = baseSlug;
     let suffix = 1;
-    while (await prisma.master.findUnique({ where: { portfolioSlug } })) {
+    while (takenSlugs.has(portfolioSlug)) {
       portfolioSlug = `${baseSlug}-${suffix}`;
       suffix++;
     }
@@ -92,13 +102,18 @@ export async function POST(request: Request) {
         paidUntil: BILLING_ENABLED ? trialEndsAt : null,
         billingNotes: BILLING_ENABLED ? "trial 7d" : null,
         hasUsedTrial: BILLING_ENABLED,
-        prices: {
-          create: PRODUCT_ITEMS.map((item) => ({
-            itemCode: item.code,
-            price: item.defaultPrice,
-          })),
-        },
       },
+    });
+
+    // Дефолтный прайс — одним createMany. Вложенный create гнал по инсерту на
+    // позицию (50+ round-trip'ов), из-за чего регистрация тянулась ~10 секунд.
+    await prisma.masterPrice.createMany({
+      data: PRODUCT_ITEMS.map((item) => ({
+        masterId: master.id,
+        itemCode: item.code,
+        price: item.defaultPrice,
+      })),
+      skipDuplicates: true,
     });
 
     await createSession(master.id);
