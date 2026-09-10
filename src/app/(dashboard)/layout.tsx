@@ -48,8 +48,14 @@ export default async function DashboardLayout({
     // на десктопе (md+), где сайдбар должен стоять на месте.
     <div className="flex min-h-[100dvh] md:h-screen md:overflow-hidden">
       <Sidebar isOwner={isOwner} />
-      {/* Отступ снизу = высота нижнего меню (64px) + запас + вырез iPhone */}
-      <main className="flex-1 md:overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
+      {/*
+        min-w-0 обязателен: у flex-элемента min-width по умолчанию auto, и
+        широкий внутренний блок (длинная строка, таблица) раздувает main шире
+        экрана — вся страница уезжает вбок. Раньше это гасил overflow-hidden
+        на родителе, теперь на телефоне его нет.
+        Отступ снизу = высота нижнего меню (64px) + запас + вырез iPhone.
+      */}
+      <main className="flex-1 min-w-0 overflow-x-hidden md:overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
         <div className="container mx-auto max-w-5xl p-4 md:p-6">
           {children}
         </div>
