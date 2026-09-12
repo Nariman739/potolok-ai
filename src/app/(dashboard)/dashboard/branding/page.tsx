@@ -30,7 +30,7 @@ export default async function BrandingPage() {
       kpConfig: true,
       warrantyMaterials: true,
       warrantyInstall: true,
-      kpBrief: { select: { id: true, rationale: true } },
+      kpBrief: { select: { id: true, rationale: true, generatedConfig: true } },
     },
   });
 
@@ -38,8 +38,14 @@ export default async function BrandingPage() {
     redirect("/auth/login");
   }
 
+  // Порядок важен: сначала то, что мастер сохранил сам, затем то, что собрал AI
+  // (у тех, кто прошёл конструктор до автосохранения, конфиг лежит только в брифе),
+  // и лишь потом дефолт. Иначе мастер возвращался на страницу, видел дефолтную
+  // тему вместо подобранной и, сохранив, затирал работу AI.
   const initialConfig: KpConfig =
-    (master.kpConfig as unknown as KpConfig) ?? DEFAULT_KP_CONFIG;
+    (master.kpConfig as unknown as KpConfig) ??
+    (master.kpBrief?.generatedConfig as unknown as KpConfig) ??
+    DEFAULT_KP_CONFIG;
 
   return (
     <BrandingClient
