@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
+import { KpAdjustError } from "@/lib/kp-adjust-server";
 
 /**
  * PATCH /api/estimates/[id]/items
@@ -58,6 +59,9 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, total: newTotal });
   } catch (error) {
+    if (error instanceof KpAdjustError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }

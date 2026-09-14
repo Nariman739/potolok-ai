@@ -55,6 +55,11 @@ export function readAdjustInputs(body: Record<string, unknown>): {
   return { discount, partner };
 }
 
+/** Ошибка ввода мастера — роуты отдают её как 400 с текстом. */
+export class KpAdjustError extends Error {
+  constructor(message: string) { super(message); this.name = "KpAdjustError"; }
+}
+
 export interface ResolvedAdjust {
   calculationData: CalculationResult;
   total: number;
@@ -81,6 +86,11 @@ export function resolveAdjust(
     inputs.partner !== undefined ? inputs.partner : prev ? partnerInputFromState(prev) : null;
   const prevCoef = opts.calcIsBase ? 1 : prev?.partner?.coef ?? 1;
   const r = applyKpAdjustments(calc, { discount, partner, prevCoef });
+  // Скидка, съедающая всё КП, даёт total = 0 → договор и акт на ноль тенге.
+  // На симуляторе так и вышло («10» + «5000» = 105 000 ₸). Не даём сохранить.
+  if (r.clientPrice > 0 && r.discount.amount >= r.clientPrice) {
+    throw new KpAdjustError("Скидка не может быть больше суммы КП");
+  }
   return {
     calculationData: r.calc,
     total: r.total,

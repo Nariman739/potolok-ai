@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
+import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
 
 export async function GET(
@@ -28,6 +29,9 @@ export async function GET(
 
     return NextResponse.json(estimate);
   } catch (error) {
+    if (error instanceof KpAdjustError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
@@ -118,6 +122,9 @@ export async function PUT(
         : existing.partner,
     });
   } catch (error) {
+    if (error instanceof KpAdjustError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
@@ -157,6 +164,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof KpAdjustError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
