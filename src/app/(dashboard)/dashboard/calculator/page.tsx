@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoomForm } from "@/components/calculator/room-form";
 import { RoomCard } from "@/components/calculator/room-card";
-import { CalculationResults } from "@/components/calculator/calculation-results";
+import { CalculationResults, type KpMoneyInputs } from "@/components/calculator/calculation-results";
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
 import { useCalculator } from "@/hooks/use-calculator";
@@ -56,7 +56,7 @@ function CalculatorContent() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const [kpInputs, setKpInputs] = useState<KpMoneyInputs>({ discount: null, partner: null });
   const [priceMap, setPriceMap] = useState<Record<string, number>>({});
   const [loadingFrom, setLoadingFrom] = useState(false);
   const loadedRef = useRef(false);
@@ -163,9 +163,6 @@ function CalculatorContent() {
     if (!result) return;
     setSaving(true);
 
-    const discountAmount = Math.round(result.total * discountPercent / 100);
-    const finalTotal = result.total - discountAmount;
-
     try {
       const res = await fetch("/api/estimates", {
         method: "POST",
@@ -175,8 +172,9 @@ function CalculatorContent() {
           calculationData: result,
           extraItems,
           totalArea: result.totalArea,
-          total: finalTotal,
-          discountPercent,
+          // Итог, скидку и посредника считает сервер (kp-adjust-server)
+          discount: kpInputs.discount,
+          partner: kpInputs.partner,
           clientName: payload.clientName?.trim() || undefined,
           clientPhone: payload.clientPhone?.trim() || undefined,
           clientAddress: payload.clientAddress?.trim() || undefined,
@@ -217,8 +215,8 @@ function CalculatorContent() {
       <div className="space-y-6">
         <CalculationResults
           result={result}
-          onSave={(dp) => {
-            setDiscountPercent(dp);
+          onSave={(inputs) => {
+            setKpInputs(inputs);
             setSaveOpen(true);
           }}
           onReset={reset}

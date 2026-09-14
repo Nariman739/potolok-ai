@@ -42,7 +42,7 @@ export default async function EstimateDetailPage({
   const [estimate, kpBrief] = await Promise.all([
     prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
-      include: { partner: { select: { amount: true, percent: true } } },
+      include: { partner: { select: { amount: true, percent: true, coef: true } } },
     }),
     prisma.masterBrief.findUnique({
       where: { masterId: master.id },
@@ -233,6 +233,7 @@ export default async function EstimateDetailPage({
               estimateId={estimate.id}
               initialRoomResults={roomResults}
               initialExtraItems={extraItems}
+              partnerCoef={estimate.partner?.coef ?? 1}
             />
           );
         }

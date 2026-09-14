@@ -16,13 +16,21 @@ interface ItemsEditorProps {
   estimateId: string;
   initialRoomResults: RoomResult[];
   initialExtraItems: LineItem[];
+  /** Коэффициент посредника: цены в КП уже умножены на него (1 = посредника нет) */
+  partnerCoef?: number;
 }
 
 export function ItemsEditor({
   estimateId,
   initialRoomResults,
   initialExtraItems,
+  partnerCoef = 1,
 }: ItemsEditorProps) {
+  // Позиция из прайса на КП с посредником должна войти с той же наценкой,
+  // что и остальные — иначе одна строка будет «голой». Ручной ввод цены
+  // не трогаем: мастер видит и правит уже наценённую цену.
+  const withCoef = (price: number) =>
+    partnerCoef === 1 ? price : Math.round((price * partnerCoef) / 10) * 10;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [rooms, setRooms] = useState<RoomResult[]>(initialRoomResults);
@@ -103,8 +111,8 @@ export function ItemsEditor({
                   itemName: name,
                   quantity: 1,
                   unit,
-                  unitPrice: price,
-                  total: price,
+                  unitPrice: withCoef(price),
+                  total: withCoef(price),
                 },
               ],
             }
@@ -136,8 +144,8 @@ export function ItemsEditor({
         itemName: name,
         quantity: 1,
         unit,
-        unitPrice: price,
-        total: price,
+        unitPrice: withCoef(price),
+        total: withCoef(price),
       },
     ]);
     setAdderTarget(null);
@@ -250,6 +258,7 @@ export function ItemsEditor({
             <div className="space-y-1">
               {rr.items.map((item, itemIdx) => (
                 <ItemRow
+                  partnerCoef={partnerCoef}
                   key={itemIdx}
                   item={item}
                   editing={editing}
@@ -291,6 +300,7 @@ export function ItemsEditor({
             <div className="space-y-1">
               {totals.extras.map((item, idx) => (
                 <ItemRow
+                  partnerCoef={partnerCoef}
                   key={idx}
                   item={item}
                   editing={editing}
@@ -335,9 +345,10 @@ interface ItemRowProps {
   editing: boolean;
   onChange: (patch: Partial<LineItem>) => void;
   onDelete: () => void;
+  partnerCoef: number;
 }
 
-function ItemRow({ item, editing, onChange, onDelete }: ItemRowProps) {
+function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProps) {
   const [showSwap, setShowSwap] = useState(false);
   // Локальные строковые значения — чтобы пользователь мог стереть всё
   // и набрать заново, без залипания на «0».
@@ -387,7 +398,7 @@ function ItemRow({ item, editing, onChange, onDelete }: ItemRowProps) {
       itemCode: target.code,
       itemName: target.name,
       unit: target.unit,
-      unitPrice: target.defaultPrice,
+      unitPrice: Math.round((target.defaultPrice * partnerCoef) / 10) * 10,
     });
     setShowSwap(false);
   }

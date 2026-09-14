@@ -5,14 +5,71 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Save, RotateCcw, ChevronDown, ChevronUp, Percent } from "lucide-react";
+import { Save, RotateCcw, ChevronDown, ChevronUp, Percent, Handshake } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
+import { applyKpAdjustments, type MoneyInput, type MoneyMode } from "@/lib/kp-adjust";
+
+/** Что мастер ввёл внизу расчёта; сервер считает итог сам (kp-adjust-server). */
+export interface KpMoneyInputs {
+  discount: MoneyInput | null;
+  partner: MoneyInput | null;
+}
 
 interface CalculationResultsProps {
   result: CalculationResult;
-  onSave: (discountPercent: number) => void;
+  onSave: (inputs: KpMoneyInputs) => void;
   onReset: () => void;
+}
+
+/** Поле «число + переключатель % / ₸» — одно для скидки и посредника. */
+function MoneyField({
+  icon,
+  label,
+  value,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: { mode: MoneyMode; str: string };
+  onChange: (v: { mode: MoneyMode; str: string }) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 justify-center flex-wrap">
+      {icon}
+      <span className="text-sm text-muted-foreground whitespace-nowrap">{label}:</span>
+      <Input
+        type="number"
+        min="0"
+        step="1"
+        value={value.str}
+        onChange={(e) => onChange({ ...value, str: e.target.value })}
+        onFocus={(e) => e.target.select()}
+        className="w-28 text-center"
+        inputMode="numeric"
+        placeholder="0"
+      />
+      <div className="flex rounded-md border overflow-hidden text-xs">
+        {(["percent", "amount"] as MoneyMode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange({ ...value, mode: m })}
+            className={`px-2.5 py-1.5 ${value.mode === m ? "bg-[#1e3a5f] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+          >
+            {m === "percent" ? "%" : "₸"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function toInput(v: { mode: MoneyMode; str: string }): MoneyInput | null {
+  const n = parseFloat(v.str.replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  // больше 100 в «%» — это сумма, мастер забыл переключить
+  return { mode: v.mode === "percent" && n > 100 ? "amount" : v.mode, value: n };
 }
 
 export function CalculationResults({
@@ -21,12 +78,18 @@ export function CalculationResults({
   onReset,
 }: CalculationResultsProps) {
   const [expanded, setExpanded] = useState(false);
-  const [discountStr, setDiscountStr] = useState("0");
+  const [discountV, setDiscountV] = useState<{ mode: MoneyMode; str: string }>({ mode: "percent", str: "" });
+  const [partnerV, setPartnerV] = useState<{ mode: MoneyMode; str: string }>({ mode: "percent", str: "" });
 
-  const discountPercent = Math.min(100, Math.max(0, parseFloat(discountStr) || 0));
-  const discountAmount = Math.round(result.total * discountPercent / 100);
-  const finalTotal = result.total - discountAmount;
+  // Та же математика, что на сервере: посредник размазан по ценам, скидка от цены клиента.
+  const inputs: KpMoneyInputs = { discount: toInput(discountV), partner: toInput(partnerV) };
+  const adj = applyKpAdjustments(result, inputs);
+  const discountPercent = adj.discount.percent;
+  const discountAmount = adj.discount.amount;
+  const clientPrice = adj.clientPrice;
+  const finalTotal = adj.total;
   const finalPricePerM2 = result.totalArea > 0 ? Math.round(finalTotal / result.totalArea) : 0;
+  const discountBlocked = !!inputs.discount && finalTotal <= 0;
 
   return (
     <div className="space-y-6">
@@ -47,20 +110,25 @@ export function CalculationResults({
         <CardHeader className="bg-blue-50 pb-3">
           <CardTitle className="text-[#1e3a5f] text-lg">Итого</CardTitle>
           <div className="space-y-1">
-            {discountPercent > 0 ? (
+            {discountAmount > 0 ? (
               <>
                 <p className="text-sm text-muted-foreground line-through">
-                  {formatPrice(result.total)}
+                  {formatPrice(clientPrice)}
                 </p>
                 <p className="text-2xl sm:text-3xl font-bold text-green-700">
                   {formatPrice(finalTotal)}
                 </p>
                 <p className="text-xs text-green-600">
-                  Скидка {discountPercent}% = -{formatPrice(discountAmount)}
+                  Скидка{discountPercent > 0 ? ` ${discountPercent}%` : ""} = -{formatPrice(discountAmount)}
                 </p>
               </>
             ) : (
-              <p className="text-2xl sm:text-3xl font-bold">{formatPrice(result.total)}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{formatPrice(clientPrice)}</p>
+            )}
+            {adj.partner.amount > 0 && (
+              <p className="text-xs text-violet-700">
+                Посреднику{adj.partner.percent ? ` ${adj.partner.percent}%` : ""}: {formatPrice(adj.partner.amount)} · вам остаётся {formatPrice(adj.masterKeeps)}
+              </p>
             )}
             <p className="text-sm text-muted-foreground">
               {formatPrice(finalPricePerM2)}/м²
@@ -162,9 +230,9 @@ export function CalculationResults({
                 <span>ИТОГО</span>
                 <span>{formatPrice(finalTotal)}</span>
               </div>
-              {discountPercent > 0 && (
+              {discountAmount > 0 && (
                 <p className="text-xs text-green-600 text-center">
-                  Со скидкой {discountPercent}% (-{formatPrice(discountAmount)})
+                  Со скидкой{discountPercent > 0 ? ` ${discountPercent}%` : ""} (-{formatPrice(discountAmount)})
                 </p>
               )}
               <p className="text-xs text-muted-foreground text-center">
@@ -175,23 +243,24 @@ export function CalculationResults({
         </CardContent>
       </Card>
 
-      {/* Discount input */}
-      <div className="flex items-center gap-3 justify-center">
-        <Percent className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-sm text-muted-foreground whitespace-nowrap">Скидка клиенту:</span>
-        <Input
-          type="number"
-          min="0"
-          max="100"
-          step="1"
-          value={discountStr}
-          onChange={(e) => setDiscountStr(e.target.value)}
-          onFocus={(e) => { if (e.target.value === "0") setDiscountStr(""); }}
-          onBlur={(e) => { if (e.target.value === "") setDiscountStr("0"); }}
-          className="w-20 text-center"
-          inputMode="numeric"
+      {/* Скидка и посредник — каждое в % или суммой ₸ (Нариман 14.09.2026).
+          Посредник в КП не виден: наценка размазывается по ценам позиций. */}
+      <div className="space-y-2">
+        <MoneyField
+          icon={<Percent className="h-4 w-4 text-muted-foreground shrink-0" />}
+          label="Скидка клиенту"
+          value={discountV}
+          onChange={setDiscountV}
         />
-        <span className="text-sm text-muted-foreground">%</span>
+        <MoneyField
+          icon={<Handshake className="h-4 w-4 text-muted-foreground shrink-0" />}
+          label="Посреднику"
+          value={partnerV}
+          onChange={setPartnerV}
+        />
+        {discountBlocked && (
+          <p className="text-xs text-red-600 text-center">Скидка не может быть больше суммы КП</p>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
@@ -201,7 +270,8 @@ export function CalculationResults({
       <div className="flex justify-center">
         <Button
           size="lg"
-          onClick={() => onSave(discountPercent)}
+          onClick={() => onSave(inputs)}
+          disabled={discountBlocked}
           className="bg-[#1e3a5f] hover:bg-[#152d4a]"
         >
           <Save className="h-4 w-4 mr-2" />
