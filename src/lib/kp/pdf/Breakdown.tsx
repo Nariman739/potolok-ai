@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, Page, Text, View } from "@react-pdf/renderer";
+import { Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { fmtArea, makeStyles, PageFooter, PriceText } from "./shared";
 import { SectionHeader } from "./SectionHeader";
@@ -96,7 +96,7 @@ export function BreakdownPage({
           >
             Итого к оплате
           </Text>
-          {estimate.discountPercent > 0 && (
+          {estimate.discountAmount > 0 && (
             <Text
               style={{
                 fontFamily: fonts.body.family,
@@ -104,7 +104,9 @@ export function BreakdownPage({
                 color: theme.palette.accentText + "DD",
               }}
             >
-              Скидка {estimate.discountPercent}% уже учтена
+              {estimate.discountPercent > 0
+                ? `Скидка ${estimate.discountPercent}% (−${Math.round(estimate.discountAmount).toLocaleString("ru-RU")} ₸) уже учтена`
+                : `Скидка −${Math.round(estimate.discountAmount).toLocaleString("ru-RU")} ₸ уже учтена`}
             </Text>
           )}
         </View>
@@ -172,34 +174,16 @@ function RoomCard({
           {roomNum}
         </Text>
         {room.designerData && (
-          <Link
-            src={`${data.publicUrl}/3d#room-${room.id}`}
-            style={{ textDecoration: "none" }}
-          >
-            <View style={{ marginTop: 10, alignItems: "center" }}>
-              <RoomPlan2D
-                designerData={room.designerData}
-                size={48}
-                fillColor={theme.palette.accentSoft}
-                strokeColor={theme.palette.accent}
-                spotColor={theme.palette.pageText}
-                chandelierColor={theme.palette.accent}
-              />
-              <Text
-                style={{
-                  fontFamily: fonts.body.family,
-                  fontSize: 6,
-                  color: theme.palette.accent,
-                  letterSpacing: 0.6,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  marginTop: 3,
-                }}
-              >
-                3D →
-              </Text>
-            </View>
-          </Link>
+          <View style={{ marginTop: 10, alignItems: "center" }}>
+            <RoomPlan2D
+              designerData={room.designerData}
+              size={48}
+              fillColor={theme.palette.accentSoft}
+              strokeColor={theme.palette.accent}
+              spotColor={theme.palette.pageText}
+              chandelierColor={theme.palette.accent}
+            />
+          </View>
         )}
         <View
           style={{

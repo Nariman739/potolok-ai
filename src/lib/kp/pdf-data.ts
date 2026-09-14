@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
-import QRCode from "qrcode";
 import { themeFor } from "./themes";
 import { DEFAULT_KP_CONFIG } from "./templates";
 import type { KpConfig, KpTheme, FontPair, KpSection } from "./types";
@@ -88,6 +87,8 @@ export type PdfEstimate = {
   clientAddress: string;
   total: number;
   discountPercent: number;
+  /** Скидка в ₸ — источник истины; discountPercent > 0 только если мастер вводил % */
+  discountAmount: number;
   totalArea: number;
   validUntil: Date | null;
   createdAt: Date;
@@ -103,6 +104,9 @@ export type PdfData = {
   estimate: PdfEstimate;
   portfolio: PdfPortfolioItem[];
   reviews: PdfReview[];
+  /** QR на онлайн-версию УБРАН из PDF (Нариман 14.09.2026: клиент получает
+   *  PDF в WhatsApp, 3D-визуализации по ссылке нет). Поле оставлено пустым,
+   *  чтобы обложки тем (guard `data.qrDataUrl &&`) его просто не рисовали. */
   qrDataUrl: string;
   publicUrl: string;
   config: KpConfig;
@@ -158,11 +162,7 @@ export async function buildPdfData(estimateId: string, masterId?: string): Promi
   const isQuick = !!calc.quickEstimate;
 
   const publicUrl = `${normalizeUrl(BASE_URL)}/kp/${estimate.publicId}`;
-  const qrDataUrl = await QRCode.toDataURL(publicUrl, {
-    margin: 1,
-    width: 360,
-    color: { dark: "#0F172A", light: "#FFFFFF" },
-  });
+  const qrDataUrl = "";
 
   return {
     master: mapBranding(estimate.master),
@@ -173,6 +173,7 @@ export async function buildPdfData(estimateId: string, masterId?: string): Promi
       clientAddress: estimate.clientAddress ?? "",
       total: estimate.total ?? 0,
       discountPercent: estimate.discountPercent ?? 0,
+      discountAmount: estimate.discountAmount ?? 0,
       totalArea: estimate.totalArea ?? 0,
       validUntil: estimate.validUntil,
       createdAt: estimate.createdAt,

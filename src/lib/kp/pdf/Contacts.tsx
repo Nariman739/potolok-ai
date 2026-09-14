@@ -1,10 +1,11 @@
 import React from "react";
-import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
+import { Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { makeStyles, PageFooter } from "./shared";
 import { SectionHeader } from "./SectionHeader";
 
-// СТРАНИЦА — Финал. CTA, контакты, QR, реквизиты, футер.
+// СТРАНИЦА — Финал. CTA, контакты, реквизиты, футер.
+// QR на онлайн-версию убран (Нариман 14.09.2026) — клиент получает PDF в WhatsApp.
 // WhatsApp перестал быть «зелёной плашкой» — теперь композиционный CTA
 // в accent-цвете темы. Стоковый зелёный был чужеродным.
 
@@ -17,7 +18,7 @@ export function ContactsPage({
   pageNum: number;
   totalPages: number;
 }) {
-  const { theme, fonts, master, qrDataUrl, publicUrl } = data;
+  const { theme, fonts, master } = data;
   const styles = makeStyles(theme, fonts);
 
   const waPhone = master.whatsappPhone.replace(/\D/g, "");
@@ -199,74 +200,6 @@ export function ContactsPage({
             </Link>
           </View>
         )}
-      </View>
-
-      {/* QR-блок — асимметричный, на surface, QR крупно */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingTop: 22,
-          paddingBottom: 22,
-          paddingLeft: 22,
-          paddingRight: 22,
-          backgroundColor: theme.palette.surface,
-          marginBottom: 26,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "#FFFFFF",
-            padding: 6,
-            marginRight: 22,
-          }}
-        >
-          <Image
-            src={qrDataUrl}
-            style={{
-              width: 96,
-              height: 96,
-            }}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontFamily: fonts.body.family,
-              fontSize: 7,
-              color: theme.palette.accent,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              marginBottom: 6,
-              fontWeight: 600,
-            }}
-          >
-            Онлайн-версия КП
-          </Text>
-          <Text
-            style={{
-              fontFamily: fonts.display.family,
-              fontWeight: fonts.display.weight as 400 | 700 | 800,
-              fontSize: 18,
-              color: theme.palette.pageText,
-              marginBottom: 8,
-              lineHeight: 1.2,
-              letterSpacing: -0.4,
-            }}
-          >
-            Откройте в 3D и подтвердите проект онлайн
-          </Text>
-          <Text
-            style={{
-              fontFamily: fonts.body.family,
-              fontSize: 9,
-              color: theme.palette.pageMuted,
-              lineHeight: 1.4,
-            }}
-          >
-            {publicUrl}
-          </Text>
-        </View>
       </View>
 
       {/* Реквизиты */}

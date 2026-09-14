@@ -206,17 +206,19 @@ export default async function PublicKpPage({
           {/* Price summary */}
           <div className="mt-6 text-center">
             <p className="text-white/50 text-xs mb-0.5">Стоимость</p>
-            {estimate.discountPercent > 0 && (
+            {estimate.discountAmount > 0 && (
               <p className="text-white/40 text-sm line-through mb-0.5">
-                {formatPrice(calc.total)}
+                {formatPrice(estimate.total + estimate.discountAmount)}
               </p>
             )}
             <p className="text-white font-bold text-2xl leading-none">
               {formatPrice(estimate.total || estimate.standardTotal || 0)}
             </p>
-            {estimate.discountPercent > 0 && (
+            {estimate.discountAmount > 0 && (
               <p className="text-emerald-300 text-xs mt-1">
-                Скидка {estimate.discountPercent}%
+                {estimate.discountPercent > 0
+                  ? `Скидка ${estimate.discountPercent}% · −${formatPrice(estimate.discountAmount)}`
+                  : `Скидка −${formatPrice(estimate.discountAmount)}`}
               </p>
             )}
           </div>
@@ -281,6 +283,7 @@ export default async function PublicKpPage({
           calc={calc}
           total={estimate.total || estimate.standardTotal || 0}
           discountPercent={estimate.discountPercent}
+          discountAmount={estimate.discountAmount}
           initialConfirmed={estimate.status === "CONFIRMED"}
           isRevised={isRevised}
           brandColor={brandColor}

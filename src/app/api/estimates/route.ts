@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
+import type { CalculationResult } from "@/lib/types";
 import { KP_LIMITS } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 
@@ -86,8 +88,6 @@ export async function POST(request: Request) {
       roomsData,
       calculationData,
       totalArea,
-      total,
-      discountPercent,
       clientName,
       clientPhone,
       clientAddress,
@@ -107,6 +107,18 @@ export async function POST(request: Request) {
 
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 14);
+
+    // Скидка и посредник считаются ЗДЕСЬ, а не на клиенте: сервер — единственный,
+    // кто размазывает посредника по ценам и кладёт итог в total. Старые
+    // приложения шлют discountPercent + уже посчитанный total — total игнорируем,
+    // discountPercent подхватывается как «скидка в %» (readAdjustInputs).
+    const adjust = resolveAdjust(
+      calculationData as CalculationResult,
+      readAdjustInputs(body),
+      null,
+      { calcIsBase: true }
+    );
+    const total = adjust.total;
 
     // Подхватываем 3D-превью из первой комнаты у которой оно есть
     const room3dPreviewUrl =
@@ -137,10 +149,8 @@ export async function POST(request: Request) {
       data: {
         masterId: master.id,
         roomsData,
-        calculationData,
+        ...estimateAdjustData(adjust),
         totalArea: totalArea || 0,
-        total: total || 0,
-        discountPercent: parseFloat(discountPercent) || 0,
         clientName: clientName || null,
         clientPhone: clientPhone || null,
         clientAddress: clientAddress || null,
@@ -149,6 +159,8 @@ export async function POST(request: Request) {
         room3dPreviewUrl,
       },
     });
+
+    await persistPartner(estimate.id, adjust.partner);
 
     // CRM: log KP_CREATED event
     if (linkedClientId) {
@@ -187,7 +199,10 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json(estimate);
+    return NextResponse.json({
+      ...estimate,
+      partner: adjust.partner.amount > 0 ? adjust.partner : null,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

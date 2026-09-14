@@ -296,8 +296,14 @@ model Estimate {
 
   // Summary
   totalArea       Float
-  total           Float  @default(0)
-  discountPercent Float  @default(0)
+  total           Float            @default(0)
+  discountPercent Float            @default(0)
+  // Скидка клиенту в ₸ — источник истины для расчёта. Если мастер ввёл %, сюда
+  // кладётся пересчитанная сумма; если ввёл сумму — discountPercent = 0.
+  discountAmount  Float            @default(0)
+  // Посредник (дизайнер) — отдельная таблица, чтобы публичные страницы КП
+  // физически не могли получить эти данные вместе с Estimate.
+  partner         EstimatePartner?
   economyTotal    Float?
   standardTotal   Float?
   premiumTotal    Float?
@@ -332,6 +338,21 @@ model Estimate {
 
   @@index([clientId])
   @@index([masterId, deletedAt])
+}
+
+/// Вознаграждение посреднику (дизайнеру) по КП. Наценка уже РАЗМАЗАНА по
+/// ценам позиций в Estimate.calculationData коэффициентом `coef`; здесь
+/// хранится только то, что видит мастер: сколько должен и что вводил.
+/// Публичные роуты (/kp, /contract, /act) эту таблицу не читают.
+model EstimatePartner {
+  id         String   @id @default(uuid())
+  estimateId String   @unique
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  amount     Float // сумма посреднику, ₸
+  percent    Float? // что ввёл мастер, если в %; null — вводил сумму
+  coef       Float // множитель, которым размазано по unitPrice (напр. 1.1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 enum EstimateStatus {
@@ -414,18 +435,18 @@ model MeasurementObject {
 }
 
 model MeasurementRoom {
-  id            String   @id @default(uuid())
-  objectId      String
-  name          String   @default("")
-  walls         Json // number[] — длины стен в см
-  normalCorners Json // boolean[] — тип углов
-  angles        Json? // number[] — углы поворота (90, -90, custom)
-  arcBulges     Json? // number[] — дуги стен (bulge factor)
-  cornerRadii   Json? // number[] — радиусы скругления углов (см)
-  columns       Json? // RoomColumn[] — колонны в комнате
-  area          Float
-  perimeter     Float
-  elements      Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
+  id               String   @id @default(uuid())
+  objectId         String
+  name             String   @default("")
+  walls            Json // number[] — длины стен в см
+  normalCorners    Json // boolean[] — тип углов
+  angles           Json? // number[] — углы поворота (90, -90, custom)
+  arcBulges        Json? // number[] — дуги стен (bulge factor)
+  cornerRadii      Json? // number[] — радиусы скругления углов (см)
+  columns          Json? // RoomColumn[] — колонны в комнате
+  area             Float
+  perimeter        Float
+  elements         Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
   // Per-стена тип профиля периметра: Record<wallIndex, WallProfileType>.
   // "floating" = парящий, "subcurtain" = подшторник, ldsp/eurobrus и т.д.
   // Default = "pvc_insert" для отсутствующих ключей. Хранить надо чтобы
@@ -435,9 +456,9 @@ model MeasurementRoom {
   // Record<positionType, variantId>. При расчёте КП в estimate.tsx
   // переопределяет дефолтные позиции (canvas, profile, spot, etc.).
   variantOverrides Json? // Record<string, string>
-  photoUrls     String[] @default([]) // Фото потолка комнаты (Vercel Blob URLs)
-  previewUrl3d  String? // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
-  sortOrder     Int      @default(0)
+  photoUrls        String[] @default([]) // Фото потолка комнаты (Vercel Blob URLs)
+  previewUrl3d     String? // PNG-снимок 3D-сцены (Vercel Blob), пробрасывается в Estimate
+  sortOrder        Int      @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

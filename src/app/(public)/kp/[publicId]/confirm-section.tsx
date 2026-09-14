@@ -10,6 +10,7 @@ interface ConfirmSectionProps {
   calc: CalculationResult;
   total: number;
   discountPercent: number;
+  discountAmount?: number;
   initialConfirmed: boolean;
   isRevised?: boolean;
   brandColor: string;
@@ -20,6 +21,7 @@ export function ConfirmSection({
   calc,
   total,
   discountPercent,
+  discountAmount = 0,
   initialConfirmed,
   isRevised,
   brandColor,
@@ -86,17 +88,19 @@ export function ConfirmSection({
           <p className="text-sm font-semibold" style={{ color: brandColor }}>
             Стоимость работ
           </p>
-          {discountPercent > 0 && (
+          {discountAmount > 0 && (
             <p className="text-sm text-gray-400 line-through mt-1">
-              {formatPrice(calc.total)}
+              {formatPrice(total + discountAmount)}
             </p>
           )}
           <p className="text-3xl font-bold text-gray-900 mt-1">
             {formatPrice(total)}
           </p>
-          {discountPercent > 0 && (
+          {discountAmount > 0 && (
             <p className="text-xs text-emerald-600 mt-0.5">
-              Скидка {discountPercent}%
+              {discountPercent > 0
+                ? `Скидка ${discountPercent}% · −${formatPrice(discountAmount)}`
+                : `Скидка −${formatPrice(discountAmount)}`}
             </p>
           )}
           {calc.totalArea > 0 && (

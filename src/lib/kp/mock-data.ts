@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { themeFor } from "./themes";
 import { DEFAULT_KP_CONFIG, getDefaultConfigForTemplate } from "./templates";
 import type { PdfData } from "./pdf-data";
@@ -29,11 +28,8 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
 
   const { theme, fonts } = themeFor({ brandColor, kpConfig: config });
 
-  const qrDataUrl = await QRCode.toDataURL(MOCK_PUBLIC_URL, {
-    margin: 1,
-    width: 360,
-    color: { dark: "#0F172A", light: "#FFFFFF" },
-  });
+  // QR из PDF убран (см. pdf-data.ts) — превью в конструкторе совпадает с боевым.
+  const qrDataUrl = "";
 
   const master: PdfData["master"] = {
     companyName: overrides.master?.companyName ?? "Студия Уют",
@@ -181,6 +177,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
       clientAddress: "Астана, ул. Кабанбай батыра 49, кв. 87",
       total,
       discountPercent: 0,
+      discountAmount: 0,
       totalArea: 49.5,
       validUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000),
       createdAt: new Date(),

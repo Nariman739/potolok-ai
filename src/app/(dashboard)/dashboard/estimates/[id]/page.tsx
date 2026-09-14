@@ -42,6 +42,7 @@ export default async function EstimateDetailPage({
   const [estimate, kpBrief] = await Promise.all([
     prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
+      include: { partner: { select: { amount: true, percent: true } } },
     }),
     prisma.masterBrief.findUnique({
       where: { masterId: master.id },
@@ -204,6 +205,18 @@ export default async function EstimateDetailPage({
             <p className="text-xs text-muted-foreground">
               {formatPrice(Math.round((estimate.total || estimate.standardTotal || 0) / estimate.totalArea))}/м²
             </p>
+          )}
+          {estimate.discountAmount > 0 && (
+            <p className="text-xs text-orange-600 mt-1">
+              Скидка клиенту {estimate.discountPercent > 0 ? `${estimate.discountPercent}% · ` : ""}−{formatPrice(estimate.discountAmount)}
+            </p>
+          )}
+          {/* Посредник — только мастеру. Наценка уже в ценах позиций, клиент её не видит. */}
+          {estimate.partner && estimate.partner.amount > 0 && (
+            <div className="mt-2 pt-2 border-t border-blue-200 text-xs text-muted-foreground space-y-0.5">
+              <p>Посреднику{estimate.partner.percent ? ` ${estimate.partner.percent}%` : ""}: {formatPrice(estimate.partner.amount)}</p>
+              <p>Вам остаётся: <span className="font-semibold text-foreground">{formatPrice((estimate.total || 0) - estimate.partner.amount)}</span></p>
+            </div>
           )}
         </CardContent>
       </Card>

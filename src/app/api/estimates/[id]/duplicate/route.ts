@@ -12,6 +12,7 @@ export async function POST(
 
     const existing = await prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
+      include: { partner: true },
     });
 
     if (!existing) {
@@ -29,6 +30,7 @@ export async function POST(
         totalArea: existing.totalArea,
         total: existing.total,
         discountPercent: existing.discountPercent,
+        discountAmount: existing.discountAmount,
         economyTotal: existing.economyTotal,
         standardTotal: existing.standardTotal,
         premiumTotal: existing.premiumTotal,
@@ -37,6 +39,19 @@ export async function POST(
         status: "DRAFT",
       },
     });
+
+    // Посредник копируется вместе с КП: цены в calculationData уже с наценкой,
+    // без строки partner копия «забыла бы», кому и сколько должна.
+    if (existing.partner) {
+      await prisma.estimatePartner.create({
+        data: {
+          estimateId: copy.id,
+          amount: existing.partner.amount,
+          percent: existing.partner.percent,
+          coef: existing.partner.coef,
+        },
+      });
+    }
 
     return NextResponse.json({ id: copy.id });
   } catch (error) {

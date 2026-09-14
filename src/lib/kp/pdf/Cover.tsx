@@ -84,12 +84,14 @@ function CoverDiscountBlock({
   badgeTextColor?: string;
 }) {
   const dp = estimate.discountPercent ?? 0;
-  if (dp <= 0) return null;
-  // estimate.total — сумма СО скидкой; восстанавливаем «было».
-  const original = Math.round(estimate.total / (1 - dp / 100));
-  const saved = original - estimate.total;
+  const saved = estimate.discountAmount ?? 0;
+  if (saved <= 0) return null;
+  // estimate.total — сумма СО скидкой; «было» = total + сумма скидки.
+  // Скидка могла быть введена суммой (dp = 0) — тогда бейдж показывает ₸.
+  const original = estimate.total + saved;
   const originalParts = fmtPriceParts(original);
   const savedParts = fmtPriceParts(saved);
+  const badgeLabel = dp > 0 ? `−${dp}%` : `−${savedParts.num} ${savedParts.cur}`;
   return (
     <View style={{ marginBottom: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
@@ -122,7 +124,7 @@ function CoverDiscountBlock({
               letterSpacing: 0.8,
             }}
           >
-            −{dp}%
+            {badgeLabel}
           </Text>
         </View>
       </View>

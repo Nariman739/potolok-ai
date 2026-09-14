@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
+import type { CalculationResult } from "@/lib/types";
 
 export async function GET(
   _request: Request,
@@ -10,8 +12,11 @@ export async function GET(
     const master = await requireAuth();
     const { id } = await params;
 
+    // partner — только для мастера (это его вознаграждение посреднику);
+    // публичные роуты Estimate с этой связью не читают.
     const estimate = await prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
+      include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
 
     if (!estimate) {
@@ -45,6 +50,7 @@ export async function PUT(
 
     const existing = await prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
+      include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
 
     if (!existing) {
@@ -64,9 +70,22 @@ export async function PUT(
       roomsData,
       calculationData,
       totalArea,
-      total,
-      discountPercent,
     } = body;
+
+    // Скидка/посредник/позиции: любое из трёх → пересчитываем итог на сервере.
+    // Пришедший calculationData считаем текущим состоянием (с уже размазанным
+    // посредником, если он был) — resolveAdjust снимет старый коэффициент и
+    // положит новый. Присланный `total` не используем: он выводится.
+    const inputs = readAdjustInputs(body);
+    const touchesMoney =
+      calculationData !== undefined || inputs.discount !== undefined || inputs.partner !== undefined;
+    const adjust = touchesMoney
+      ? resolveAdjust(
+          (calculationData ?? existing.calculationData) as CalculationResult,
+          inputs,
+          existing
+        )
+      : null;
 
     // Validate status transitions that master can do
     const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED"];
@@ -86,14 +105,18 @@ export async function PUT(
         ...(status !== undefined && { status }),
         ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
         ...(roomsData !== undefined && { roomsData }),
-        ...(calculationData !== undefined && { calculationData }),
         ...(totalArea !== undefined && { totalArea: Number(totalArea) || 0 }),
-        ...(total !== undefined && { total: Number(total) || 0 }),
-        ...(discountPercent !== undefined && { discountPercent: Number(discountPercent) || 0 }),
+        ...(adjust && estimateAdjustData(adjust)),
       },
     });
+    if (adjust) await persistPartner(id, adjust.partner);
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...updated,
+      partner: adjust
+        ? adjust.partner.amount > 0 ? adjust.partner : null
+        : existing.partner,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

@@ -6,6 +6,7 @@ import { calculate, type CustomItemInfo } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
 import type { CalculationResult, RoomInput } from "@/lib/types";
+import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 
 interface DesignerPayload {
   walls: number[];
@@ -49,6 +50,7 @@ export async function POST(
 
     const estimate = await prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
+      include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
     if (!estimate) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
@@ -105,19 +107,27 @@ export async function POST(
       };
     }
 
-    const newCalc: CalculationResult = calculate(
+    const existingForAdjust = estimate;
+    const baseCalc: CalculationResult = calculate(
       newRoomsData,
       priceMap,
       customItemsMap
     );
+    // calculate() даёт цены по прайсу (без посредника) — накладываем скидку и
+    // посредника КП заново, иначе пересчёт одной комнаты сбрасывал бы оба.
+    const adjust = resolveAdjust(
+      baseCalc,
+      { discount: undefined, partner: undefined },
+      existingForAdjust,
+      { calcIsBase: true }
+    );
+    const newCalc = adjust.calculationData;
 
     await prisma.estimate.update({
       where: { id },
       data: {
         roomsData: newRoomsData as unknown as object,
-        calculationData: newCalc as unknown as object,
-        total: newCalc.total,
-        standardTotal: newCalc.total,
+        ...estimateAdjustData(adjust),
         totalArea: newCalc.totalArea,
       },
     });
