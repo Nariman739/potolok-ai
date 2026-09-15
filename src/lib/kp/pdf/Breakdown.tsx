@@ -1,7 +1,7 @@
 import React from "react";
 import { Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtArea, makeStyles, PageFooter, PriceText } from "./shared";
+import { fmtArea, makeStyles, PageFooter, PriceText, tengeSafeFamily } from "./shared";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
 
@@ -104,9 +104,12 @@ export function BreakdownPage({
                 color: theme.palette.accentText + "DD",
               }}
             >
-              {estimate.discountPercent > 0
-                ? `Скидка ${estimate.discountPercent}% (−${Math.round(estimate.discountAmount).toLocaleString("ru-RU")} ₸) уже учтена`
-                : `Скидка −${Math.round(estimate.discountAmount).toLocaleString("ru-RU")} ₸ уже учтена`}
+              {/* ₸ — шрифтом, где этот глиф есть: у Manrope/Playfair его нет,
+                  печаталось «−5 000 ¸уже учтена». */}
+              {estimate.discountPercent > 0 ? `Скидка ${estimate.discountPercent}% (` : "Скидка "}
+              −{Math.round(estimate.discountAmount).toLocaleString("ru-RU")}{" "}
+              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+              {estimate.discountPercent > 0 ? ") уже учтена" : " уже учтена"}
             </Text>
           )}
         </View>

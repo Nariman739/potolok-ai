@@ -95,6 +95,11 @@ const TENGE_SAFE_FAMILY: Record<string, string> = {
   "Manrope": "Inter",                         // у Manrope нет ₸ → Inter (близкий sans)
   "Cormorant Garamond": "Cormorant Garamond", // у Cormorant есть ₸
 };
+/** Шрифт, которым безопасно рисовать ₸ рядом с текстом семьи `family`. */
+export function tengeSafeFamily(family: string): string {
+  return TENGE_SAFE_FAMILY[family] ?? "Inter";
+}
+
 const TENGE_SAFE_WEIGHT: Record<string, number> = {
   "Inter": 600,
   "Playfair Display": 600,

@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtDate, fmtPrice, PAGE_PADDING, PriceText, fmtPriceNum } from "./shared";
+import { fmtDate, fmtPrice, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 
 // СТРАНИЦА 1 — Обложка.
 // 5 ТЕМ — 5 РАЗНЫХ ЛЕЙАУТОВ. Никакого «один шаблон с разными цветами».
@@ -91,7 +91,13 @@ function CoverDiscountBlock({
   const original = estimate.total + saved;
   const originalParts = fmtPriceParts(original);
   const savedParts = fmtPriceParts(saved);
-  const badgeLabel = dp > 0 ? `−${dp}%` : `−${savedParts.num} ${savedParts.cur}`;
+  // Знак ₸ отдельным шрифтом: у Manrope и Playfair Display его нет, и в PDF
+  // вместо тенге печаталась закорючка «¸» — клиент видел «−5 000 ¸». Заметно
+  // стало, когда скидку начали вводить суммой: бейдж перестал быть «−10%».
+  // Нариман 2026-09-15, прогон КП со скидкой 5 000 ₸ в симуляторе.
+  const cur = (
+    <Text style={{ fontFamily: tengeSafeFamily(bodyFontFamily) }}>{savedParts.cur}</Text>
+  );
   return (
     <View style={{ marginBottom: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
@@ -104,7 +110,8 @@ function CoverDiscountBlock({
             textDecoration: "line-through",
           }}
         >
-          {originalParts.num} {originalParts.cur}
+          {originalParts.num}{" "}
+          <Text style={{ fontFamily: tengeSafeFamily(strikeFontFamily) }}>{originalParts.cur}</Text>
         </Text>
         <View
           style={{
@@ -124,7 +131,7 @@ function CoverDiscountBlock({
               letterSpacing: 0.8,
             }}
           >
-            {badgeLabel}
+            {dp > 0 ? `−${dp}%` : <>−{savedParts.num} {cur}</>}
           </Text>
         </View>
       </View>
@@ -136,7 +143,7 @@ function CoverDiscountBlock({
           letterSpacing: 0.5,
         }}
       >
-        Экономия −{savedParts.num} {savedParts.cur}
+        Экономия −{savedParts.num} {cur}
       </Text>
     </View>
   );
@@ -432,7 +439,7 @@ function CoverMinimal({
           </Text>
           <Text
             style={{
-              fontFamily: fonts.display.family,
+              fontFamily: tengeSafeFamily(fonts.display.family),
               fontWeight: 400,
               fontSize: 28,
               color: theme.palette.accent,
@@ -1941,7 +1948,7 @@ function CoverBoldColor({
             </Text>
             <Text
               style={{
-                fontFamily: fonts.display.family,
+                fontFamily: tengeSafeFamily(fonts.display.family),
                 fontWeight: 800,
                 fontSize: 28,
                 color: TEXT,
