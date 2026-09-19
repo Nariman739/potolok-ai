@@ -41,7 +41,11 @@ export async function GET(
           orderBy: { createdAt: "desc" },
           take: 100,
         },
+        // deletedAt: null обязателен в обоих блоках: без него карточка клиента
+        // показывала записи из корзины как живые, и тап по такому «замеру»
+        // открывал список, где его нет — мастер упирался в пустоту (19.09.2026).
         estimates: {
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
@@ -50,9 +54,11 @@ export async function GET(
             totalArea: true,
             status: true,
             createdAt: true,
+            measurementObjectId: true,
           },
         },
         measurements: {
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           select: {
             id: true,

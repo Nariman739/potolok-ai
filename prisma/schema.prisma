@@ -129,6 +129,7 @@ model Master {
 
   rangefinders    Rangefinder[]
   pendingPayments PendingPayment[]
+  pushDevices     PushDevice[]
 }
 
 model Session {
@@ -139,6 +140,29 @@ model Session {
   createdAt DateTime @default(now())
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+}
+
+/// Телефон (или планшет) мастера для пуш-уведомлений.
+/// До 19.09.2026 единственным каналом был Telegram, а он привязан у 32 мастеров
+/// из 342 — то есть 91% никогда не узнавали, что клиент открыл или принял КП.
+/// Отдельная таблица, а не поле у Master: у мастера бывает и телефон, и планшет,
+/// а у бригады — несколько устройств на одну компанию.
+model PushDevice {
+  id       String @id @default(uuid())
+  masterId String
+  /// ExpoPushToken[...] — выдаётся Expo, уникален на устройство+приложение
+  token    String @unique
+  platform String // "ios" | "android"
+
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  /// Ставится, когда Expo ответил DeviceNotRegistered — приложение удалили
+  /// или уведомления отключили. Такие токены пропускаем при рассылке.
+  disabledAt DateTime?
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId, disabledAt])
 }
 
 // Single-use, short-lived (≤60s) handoff token used by the mobile app to
@@ -267,6 +291,13 @@ model Estimate {
   clientId      String?
   client        Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
+  // Объект (замер), из которого сделано КП. До 19.09.2026 замер при создании КП
+  // уходил в корзину — и «через 2-3 дня отправить потолки в цех» становилось
+  // невозможным: кнопка «В цех» живёт только у замера. Теперь замер остаётся
+  // жить, а КП знает, к какому объекту относится.
+  measurementObjectId String?
+  measurementObject   MeasurementObject? @relation(fields: [measurementObjectId], references: [id], onDelete: SetNull)
+
   // Электронный договор
   contractPublicId        String?   @unique
   contractTextSnapshot    Json?
@@ -338,6 +369,7 @@ model Estimate {
 
   @@index([clientId])
   @@index([masterId, deletedAt])
+  @@index([measurementObjectId])
 }
 
 /// Вознаграждение посреднику (дизайнеру) по КП. Наценка уже РАЗМАЗАНА по
@@ -427,6 +459,9 @@ model MeasurementObject {
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
   client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
   visualizations Visualization[]
+  // КП, посчитанные по этому объекту. Их может быть несколько — варианты
+  // «со вставкой» / «парящий» по одному и тому же замеру.
+  estimates      Estimate[]
 
   @@index([masterId, status])
   @@index([masterId, createdAt])

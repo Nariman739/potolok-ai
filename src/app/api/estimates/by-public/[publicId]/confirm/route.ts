@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendPushToMaster } from "@/lib/push";
 import { formatPrice } from "@/lib/format";
 import { changeClientStatus, addClientEvent } from "@/lib/clients";
 
@@ -47,6 +48,8 @@ export async function POST(
         total: true,
         standardTotal: true,
         clientId: true,
+        // Нужен, чтобы отправить пуш на телефон мастера.
+        masterId: true,
         master: {
           select: { telegramChatId: true, notifyDealWon: true },
         },
@@ -84,16 +87,27 @@ export async function POST(
       );
     }
 
+    const clientStr = estimate.clientName || "Клиент";
+
     if (
       estimate.master?.telegramChatId &&
       estimate.master.notifyDealWon !== false
     ) {
-      const clientStr = estimate.clientName || "Клиент";
       const text =
         `✅ <b>${clientStr} принял КП!</b>\n\n` +
         (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
         `\n<i>Откройте дашборд PotolokAI, чтобы посмотреть детали.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);
+    }
+
+    // Пуш на телефон. Самое важное уведомление в продаже — раньше доходило
+    // только до тех 9% мастеров, у кого привязан Telegram.
+    if (estimate.master?.notifyDealWon !== false) {
+      sendPushToMaster(estimate.masterId, {
+        title: `${clientStr} принял КП!`,
+        body: price ? `Сумма ${formatPrice(price)}. Пора в цех.` : "Пора в цех.",
+        data: { screen: `/estimate/${estimate.id}` },
+      });
     }
 
     return NextResponse.json({ success: true });

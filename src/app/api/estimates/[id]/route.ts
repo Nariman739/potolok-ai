@@ -17,7 +17,14 @@ export async function GET(
     // публичные роуты Estimate с этой связью не читают.
     const estimate = await prisma.estimate.findFirst({
       where: { id, masterId: master.id, deletedAt: null },
-      include: { partner: { select: { amount: true, percent: true, coef: true } } },
+      include: {
+        partner: { select: { amount: true, percent: true, coef: true } },
+        // Нужен, чтобы на экране КП показать кнопку «В цех»: она умеет работать
+        // только с живым замером. Если объект удалён — кнопки быть не должно.
+        measurementObject: {
+          select: { id: true, address: true, deletedAt: true, rooms: { select: { id: true } } },
+        },
+      },
     });
 
     if (!estimate) {
@@ -27,7 +34,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(estimate);
+    const mo = estimate.measurementObject;
+    const workshopReady = !!mo && !mo.deletedAt && mo.rooms.length > 0;
+
+    return NextResponse.json({
+      ...estimate,
+      // Плоские поля для мобилки: id живого объекта и его адрес, либо null.
+      workshopMeasurementId: workshopReady ? mo.id : null,
+      measurementAddress: workshopReady ? mo.address : null,
+    });
   } catch (error) {
     if (error instanceof KpAdjustError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

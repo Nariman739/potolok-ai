@@ -96,9 +96,12 @@ export async function POST(request: Request) {
       clientPhone,
       clientAddress,
       clientId: providedClientId,
-      // Если КП создан из сохранённого замера — этот замер «съедается»:
-      // удаляем его, чтобы один объект не висел в двух местах
-      // (в Saved Measurements и внутри Estimate.roomsData).
+      // Объект (замер), из которого посчитано КП. Раньше он здесь «съедался» —
+      // уходил в корзину, чтобы не висеть в двух местах. Из-за этого ломался
+      // главный сценарий: «через 2-3 дня объект стартует — отправить потолки
+      // в цех», ведь кнопка «В цех» работает только с живым замером. Так
+      // потерялось 128 объектов из 478. С 19.09.2026 замер остаётся жить,
+      // а КП просто помнит, из какого объекта посчитано.
       fromMeasurementId,
     } = body;
 
@@ -130,6 +133,18 @@ export async function POST(request: Request) {
         ? (roomsData.find((r: { previewUrl3d?: string }) => r?.previewUrl3d)?.previewUrl3d ?? null)
         : null;
 
+    // Объект, из которого считают КП. Проверяем ДО создания, чтобы связь
+    // легла сразу в create — и мобилка получила её уже в ответе (от этого
+    // зависит кнопка «В цех» на экране КП).
+    let linkedMeasurementId: string | null = null;
+    if (fromMeasurementId) {
+      const m = await prisma.measurementObject.findFirst({
+        where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
+        select: { id: true },
+      });
+      linkedMeasurementId = m?.id ?? null;
+    }
+
     // CRM: link with existing client by id, or get-or-create by name/phone
     let linkedClientId: string | null = null;
     if (providedClientId) {
@@ -159,6 +174,7 @@ export async function POST(request: Request) {
         clientPhone: clientPhone || null,
         clientAddress: clientAddress || null,
         clientId: linkedClientId,
+        measurementObjectId: linkedMeasurementId,
         validUntil,
         room3dPreviewUrl,
       },
@@ -181,27 +197,6 @@ export async function POST(request: Request) {
       where: { id: master.id },
       data: { kpGeneratedThisMonth: { increment: 1 } },
     });
-
-    // Замер «съеден» — он жил в Saved Measurements, теперь его данные внутри
-    // Estimate.roomsData. Удаляем чтобы не было двух копий одного замера.
-    if (fromMeasurementId) {
-      try {
-        const m = await prisma.measurementObject.findFirst({
-          where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
-          select: { id: true },
-        });
-        if (m) {
-          // Soft-delete: исходный замер «съеден» — лежит в корзине,
-          // мастер может восстановить если хочет иметь его отдельно.
-          await prisma.measurementObject.update({
-            where: { id: m.id },
-            data: { deletedAt: new Date() },
-          });
-        }
-      } catch (e) {
-        console.warn("Failed to consume measurement after estimate create:", e);
-      }
-    }
 
     return NextResponse.json({
       ...estimate,

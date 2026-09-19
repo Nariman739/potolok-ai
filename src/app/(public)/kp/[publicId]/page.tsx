@@ -6,6 +6,7 @@ import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
 
 export async function generateMetadata({
@@ -71,15 +72,24 @@ export default async function PublicKpPage({
     prisma.estimate
       .update({ where: { id: estimate.id }, data: { status: "VIEWED" } })
       .then(() => {
+        const clientStr = estimate.clientName || "Клиент";
+        const price = estimate.total || estimate.standardTotal || 0;
+
         if (estimate.master.telegramChatId) {
-          const clientStr = estimate.clientName || "Клиент";
-          const price = estimate.total || estimate.standardTotal || 0;
           const text =
             `👀 <b>${clientStr} открыл ваше КП!</b>\n\n` +
             (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
             `\n<i>Ожидаем подтверждение от клиента.</i>`;
           sendTelegramMessage(estimate.master.telegramChatId, text);
         }
+
+        // Пуш на телефон — основной канал. Telegram привязан у 9% мастеров,
+        // остальные раньше не узнавали, что клиент смотрит их КП.
+        sendPushToMaster(estimate.masterId, {
+          title: `${clientStr} открыл ваше КП`,
+          body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
+          data: { screen: `/estimate/${estimate.id}` },
+        });
 
         // CRM: log KP_VIEWED event for the linked client (best-effort)
         if (estimate.clientId) {
