@@ -6,6 +6,7 @@ import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { after } from "next/server";
 import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
 
@@ -85,10 +86,15 @@ export default async function PublicKpPage({
 
         // Пуш на телефон — основной канал. Telegram привязан у 9% мастеров,
         // остальные раньше не узнавали, что клиент смотрит их КП.
-        sendPushToMaster(estimate.masterId, {
-          title: `${clientStr} открыл ваше КП`,
-          body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
-          data: { screen: `/estimate/${estimate.id}` },
+        // after(): страница уже отрендерена клиенту, а поход в базу и запрос
+        // в Expo продолжаются — без этого на Vercel лямбда засыпает раньше,
+        // и мастер не узнаёт, что клиент открыл смету.
+        after(async () => {
+          await sendPushToMaster(estimate.masterId, {
+            title: `${clientStr} открыл ваше КП`,
+            body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
+            data: { screen: `/estimate/${estimate.id}` },
+          });
         });
 
         // CRM: log KP_VIEWED event for the linked client (best-effort)

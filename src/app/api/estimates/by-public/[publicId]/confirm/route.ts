@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
@@ -102,11 +102,17 @@ export async function POST(
 
     // Пуш на телефон. Самое важное уведомление в продаже — раньше доходило
     // только до тех 9% мастеров, у кого привязан Telegram.
+    //
+    // after(): на Vercel функция засыпает сразу после ответа клиенту, а здесь
+    // ещё поход в базу за устройствами и запрос в Expo. Без этого уведомление
+    // молча терялось бы — и никто бы не заметил.
     if (estimate.master?.notifyDealWon !== false) {
-      sendPushToMaster(estimate.masterId, {
-        title: `${clientStr} принял КП!`,
-        body: price ? `Сумма ${formatPrice(price)}. Пора в цех.` : "Пора в цех.",
-        data: { screen: `/estimate/${estimate.id}` },
+      after(async () => {
+        await sendPushToMaster(estimate.masterId, {
+          title: `${clientStr} принял КП!`,
+          body: price ? `Сумма ${formatPrice(price)}. Пора в цех.` : "Пора в цех.",
+          data: { screen: `/estimate/${estimate.id}` },
+        });
       });
     }
 

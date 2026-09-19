@@ -44,10 +44,12 @@ export async function POST(request: Request) {
 /** Мастер вышел из аккаунта на этом устройстве — перестаём слать ему пуши. */
 export async function DELETE(request: Request) {
   try {
-    await requireAuth();
+    const master = await requireAuth();
     const { token } = await request.json();
     if (typeof token === "string" && token) {
-      await prisma.pushDevice.deleteMany({ where: { token } });
+      // masterId обязателен: без него любой авторизованный мастер, знающий
+      // чужой токен, мог отключить уведомления чужому устройству.
+      await prisma.pushDevice.deleteMany({ where: { token, masterId: master.id } });
     }
     return NextResponse.json({ ok: true });
   } catch (error) {

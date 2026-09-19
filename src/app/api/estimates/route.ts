@@ -133,18 +133,6 @@ export async function POST(request: Request) {
         ? (roomsData.find((r: { previewUrl3d?: string }) => r?.previewUrl3d)?.previewUrl3d ?? null)
         : null;
 
-    // Объект, из которого считают КП. Проверяем ДО создания, чтобы связь
-    // легла сразу в create — и мобилка получила её уже в ответе (от этого
-    // зависит кнопка «В цех» на экране КП).
-    let linkedMeasurementId: string | null = null;
-    if (fromMeasurementId) {
-      const m = await prisma.measurementObject.findFirst({
-        where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
-        select: { id: true },
-      });
-      linkedMeasurementId = m?.id ?? null;
-    }
-
     // CRM: link with existing client by id, or get-or-create by name/phone
     let linkedClientId: string | null = null;
     if (providedClientId) {
@@ -162,6 +150,70 @@ export async function POST(request: Request) {
         address: clientAddress || null,
       });
       linkedClientId = auto?.id ?? null;
+    }
+
+    // Объект (замер), из которого считают КП: связь нужна для кнопки «В цех»
+    // на экране КП. Всё в try/catch — сбой базы (у Neon бывает cold start)
+    // не должен стоить мастеру самого КП, максимум связи.
+    let linkedMeasurementId: string | null = null;
+    try {
+      if (fromMeasurementId) {
+        const m = await prisma.measurementObject.findFirst({
+          where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
+          select: { id: true },
+        });
+        linkedMeasurementId = m?.id ?? null;
+      }
+
+      // Мастер мог посчитать КП прямо из свежего замера, не нажимая «Сохранить»
+      // (это основной путь: «Создать КП» на экране замеров стоит выше кнопки
+      // сохранения). Тогда объекта ещё нет — создаём его сами, молча, из тех же
+      // комнат. Иначе объект не попадёт в ленту и потолки будет нечем отправить
+      // в цех — ровно то, ради чего всё и затевалось (19.09.2026).
+      if (!linkedMeasurementId && Array.isArray(roomsData)) {
+        type RawRoom = {
+          name?: string; walls?: number[]; angles?: number[]; bulges?: number[];
+          cornerRadii?: number[]; area?: number; perimeter?: number; elements?: unknown[];
+        };
+        const rooms = (roomsData as RawRoom[]).filter(
+          (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
+        );
+        if (rooms.length > 0) {
+          const created = await prisma.measurementObject.create({
+            data: {
+              masterId: master.id,
+              clientId: linkedClientId,
+              // Адрес важнее всего для ленты объектов. Если мастер его не
+              // ввёл — подставляем имя клиента, чтобы объект не назывался
+              // «Без адреса» и его можно было найти глазами.
+              address: clientAddress || clientName || "",
+              status: "saved",
+              totalArea: Math.round(rooms.reduce((sum, r) => sum + (r.area ?? 0), 0) * 100) / 100,
+              measuredAt: new Date(),
+              rooms: {
+                create: rooms.map((r, i) => ({
+                  name: r.name || `Комната ${i + 1}`,
+                  walls: r.walls!,
+                  normalCorners: Array.isArray(r.angles)
+                    ? r.angles.map((a) => a === 0)
+                    : r.walls!.map(() => true),
+                  angles: r.angles ?? undefined,
+                  arcBulges: r.bulges ?? undefined,
+                  cornerRadii: r.cornerRadii ?? undefined,
+                  area: r.area ?? 0,
+                  perimeter: r.perimeter ?? 0,
+                  elements: (r.elements ?? []) as object[],
+                  sortOrder: i,
+                })),
+              },
+            },
+            select: { id: true },
+          });
+          linkedMeasurementId = created.id;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to resolve/create measurement for estimate:", e);
     }
 
     const estimate = await prisma.estimate.create({

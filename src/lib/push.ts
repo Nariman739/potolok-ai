@@ -64,6 +64,8 @@ export async function sendPushToMaster(
           Accept: "application/json",
         },
         body: JSON.stringify(messages),
+        // Без таймаута зависший Expo держал бы лямбду до её лимита.
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!res.ok) {
@@ -71,8 +73,15 @@ export async function sendPushToMaster(
         continue;
       }
 
-      const json = (await res.json()) as { data?: ExpoTicket[] };
+      const json = (await res.json()) as { data?: ExpoTicket[]; errors?: { message?: string }[] };
+      if (json.errors?.length) {
+        console.warn("Expo push request error:", json.errors[0]?.message ?? "unknown");
+        continue;
+      }
       const tickets = json.data ?? [];
+      // Гасим устройства только при полном совпадении: если Expo вернул меньше
+      // тикетов, чем сообщений, индексы разъедутся и мы отключим не тот телефон.
+      const indexesTrustworthy = tickets.length === slice.length;
 
       // Токены умерших устройств гасим, чтобы не долбиться в них вечно:
       // приложение удалили или мастер выключил уведомления.
@@ -80,10 +89,11 @@ export async function sendPushToMaster(
       tickets.forEach((t, idx) => {
         if (t.status === "ok") {
           delivered++;
-        } else if (t.details?.error === "DeviceNotRegistered") {
+        } else if (t.details?.error === "DeviceNotRegistered" && indexesTrustworthy) {
           dead.push(slice[idx].id);
         } else {
-          console.warn("Expo push ticket error:", t.message);
+          // В t.message Expo возвращает сам токен — в логи его не пишем.
+          console.warn("Expo push ticket error:", t.details?.error ?? "unknown");
         }
       });
 
