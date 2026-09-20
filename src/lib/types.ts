@@ -227,6 +227,8 @@ export interface MasterProfile {
   address?: string | null;
   subscriptionTier: "FREE" | "PRO" | "PROPLUS";
   isOwner: boolean;
+  /** Этап 3: активная компания (null = своя) */
+  activeCompanyId?: string | null;
   kpGeneratedThisMonth: number;
   telegramChatId?: string | null;
   // Contract settings

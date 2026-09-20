@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope, type Scope } from "@/lib/company";
 import { addClientEvent } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 
@@ -17,10 +18,11 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     // Повтор с тем же X-Op-Id (очередь мобилки после обрыва связи) → та же запись.
     return await withIdempotency(request, master.id, `POST /objects/${id}/workshop`, () =>
-      createWorkshopOrder(request, master.id, id),
+      createWorkshopOrder(request, master.id, id, scope),
     );
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -31,13 +33,13 @@ export async function POST(
   }
 }
 
-async function createWorkshopOrder(request: Request, masterId: string, id: string) {
+async function createWorkshopOrder(request: Request, masterId: string, id: string, scope: Scope) {
   const master = { id: masterId };
   try {
     const body = (await request.json().catch(() => ({}))) as { roomIds?: unknown; note?: unknown };
 
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: {
         id: true,
         address: true,

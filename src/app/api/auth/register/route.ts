@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureOwnCompany } from "@/lib/company";
 import { hashPassword, createSession } from "@/lib/auth";
 import { PRODUCT_ITEMS } from "@/lib/constants";
 import { normalizePhone } from "@/lib/phone";
@@ -104,6 +105,8 @@ export async function POST(request: Request) {
         hasUsedTrial: BILLING_ENABLED,
       },
     });
+    // Компания есть у всех с первого дня (Этап 3): пока мастер один, он её не видит.
+    await ensureOwnCompany(master.id).catch((e) => console.warn("ensureOwnCompany:", e));
 
     // Дефолтный прайс — одним createMany. Вложенный create гнал по инсерту на
     // позицию (50+ round-trip'ов), из-за чего регистрация тянулась ~10 секунд.

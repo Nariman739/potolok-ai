@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
@@ -11,12 +12,13 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     // partner — только для мастера (это его вознаграждение посреднику);
     // публичные роуты Estimate с этой связью не читают.
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: {
         partner: { select: { amount: true, percent: true, coef: true } },
         // Нужен, чтобы на экране КП показать кнопку «В цех»: она умеет работать
@@ -64,11 +66,12 @@ export async function PUT(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
 
@@ -157,10 +160,11 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
     });
 
     if (!existing) {

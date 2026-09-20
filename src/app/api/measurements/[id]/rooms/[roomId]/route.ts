@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 export async function PATCH(
   request: Request,
@@ -8,6 +9,7 @@ export async function PATCH(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id, roomId } = await params;
     const body = await request.json();
     const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d } = body as {
@@ -28,7 +30,7 @@ export async function PATCH(
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!obj) {
@@ -89,11 +91,12 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id, roomId } = await params;
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!obj) {

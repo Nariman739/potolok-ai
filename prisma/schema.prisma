@@ -131,6 +131,54 @@ model Master {
   pendingPayments PendingPayment[]
   pushDevices     PushDevice[]
   workshopOrders  WorkshopOrder[]
+
+  /// Компания, которой мастер владеет (есть у всех)
+  ownedCompany    Company? @relation("CompanyOwner")
+  /// Где он участник (своя + куда пригласили)
+  memberships     Member[] @relation("MemberMaster")
+  /// В какой компании сейчас работает; null = в своей
+  activeCompanyId String?
+}
+
+/// Компания — у каждого мастера есть всегда, даже если он один (Этап 3,
+/// 20.09.2026). Пока участник один, слово «компания» в интерфейсе не
+/// появляется. Прайс и бренд читаются у владельца компании; объекты, КП и
+/// клиенты всех участников видны друг другу («кто в компании — видит всё»,
+/// решение Наримана; поле role заложено на будущее, прав пока нет).
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   Master   @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members Member[]
+}
+
+/// Участник компании. masterId = null → человек без приложения (монтажник,
+/// которого просто записали именем и суммой). Если по номеру найдётся
+/// зарегистрированный мастер — привязывается.
+model Member {
+  id        String  @id @default(uuid())
+  companyId String
+  masterId  String?
+  name      String
+  phone     String?
+  /// "owner" | "member" — пока только подпись, прав не даёт
+  role      String  @default("member")
+  /// Сколько обычно платим за монтаж (₸) — подставляется в наряд
+  defaultFee Int?
+  createdAt DateTime @default(now())
+  joinedAt  DateTime?
+  removedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  master  Master? @relation("MemberMaster", fields: [masterId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, removedAt])
+  @@index([masterId])
+  @@index([phone])
 }
 
 model Session {

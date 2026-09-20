@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { canonicalizeStatus, changeClientStatus } from "@/lib/clients";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
@@ -32,10 +33,11 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const client = await prisma.client.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: {
         events: {
           orderBy: { createdAt: "desc" },
@@ -99,11 +101,12 @@ export async function PUT(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
 
     const existing = await prisma.client.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json(
@@ -196,10 +199,11 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const existing = await prisma.client.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json(

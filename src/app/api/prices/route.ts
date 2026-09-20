@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope } from "@/lib/company";
 import { PRODUCT_ITEMS } from "@/lib/constants";
 
 export async function GET() {
   try {
     const master = await requireAuth();
+    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
+    const scope = await getScope(master);
 
     const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
     });
 
     const mpMap: Record<string, { price: number; installerPrice: number | null; photoUrl: string | null; isHidden: boolean }> = {};
@@ -41,7 +44,7 @@ export async function GET() {
 
     // Also load custom items and append them
     const customItems = await prisma.customItem.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
       orderBy: { createdAt: "asc" },
     });
 
@@ -74,6 +77,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const master = await requireAuth();
+    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
+    const scope = await getScope(master);
     const body = await request.json();
     const { items } = body as { items: { itemCode: string; price: number; installerPrice?: number | null }[] };
 
@@ -91,13 +96,13 @@ export async function PUT(request: Request) {
         return prisma.masterPrice.upsert({
           where: {
             masterId_itemCode: {
-              masterId: master.id,
+              masterId: scope.ownerId,
               itemCode: item.itemCode,
             },
           },
           update: { price: item.price, ...(item.installerPrice !== undefined && { installerPrice }) },
           create: {
-            masterId: master.id,
+            masterId: scope.ownerId,
             itemCode: item.itemCode,
             price: item.price,
             installerPrice: installerPrice ?? null,

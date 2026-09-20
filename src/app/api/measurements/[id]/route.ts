@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 
 export async function GET(
@@ -9,10 +10,11 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { rooms: { orderBy: { sortOrder: "asc" } } },
     });
 
@@ -36,6 +38,7 @@ export async function PATCH(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
     const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms } = body as {
@@ -59,7 +62,7 @@ export async function PATCH(
       safeClientId = null;
     } else if (typeof clientId === "string" && clientId) {
       const exists = await prisma.client.findFirst({
-        where: { id: clientId, masterId: master.id, deletedAt: null },
+        where: { id: clientId, ...inScope(scope), deletedAt: null },
         select: { id: true },
       });
       safeClientId = exists?.id ?? null;
@@ -75,7 +78,7 @@ export async function PATCH(
 
     // Проверяем что объект принадлежит мастеру
     const owner = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!owner) {
@@ -144,12 +147,13 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     // Soft-delete: запись остаётся в БД, восстанавливается через /dashboard/trash.
     // См. PR-A 2026-06-03 — закрывает блокер из аудита 2026-06-01.
     const result = await prisma.measurementObject.updateMany({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       data: { deletedAt: new Date() },
     });
 

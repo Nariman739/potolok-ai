@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
@@ -10,9 +11,10 @@ import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 export async function GET() {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
 
     const estimates = await prisma.estimate.findMany({
-      where: { masterId: master.id, deletedAt: null },
+      where: { ...inScope(scope), deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -57,6 +59,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
 
     // Auto-reset KP counter if new month
     const now = new Date();
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
     let linkedClientId: string | null = null;
     if (providedClientId) {
       const existing = await prisma.client.findFirst({
-        where: { id: providedClientId, masterId: master.id },
+        where: { id: providedClientId, ...inScope(scope) },
         select: { id: true },
       });
       linkedClientId = existing?.id ?? null;
@@ -159,7 +162,7 @@ export async function POST(request: Request) {
     try {
       if (fromMeasurementId) {
         const m = await prisma.measurementObject.findFirst({
-          where: { id: fromMeasurementId, masterId: master.id, deletedAt: null },
+          where: { id: fromMeasurementId, ...inScope(scope), deletedAt: null },
           select: { id: true },
         });
         linkedMeasurementId = m?.id ?? null;

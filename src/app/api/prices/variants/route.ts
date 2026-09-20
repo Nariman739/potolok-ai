@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope } from "@/lib/company";
 
 const ALLOWED_CATEGORIES = [
   "canvas",
@@ -28,10 +29,12 @@ function isUnit(v: string): boolean {
 export async function GET(request: NextRequest) {
   try {
     const master = await requireAuth();
+    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
+    const scope = await getScope(master);
     const category = request.nextUrl.searchParams.get("category");
 
     const where: { masterId: string; deletedAt: null; category?: string } = {
-      masterId: master.id,
+      masterId: scope.ownerId,
       deletedAt: null,
     };
     if (category && isCategory(category)) where.category = category;
@@ -54,6 +57,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const master = await requireAuth();
+    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
+    const scope = await getScope(master);
     const contentType = request.headers.get("content-type") || "";
 
     let category: string;
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     const variant = await prisma.priceVariant.create({
       data: {
-        masterId: master.id,
+        masterId: scope.ownerId,
         category,
         baseCode,
         name,

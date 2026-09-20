@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
@@ -25,16 +26,17 @@ const ALLOWED_SOURCES = [
 export async function GET(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search")?.trim();
 
     const where: {
-      masterId: string;
+      masterId: string | { in: string[] };
       deletedAt: null;
       status?: DealStatus;
       OR?: Array<Record<string, unknown>>;
-    } = { masterId: master.id, deletedAt: null };
+    } = { ...inScope(scope), deletedAt: null };
 
     if (status && (ALLOWED_STATUSES as readonly string[]).includes(status)) {
       where.status = status as DealStatus;
@@ -111,6 +113,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const body = await request.json();
     const { name, phone, address, latitude, longitude, source, notes } = body;
 

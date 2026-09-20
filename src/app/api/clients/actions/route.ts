@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { getScope, inScope } from "@/lib/company";
 import { getActionableClients } from "@/lib/clients";
 
 // Лента "Что делать сегодня" на главном экране клиентов mobile.
@@ -8,7 +9,8 @@ import { getActionableClients } from "@/lib/clients";
 export async function GET() {
   try {
     const master = await requireAuth();
-    const buckets = await getActionableClients(master.id);
+    const scope = await getScope(master);
+    const buckets = await getActionableClients(scope.masterIds);
     return NextResponse.json(buckets);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

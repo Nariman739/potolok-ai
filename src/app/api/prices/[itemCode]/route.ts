@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope } from "@/lib/company";
 import { PRODUCT_BY_CODE } from "@/lib/constants";
 
 // PUT — обновить дефолтную позицию мастера: цена, фото, скрытие.
@@ -12,6 +13,8 @@ export async function PUT(
 ) {
   try {
     const master = await requireAuth();
+    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
+    const scope = await getScope(master);
     const { itemCode } = await params;
 
     if (!PRODUCT_BY_CODE[itemCode]) {
@@ -19,7 +22,7 @@ export async function PUT(
     }
 
     const existing = await prisma.masterPrice.findUnique({
-      where: { masterId_itemCode: { masterId: master.id, itemCode } },
+      where: { masterId_itemCode: { masterId: scope.ownerId, itemCode } },
     });
 
     const contentType = request.headers.get("content-type") || "";
@@ -89,10 +92,10 @@ export async function PUT(
     else if (removePhoto) data.photoUrl = null;
 
     const result = await prisma.masterPrice.upsert({
-      where: { masterId_itemCode: { masterId: master.id, itemCode } },
+      where: { masterId_itemCode: { masterId: scope.ownerId, itemCode } },
       update: data,
       create: {
-        masterId: master.id,
+        masterId: scope.ownerId,
         itemCode,
         price: price ?? PRODUCT_BY_CODE[itemCode].defaultPrice,
         installerPrice: installerPrice === null ? null : (installerPrice ?? null),

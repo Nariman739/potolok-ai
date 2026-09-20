@@ -118,6 +118,8 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     warrantyInstall: m.warrantyInstall,
     contractCity: m.contractCity,
     onboardingCompleted: m.onboardingCompleted,
+    // Этап 3: в какой компании работает сейчас (null = в своей)
+    activeCompanyId: m.activeCompanyId ?? null,
   };
 }
 

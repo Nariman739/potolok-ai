@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { getActionableClients } from "@/lib/clients";
 import { resolveStage, pickPrimaryEstimate } from "@/lib/object-stage";
 
@@ -39,6 +40,7 @@ function almatyDayBounds() {
 export async function GET() {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { startOfToday, endOfToday, endOfTomorrow } = almatyDayBounds();
     const staleBefore = new Date(Date.now() - STALE_DAYS * 86_400_000);
     const deadBefore = new Date(Date.now() - DEAD_DAYS * 86_400_000);
@@ -47,7 +49,7 @@ export async function GET() {
       // Замеры / монтажи / встречи на сегодня-завтра
       prisma.clientEvent.findMany({
         where: {
-          client: { masterId: master.id, deletedAt: null },
+          client: { ...inScope(scope), deletedAt: null },
           type: { in: ["MEASUREMENT", "INSTALL", "MEETING"] },
           scheduledAt: { gte: startOfToday, lte: endOfTomorrow },
         },
@@ -60,7 +62,7 @@ export async function GET() {
       }),
       // Объекты с КП — из них выберем «пора в цех» и «клиент молчит»
       prisma.measurementObject.findMany({
-        where: { masterId: master.id, deletedAt: null, estimates: { some: { deletedAt: null } } },
+        where: { ...inScope(scope), deletedAt: null, estimates: { some: { deletedAt: null } } },
         select: {
           id: true, address: true, totalArea: true, manualStage: true,
           client: { select: { id: true, name: true, phone: true } },
@@ -75,7 +77,7 @@ export async function GET() {
       // КП без объекта, которые ждут ответа
       prisma.estimate.findMany({
         where: {
-          masterId: master.id, deletedAt: null, measurementObjectId: null,
+          ...inScope(scope), deletedAt: null, measurementObjectId: null,
           status: { in: ["SENT", "VIEWED"] }, updatedAt: { lt: staleBefore, gte: deadBefore },
         },
         orderBy: { updatedAt: "asc" },
@@ -85,8 +87,8 @@ export async function GET() {
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
-      getActionableClients(master.id),
-      prisma.measurementObject.count({ where: { masterId: master.id, deletedAt: null } }),
+      getActionableClients(scope.masterIds),
+      prisma.measurementObject.count({ where: { ...inScope(scope), deletedAt: null } }),
     ]);
 
     const toWorkshop: object[] = [];

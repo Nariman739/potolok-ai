@@ -33,14 +33,14 @@ function endOfTomorrowAlmaty(): Date {
   return new Date(endOfTodayAlmaty().getTime() + 24 * 60 * 60 * 1000);
 }
 
-export async function getActionableClients(masterId: string) {
+export async function getActionableClients(masterId: string | string[]) {
   const tomorrowEnd = endOfTomorrowAlmaty();
   const todayEnd = endOfTodayAlmaty();
   const now = new Date();
 
   const rows = await prisma.client.findMany({
     where: {
-      masterId,
+      masterId: Array.isArray(masterId) ? { in: masterId } : masterId,
       deletedAt: null,
       nextContactAt: { lte: tomorrowEnd },
       status: { notIn: ["WON" as DealStatus, "LOST" as DealStatus] },

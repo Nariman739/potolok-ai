@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import {
   resolveStage,
   autoStage,
@@ -22,10 +23,11 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: {
         rooms: { orderBy: { sortOrder: "asc" } },
         client: { select: { id: true, name: true, phone: true, address: true, status: true } },
@@ -164,6 +166,7 @@ export async function PATCH(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = (await request.json()) as { manualStage?: unknown };
 
@@ -176,7 +179,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!existing) {

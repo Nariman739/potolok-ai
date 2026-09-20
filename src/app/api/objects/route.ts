@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import {
   resolveStage,
   estimateOnlyStage,
@@ -62,12 +63,13 @@ function maxDate(...dates: (Date | null | undefined)[]): Date {
 export async function GET(request: NextRequest) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const q = (request.nextUrl.searchParams.get("q") ?? "").trim().toLowerCase();
     const stageFilter = request.nextUrl.searchParams.get("stage");
 
     const [objects, orphanEstimates] = await Promise.all([
       prisma.measurementObject.findMany({
-        where: { masterId: master.id, deletedAt: null },
+        where: { ...inScope(scope), deletedAt: null },
         select: {
           id: true,
           address: true,
@@ -104,7 +106,7 @@ export async function GET(request: NextRequest) {
       // КП без объекта. Замер у них либо не делался (быстрое КП), либо ушёл в
       // корзину до 19.09.2026 — в ленте они живут отдельной строкой.
       prisma.estimate.findMany({
-        where: { masterId: master.id, deletedAt: null, measurementObjectId: null },
+        where: { ...inScope(scope), deletedAt: null, measurementObjectId: null },
         select: {
           id: true,
           clientName: true,

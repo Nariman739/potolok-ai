@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope, type Scope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 
 export async function GET(request: NextRequest) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const status = request.nextUrl.searchParams.get("status");
 
     const objects = await prisma.measurementObject.findMany({
       where: {
-        masterId: master.id,
+        ...inScope(scope),
         deletedAt: null,
         ...(status && { status }),
       },
@@ -35,8 +37,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     // Повтор с тем же X-Op-Id (оффлайн-очередь мобилки) → тот же объект, не дубль.
-    return await withIdempotency(request, master.id, "POST /measurements", () => createMeasurement(request, master.id));
+    return await withIdempotency(request, master.id, "POST /measurements", () => createMeasurement(request, master.id, scope));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -46,7 +49,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function createMeasurement(request: Request, masterId: string) {
+async function createMeasurement(request: Request, masterId: string, scope: Scope) {
   const master = { id: masterId };
   try {
     const body = await request.json();
@@ -71,7 +74,7 @@ async function createMeasurement(request: Request, masterId: string) {
     let linkedClientId: string | null = null;
     if (clientId) {
       const exists = await prisma.client.findFirst({
-        where: { id: clientId, masterId: master.id },
+        where: { id: clientId, ...inScope(scope) },
         select: { id: true },
       });
       linkedClientId = exists?.id ?? null;
