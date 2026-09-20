@@ -1,0 +1,213 @@
+import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  resolveStage,
+  autoStage,
+  isObjectStage,
+  STAGE_LABELS,
+  pickPrimaryEstimate,
+} from "@/lib/object-stage";
+
+/**
+ * Карточка объекта — вся жизнь заказа в одном месте: замер и комнаты,
+ * варианты КП, отправки в цех, клиент, история.
+ */
+
+type HistoryItem = { at: string; type: string; text: string; estimateId?: string };
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const master = await requireAuth();
+    const { id } = await params;
+
+    const obj = await prisma.measurementObject.findFirst({
+      where: { id, masterId: master.id, deletedAt: null },
+      include: {
+        rooms: { orderBy: { sortOrder: "asc" } },
+        client: { select: { id: true, name: true, phone: true, address: true, status: true } },
+        estimates: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            publicId: true,
+            clientName: true,
+            total: true,
+            totalArea: true,
+            status: true,
+            confirmedVariant: true,
+            recommendedVariant: true,
+            contractSignedAt: true,
+            actSignedAt: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+          },
+        },
+        workshopOrders: { orderBy: { sentAt: "desc" } },
+      },
+    });
+
+    if (!obj) {
+      return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
+    }
+
+    const { stage, isManual } = resolveStage({
+      manualStage: obj.manualStage,
+      estimates: obj.estimates,
+      workshopOrders: obj.workshopOrders,
+    });
+    const primary = pickPrimaryEstimate(obj.estimates);
+
+    // История объекта: собираем из того, что знаем сами, плюс события клиента,
+    // которые относятся к КП этого объекта (просмотр, принятие).
+    const history: HistoryItem[] = [];
+    history.push({
+      at: (obj.measuredAt ?? obj.createdAt).toISOString(),
+      type: "MEASURED",
+      text: `Замер · ${obj.rooms.length} ${roomsWord(obj.rooms.length)} · ${obj.totalArea} м²`,
+    });
+    for (const e of obj.estimates) {
+      history.push({
+        at: e.createdAt.toISOString(),
+        type: "KP_CREATED",
+        text: `КП на ${Math.round(e.total).toLocaleString("ru-KZ")} ₸`,
+        estimateId: e.id,
+      });
+      if (e.contractSignedAt) {
+        history.push({ at: e.contractSignedAt.toISOString(), type: "CONTRACT_SIGNED", text: "Договор подписан", estimateId: e.id });
+      }
+      if (e.actSignedAt) {
+        history.push({ at: e.actSignedAt.toISOString(), type: "ACT_SIGNED", text: "Акт подписан", estimateId: e.id });
+      }
+    }
+    for (const w of obj.workshopOrders) {
+      history.push({
+        at: w.sentAt.toISOString(),
+        type: "WORKSHOP_SENT",
+        text: `В цех · ${w.roomsCount} ${roomsWord(w.roomsCount)}${w.note ? ` · ${w.note}` : ""}`,
+      });
+    }
+    if (obj.client) {
+      const estimateIds = new Set(obj.estimates.map((e) => e.id));
+      const events = await prisma.clientEvent.findMany({
+        where: {
+          clientId: obj.client.id,
+          type: { in: ["KP_VIEWED", "KP_CONFIRMED", "KP_REJECTED", "INSTALL", "CALL", "NOTE"] },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: { type: true, content: true, metadata: true, createdAt: true, scheduledAt: true },
+      });
+      for (const ev of events) {
+        const meta = (ev.metadata ?? {}) as { estimateId?: string };
+        // События про КП берём только этого объекта; звонки и заметки — все
+        // (у клиента обычно один объект, а разделить их пока нечем).
+        if (ev.type.startsWith("KP_") && meta.estimateId && !estimateIds.has(meta.estimateId)) continue;
+        const text =
+          ev.type === "KP_VIEWED" ? "Клиент открыл КП"
+          : ev.type === "KP_CONFIRMED" ? "Клиент принял КП"
+          : ev.type === "KP_REJECTED" ? "Клиент отклонил КП"
+          : ev.type === "INSTALL" ? `Монтаж${ev.scheduledAt ? " · " + ev.scheduledAt.toLocaleDateString("ru-KZ") : ""}`
+          : ev.type === "CALL" ? `Звонок${ev.content ? " · " + ev.content : ""}`
+          : ev.content || "Заметка";
+        history.push({ at: ev.createdAt.toISOString(), type: ev.type, text, estimateId: meta.estimateId });
+      }
+    }
+    history.sort((a, b) => b.at.localeCompare(a.at));
+
+    return NextResponse.json({
+      id: obj.id,
+      address: obj.address,
+      totalArea: obj.totalArea,
+      latitude: obj.latitude,
+      longitude: obj.longitude,
+      measuredAt: (obj.measuredAt ?? obj.createdAt).toISOString(),
+      createdAt: obj.createdAt.toISOString(),
+      updatedAt: obj.updatedAt.toISOString(),
+      publicShareId: obj.publicShareId,
+      client: obj.client,
+      rooms: obj.rooms,
+      estimates: obj.estimates.map((e) => ({
+        ...e,
+        isPrimary: primary?.id === e.id,
+      })),
+      workshopOrders: obj.workshopOrders,
+      stage,
+      stageLabel: STAGE_LABELS[stage],
+      stageIsManual: isManual,
+      autoStage: autoStage({ estimates: obj.estimates, workshopOrders: obj.workshopOrders }),
+      primaryEstimateId: primary?.id ?? null,
+      total: primary?.total ?? null,
+      history,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Get object error:", error);
+    return NextResponse.json({ error: "Ошибка загрузки объекта" }, { status: 500 });
+  }
+}
+
+/**
+ * Ручной этап. Тело: { manualStage: "installed" | ... | null }.
+ * null — вернуть автоматический расчёт.
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const master = await requireAuth();
+    const { id } = await params;
+    const body = (await request.json()) as { manualStage?: unknown };
+
+    if (!("manualStage" in body)) {
+      return NextResponse.json({ error: "Нечего менять" }, { status: 400 });
+    }
+    const manualStage = body.manualStage;
+    if (manualStage !== null && !isObjectStage(manualStage)) {
+      return NextResponse.json({ error: "Неизвестный этап" }, { status: 400 });
+    }
+
+    const existing = await prisma.measurementObject.findFirst({
+      where: { id, masterId: master.id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
+    }
+
+    const updated = await prisma.measurementObject.update({
+      where: { id },
+      data: { manualStage },
+      select: {
+        manualStage: true,
+        estimates: { where: { deletedAt: null }, select: { status: true, deletedAt: true } },
+        workshopOrders: { select: { id: true } },
+      },
+    });
+    const { stage, isManual } = resolveStage(updated);
+    return NextResponse.json({ stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Patch object error:", error);
+    return NextResponse.json({ error: "Ошибка сохранения" }, { status: 500 });
+  }
+}
+
+function roomsWord(n: number): string {
+  const last2 = n % 100;
+  const last = n % 10;
+  if (last2 >= 11 && last2 <= 14) return "комнат";
+  if (last === 1) return "комната";
+  if (last >= 2 && last <= 4) return "комнаты";
+  return "комнат";
+}

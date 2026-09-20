@@ -49,6 +49,7 @@ const EVENT_LABELS: Record<EventType, string> = {
   ACT_CREATED: "Акт создан",
   ACT_SIGNED: "Акт подписан",
   PHOTO_ADDED: "Фото добавлено",
+  WORKSHOP_SENT: "Чертёж ушёл в цех",
 };
 
 // ============================================================

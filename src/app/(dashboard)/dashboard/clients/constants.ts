@@ -31,7 +31,8 @@ export type EventTypeKey =
   | "CONTRACT_SIGNED"
   | "ACT_CREATED"
   | "ACT_SIGNED"
-  | "PHOTO_ADDED";
+  | "PHOTO_ADDED"
+  | "WORKSHOP_SENT";
 
 // Legacy статусы (QUALIFIED/PROPOSAL_SENT/NEGOTIATING) показываем как "В работе"
 // и тем же цветом что IN_PROGRESS. На сервере (canonicalizeStatus) новые записи
@@ -86,6 +87,7 @@ export const EVENT_LABELS: Record<EventTypeKey, string> = {
   ACT_CREATED: "Создан акт выполненных работ",
   ACT_SIGNED: "Акт подписан клиентом",
   PHOTO_ADDED: "Добавлено фото",
+  WORKSHOP_SENT: "Чертёж отправлен в цех",
 };
 
 export const MANUAL_EVENT_TYPES: { key: EventTypeKey; label: string }[] = [
