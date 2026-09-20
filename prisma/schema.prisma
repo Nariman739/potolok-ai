@@ -176,6 +176,9 @@ model Member {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   master  Master? @relation("MemberMaster", fields: [masterId], references: [id], onDelete: SetNull)
 
+  measuredObjects  MeasurementObject[] @relation("MeasuredBy")
+  installedObjects MeasurementObject[] @relation("Installer")
+
   @@index([companyId, removedAt])
   @@index([masterId])
   @@index([phone])
@@ -524,6 +527,19 @@ model MeasurementObject {
   // клиент может сказать «да» по телефону, а монтаж и деньги приложение
   // пока не видит вовсе — поэтому авто-этап лишь подсказка, ручной важнее.
   manualStage String?
+
+  // Кто делает (Этап 3). Заполняется, когда в компании больше одного
+  // человека; одиночке эти поля не показываются. installerFee — сколько
+  // платим монтажнику за этот объект (₸), уходит в наряд.
+  measuredByMemberId String?
+  installerMemberId  String?
+  installerFee       Int?
+  installAt          DateTime?
+  // Токен публичного наряда монтажнику (/n/[token]) — открывается без установки
+  workOrderToken     String? @unique
+
+  measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
+  installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)
 
   rooms          MeasurementRoom[]
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)

@@ -45,7 +45,7 @@ export async function GET() {
     const staleBefore = new Date(Date.now() - STALE_DAYS * 86_400_000);
     const deadBefore = new Date(Date.now() - DEAD_DAYS * 86_400_000);
 
-    const [events, objects, orphanStale, calls, objectsCount] = await Promise.all([
+    const [events, objects, orphanStale, calls, objectsCount, installs] = await Promise.all([
       // Замеры / монтажи / встречи на сегодня-завтра
       prisma.clientEvent.findMany({
         where: {
@@ -89,6 +89,17 @@ export async function GET() {
       }),
       getActionableClients(scope.masterIds),
       prisma.measurementObject.count({ where: { ...inScope(scope), deletedAt: null } }),
+      // Монтажи, назначенные на объектах (Этап 3): кто и куда едет
+      prisma.measurementObject.findMany({
+        where: { ...inScope(scope), deletedAt: null, installAt: { gte: startOfToday, lte: endOfTomorrow } },
+        orderBy: { installAt: "asc" },
+        take: 30,
+        select: {
+          id: true, address: true, installAt: true, installerFee: true,
+          installer: { select: { id: true, name: true, phone: true } },
+          client: { select: { id: true, name: true, phone: true } },
+        },
+      }),
     ]);
 
     const toWorkshop: object[] = [];
@@ -152,6 +163,15 @@ export async function GET() {
       toWorkshop,
       waiting: waiting.slice(0, 10),
       calls,
+      installs: installs.map((o) => ({
+        id: o.id,
+        title: o.address || o.client?.name || "Объект",
+        at: o.installAt!.toISOString(),
+        isToday: o.installAt! <= endOfToday,
+        installer: o.installer,
+        installerFee: o.installerFee,
+        client: o.client,
+      })),
       // Новичку вместо пустых блоков показываем три шага «Замерь → Посчитай → Отправь»
       objectsCount,
     });

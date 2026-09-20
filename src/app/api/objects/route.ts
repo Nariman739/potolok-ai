@@ -46,6 +46,12 @@ export type ObjectFeedRow = {
   measuredAt: string | null;
   createdAt: string;
   lastActivityAt: string;
+  /** Кто создал / замерял / монтирует — для фильтра «мои / все» в бригаде. */
+  masterId: string;
+  measuredByMemberId: string | null;
+  installerMemberId: string | null;
+  installerName: string | null;
+  installAt: string | null;
   /** Первая комната с чертежом — для миниатюры в строке. */
   preview: { walls: number[]; angles: number[] } | null;
   /** Для kind=estimate: id КП, чтобы открыть экран КП. Для object — id принятого/последнего КП. */
@@ -79,6 +85,11 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           updatedAt: true,
           clientId: true,
+          masterId: true,
+          measuredByMemberId: true,
+          installerMemberId: true,
+          installAt: true,
+          installer: { select: { name: true } },
           client: { select: { id: true, name: true, phone: true } },
           _count: { select: { rooms: true } },
           rooms: {
@@ -113,6 +124,7 @@ export async function GET(request: NextRequest) {
           clientPhone: true,
           clientAddress: true,
           clientId: true,
+          masterId: true,
           client: { select: { id: true, name: true, phone: true } },
           total: true,
           totalArea: true,
@@ -159,6 +171,11 @@ export async function GET(request: NextRequest) {
         measuredAt: (o.measuredAt ?? o.createdAt).toISOString(),
         createdAt: o.createdAt.toISOString(),
         lastActivityAt: maxDate(o.updatedAt, lastEstimateAt, o.workshopOrders[0]?.sentAt).toISOString(),
+        masterId: o.masterId,
+        measuredByMemberId: o.measuredByMemberId,
+        installerMemberId: o.installerMemberId,
+        installerName: o.installer?.name ?? null,
+        installAt: o.installAt?.toISOString() ?? null,
         preview: previewRoom
           ? {
               walls: previewRoom.walls as number[],
@@ -194,6 +211,11 @@ export async function GET(request: NextRequest) {
         measuredAt: null,
         createdAt: e.createdAt.toISOString(),
         lastActivityAt: e.updatedAt.toISOString(),
+        masterId: e.masterId,
+        measuredByMemberId: null,
+        installerMemberId: null,
+        installerName: null,
+        installAt: null,
         preview: null,
         primaryEstimateId: e.id,
       });

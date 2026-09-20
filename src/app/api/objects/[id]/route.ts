@@ -31,6 +31,8 @@ export async function GET(
       include: {
         rooms: { orderBy: { sortOrder: "asc" } },
         client: { select: { id: true, name: true, phone: true, address: true, status: true } },
+        measuredBy: { select: { id: true, name: true } },
+        installer: { select: { id: true, name: true, phone: true } },
         estimates: {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
@@ -133,6 +135,12 @@ export async function GET(
       updatedAt: obj.updatedAt.toISOString(),
       publicShareId: obj.publicShareId,
       client: obj.client,
+      // Кто делает (Этап 3) — мобилка показывает только когда scope.isTeam
+      measuredBy: obj.measuredBy,
+      installer: obj.installer,
+      installerFee: obj.installerFee,
+      installAt: obj.installAt?.toISOString() ?? null,
+      workOrderUrl: obj.workOrderToken ? `https://potolok.ai/n/${obj.workOrderToken}` : null,
       rooms: obj.rooms,
       estimates: obj.estimates.map((e) => ({
         ...e,
@@ -168,14 +176,57 @@ export async function PATCH(
     const master = await requireAuth();
     const scope = await getScope(master);
     const { id } = await params;
-    const body = (await request.json()) as { manualStage?: unknown };
+    const body = (await request.json()) as {
+      manualStage?: unknown;
+      measuredByMemberId?: unknown;
+      installerMemberId?: unknown;
+      installerFee?: unknown;
+      installAt?: unknown;
+    };
 
-    if (!("manualStage" in body)) {
-      return NextResponse.json({ error: "Нечего менять" }, { status: 400 });
+    const data: {
+      manualStage?: string | null;
+      measuredByMemberId?: string | null;
+      installerMemberId?: string | null;
+      installerFee?: number | null;
+      installAt?: Date | null;
+    } = {};
+
+    if ("manualStage" in body) {
+      const manualStage = body.manualStage;
+      if (manualStage !== null && !isObjectStage(manualStage)) {
+        return NextResponse.json({ error: "Неизвестный этап" }, { status: 400 });
+      }
+      data.manualStage = manualStage as string | null;
     }
-    const manualStage = body.manualStage;
-    if (manualStage !== null && !isObjectStage(manualStage)) {
-      return NextResponse.json({ error: "Неизвестный этап" }, { status: 400 });
+    // Исполнители — только участники этой компании
+    const memberIds = new Set(scope.members.map((m) => m.id));
+    for (const key of ["measuredByMemberId", "installerMemberId"] as const) {
+      if (key in body) {
+        const v = body[key];
+        if (v !== null && (typeof v !== "string" || !memberIds.has(v))) {
+          return NextResponse.json({ error: "Такого человека нет в компании" }, { status: 400 });
+        }
+        data[key] = v as string | null;
+      }
+    }
+    if ("installerFee" in body) {
+      const v = body.installerFee;
+      if (v !== null && (typeof v !== "number" || v < 0 || v > 100_000_000)) {
+        return NextResponse.json({ error: "Сумма монтажа некорректна" }, { status: 400 });
+      }
+      data.installerFee = v === null ? null : Math.round(v as number);
+    }
+    if ("installAt" in body) {
+      const v = body.installAt;
+      if (v !== null) {
+        const d = new Date(String(v));
+        if (Number.isNaN(d.getTime())) return NextResponse.json({ error: "Дата монтажа некорректна" }, { status: 400 });
+        data.installAt = d;
+      } else data.installAt = null;
+    }
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "Нечего менять" }, { status: 400 });
     }
 
     const existing = await prisma.measurementObject.findFirst({
@@ -188,15 +239,23 @@ export async function PATCH(
 
     const updated = await prisma.measurementObject.update({
       where: { id },
-      data: { manualStage },
+      data,
       select: {
         manualStage: true,
+        installerFee: true,
+        installAt: true,
+        measuredBy: { select: { id: true, name: true } },
+        installer: { select: { id: true, name: true, phone: true } },
         estimates: { where: { deletedAt: null }, select: { status: true, deletedAt: true } },
         workshopOrders: { select: { id: true } },
       },
     });
     const { stage, isManual } = resolveStage(updated);
-    return NextResponse.json({ stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual });
+    return NextResponse.json({
+      stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual,
+      measuredBy: updated.measuredBy, installer: updated.installer,
+      installerFee: updated.installerFee, installAt: updated.installAt?.toISOString() ?? null,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

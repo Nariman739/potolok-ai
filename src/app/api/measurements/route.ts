@@ -93,6 +93,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       data: {
         masterId: master.id,
         clientId: linkedClientId,
+        // Кто замерял — тот, кто создал объект (Этап 3)
+        measuredByMemberId: scope.members.find((m) => m.isMe)?.id ?? null,
         address: address || "",
         status: status || "active",
         totalArea,
