@@ -135,6 +135,8 @@ export async function GET(
         // События про КП берём только этого объекта; звонки и заметки — все
         // (у клиента обычно один объект, а разделить их пока нечем).
         if (ev.type.startsWith("KP_") && meta.estimateId && !estimateIds.has(meta.estimateId)) continue;
+        // Оплаты уже в истории из Payment — заметка-дубль у клиента не нужна
+        if (ev.type === "NOTE" && (ev.metadata as { paymentId?: string } | null)?.paymentId) continue;
         const text =
           ev.type === "KP_VIEWED" ? "Клиент открыл КП"
           : ev.type === "KP_CONFIRMED" ? "Клиент принял КП"
