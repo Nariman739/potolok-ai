@@ -18,7 +18,11 @@ import { resolveStage, pickPrimaryEstimate } from "@/lib/object-stage";
  */
 
 const ALMATY_OFFSET_MS = 5 * 60 * 60 * 1000;
+// «Клиент молчит» — окно от 2 до 14 дней. Раньше двух — рано дёргать, позже
+// двух недель — это уже не «молчит», а отказ: на проде у мастера висели КП
+// 112-дневной давности, экран превращался в кладбище (замечено 20.09.2026).
 const STALE_DAYS = 2;
+const DEAD_DAYS = 14;
 
 function almatyDayBounds() {
   const nowZ = new Date(Date.now() + ALMATY_OFFSET_MS);
@@ -37,6 +41,7 @@ export async function GET() {
     const master = await requireAuth();
     const { startOfToday, endOfToday, endOfTomorrow } = almatyDayBounds();
     const staleBefore = new Date(Date.now() - STALE_DAYS * 86_400_000);
+    const deadBefore = new Date(Date.now() - DEAD_DAYS * 86_400_000);
 
     const [events, objects, orphanStale, calls, objectsCount] = await Promise.all([
       // Замеры / монтажи / встречи на сегодня-завтра
@@ -71,7 +76,7 @@ export async function GET() {
       prisma.estimate.findMany({
         where: {
           masterId: master.id, deletedAt: null, measurementObjectId: null,
-          status: { in: ["SENT", "VIEWED"] }, updatedAt: { lt: staleBefore },
+          status: { in: ["SENT", "VIEWED"] }, updatedAt: { lt: staleBefore, gte: deadBefore },
         },
         orderBy: { updatedAt: "asc" },
         take: 10,
@@ -105,7 +110,7 @@ export async function GET() {
       };
       if (stage === "confirmed" && o.workshopOrders.length === 0 && o._count.rooms > 0) {
         toWorkshop.push({ ...base, since: (primary?.updatedAt ?? primary?.createdAt)?.toISOString() ?? null });
-      } else if ((stage === "sent" || stage === "viewed") && primary && primary.updatedAt < staleBefore) {
+      } else if ((stage === "sent" || stage === "viewed") && primary && primary.updatedAt < staleBefore && primary.updatedAt >= deadBefore) {
         waiting.push({
           ...base,
           viewed: stage === "viewed",
