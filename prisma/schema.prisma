@@ -130,6 +130,7 @@ model Master {
   rangefinders    Rangefinder[]
   pendingPayments PendingPayment[]
   pushDevices     PushDevice[]
+  workshopOrders  WorkshopOrder[]
 }
 
 model Session {
@@ -455,6 +456,13 @@ model MeasurementObject {
   // жмёт «Поделиться 3D» — клиент крутит комнату без логина, до создания КП.
   publicShareId String? @unique
 
+  // Этап объекта, поставленный мастером рукой («смонтировали», «закрыл»).
+  // Обычно этап считается сам по событиям (см. src/lib/object-stage.ts):
+  // КП создано → отправлено → клиент смотрел → согласовал → ушло в цех. Но
+  // клиент может сказать «да» по телефону, а монтаж и деньги приложение
+  // пока не видит вовсе — поэтому авто-этап лишь подсказка, ручной важнее.
+  manualStage String?
+
   rooms          MeasurementRoom[]
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
   client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
@@ -462,6 +470,9 @@ model MeasurementObject {
   // КП, посчитанные по этому объекту. Их может быть несколько — варианты
   // «со вставкой» / «парящий» по одному и тому же замеру.
   estimates      Estimate[]
+  // Отправки чертежей в цех. Раньше «В цех» = PDF в share sheet и ничего
+  // на сервере; через три дня мастер не помнил, что уже ушло.
+  workshopOrders WorkshopOrder[]
 
   @@index([masterId, status])
   @@index([masterId, createdAt])
@@ -506,6 +517,32 @@ model MeasurementRoom {
 // ============================================
 // AI CEILING RENDERS (Replicate Flux Fill Pro)
 // ============================================
+
+/// Отправка чертежа в цех. Одна запись = один PDF, ушедший в WhatsApp.
+/// Объект уходит в цех по-разному: то целиком, то частями — поэтому
+/// храним, какие именно комнаты были в файле.
+model WorkshopOrder {
+  id                  String @id @default(uuid())
+  masterId            String
+  measurementObjectId String
+
+  /// id комнат (MeasurementRoom.id), попавших в PDF
+  roomIds    Json
+  roomsCount Int    @default(0)
+  /// Суммарная площадь отправленных комнат, м²
+  area       Float  @default(0)
+  /// Заметка мастера («второй этаж», «полотно белое мат»)
+  note       String?
+
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  master            Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  measurementObject MeasurementObject @relation(fields: [measurementObjectId], references: [id], onDelete: Cascade)
+
+  @@index([measurementObjectId, sentAt])
+  @@index([masterId, sentAt])
+}
 
 model AiRenderLog {
   id         String   @id @default(uuid())
@@ -859,6 +896,7 @@ enum EventType {
   ACT_CREATED
   ACT_SIGNED
   PHOTO_ADDED
+  WORKSHOP_SENT
 }
 
 // ============================================
