@@ -136,7 +136,8 @@ export async function GET() {
       waiting.push({
         kind: "estimate" as const,
         id: e.id,
-        title: e.clientAddress || e.client?.name || e.clientName || "КП",
+        // QA-прогон 20.09: строка «КП» без имени и адреса ни о чём не говорит
+        title: e.clientAddress || e.client?.name || e.clientName || `КП на ${Math.round(e.total).toLocaleString("ru-KZ")} ₸`,
         clientId: e.client?.id ?? null,
         clientName: e.client?.name ?? e.clientName ?? null,
         clientPhone: e.client?.phone ?? e.clientPhone ?? null,
