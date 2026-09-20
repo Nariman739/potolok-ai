@@ -9,6 +9,7 @@ import {
   STAGE_LABELS,
   pickPrimaryEstimate,
 } from "@/lib/object-stage";
+import { moneySummary } from "@/lib/money";
 
 /**
  * Карточка объекта — вся жизнь заказа в одном месте: замер и комнаты,
@@ -53,6 +54,8 @@ export async function GET(
           },
         },
         workshopOrders: { orderBy: { sentAt: "desc" } },
+        payments: { orderBy: { paidAt: "desc" } },
+        master: { select: { materialPercent: true } },
       },
     });
 
@@ -60,12 +63,22 @@ export async function GET(
       return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
     }
 
+    const primary = pickPrimaryEstimate(obj.estimates);
+    // Деньги (Этап 4): цена — принятое/последнее КП; закрыл = смонтировали + деньги
+    const money = moneySummary({
+      price: primary?.total ?? null,
+      payments: obj.payments,
+      materialCost: obj.materialCost,
+      materialPercent: obj.master.materialPercent,
+      installerFee: obj.installerFee,
+      installerPaidAt: obj.installerPaidAt,
+    });
     const { stage, isManual } = resolveStage({
       manualStage: obj.manualStage,
       estimates: obj.estimates,
       workshopOrders: obj.workshopOrders,
+      settled: money.settled,
     });
-    const primary = pickPrimaryEstimate(obj.estimates);
 
     // История объекта: собираем из того, что знаем сами, плюс события клиента,
     // которые относятся к КП этого объекта (просмотр, принятие).
@@ -88,6 +101,13 @@ export async function GET(
       if (e.actSignedAt) {
         history.push({ at: e.actSignedAt.toISOString(), type: "ACT_SIGNED", text: "Акт подписан", estimateId: e.id });
       }
+    }
+    for (const pay of obj.payments) {
+      history.push({
+        at: pay.paidAt.toISOString(),
+        type: "PAYMENT",
+        text: `Получено ${pay.amount.toLocaleString("ru-KZ")} ₸${pay.kind === "prepayment" ? " · предоплата" : pay.kind === "final" ? " · остаток" : ""}${pay.note ? ` · ${pay.note}` : ""}`,
+      });
     }
     for (const w of obj.workshopOrders) {
       history.push({
@@ -147,6 +167,7 @@ export async function GET(
         isPrimary: primary?.id === e.id,
       })),
       workshopOrders: obj.workshopOrders,
+      money: { ...money, payments: obj.payments.map((p) => ({ id: p.id, amount: p.amount, kind: p.kind, note: p.note, paidAt: p.paidAt.toISOString() })) },
       stage,
       stageLabel: STAGE_LABELS[stage],
       stageIsManual: isManual,
@@ -182,6 +203,8 @@ export async function PATCH(
       installerMemberId?: unknown;
       installerFee?: unknown;
       installAt?: unknown;
+      materialCost?: unknown;
+      installerPaid?: unknown;
     };
 
     const data: {
@@ -190,7 +213,19 @@ export async function PATCH(
       installerMemberId?: string | null;
       installerFee?: number | null;
       installAt?: Date | null;
+      materialCost?: number | null;
+      installerPaidAt?: Date | null;
     } = {};
+    if ("materialCost" in body) {
+      const v = body.materialCost;
+      if (v !== null && (typeof v !== "number" || v < 0 || v > 100_000_000)) {
+        return NextResponse.json({ error: "Сумма материала некорректна" }, { status: 400 });
+      }
+      data.materialCost = v === null ? null : Math.round(v as number);
+    }
+    if ("installerPaid" in body) {
+      data.installerPaidAt = body.installerPaid ? new Date() : null;
+    }
 
     if ("manualStage" in body) {
       const manualStage = body.manualStage;
@@ -244,17 +279,31 @@ export async function PATCH(
         manualStage: true,
         installerFee: true,
         installAt: true,
+        materialCost: true,
+        installerPaidAt: true,
         measuredBy: { select: { id: true, name: true } },
         installer: { select: { id: true, name: true, phone: true } },
-        estimates: { where: { deletedAt: null }, select: { status: true, deletedAt: true } },
+        estimates: { where: { deletedAt: null }, select: { status: true, total: true, createdAt: true, deletedAt: true } },
         workshopOrders: { select: { id: true } },
+        payments: { select: { amount: true } },
+        master: { select: { materialPercent: true } },
       },
     });
-    const { stage, isManual } = resolveStage(updated);
+    const primary = pickPrimaryEstimate(updated.estimates);
+    const money = moneySummary({
+      price: primary?.total ?? null,
+      payments: updated.payments,
+      materialCost: updated.materialCost,
+      materialPercent: updated.master.materialPercent,
+      installerFee: updated.installerFee,
+      installerPaidAt: updated.installerPaidAt,
+    });
+    const { stage, isManual } = resolveStage({ ...updated, settled: money.settled });
     return NextResponse.json({
       stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual,
       measuredBy: updated.measuredBy, installer: updated.installer,
       installerFee: updated.installerFee, installAt: updated.installAt?.toISOString() ?? null,
+      money,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

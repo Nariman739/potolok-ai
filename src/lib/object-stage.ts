@@ -50,6 +50,9 @@ export type StageInput = {
   manualStage?: string | null;
   estimates: { status: string; deletedAt?: Date | null }[];
   workshopOrders: { id: string }[];
+  /** Деньги от клиента получены полностью (Этап 4) — вместе с ручным
+   *  «смонтировали» даёт «закрыл»: закрыл = смонтировали И деньги. */
+  settled?: boolean;
 };
 
 /** Этап только по событиям, без учёта ручного. */
@@ -65,6 +68,7 @@ export function autoStage(input: StageInput): ObjectStage {
 
 export function resolveStage(input: StageInput): { stage: ObjectStage; isManual: boolean } {
   if (isObjectStage(input.manualStage)) {
+    if (input.manualStage === "installed" && input.settled) return { stage: "closed", isManual: true };
     return { stage: input.manualStage, isManual: true };
   }
   return { stage: autoStage(input), isManual: false };

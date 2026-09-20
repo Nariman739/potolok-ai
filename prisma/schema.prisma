@@ -131,6 +131,10 @@ model Master {
   pendingPayments PendingPayment[]
   pushDevices     PushDevice[]
   workshopOrders  WorkshopOrder[]
+  payments        Payment[]
+  /// Доля материала в цене клиенту, % — для оценки прибыли, пока закупка
+  /// по объекту не указана (Этап 4). Мастер может поправить.
+  materialPercent Int @default(40)
 
   /// Компания, которой мастер владеет (есть у всех)
   ownedCompany    Company? @relation("CompanyOwner")
@@ -541,6 +545,13 @@ model MeasurementObject {
   measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
   installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)
 
+  // Деньги (Этап 4). materialCost — сколько отдал за материал по этому объекту
+  // (спрашиваем в момент закрытия, не в настройках). installerPaidAt —
+  // монтажнику выплачено. Платежи от клиента — в Payment.
+  materialCost    Int?
+  installerPaidAt DateTime?
+  payments        Payment[]
+
   rooms          MeasurementRoom[]
   master         Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
   client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
@@ -620,6 +631,26 @@ model WorkshopOrder {
 
   @@index([measurementObjectId, sentAt])
   @@index([masterId, sentAt])
+}
+
+/// Деньги от клиента по объекту (Этап 4): предоплата, остаток, прочее.
+/// «Закрыл объект» = смонтировали и деньги получены — считается по этим записям.
+model Payment {
+  id                  String   @id @default(uuid())
+  masterId            String
+  measurementObjectId String
+  amount              Int
+  /// "prepayment" | "final" | "other"
+  kind                String   @default("other")
+  note                String?
+  paidAt              DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  master            Master            @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  measurementObject MeasurementObject @relation(fields: [measurementObjectId], references: [id], onDelete: Cascade)
+
+  @@index([measurementObjectId, paidAt])
+  @@index([masterId, paidAt])
 }
 
 model AiRenderLog {

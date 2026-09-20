@@ -46,6 +46,9 @@ export type ObjectFeedRow = {
   measuredAt: string | null;
   createdAt: string;
   lastActivityAt: string;
+  /** Деньги (Этап 4): получено от клиента и остаток (null — КП нет). */
+  paid: number;
+  due: number | null;
   /** Кто создал / замерял / монтирует — для фильтра «мои / все» в бригаде. */
   masterId: string;
   measuredByMemberId: string | null;
@@ -112,6 +115,7 @@ export async function GET(request: NextRequest) {
             orderBy: { sentAt: "desc" },
             select: { id: true, sentAt: true },
           },
+          payments: { select: { amount: true } },
         },
       }),
       // КП без объекта. Замер у них либо не делался (быстрое КП), либо ушёл в
@@ -139,12 +143,15 @@ export async function GET(request: NextRequest) {
     const rows: ObjectFeedRow[] = [];
 
     for (const o of objects) {
+      const primary = pickPrimaryEstimate(o.estimates);
+      const paid = o.payments.reduce((sum, p) => sum + p.amount, 0);
+      const price = primary && primary.total > 0 ? Math.round(primary.total) : null;
       const { stage, isManual } = resolveStage({
         manualStage: o.manualStage,
         estimates: o.estimates,
         workshopOrders: o.workshopOrders,
+        settled: price != null && paid >= price,
       });
-      const primary = pickPrimaryEstimate(o.estimates);
       const previewRoom = o.rooms.find((r) => Array.isArray(r.walls) && (r.walls as number[]).length >= 3);
       const lastEstimateAt = o.estimates.reduce<Date | null>(
         (acc, e) => (acc && acc > e.updatedAt ? acc : e.updatedAt),
@@ -171,6 +178,8 @@ export async function GET(request: NextRequest) {
         measuredAt: (o.measuredAt ?? o.createdAt).toISOString(),
         createdAt: o.createdAt.toISOString(),
         lastActivityAt: maxDate(o.updatedAt, lastEstimateAt, o.workshopOrders[0]?.sentAt).toISOString(),
+        paid,
+        due: price != null ? price - paid : null,
         masterId: o.masterId,
         measuredByMemberId: o.measuredByMemberId,
         installerMemberId: o.installerMemberId,
@@ -211,6 +220,8 @@ export async function GET(request: NextRequest) {
         measuredAt: null,
         createdAt: e.createdAt.toISOString(),
         lastActivityAt: e.updatedAt.toISOString(),
+        paid: 0,
+        due: null,
         masterId: e.masterId,
         measuredByMemberId: null,
         installerMemberId: null,
