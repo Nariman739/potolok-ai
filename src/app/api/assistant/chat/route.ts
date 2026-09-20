@@ -119,9 +119,13 @@ export async function POST(request: Request) {
     const photoUrls = [...(chatSession.photoUrls || [])];
     if (imageUrl) photoUrls.push(imageUrl);
 
+    // Мобилка ходит с Bearer-токеном, веб — с cookie: подсказки «где что»
+    // должны быть словами того интерфейса, из которого спрашивают.
+    const platform = request.headers.get("authorization")?.startsWith("Bearer ") ? "mobile" : "web";
     const systemPrompt = buildSystemPrompt(
       master.companyName || master.firstName,
-      prices
+      prices,
+      { platform }
     );
 
     let fullContent = "";
