@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
 import { generateActHtml } from "@/lib/contract-html";
 import type { CalculationResult } from "@/lib/types";
@@ -48,6 +49,8 @@ export default async function ActPublicPage({
   });
 
   if (!estimate) notFound();
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const calc = estimate.calculationData as unknown as CalculationResult;
   const html = generateActHtml(

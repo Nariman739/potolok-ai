@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
@@ -22,6 +23,8 @@ export async function generateMetadata({
   });
 
   if (!estimate) return { title: "КП не найдено" };
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const company = estimate.master.companyName || estimate.master.firstName;
   const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
@@ -67,6 +70,8 @@ export default async function PublicKpPage({
   });
 
   if (!estimate) notFound();
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   // Mark as viewed + notify master (best-effort, non-blocking)
   if (estimate.status === "DRAFT" || estimate.status === "SENT") {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -84,6 +85,8 @@ export async function GET(
     if (!estimate) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     }
+    // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
     // Load master's install prices (overrides)
     const masterPrices = await prisma.masterPrice.findMany({

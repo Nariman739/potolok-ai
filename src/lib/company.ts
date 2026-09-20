@@ -121,3 +121,30 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
 export function inScope(scope: Scope) {
   return scope.masterIds.length === 1 ? { masterId: scope.masterIds[0] } : { masterId: { in: scope.masterIds } };
 }
+
+/**
+ * Бренд и реквизиты для КП/договора/акта/PDF — владельца компании, а не того
+ * участника, который нажал «Создать КП» (Этап 3). Возвращает объект той же
+ * формы, что пришёл из select — подменяются только выбранные поля.
+ * id и telegramChatId не трогаем: уведомления должны идти автору КП.
+ */
+export async function ownerBrandFor<M extends object>(masterId: string, master: M): Promise<M> {
+  try {
+    const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
+    if (!me?.activeCompanyId) return master;
+    const company = await prisma.company.findFirst({
+      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null } } },
+      select: { ownerId: true },
+    });
+    if (!company || company.ownerId === masterId) return master;
+    const keys = Object.keys(master).filter((k) => k !== "id" && k !== "telegramChatId");
+    if (keys.length === 0) return master;
+    const owner = await prisma.master.findUnique({
+      where: { id: company.ownerId },
+      select: Object.fromEntries(keys.map((k) => [k, true])) as Record<string, true>,
+    });
+    return owner ? ({ ...master, ...(owner as Partial<M>) } as M) : master;
+  } catch {
+    return master;
+  }
+}

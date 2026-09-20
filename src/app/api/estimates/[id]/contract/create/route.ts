@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import { addClientEvent } from "@/lib/clients";
 import crypto from "crypto";
 
@@ -88,6 +89,8 @@ export async function POST(
     if (!estimate) {
       return NextResponse.json({ error: "КП не найдено" }, { status: 404 });
     }
+    // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
     // Условия договора
     const validatedSchedule = paymentSchedule

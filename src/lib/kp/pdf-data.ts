@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
 import { DEFAULT_KP_CONFIG } from "./templates";
@@ -146,6 +147,8 @@ export async function buildPdfData(estimateId: string, masterId?: string): Promi
     },
   });
   if (!estimate) throw new Error("Estimate not found");
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const config = normalizeConfig(estimate.master.kpConfig);
   const { theme, fonts } = themeFor({

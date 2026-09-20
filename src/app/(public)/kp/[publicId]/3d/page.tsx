@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ownerBrandFor } from "@/lib/company";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { pickRoomForScene3D, mapRoomToScene3DProps } from "@/lib/room-3d";
@@ -15,6 +16,8 @@ export async function generateMetadata({
     include: { master: { select: { companyName: true, firstName: true } } },
   });
   if (!estimate) return { title: "3D-просмотр не найден" };
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const company = estimate.master.companyName || estimate.master.firstName;
   const title = `3D-просмотр потолка | ${company}`;
@@ -45,6 +48,7 @@ export default async function Public3DPage({
     select: {
       id: true,
       publicId: true,
+      masterId: true,
       roomsData: true,
       room3dPreviewUrl: true,
       master: { select: { brandColor: true, companyName: true, firstName: true } },
@@ -52,6 +56,8 @@ export default async function Public3DPage({
   });
 
   if (!estimate) notFound();
+  // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const room = pickRoomForScene3D(estimate.roomsData);
   if (!room) {
