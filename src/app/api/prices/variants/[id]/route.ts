@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 async function findOwned(id: string, masterId: string) {
   return prisma.priceVariant.findFirst({ where: { id, masterId, deletedAt: null } });
@@ -10,8 +11,9 @@ async function findOwned(id: string, masterId: string) {
 export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await ctx.params;
-    const existing = await findOwned(id, master.id);
+    const existing = await findOwned(id, scope.ownerId);
     if (!existing) {
       return NextResponse.json({ error: "Вариант не найден" }, { status: 404 });
     }
@@ -142,8 +144,9 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
 export async function DELETE(_request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await ctx.params;
-    const existing = await findOwned(id, master.id);
+    const existing = await findOwned(id, scope.ownerId);
     if (!existing) {
       return NextResponse.json({ error: "Вариант не найден" }, { status: 404 });
     }

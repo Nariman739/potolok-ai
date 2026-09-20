@@ -51,11 +51,11 @@ export async function GET(
             createdAt: true,
             updatedAt: true,
             deletedAt: true,
+            partner: { select: { amount: true } },
           },
         },
         workshopOrders: { orderBy: { sentAt: "desc" } },
         payments: { orderBy: { paidAt: "desc" } },
-        master: { select: { materialPercent: true } },
       },
     });
 
@@ -64,14 +64,17 @@ export async function GET(
     }
 
     const primary = pickPrimaryEstimate(obj.estimates);
-    // Деньги (Этап 4): цена — принятое/последнее КП; закрыл = смонтировали + деньги
+    // Деньги (Этап 4): цена — принятое/последнее КП; закрыл = смонтировали + деньги.
+    // Процент материала — владельца компании (общая настройка, как прайс).
+    const owner = await prisma.master.findUnique({ where: { id: scope.ownerId }, select: { materialPercent: true } });
     const money = moneySummary({
       price: primary?.total ?? null,
       payments: obj.payments,
       materialCost: obj.materialCost,
-      materialPercent: obj.master.materialPercent,
+      materialPercent: owner?.materialPercent ?? 40,
       installerFee: obj.installerFee,
       installerPaidAt: obj.installerPaidAt,
+      partnerAmount: primary?.partner?.amount ?? 0,
     });
     const { stage, isManual } = resolveStage({
       manualStage: obj.manualStage,
@@ -283,27 +286,28 @@ export async function PATCH(
         installerPaidAt: true,
         measuredBy: { select: { id: true, name: true } },
         installer: { select: { id: true, name: true, phone: true } },
-        estimates: { where: { deletedAt: null }, select: { status: true, total: true, createdAt: true, deletedAt: true } },
+        estimates: { where: { deletedAt: null }, select: { status: true, total: true, createdAt: true, deletedAt: true, partner: { select: { amount: true } } } },
         workshopOrders: { select: { id: true } },
-        payments: { select: { amount: true } },
-        master: { select: { materialPercent: true } },
+        payments: { select: { id: true, amount: true, kind: true, note: true, paidAt: true } },
       },
     });
     const primary = pickPrimaryEstimate(updated.estimates);
+    const owner = await prisma.master.findUnique({ where: { id: scope.ownerId }, select: { materialPercent: true } });
     const money = moneySummary({
       price: primary?.total ?? null,
       payments: updated.payments,
       materialCost: updated.materialCost,
-      materialPercent: updated.master.materialPercent,
+      materialPercent: owner?.materialPercent ?? 40,
       installerFee: updated.installerFee,
       installerPaidAt: updated.installerPaidAt,
+      partnerAmount: primary?.partner?.amount ?? 0,
     });
     const { stage, isManual } = resolveStage({ ...updated, settled: money.settled });
     return NextResponse.json({
       stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual,
       measuredBy: updated.measuredBy, installer: updated.installer,
       installerFee: updated.installerFee, installAt: updated.installAt?.toISOString() ?? null,
-      money,
+      money: { ...money, payments: updated.payments.map((p) => ({ id: p.id, amount: p.amount, kind: p.kind, note: p.note, paidAt: p.paidAt.toISOString() })) },
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

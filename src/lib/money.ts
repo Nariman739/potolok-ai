@@ -15,6 +15,8 @@ export type MoneyInput = {
   materialPercent: number;
   installerFee: number | null;
   installerPaidAt: Date | null;
+  /** Вознаграждение посреднику (дизайнеру) — сидит внутри цены, из прибыли уходит */
+  partnerAmount?: number | null;
 };
 
 export type MoneySummary = {
@@ -28,6 +30,7 @@ export type MoneySummary = {
   materialPercent: number;
   installerFee: number | null;
   installerPaid: boolean;
+  partnerAmount: number;
   /** Прибыль по введённым данным (материал введён) либо оценка */
   profit: number | null;
   profitIsEstimate: boolean;
@@ -42,7 +45,8 @@ export function moneySummary(i: MoneyInput): MoneySummary {
   const materialEstimate =
     price != null && i.materialCost == null ? Math.round((price * i.materialPercent) / 100) : null;
   const material = i.materialCost ?? materialEstimate;
-  const profit = price != null && material != null ? price - material - (i.installerFee ?? 0) : null;
+  const partnerAmount = Math.max(0, Math.round(i.partnerAmount ?? 0));
+  const profit = price != null && material != null ? price - material - (i.installerFee ?? 0) - partnerAmount : null;
   return {
     price,
     paid,
@@ -52,6 +56,7 @@ export function moneySummary(i: MoneyInput): MoneySummary {
     materialPercent: i.materialPercent,
     installerFee: i.installerFee,
     installerPaid: !!i.installerPaidAt,
+    partnerAmount,
     profit,
     profitIsEstimate: profit != null && i.materialCost == null,
     settled: price != null && paid >= price,

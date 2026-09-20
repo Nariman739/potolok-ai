@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -73,6 +74,7 @@ export async function GET(
 ) {
   try {
     const masterAuth = await requireAuth();
+    const scope = await getScope(masterAuth);
     const { id } = await params;
 
     const master = await prisma.master.findUnique({ where: { id: masterAuth.id } });
@@ -80,7 +82,7 @@ export async function GET(
       return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
     }
 
-    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id, deletedAt: null } });
+    const estimate = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
 
     const calc = estimate.calculationData as unknown as CalculationResult;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 export async function PUT(
   request: Request,
@@ -8,6 +9,7 @@ export async function PUT(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
     const { name, unit, price } = body as {
@@ -17,7 +19,7 @@ export async function PUT(
     };
 
     const item = await prisma.customItem.updateMany({
-      where: { id, masterId: master.id },
+      where: { id, masterId: scope.ownerId },
       data: {
         ...(name !== undefined && { name }),
         ...(unit !== undefined && { unit }),
@@ -51,10 +53,11 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const item = await prisma.customItem.deleteMany({
-      where: { id, masterId: master.id },
+      where: { id, masterId: scope.ownerId },
     });
 
     if (item.count === 0) {

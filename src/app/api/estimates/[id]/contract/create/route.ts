@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ownerBrandFor } from "@/lib/company";
+import { ownerBrandFor, getScope, inScope } from "@/lib/company";
 import { addClientEvent } from "@/lib/clients";
 import crypto from "crypto";
 
@@ -44,6 +44,7 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const {
@@ -57,7 +58,7 @@ export async function POST(
     };
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: {
         master: {
           select: {

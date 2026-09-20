@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 // base64url(6) ≈ 10^-14 коллизия на запись — как у publicHash визуализаций.
 function generateShareId(): string {
@@ -19,10 +20,11 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true, publicShareId: true },
     });
     if (!obj) {

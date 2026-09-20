@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 export async function POST(
   request: Request,
@@ -9,11 +10,12 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id, roomId } = await params;
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!obj) {
@@ -86,6 +88,7 @@ export async function DELETE(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id, roomId } = await params;
 
     const { url } = (await request.json()) as { url: string };
@@ -95,7 +98,7 @@ export async function DELETE(
 
     // Verify ownership
     const obj = await prisma.measurementObject.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       select: { id: true },
     });
     if (!obj) {

@@ -98,22 +98,19 @@ export async function PATCH(
       },
     });
 
-    // Если переданы rooms — пересоздаём их. Старые комнаты с фото
-    // полностью заменяются на новые (фото в Vercel Blob остаются,
-    // но ссылки в БД пропадают — это допустимо, мастер пересохраняет
-    // замер только при добавлении новой комнаты).
+    // Комнаты: по id обновляем на месте (id комнат сохраняются — записи «в цеху»,
+    // фото и автосохранение с телефона ссылаются на них), без id — создаём,
+    // не пришедшие — удаляем. До 20.09.2026 все комнаты пересоздавались с новыми
+    // id, и после «Обновить» телефон держал мёртвые ссылки (404/400 в цех).
     //
     // ВАЖНО: пустой массив rooms игнорируется и НЕ стирает существующие.
-    // Раньше mobile-баг с гонкой/малфункцией UI мог отправить rooms:[]
-    // и обнулить весь объект. Для очистки списка нужно явно использовать
-    // DELETE /api/measurements/[id]/rooms (отдельный endpoint).
+    // Для очистки списка нужно явно использовать DELETE /api/measurements/[id]/rooms.
     if (rooms && Array.isArray(rooms) && rooms.length > 0) {
-      await prisma.measurementRoom.deleteMany({
-        where: { objectId: id },
-      });
-      await prisma.measurementRoom.createMany({
-        data: rooms.map((r, i) => ({
-          objectId: id,
+      const existingRooms = await prisma.measurementRoom.findMany({ where: { objectId: id }, select: { id: true } });
+      const known = new Set(existingRooms.map((r) => r.id));
+      const keep = new Set<string>();
+      for (const [i, r] of rooms.entries()) {
+        const data = {
           name: r.name,
           walls: r.walls,
           normalCorners: r.normalCorners || r.walls.map(() => true),
@@ -127,10 +124,24 @@ export async function PATCH(
           wallProfiles: r.wallProfiles ?? undefined,
           variantOverrides: r.variantOverrides ?? undefined,
           sortOrder: i,
-        })),
-      });
+        };
+        const rid = (r as { id?: string }).id;
+        if (rid && known.has(rid)) {
+          await prisma.measurementRoom.update({ where: { id: rid }, data });
+          keep.add(rid);
+        } else {
+          const created = await prisma.measurementRoom.create({ data: { objectId: id, ...data }, select: { id: true } });
+          keep.add(created.id);
+        }
+      }
+      await prisma.measurementRoom.deleteMany({ where: { objectId: id, id: { notIn: Array.from(keep) } } });
     }
 
+    const fresh = await prisma.measurementObject.findUnique({
+      where: { id },
+      include: { rooms: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, sortOrder: true } } },
+    });
+    return NextResponse.json({ success: true, rooms: fresh?.rooms ?? [] });
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

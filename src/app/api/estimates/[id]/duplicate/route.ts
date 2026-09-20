@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 export async function POST(
   _request: Request,
@@ -8,10 +9,11 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { partner: true },
     });
 

@@ -191,7 +191,7 @@ export async function POST(request: Request) {
           const totalWanted = Math.round(rooms.reduce((sum, r) => sum + (r.area ?? 0), 0) * 10) / 10;
           const candidates = await prisma.measurementObject.findMany({
             where: {
-              masterId: master.id,
+              ...inScope(scope),
               deletedAt: null,
               totalArea: { gte: totalWanted - 0.2, lte: totalWanted + 0.2 },
             },

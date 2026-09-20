@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { calculate, type CustomItemInfo } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import type { RoomInput, ExtraItem } from "@/lib/types";
@@ -8,6 +9,7 @@ import type { RoomInput, ExtraItem } from "@/lib/types";
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const body = await request.json();
     const { rooms, extraItems } = body as { rooms: RoomInput[]; extraItems?: ExtraItem[] };
 
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
 
     // Load master's custom prices
     const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
     });
 
     // Merge: master prices override defaults
@@ -31,7 +33,7 @@ export async function POST(request: Request) {
 
     // Load custom items for calculation
     const customItems = await prisma.customItem.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
     });
     const customItemsMap: Record<string, CustomItemInfo> = {};
     for (const ci of customItems) {

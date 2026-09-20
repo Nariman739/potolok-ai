@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ownerBrandFor } from "@/lib/company";
+import { ownerBrandFor, getScope, inScope } from "@/lib/company";
 import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -75,10 +75,11 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { master: { select: { companyName: true, firstName: true, phone: true } } },
     });
 
@@ -90,7 +91,7 @@ export async function GET(
 
     // Load master's install prices (overrides)
     const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: master.id, itemCode: { startsWith: "install_" } },
+      where: { masterId: scope.ownerId, itemCode: { startsWith: "install_" } },
     });
     const priceOverrides: Record<string, number> = {};
     for (const mp of masterPrices) priceOverrides[mp.itemCode] = mp.price;

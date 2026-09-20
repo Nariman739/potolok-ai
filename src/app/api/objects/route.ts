@@ -98,6 +98,8 @@ export async function GET(request: NextRequest) {
           rooms: {
             orderBy: { sortOrder: "asc" },
             select: { walls: true, angles: true },
+            // Миниатюре нужна первая комната с чертежом — не тащим все
+            take: 3,
           },
           estimates: {
             where: { deletedAt: null },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { getScope, inScope } from "@/lib/company";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { KpDocument } from "@/lib/kp/pdf/KpDocument";
 import { buildPdfData } from "@/lib/kp/pdf-data";
@@ -25,11 +26,12 @@ export async function GET(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     // Собираем все нужные данные одним вызовом — мастер, портфолио, отзывы,
     // тема, шрифты, QR-код. Внутри проверяется что КП принадлежит мастеру.
-    const data = await buildPdfData(id, master.id);
+    const data = await buildPdfData(id, scope.masterIds);
 
     // Если КП был создан как «быстрый» (мастер пометил calc.quickEstimate
     // в /dashboard/quick-estimate или через assistant) — рендерим 1 страницу.

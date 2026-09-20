@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { calculate, type CustomItemInfo } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
@@ -31,6 +32,7 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id, idx: idxStr } = await params;
     const idx = Number(idxStr);
     if (!Number.isFinite(idx) || idx < 0) {
@@ -49,7 +51,7 @@ export async function POST(
     }
 
     const estimate = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
     if (!estimate) {
@@ -87,7 +89,7 @@ export async function POST(
 
     // Готовим prices и custom items для пересчёта (как в /api/calculate).
     const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
     });
     const priceMap: Record<string, number> = { ...DEFAULT_PRICES };
     for (const mp of masterPrices) {
@@ -95,7 +97,7 @@ export async function POST(
     }
 
     const customItems = await prisma.customItem.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
     });
     const customItemsMap: Record<string, CustomItemInfo> = {};
     for (const ci of customItems) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
@@ -17,6 +18,7 @@ export async function PATCH(
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
     const body = (await request.json()) as {
       roomResults?: RoomResult[];
@@ -24,7 +26,7 @@ export async function PATCH(
     };
 
     const existing = await prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { partner: { select: { amount: true, percent: true, coef: true } } },
     });
     if (!existing) {

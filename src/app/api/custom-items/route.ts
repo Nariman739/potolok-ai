@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 export async function GET() {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
 
     const items = await prisma.customItem.findMany({
-      where: { masterId: master.id },
+      where: { masterId: scope.ownerId },
       orderBy: { createdAt: "asc" },
     });
 
@@ -27,6 +29,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const body = await request.json();
     const { name, unit, price } = body as {
       name: string;
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
 
     const item = await prisma.customItem.create({
       data: {
-        masterId: master.id,
+        masterId: scope.ownerId,
         code,
         name,
         unit,

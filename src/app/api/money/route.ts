@@ -41,7 +41,7 @@ export async function GET() {
           id: true, address: true, manualStage: true, materialCost: true, installerFee: true, installerPaidAt: true, installAt: true,
           client: { select: { id: true, name: true, phone: true } },
           installer: { select: { id: true, name: true, phone: true } },
-          estimates: { where: { deletedAt: null }, select: { status: true, total: true, clientName: true, createdAt: true, deletedAt: true } },
+          estimates: { where: { deletedAt: null }, select: { status: true, total: true, clientName: true, createdAt: true, deletedAt: true, partner: { select: { amount: true } } } },
           workshopOrders: { select: { id: true } },
           payments: { select: { id: true, amount: true, paidAt: true } },
         },
@@ -63,6 +63,7 @@ export async function GET() {
         materialPercent,
         installerFee: o.installerFee,
         installerPaidAt: o.installerPaidAt,
+        partnerAmount: primary?.partner?.amount ?? 0,
       });
       const { stage } = resolveStage({ manualStage: o.manualStage, estimates: o.estimates, workshopOrders: o.workshopOrders, settled: money.settled });
       const title = o.address || o.client?.name || primary?.clientName || "Объект";

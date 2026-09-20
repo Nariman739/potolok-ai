@@ -124,10 +124,10 @@ const BASE_URL =
   process.env.VERCEL_URL ||
   "https://potolok.ai";
 
-export async function buildPdfData(estimateId: string, masterId?: string): Promise<PdfData> {
+export async function buildPdfData(estimateId: string, masterId?: string | string[]): Promise<PdfData> {
   const estimate = await prisma.estimate.findFirst({
     where: masterId
-      ? { id: estimateId, masterId, deletedAt: null }
+      ? { id: estimateId, masterId: Array.isArray(masterId) ? { in: masterId } : masterId, deletedAt: null }
       : { id: estimateId, deletedAt: null },
     include: {
       master: {
