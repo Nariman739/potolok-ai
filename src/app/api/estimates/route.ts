@@ -181,7 +181,28 @@ export async function POST(request: Request) {
         const rooms = (roomsData as RawRoom[]).filter(
           (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
         );
+        // Защита от дублей (Нариман, 20.09: появились «Толе би 26» и «Гульмира»
+        // с одинаковыми 8 комнатами): если у мастера уже есть живой объект с
+        // теми же стенами — это он и есть, КП привязываем к нему.
         if (rooms.length > 0) {
+          const signature = (list: { walls?: unknown }[]) =>
+            list.map((r) => (Array.isArray(r.walls) ? (r.walls as number[]).map((w) => Math.round(w)).join(",") : "")).sort().join("|");
+          const wanted = signature(rooms);
+          const totalWanted = Math.round(rooms.reduce((sum, r) => sum + (r.area ?? 0), 0) * 10) / 10;
+          const candidates = await prisma.measurementObject.findMany({
+            where: {
+              masterId: master.id,
+              deletedAt: null,
+              totalArea: { gte: totalWanted - 0.2, lte: totalWanted + 0.2 },
+            },
+            select: { id: true, rooms: { select: { walls: true } } },
+            take: 20,
+            orderBy: { updatedAt: "desc" },
+          });
+          const same = candidates.find((c) => c.rooms.length === rooms.length && signature(c.rooms) === wanted);
+          if (same) linkedMeasurementId = same.id;
+        }
+        if (!linkedMeasurementId && rooms.length > 0) {
           const created = await prisma.measurementObject.create({
             data: {
               masterId: master.id,
