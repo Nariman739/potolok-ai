@@ -169,6 +169,20 @@ model PushDevice {
 // Single-use, short-lived (≤60s) handoff token used by the mobile app to
 // open a web view as the same master without putting the long-lived
 // session_token into the URL (which would leak via logs, history, Referer).
+/// Идемпотентность записей с мобилки (Этап 2, оффлайн-очередь). Мобилка
+/// шлёт заголовок X-Op-Id (uuid операции); при плохой связи она может
+/// повторить запрос, и без этой таблицы появлялись бы дубли объектов и
+/// отправок в цех. Ответ первого успешного выполнения отдаём повторно.
+model ClientOp {
+  id        String   @id
+  masterId  String
+  path      String
+  response  Json
+  createdAt DateTime @default(now())
+
+  @@index([masterId, createdAt])
+}
+
 model BridgeToken {
   id        String   @id @default(uuid())
   masterId  String

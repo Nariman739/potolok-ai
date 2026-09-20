@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateClient } from "@/lib/clients";
+import { withIdempotency } from "@/lib/idempotency";
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,6 +35,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
+    // Повтор с тем же X-Op-Id (оффлайн-очередь мобилки) → тот же объект, не дубль.
+    return await withIdempotency(request, master.id, "POST /measurements", () => createMeasurement(request, master.id));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Create measurement error:", error);
+    return NextResponse.json({ error: "Ошибка создания замера" }, { status: 500 });
+  }
+}
+
+async function createMeasurement(request: Request, masterId: string) {
+  const master = { id: masterId };
+  try {
     const body = await request.json();
     const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt } = body as {
       address?: string;

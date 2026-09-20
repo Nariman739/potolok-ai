@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addClientEvent } from "@/lib/clients";
+import { withIdempotency } from "@/lib/idempotency";
 
 /**
  * Запись «ушло в цех». Мобилка зовёт ПОСЛЕ того, как мастер закрыл окно
@@ -17,6 +18,22 @@ export async function POST(
   try {
     const master = await requireAuth();
     const { id } = await params;
+    // Повтор с тем же X-Op-Id (очередь мобилки после обрыва связи) → та же запись.
+    return await withIdempotency(request, master.id, `POST /objects/${id}/workshop`, () =>
+      createWorkshopOrder(request, master.id, id),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Create workshop order error:", error);
+    return NextResponse.json({ error: "Не удалось записать отправку в цех" }, { status: 500 });
+  }
+}
+
+async function createWorkshopOrder(request: Request, masterId: string, id: string) {
+  const master = { id: masterId };
+  try {
     const body = (await request.json().catch(() => ({}))) as { roomIds?: unknown; note?: unknown };
 
     const obj = await prisma.measurementObject.findFirst({
