@@ -41,6 +41,8 @@ export type ScopeMember = {
   defaultFee: number | null;
   /** Есть приложение (привязан к мастеру) */
   hasApp: boolean;
+  /** Работает в этой компании (его объекты в общем списке); false — у него своя фирма */
+  worksHere: boolean;
   isMe: boolean;
 };
 
@@ -84,18 +86,28 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
             // Активной может быть только компания, где он всё ещё участник
             members: { some: { masterId: master.id, removedAt: null } },
           },
-          include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" } } },
+          include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" }, include: { master: { select: { activeCompanyId: true } } } } },
         })
       : null;
   if (!company) {
     await ensureOwnCompany(master.id);
     company = await prisma.company.findUniqueOrThrow({
       where: { ownerId: master.id },
-      include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" } } },
+      include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" }, include: { master: { select: { activeCompanyId: true } } } } },
     });
   }
+  // Данные в общий котёл попадают ТОЛЬКО от тех, кто реально работает в этой
+  // компании (activeCompanyId = она). Иначе, добавив чужой номер, владелец
+  // увидел бы все объекты другого мастера с его собственной фирмой
+  // (найдено код-ревью 20.09.2026). Владелец — всегда.
+  const cid = company.id;
   const masterIds = Array.from(
-    new Set([company.ownerId, ...company.members.map((m) => m.masterId).filter((x): x is string => !!x)]),
+    new Set([
+      company.ownerId,
+      ...company.members
+        .filter((m) => m.masterId && m.masterId !== company.ownerId && m.master?.activeCompanyId === cid)
+        .map((m) => m.masterId as string),
+    ]),
   );
   return {
     companyId: company.id,
@@ -112,6 +124,7 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
       role: m.role,
       defaultFee: m.defaultFee,
       hasApp: !!m.masterId,
+      worksHere: !m.masterId || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id,
       isMe: m.masterId === master.id,
     })),
   };
