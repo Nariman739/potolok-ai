@@ -98,6 +98,15 @@ export async function PATCH(
       },
     });
 
+    // Клиента указали уже после КП («Чей это объект?») — дотягиваем его и в КП
+    // объекта, у которых клиента ещё нет. Иначе карточка клиента пустая: «ещё
+    // нет КП», статус «Новый», хотя объект посчитан и оплачен (21.09.2026).
+    if (typeof safeClientId === "string" && safeClientId) {
+      await prisma.estimate
+        .updateMany({ where: { measurementObjectId: id, clientId: null, deletedAt: null }, data: { clientId: safeClientId } })
+        .catch((e) => console.warn("link estimates to client failed:", e));
+    }
+
     // Комнаты: по id обновляем на месте (id комнат сохраняются — записи «в цеху»,
     // фото и автосохранение с телефона ссылаются на них), без id — создаём,
     // не пришедшие — удаляем. До 20.09.2026 все комнаты пересоздавались с новыми

@@ -63,12 +63,21 @@ export async function getActionableClients(masterId: string | string[]) {
   };
 }
 
-function normalizePhone(phone: string | null | undefined): string | null {
+/**
+ * Телефон клиента храним цифрами в виде 7XXXXXXXXXX. Мастера вводят как угодно:
+ * «8 701…», «+7 701…», просто «701…» (21.09.2026: из-за этого один человек
+ * заводился двумя клиентами, а ссылка WhatsApp с 10 цифрами уходила не туда).
+ * Номера других стран (не 10/11 цифр на 7/8) оставляем как есть.
+ */
+export function normalizeClientPhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");
   if (!digits) return null;
+  if (digits.length === 10 && digits.startsWith("7")) return `7${digits}`;
+  if (digits.length === 11 && digits.startsWith("8")) return `7${digits.slice(1)}`;
   return digits;
 }
+const normalizePhone = normalizeClientPhone;
 
 export type GetOrCreateClientInput = {
   masterId: string;
@@ -100,8 +109,10 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   // удалил клиента и завёл нового по тому же телефону — это его выбор. При
   // желании старый можно восстановить из /dashboard/trash.
   if (phone) {
+    // Старые записи могли сохраниться 10 цифрами без семёрки — ищем и их.
+    const variants = phone.length === 11 && phone.startsWith("7") ? [phone, phone.slice(1), `8${phone.slice(1)}`] : [phone];
     const existing = await prisma.client.findFirst({
-      where: { masterId, phone, deletedAt: null },
+      where: { masterId, phone: { in: variants }, deletedAt: null },
     });
     if (existing) return existing;
   }

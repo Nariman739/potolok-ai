@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
-import { canonicalizeStatus, changeClientStatus } from "@/lib/clients";
+import { canonicalizeStatus, changeClientStatus, normalizeClientPhone } from "@/lib/clients";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
 // Принимаем и старые, и новые значения статусов. Старые билды mobile продолжат
@@ -147,7 +147,7 @@ export async function PUT(
       where: { id },
       data: {
         ...(name !== undefined && { name: name || existing.name }),
-        ...(phone !== undefined && { phone: phone || null }),
+        ...(phone !== undefined && { phone: normalizeClientPhone(phone) }),
         ...(address !== undefined && { address: address || null }),
         ...(lat !== undefined && { latitude: lat }),
         ...(lng !== undefined && { longitude: lng }),
