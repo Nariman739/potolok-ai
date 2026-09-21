@@ -59,3 +59,4 @@ next-env.d.ts
 
 .vercel
 .env*.local
+scratchpad/.qa-login-cache.json
