@@ -181,12 +181,27 @@ export async function POST(request: Request) {
         const rooms = (roomsData as RawRoom[]).filter(
           (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
         );
-        // Защита от дублей (Нариман, 20.09: появились «Толе би 26» и «Гульмира»
-        // с одинаковыми 8 комнатами): если у мастера уже есть живой объект с
-        // теми же стенами — это он и есть, КП привязываем к нему.
-        if (rooms.length > 0) {
+        // 1) Точная привязка: комнаты уже лежат на сервере (у них есть serverId),
+        // значит объект существует — берём его по id комнаты. Без гаданий.
+        const roomServerIds = (roomsData as { serverId?: unknown }[])
+          .map((r) => (r && typeof r.serverId === "string" ? r.serverId : null))
+          .filter((x): x is string => !!x);
+        if (roomServerIds.length > 0) {
+          const byRoom = await prisma.measurementObject.findFirst({
+            where: { ...inScope(scope), deletedAt: null, rooms: { some: { id: { in: roomServerIds } } } },
+            select: { id: true },
+          });
+          if (byRoom) linkedMeasurementId = byRoom.id;
+        }
+        // 2) Защита от дублей по совпадению стен (Нариман, 20.09: «Толе би 26» и
+        // «Гульмира» с одинаковыми 8 комнатами). 21.09: одних стен мало — комната
+        // 3×4 есть у каждого второго клиента, и КП нового замера прилипало к
+        // чужому объекту. Теперь нужны ещё: нет противоречия по клиенту/адресу
+        // и (тот же клиент, или тот же адрес, или свежий объект без КП).
+        if (!linkedMeasurementId && rooms.length > 0) {
           const signature = (list: { walls?: unknown }[]) =>
             list.map((r) => (Array.isArray(r.walls) ? (r.walls as number[]).map((w) => Math.round(w)).join(",") : "")).sort().join("|");
+          const norm = (v?: string | null) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
           const wanted = signature(rooms);
           const totalWanted = Math.round(rooms.reduce((sum, r) => sum + (r.area ?? 0), 0) * 10) / 10;
           const candidates = await prisma.measurementObject.findMany({
@@ -195,11 +210,38 @@ export async function POST(request: Request) {
               deletedAt: null,
               totalArea: { gte: totalWanted - 0.2, lte: totalWanted + 0.2 },
             },
-            select: { id: true, rooms: { select: { walls: true } } },
+            select: {
+              id: true, clientId: true, address: true, updatedAt: true,
+              client: { select: { name: true, phone: true } },
+              rooms: { select: { walls: true } },
+              _count: { select: { estimates: { where: { deletedAt: null } } } },
+            },
             take: 20,
             orderBy: { updatedAt: "desc" },
           });
-          const same = candidates.find((c) => c.rooms.length === rooms.length && signature(c.rooms) === wanted);
+          const freshAfter = Date.now() - 3 * 24 * 60 * 60 * 1000;
+          const wantedAddress = norm(clientAddress);
+          const same = candidates.find((c) => {
+            if (c.rooms.length !== rooms.length || signature(c.rooms) !== wanted) return false;
+            const cAddress = norm(c.address);
+            const sameClient = !!c.clientId && !!linkedClientId && c.clientId === linkedClientId;
+            const sameAddress = !!cAddress && cAddress === wantedAddress;
+            // Клиент «другой», только если это видно по данным: разные телефоны,
+            // а без телефонов — разные имена. Один и тот же человек мог быть
+            // заведён дважды (сначала имя, потом имя + номер) — это не конфликт.
+            const cPhone = (c.client?.phone ?? "").replace(/\D/g, "");
+            const wPhone = (clientPhone ?? "").replace(/\D/g, "");
+            const otherClient =
+              !sameClient && !!c.clientId &&
+              (cPhone && wPhone
+                ? cPhone.slice(-10) !== wPhone.slice(-10)
+                : !!norm(c.client?.name) && !!norm(clientName) && norm(c.client?.name) !== norm(clientName));
+            const conflict =
+              otherClient || (!!cAddress && !!wantedAddress && cAddress !== wantedAddress && !sameClient);
+            if (conflict) return false;
+            const freshNoEstimates = c.updatedAt.getTime() >= freshAfter && c._count.estimates === 0;
+            return sameClient || sameAddress || freshNoEstimates;
+          });
           if (same) linkedMeasurementId = same.id;
         }
         if (!linkedMeasurementId && rooms.length > 0) {
