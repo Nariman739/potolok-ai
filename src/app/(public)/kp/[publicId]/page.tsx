@@ -95,10 +95,17 @@ export default async function PublicKpPage({
   const ua = ((await headers()).get("user-agent") ?? "").toLowerCase();
   const isPreviewBot = !ua || /whatsapp|telegrambot|facebookexternalhit|facebot|twitterbot|slackbot|discordbot|vkshare|skypeuripreview|linkedinbot|googlebot|bingbot|yandex(bot|images)|bot\b|crawler|spider|preview/.test(ua);
   if (!isPreviewBot && (estimate.status === "DRAFT" || estimate.status === "SENT")) {
-    prisma.estimate
-      .updateMany({ where: { id: estimate.id, status: { in: ["DRAFT", "SENT"] } }, data: { status: "VIEWED" } })
-      .then((res) => {
+    // Всё — внутри after(): страница уже ушла клиенту, а Vercel дождётся конца работы.
+    // Раньше запись в базу шла «вдогонку» без ожидания, и функция могла уснуть раньше,
+    // чем статус сменится, — отметка терялась.
+    after(async () => {
+      try {
+        const res = await prisma.estimate.updateMany({
+          where: { id: estimate.id, status: { in: ["DRAFT", "SENT"] } },
+          data: { status: "VIEWED" },
+        });
         if (res.count === 0) return; // кто-то уже отметил — второй раз не шумим
+
         const clientStr = estimate.clientName || "Клиент";
         const price = estimate.total || estimate.standardTotal || 0;
 
@@ -107,25 +114,19 @@ export default async function PublicKpPage({
             `👀 <b>${clientStr} открыл ваше КП!</b>\n\n` +
             (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
             `\n<i>Ожидаем подтверждение от клиента.</i>`;
-          sendTelegramMessage(estimate.master.telegramChatId, text);
+          await Promise.resolve(sendTelegramMessage(estimate.master.telegramChatId, text)).catch(() => {});
         }
 
-        // Пуш на телефон — основной канал. Telegram привязан у 9% мастеров,
-        // остальные раньше не узнавали, что клиент смотрит их КП.
-        // after(): страница уже отрендерена клиенту, а поход в базу и запрос
-        // в Expo продолжаются — без этого на Vercel лямбда засыпает раньше,
-        // и мастер не узнаёт, что клиент открыл смету.
-        after(async () => {
-          await sendPushToMaster(estimate.masterId, {
-            title: `${clientStr} открыл ваше КП`,
-            body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
-            data: { screen: `/estimate/${estimate.id}` },
-          });
-        });
+        // Пуш на телефон — основной канал. Telegram привязан у 9% мастеров.
+        await sendPushToMaster(estimate.masterId, {
+          title: `${clientStr} открыл ваше КП`,
+          body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
+          data: { screen: `/estimate/${estimate.id}` },
+        }).catch(() => {});
 
-        // CRM: log KP_VIEWED event for the linked client (best-effort)
+        // CRM: событие «КП просмотрено» у привязанного клиента
         if (estimate.clientId) {
-          prisma.clientEvent
+          await prisma.clientEvent
             .create({
               data: {
                 clientId: estimate.clientId,
@@ -136,8 +137,10 @@ export default async function PublicKpPage({
             })
             .catch(() => {});
         }
-      })
-      .catch(() => {});
+      } catch (e) {
+        console.warn("mark KP viewed failed:", e);
+      }
+    });
   }
 
   // Клиенту уходит только клиентская часть расчёта. Раньше в данных страницы лежал
