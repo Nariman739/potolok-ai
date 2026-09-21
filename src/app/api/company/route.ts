@@ -87,17 +87,9 @@ export async function POST(request: Request) {
  * остаётся в своей; переключатель компаний — позже.
  */
 async function switchIfEmpty(masterId: string, companyId: string) {
-  // «Пустой» = нет своих объектов, КП, клиентов и своих позиций прайса (21.09).
-  // Раньше смотрели только объекты и КП: мастер с базой клиентов, но без
-  // замеров, молча уезжал в чужую компанию и терял свой список из виду.
-  // Стандартный прайс не считаем — он создаётся у всех при регистрации.
-  const [ownObjects, ownEstimates, ownClients, ownCustomItems] = await Promise.all([
-    prisma.measurementObject.count({ where: { masterId, deletedAt: null } }),
-    prisma.estimate.count({ where: { masterId, deletedAt: null } }),
-    prisma.client.count({ where: { masterId, deletedAt: null } }),
-    prisma.customItem.count({ where: { masterId } }),
-  ]);
-  if (ownObjects + ownEstimates + ownClients + ownCustomItems === 0) {
+  const ownObjects = await prisma.measurementObject.count({ where: { masterId, deletedAt: null } });
+  const ownEstimates = await prisma.estimate.count({ where: { masterId, deletedAt: null } });
+  if (ownObjects + ownEstimates === 0) {
     await prisma.master.update({ where: { id: masterId }, data: { activeCompanyId: companyId } });
   }
 }
