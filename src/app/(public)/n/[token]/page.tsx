@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getVertices } from "@/lib/room-geometry";
+import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
 
 /**
  * Наряд монтажнику (Этап 3, 20.09.2026). Открывается по ссылке из WhatsApp
@@ -27,7 +27,7 @@ function lightSummary(elements: unknown): string[] {
   return out;
 }
 
-function RoomSvg({ walls, angles, normalCorners }: { walls: number[]; angles?: number[] | null; normalCorners?: boolean[] | null }) {
+function RoomSvg({ walls, angles, normalCorners, bulges, cornerRadii }: { walls: number[]; angles?: number[] | null; normalCorners?: boolean[] | null; bulges?: number[] | null; cornerRadii?: number[] | null }) {
   if (!Array.isArray(walls) || walls.length < 3) return null;
   const nc = Array.isArray(normalCorners) && normalCorners.length === walls.length ? normalCorners : walls.map(() => true);
   const ang = Array.isArray(angles) && angles.length === walls.length ? angles : undefined;
@@ -45,6 +45,12 @@ function RoomSvg({ walls, angles, normalCorners }: { walls: number[]; angles?: n
   const ox = pad + ((size - pad * 2) - w * scale) / 2 - minX * scale;
   const oy = pad + ((size - pad * 2) - h * scale) / 2 - minY * scale;
   const pts = v.map((p) => `${(p.x * scale + ox).toFixed(1)},${(p.y * scale + oy).toFixed(1)}`).join(" ");
+  // Круглые стены и скруглённые углы монтажник должен видеть на чертеже: раньше
+  // наряд рисовал любую комнату прямым многоугольником (21.09.2026).
+  const outline = roomOutlinePath(
+    v.map((p) => ({ x: p.x * scale + ox, y: p.y * scale + oy })),
+    { bulges: bulges?.map((b) => (b || 0) * scale), cornerRadii: cornerRadii?.map((r) => (r || 0) * scale) },
+  );
   // Подписи длин на серединах стен
   const labels = walls.map((len, i) => {
     const a = v[i], b = v[(i + 1) % v.length];
@@ -52,7 +58,9 @@ function RoomSvg({ walls, angles, normalCorners }: { walls: number[]; angles?: n
   });
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="bg-white rounded-lg border border-slate-200">
-      <polygon points={pts} fill="#eff6ff" stroke="#1e3a5f" strokeWidth={2} />
+      {outline
+        ? <path d={outline} fill="#eff6ff" stroke="#1e3a5f" strokeWidth={2} />
+        : <polygon points={pts} fill="#eff6ff" stroke="#1e3a5f" strokeWidth={2} />}
       {labels.map((l, i) => (
         <text key={i} x={l.x} y={l.y} fontSize={11} textAnchor="middle" dominantBaseline="middle" fill="#334155"
           stroke="#ffffff" strokeWidth={3} paintOrder="stroke">
@@ -122,7 +130,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
             const lights = lightSummary(r.elements);
             return (
               <div key={r.id} className="rounded-xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row gap-4">
-                <RoomSvg walls={r.walls as number[]} angles={r.angles as number[] | null} normalCorners={r.normalCorners as boolean[] | null} />
+                <RoomSvg walls={r.walls as number[]} angles={r.angles as number[] | null} normalCorners={r.normalCorners as boolean[] | null} bulges={r.arcBulges as number[] | null} cornerRadii={r.cornerRadii as number[] | null} />
                 <div className="flex-1 space-y-1">
                   <p className="font-semibold">{i + 1}. {r.name || "Комната"}</p>
                   <p className="text-slate-600">{r.area} м² · периметр {r.perimeter} м · {(r.walls as number[]).length} стен</p>

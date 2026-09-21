@@ -297,3 +297,104 @@ export function validateTShape(dims: TShapeDimensions): string | null {
     return "Ширина верха должна быть больше ширины ножки";
   return null;
 }
+
+/**
+ * Контур комнаты одной SVG-строкой: с дугами на стенах и скруглениями в углах
+ * (21.09.2026). До этого дуга рисовалась отдельной линией поверх прямой заливки,
+ * а в дизайнере и вовсе терялась: мастер делал эркер, а свет расставлял по
+ * прямоугольнику, и такой же прямой чертёж уходил в цех.
+ *
+ * vertices — углы комнаты БЕЗ замыкающего дубликата.
+ * bulges[i] — глубина дуги стены i в см: «+» наружу, «−» внутрь комнаты.
+ * cornerRadii[i] — радиус скругления в углу i.
+ */
+export function roomOutlinePath(
+  vertices: Vertex2D[],
+  opts: { bulges?: (number | undefined)[] | null; cornerRadii?: (number | undefined)[] | null } = {},
+): string {
+  const n = vertices.length;
+  if (n < 3) return "";
+  const at = (i: number) => vertices[((i % n) + n) % n];
+  const bulgeOf = (i: number) => opts.bulges?.[((i % n) + n) % n] || 0;
+  const radiusAt = (i: number) => {
+    const r = opts.cornerRadii?.[((i % n) + n) % n] || 0;
+    if (r <= 0) return 0;
+    // Скругление рисуем только между двумя прямыми стенами: с дугой оно не сочетается.
+    if (bulgeOf(i) !== 0 || bulgeOf(i - 1) !== 0) return 0;
+    const prevLen = Math.hypot(at(i).x - at(i - 1).x, at(i).y - at(i - 1).y);
+    const nextLen = Math.hypot(at(i + 1).x - at(i).x, at(i + 1).y - at(i).y);
+    return Math.min(r, prevLen / 2, nextLen / 2);
+  };
+  const along = (from: Vertex2D, to: Vertex2D, dist: number) => {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    return { x: from.x + ((to.x - from.x) / len) * dist, y: from.y + ((to.y - from.y) / len) * dist };
+  };
+
+  const startR = radiusAt(0);
+  const start = startR > 0 ? along(at(0), at(1), startR) : at(0);
+  let d = `M ${start.x.toFixed(1)} ${start.y.toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const next = at(i + 1);
+    const b = bulgeOf(i);
+    if (b !== 0) {
+      const chord = Math.hypot(next.x - at(i).x, next.y - at(i).y);
+      const h = Math.abs(b);
+      const r = (chord * chord / 4 + h * h) / (2 * h);
+      d += ` A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 ${b > 0 ? 1 : 0} ${next.x.toFixed(1)} ${next.y.toFixed(1)}`;
+      continue;
+    }
+    const rNext = radiusAt(i + 1);
+    // Не доходим до угла R по ТЕКУЩЕЙ стене, потом дуга через угол на следующую.
+    const endPoint = rNext > 0 ? along(next, at(i), rNext) : next;
+    d += ` L ${endPoint.x.toFixed(1)} ${endPoint.y.toFixed(1)}`;
+    if (rNext > 0) {
+      const after = along(next, at(i + 2), rNext);
+      d += ` Q ${next.x.toFixed(1)} ${next.y.toFixed(1)} ${after.x.toFixed(1)} ${after.y.toFixed(1)}`;
+    }
+  }
+  return `${d} Z`;
+}
+
+/**
+ * Контур комнаты частыми точками: дуги стен и скругления углов разложены на
+ * отрезки (21.09.2026). Нужен, чтобы проверять «точка внутри комнаты» там, где
+ * стена круглая: по прямым вершинам такая проверка врёт — в эркере запрещает,
+ * в вогнутой стене разрешает ставить свет за стеной.
+ */
+export function roomPolygonDense(
+  vertices: Vertex2D[],
+  opts: { bulges?: (number | undefined)[] | null; cornerRadii?: (number | undefined)[] | null } = {},
+  segments = 14,
+): Vertex2D[] {
+  const n = vertices.length;
+  if (n < 3) return vertices;
+  const at = (i: number) => vertices[((i % n) + n) % n];
+  const bulgeOf = (i: number) => opts.bulges?.[((i % n) + n) % n] || 0;
+  // Ориентация обхода: от неё зависит, куда «наружу».
+  let signed = 0;
+  for (let i = 0; i < n; i++) signed += at(i).x * at(i + 1).y - at(i + 1).x * at(i).y;
+  const dir = signed > 0 ? 1 : -1;
+
+  const out: Vertex2D[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = at(i), b = at(i + 1);
+    out.push(a);
+    const bulge = bulgeOf(i);
+    if (!bulge) continue;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    // Нормаль наружу комнаты с учётом направления обхода.
+    const nx = (dy / len) * dir, ny = (-dx / len) * dir;
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    // Контрольная точка Безье: кривая проходит через прогиб bulge в середине.
+    const ctrl = { x: mid.x + nx * bulge * 2, y: mid.y + ny * bulge * 2 };
+    for (let s = 1; s < segments; s++) {
+      const t = s / segments, mt = 1 - t;
+      out.push({
+        x: mt * mt * a.x + 2 * mt * t * ctrl.x + t * t * b.x,
+        y: mt * mt * a.y + 2 * mt * t * ctrl.y + t * t * b.y,
+      });
+    }
+  }
+  return out;
+}
