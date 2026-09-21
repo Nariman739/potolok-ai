@@ -328,3 +328,36 @@ function roomsWord(n: number): string {
   if (last >= 2 && last <= 4) return "комнаты";
   return "комнат";
 }
+
+/**
+ * Удалить объект из ленты (свайп). В корзину уходит объект и все его КП —
+ * иначе КП остались бы живыми, но невидимыми (лента показывает их только
+ * внутри объекта). Восстановление — из корзины веб-кабинета.
+ */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const master = await requireAuth();
+    const scope = await getScope(master);
+    const { id } = await params;
+    const existing = await prisma.measurementObject.findFirst({
+      where: { id, ...inScope(scope), deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
+    const now = new Date();
+    const [, estimates] = await prisma.$transaction([
+      prisma.measurementObject.update({ where: { id }, data: { deletedAt: now } }),
+      prisma.estimate.updateMany({ where: { measurementObjectId: id, deletedAt: null }, data: { deletedAt: now } }),
+    ]);
+    return NextResponse.json({ ok: true, estimatesDeleted: estimates.count });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Delete object error:", error);
+    return NextResponse.json({ error: "Не удалось удалить объект" }, { status: 500 });
+  }
+}

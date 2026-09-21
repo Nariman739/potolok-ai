@@ -1,0 +1,18 @@
+const API = process.env.API ?? "http://localhost:3000/api";
+const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t.slice(0, 200); } };
+let ok = 0, fail = 0; const check = (n, c, x = "") => { if (c) { ok++; console.log("✅", n); } else { fail++; console.log("❌", n, x); } };
+let r = await fetch(`${API}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: "+77000000077", password: "qa12345" }) });
+const H = { "Content-Type": "application/json", Cookie: r.headers.get("set-cookie")?.split(";")[0] };
+r = await fetch(`${API}/measurements`, { method: "POST", headers: H, body: JSON.stringify({ address: "QA Удаление свайпом", status: "saved", rooms: [{ name: "Зал", walls: [310,410,310,410], normalCorners: [true,true,true,true], angles: [90,90,90,90], area: 12.7, perimeter: 14.4, elements: [] }] }) });
+const m = await j(r);
+const calc = { totalArea: 12.7, totalPerimeter: 14.4, total: 90000, roomResults: [{ roomName: "Зал", items: [{ itemName: "Полотно", quantity: 12.7, unit: "м²", unitPrice: 7087, total: 90000 }], subtotal: 90000, subtotalAfterHeight: 90000 }], extraItems: [] };
+r = await fetch(`${API}/estimates`, { method: "POST", headers: H, body: JSON.stringify({ fromMeasurementId: m.id, roomsData: [{ id: "a", name: "Зал", walls: [310,410,310,410], angles: [0,0,0,0], bulges: [0,0,0,0], cornerRadii: [0,0,0,0], area: 12.7, perimeter: 14.4, elements: [] }], calculationData: calc, totalArea: 12.7 }) });
+const est = await j(r);
+r = await fetch(`${API}/objects/${m.id}`, { method: "DELETE", headers: H });
+const d = await j(r);
+check("DELETE /objects/:id → ok, КП тоже в корзине", r.status === 200 && d.estimatesDeleted === 1, JSON.stringify(d));
+const feed = await j(await fetch(`${API}/objects`, { headers: H }));
+check("ни объекта, ни его КП в ленте нет", !feed.some((x) => x.id === m.id || x.id === est.id));
+check("КП по id → 404", (await fetch(`${API}/estimates/${est.id}`, { headers: H })).status === 404);
+check("повторное удаление → 404", (await fetch(`${API}/objects/${m.id}`, { method: "DELETE", headers: H })).status === 404);
+console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
