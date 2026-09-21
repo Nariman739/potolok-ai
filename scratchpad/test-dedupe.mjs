@@ -43,4 +43,7 @@ for (const e of [est3, est4]) if (e?.id) await fetch(`${API}/estimates/${e.id}`,
 if (est3.measurementObjectId && est3.measurementObjectId !== m.id) await fetch(`${API}/measurements/${est3.measurementObjectId}`, { method: "DELETE", headers: H });
 for (const e of [est, est2]) await fetch(`${API}/estimates/${e.id}`, { method: "DELETE", headers: H });
 for (const id of [m.id, est2.measurementObjectId]) if (id) await fetch(`${API}/measurements/${id}`, { method: "DELETE", headers: H });
+// уборка QA-клиентов теста, чтобы не копились в списке
+const cl = await j(await fetch(`${API}/clients`, { headers: H }));
+for (const c of (cl.clients ?? cl ?? [])) if (["QA Гульмира", "Другой", "QA Другой клиент", "QA Совсем другое имя"].includes(c.name)) await fetch(`${API}/clients/${c.id}`, { method: "DELETE", headers: H });
 console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
