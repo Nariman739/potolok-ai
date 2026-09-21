@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
@@ -44,6 +45,20 @@ export async function generateMetadata({
   return { title, description };
 }
 
+/** Рекурсивно убирает из расчёта всё, что начинается на installer/partner/cost/margin. */
+function stripInternalPrices(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripInternalPrices);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (/^(installer|partner|margin|costPrice|purchase)/i.test(k)) continue;
+      out[k] = stripInternalPrices(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 export default async function PublicKpPage({
   params,
 }: {
@@ -74,10 +89,16 @@ export default async function PublicKpPage({
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   // Mark as viewed + notify master (best-effort, non-blocking)
-  if (estimate.status === "DRAFT" || estimate.status === "SENT") {
+  // 21.09.2026: (1) предпросмотр ссылки в WhatsApp/Telegram — это робот, а не клиент:
+  // раньше «клиент открыл КП» приходило в момент отправки; (2) отметка условная
+  // (updateMany со статусом в where) — два одновременных открытия дают один пуш.
+  const ua = ((await headers()).get("user-agent") ?? "").toLowerCase();
+  const isPreviewBot = !ua || /whatsapp|telegrambot|facebookexternalhit|facebot|twitterbot|slackbot|discordbot|vkshare|skypeuripreview|linkedinbot|googlebot|bingbot|yandex(bot|images)|bot\b|crawler|spider|preview/.test(ua);
+  if (!isPreviewBot && (estimate.status === "DRAFT" || estimate.status === "SENT")) {
     prisma.estimate
-      .update({ where: { id: estimate.id }, data: { status: "VIEWED" } })
-      .then(() => {
+      .updateMany({ where: { id: estimate.id, status: { in: ["DRAFT", "SENT"] } }, data: { status: "VIEWED" } })
+      .then((res) => {
+        if (res.count === 0) return; // кто-то уже отметил — второй раз не шумим
         const clientStr = estimate.clientName || "Клиент";
         const price = estimate.total || estimate.standardTotal || 0;
 
@@ -119,7 +140,10 @@ export default async function PublicKpPage({
       .catch(() => {});
   }
 
-  const calc = estimate.calculationData as unknown as CalculationResult & { quickEstimate?: boolean };
+  // Клиенту уходит только клиентская часть расчёта. Раньше в данных страницы лежал
+  // весь calculationData, включая цены работы монтажнику и его итоги по комнатам —
+  // на экране их не видно, но «Просмотреть код» показывал (21.09.2026).
+  const calc = stripInternalPrices(estimate.calculationData) as unknown as CalculationResult & { quickEstimate?: boolean };
   const master = estimate.master;
   const company = master.companyName || master.firstName;
   const brandColor = master.brandColor || "#1e3a5f";

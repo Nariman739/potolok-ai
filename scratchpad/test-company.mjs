@@ -23,11 +23,18 @@ check("QA2 до приглашения объект QA не видит", !feed2.
 // приглашение по номеру
 r = await fetch(`${API}/company`, { method: "POST", headers: H1, body: JSON.stringify({ name: "Второй", phone: "8 700 000 00 78", defaultFee: 60000 }) });
 const inv = await j(r);
-check("QA2 привязан по номеру (8 → +7)", r.status === 200 && inv.linked === true, JSON.stringify(inv).slice(0, 150));
+check("приглашение по номеру создано, регистрация номера не раскрыта", r.status === 200 && inv.invited === true && inv.linked === false, JSON.stringify(inv).slice(0, 150));
 c1 = await j(await fetch(`${API}/company`, { headers: H1 }));
 check("у QA теперь команда из двух", c1.isTeam === true && c1.members.length === 2);
 c2 = await j(await fetch(`${API}/company`, { headers: H2 }));
-check("QA2 работает в компании QA (без своих объектов — переключился сам)", c2.companyId === c1.companyId && c2.isOwner === false, JSON.stringify(c2).slice(0, 120));
+check("QA2 НЕ переключён без согласия, но видит приглашение", c2.companyId !== c1.companyId && c2.isOwner === true && (c2.invites ?? []).some((i) => i.companyId === c1.companyId), JSON.stringify(c2).slice(0, 200));
+feed2 = await j(await fetch(`${API}/objects`, { headers: H2 }));
+check("до согласия QA2 объект QA не видит", !feed2.some((x) => x.id === m.id));
+r = await fetch(`${API}/company/switch`, { method: "POST", headers: H2, body: JSON.stringify({ companyId: "00000000-0000-0000-0000-000000000000" }) });
+check("в чужую компанию без приглашения не перейти", r.status === 404, r.status);
+r = await fetch(`${API}/company/switch`, { method: "POST", headers: H2, body: JSON.stringify({ companyId: c1.companyId }) });
+c2 = await j(r);
+check("QA2 принял приглашение и работает в компании QA", r.status === 200 && c2.companyId === c1.companyId && c2.isOwner === false, JSON.stringify(c2).slice(0, 120));
 feed2 = await j(await fetch(`${API}/objects`, { headers: H2 }));
 check("QA2 видит объект QA в ленте", feed2.some((x) => x.id === m.id));
 const card2 = await j(await fetch(`${API}/objects/${m.id}`, { headers: H2 }));
@@ -45,6 +52,10 @@ r = await fetch(`${API}/measurements`, { method: "POST", headers: H2, body: JSON
 const m2 = await j(r);
 const feed1 = await j(await fetch(`${API}/objects`, { headers: H1 }));
 check("QA видит объект, созданный QA2", feed1.some((x) => x.id === m2.id));
+// вернуться в свою компанию можно самому, приглашение остаётся
+r = await fetch(`${API}/company/switch`, { method: "POST", headers: H2, body: JSON.stringify({ own: true }) });
+c2 = await j(await fetch(`${API}/company`, { headers: H2 }));
+check("QA2 сам вернулся в свою компанию, приглашение осталось", r.status === 200 && c2.isOwner === true && (c2.invites ?? []).some((i) => i.companyId === c1.companyId), JSON.stringify(c2).slice(0, 160));
 // дубль по телефону → восстановление, не второй участник
 r = await fetch(`${API}/company`, { method: "POST", headers: H1, body: JSON.stringify({ phone: "+77000000078" }) });
 check("повторное добавление того же номера не плодит участников", (await j(r)).restored === true);
@@ -59,7 +70,7 @@ check("человек без телефона и приложения добав
 r = await fetch(`${API}/company/members/${erlan.member.id}`, { method: "PATCH", headers: H1, body: JSON.stringify({ defaultFee: 55000 }) });
 check("правка суммы монтажнику", (await j(r)).defaultFee === 55000);
 // удаление QA2 → возвращается в свою компанию
-const memberId = c1.members.find((x) => x.masterId && !x.isMe)?.id;
+const memberId = c1.members.find((x) => (x.phone ?? "").endsWith("7000000078"))?.id;
 r = await fetch(`${API}/company/members/${memberId}`, { method: "DELETE", headers: H1 });
 check("удаление участника", r.status === 200);
 c2 = await j(await fetch(`${API}/company`, { headers: H2 }));

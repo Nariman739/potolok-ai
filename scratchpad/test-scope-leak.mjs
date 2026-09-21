@@ -8,10 +8,10 @@ let r = await fetch(`${API}/measurements`, { method: "POST", headers: H2, body: 
 const m2 = await j(r);
 r = await fetch(`${API}/company`, { method: "POST", headers: H1, body: JSON.stringify({ phone: "+77000000078" }) });
 const inv = await j(r);
-check("участник привязан", inv.linked === true);
+check("приглашение создано, регистрация не раскрыта", inv.invited === true && inv.linked === false);
 const c1 = await j(await fetch(`${API}/company`, { headers: H1 }));
-const mem = c1.members.find((x) => x.masterId && !x.isMe);
-check("но помечен worksHere=false (у него своя фирма с данными)", mem && mem.worksHere === false, JSON.stringify(mem));
+const mem = c1.members.find((x) => (x.phone ?? "").endsWith("7000000078"));
+check("до согласия: не worksHere, masterId и hasApp скрыты", mem && mem.worksHere === false && mem.masterId === null && mem.hasApp === false, JSON.stringify(mem));
 const feed1 = await j(await fetch(`${API}/objects`, { headers: H1 }));
 check("QA НЕ видит объект QA2", !feed1.some((x) => x.id === m2.id));
 const card = await fetch(`${API}/objects/${m2.id}`, { headers: H1 });

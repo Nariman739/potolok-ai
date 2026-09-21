@@ -77,7 +77,8 @@ export async function GET() {
       // КП без объекта, которые ждут ответа
       prisma.estimate.findMany({
         where: {
-          ...inScope(scope), deletedAt: null, measurementObjectId: null,
+          ...inScope(scope), deletedAt: null,
+          OR: [{ measurementObjectId: null }, { measurementObject: { deletedAt: { not: null } } }],
           status: { in: ["SENT", "VIEWED"] }, updatedAt: { lt: staleBefore, gte: deadBefore },
         },
         orderBy: { updatedAt: "asc" },

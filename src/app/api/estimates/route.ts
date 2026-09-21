@@ -177,6 +177,7 @@ export async function POST(request: Request) {
         type RawRoom = {
           name?: string; walls?: number[]; angles?: number[]; bulges?: number[];
           cornerRadii?: number[]; area?: number; perimeter?: number; elements?: unknown[];
+          columns?: unknown[]; wallProfiles?: Record<string, string>; variantOverrides?: Record<string, string>;
         };
         const rooms = (roomsData as RawRoom[]).filter(
           (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
@@ -219,7 +220,9 @@ export async function POST(request: Request) {
             take: 20,
             orderBy: { updatedAt: "desc" },
           });
-          const freshAfter = Date.now() - 3 * 24 * 60 * 60 * 1000;
+          // Свежесть — 2 часа: страховка от «сохранил замер и тут же посчитал КП с потерянной
+          // связью». Днями мерить нельзя: одинаковые квартиры в одном ЖК склеивались бы.
+          const freshAfter = Date.now() - 2 * 60 * 60 * 1000;
           const wantedAddress = norm(clientAddress);
           const same = candidates.find((c) => {
             if (c.rooms.length !== rooms.length || signature(c.rooms) !== wanted) return false;
@@ -269,6 +272,12 @@ export async function POST(request: Request) {
                   area: r.area ?? 0,
                   perimeter: r.perimeter ?? 0,
                   elements: (r.elements ?? []) as object[],
+                  // Типы стен (подшторник, парящий), выбранные варианты и колонны —
+                  // без них «+ Ещё вариант» и «В цех» открывали комнату уже голой,
+                  // и второй вариант КП выходил дешевле первого (21.09.2026).
+                  columns: (r.columns as object[] | undefined) ?? undefined,
+                  wallProfiles: r.wallProfiles ?? undefined,
+                  variantOverrides: r.variantOverrides ?? undefined,
                   sortOrder: i,
                 })),
               },

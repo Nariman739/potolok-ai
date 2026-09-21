@@ -27,6 +27,10 @@ export async function POST(
         clientName: existing.clientName ? `${existing.clientName} (копия)` : null,
         clientPhone: existing.clientPhone,
         clientAddress: existing.clientAddress,
+        // Копия остаётся вариантом того же объекта и того же клиента (21.09.2026):
+        // раньше она отрывалась и жила в ленте отдельной строкой без оплат и цеха.
+        clientId: existing.clientId,
+        measurementObjectId: existing.measurementObjectId,
         roomsData: existing.roomsData ?? {},
         calculationData: existing.calculationData ?? {},
         totalArea: existing.totalArea,

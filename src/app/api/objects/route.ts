@@ -123,7 +123,14 @@ export async function GET(request: NextRequest) {
       // КП без объекта. Замер у них либо не делался (быстрое КП), либо ушёл в
       // корзину до 19.09.2026 — в ленте они живут отдельной строкой.
       prisma.estimate.findMany({
-        where: { ...inScope(scope), deletedAt: null, measurementObjectId: null },
+        // 21.09.2026: сюда же попадают КП, чей замер удалили из «Сохранённых»
+        // (старый DELETE /measurements/:id КП не трогает) — раньше они становились
+        // невидимыми, а ссылка у клиента продолжала работать.
+        where: {
+          ...inScope(scope),
+          deletedAt: null,
+          OR: [{ measurementObjectId: null }, { measurementObject: { deletedAt: { not: null } } }],
+        },
         select: {
           id: true,
           clientName: true,

@@ -47,7 +47,7 @@ export interface AdjCalc {
   pricePerM2?: number;
 }
 
-/** Коэффициент высоты >3 м — совпадает с height_coefficient в прайсе. */
+/** Коэффициент высоты >3 м по умолчанию — когда из расчёта его не вывести. */
 const HEIGHT_COEF = 1.3;
 
 export function round10(n: number): number {
@@ -77,8 +77,15 @@ export function scaleCalc<T extends AdjCalc>(calc: T, coef: number): T {
   const roomResults = (calc.roomResults ?? []).map((rr) => {
     const items = rr.items.map(scaleItem);
     const subtotal = Math.round(items.reduce((s, it) => s + it.total, 0));
+    // Коэффициент высоты мастер правит в прайсе (1.3 — лишь значение по умолчанию).
+    // Берём тот, с которым комната пришла: отношение «после высоты / до». Раньше
+    // здесь стояла константа, и при коэффициенте 1.5 сохранённое КП выходило
+    // дешевле суммы на экране расчёта (21.09.2026).
+    const incomingRatio =
+      rr.subtotal && rr.subtotalAfterHeight && rr.subtotal > 0 ? rr.subtotalAfterHeight / rr.subtotal : NaN;
+    const heightCoef = Number.isFinite(incomingRatio) && incomingRatio >= 1 && incomingRatio <= 3 ? incomingRatio : HEIGHT_COEF;
     const subtotalAfterHeight = rr.heightMultiplied
-      ? Math.round(subtotal * HEIGHT_COEF)
+      ? Math.round(subtotal * heightCoef)
       : subtotal;
     return { ...rr, items, subtotal, subtotalAfterHeight };
   });

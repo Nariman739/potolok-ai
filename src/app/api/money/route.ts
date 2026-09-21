@@ -74,7 +74,9 @@ export async function GET() {
       }
 
       const waitingForClient = ["measured", "calculated", "sent", "viewed"].includes(stage);
-      if (money.due != null && money.due > 0 && !waitingForClient) {
+      // Клиент мог не нажать «Принять» (так у 85% КП), но предоплату уже отдал —
+      // значит договорились, и остаток он должен (21.09.2026).
+      if (money.due != null && money.due > 0 && (!waitingForClient || money.paid > 0)) {
         owedToMe.push({
           id: o.id, title, client: o.client, stage,
           price: money.price, paid: money.paid, due: money.due,

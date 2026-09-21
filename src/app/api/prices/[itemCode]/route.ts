@@ -83,7 +83,14 @@ export async function PUT(
       photoUrl?: string | null;
       isHidden?: boolean;
     } = {};
-    if (price !== undefined && !Number.isNaN(price)) data.price = price;
+    // Границы цены (21.09.2026): проходили и −500, и 99 999 999 999 — одна опечатка
+    // в прайсе ломала все следующие КП. Ноль разрешён: «бесплатно» бывает.
+    if (price !== undefined && !Number.isNaN(price)) {
+      if (price < 0 || price > 10_000_000) {
+        return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
+      }
+      data.price = price;
+    }
     if (installerPrice !== undefined) {
       data.installerPrice = installerPrice === null || Number.isNaN(installerPrice) ? null : installerPrice;
     }

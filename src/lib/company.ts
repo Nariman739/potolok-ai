@@ -118,12 +118,15 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
     masterIds,
     members: company.members.map((m) => ({
       id: m.id,
-      masterId: m.masterId,
+      // До согласия приглашённого его masterId владельцу не отдаём (см. hasApp ниже).
+      masterId: m.masterId && (m.masterId === master.id || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id) ? m.masterId : null,
       name: m.name,
       phone: m.phone,
       role: m.role,
       defaultFee: m.defaultFee,
-      hasApp: !!m.masterId,
+      // «В приложении» показываем только после того, как человек сам принял приглашение:
+      // иначе по бейджу можно узнать, зарегистрирован ли чужой номер (21.09.2026).
+      hasApp: !!m.masterId && (m.masterId === company.ownerId || m.master?.activeCompanyId === company.id),
       worksHere: !m.masterId || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id,
       isMe: m.masterId === master.id,
     })),

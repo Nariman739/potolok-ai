@@ -13,7 +13,18 @@ export async function GET() {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
-    return NextResponse.json(scope);
+    // Приглашения (21.09.2026): компании, куда меня добавили по номеру, но где я
+    // ещё не работаю. Переход — только по моему согласию (POST /company/switch).
+    const memberships = await prisma.member.findMany({
+      where: { masterId: master.id, removedAt: null, role: { not: "owner" }, companyId: { not: scope.companyId } },
+      select: { companyId: true, company: { select: { name: true, owner: { select: { firstName: true, lastName: true } } } } },
+    });
+    const invites = memberships.map((m) => ({
+      companyId: m.companyId,
+      companyName: m.company.name,
+      ownerName: [m.company.owner.firstName, m.company.owner.lastName].filter(Boolean).join(" "),
+    }));
+    return NextResponse.json({ ...scope, invites, canReturnToOwn: !scope.isOwner });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -48,48 +59,34 @@ export async function POST(request: Request) {
           where: { id: dup.id },
           data: { removedAt: null, name: name || dup.name, defaultFee: defaultFee ?? dup.defaultFee },
         });
-        if (restored.masterId) await switchIfEmpty(restored.masterId, scope.companyId);
-        return NextResponse.json({ member: restored, linked: !!restored.masterId, restored: true });
+        return NextResponse.json({ member: restored, linked: false, invited: !!restored.phone, restored: true });
       }
     }
 
     // Зарегистрирован ли такой мастер — тогда он получит доступ к объектам компании.
     const linkedMaster = phone
-      ? await prisma.master.findFirst({ where: { phone }, select: { id: true, firstName: true, lastName: true } })
+      ? await prisma.master.findFirst({ where: { phone }, select: { id: true } })
       : null;
 
     const member = await prisma.member.create({
       data: {
         companyId: scope.companyId,
         masterId: linkedMaster?.id ?? null,
-        name: name || [linkedMaster?.firstName, linkedMaster?.lastName].filter(Boolean).join(" ") || phone!,
+        name: name || phone!,
         phone,
         defaultFee,
-        joinedAt: linkedMaster ? new Date() : null,
+        // joinedAt ставится, когда человек сам примет приглашение
+        joinedAt: null,
       },
     });
 
-    if (linkedMaster) await switchIfEmpty(linkedMaster.id, scope.companyId);
-
-    return NextResponse.json({ member, linked: !!linkedMaster, restored: false });
+    // linked не раскрываем: по ответу нельзя узнать, зарегистрирован ли номер (перебор базы).
+    return NextResponse.json({ member, linked: false, invited: !!phone, restored: false });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
     console.error("Add member error:", error);
     return NextResponse.json({ error: "Не удалось добавить человека" }, { status: 500 });
-  }
-}
-
-/**
- * Приглашённый мастер без своих объектов сразу работает в этой компании —
- * наёмному замерщику незачем пустая «своя» компания. Если объекты есть,
- * остаётся в своей; переключатель компаний — позже.
- */
-async function switchIfEmpty(masterId: string, companyId: string) {
-  const ownObjects = await prisma.measurementObject.count({ where: { masterId, deletedAt: null } });
-  const ownEstimates = await prisma.estimate.count({ where: { masterId, deletedAt: null } });
-  if (ownObjects + ownEstimates === 0) {
-    await prisma.master.update({ where: { id: masterId }, data: { activeCompanyId: companyId } });
   }
 }
