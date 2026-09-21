@@ -41,6 +41,13 @@ if (code) {
   if (r.status === 405) r = await fetch(`${API}/prices/${code}`, { method: "PATCH", headers: H, body: JSON.stringify({ price: -500 }) });
   check("цена −500 отклонена", r.status === 400, r.status);
 } else check("нашёл позицию прайса для проверки", false, JSON.stringify(prices).slice(0, 120));
+// повтор создания КП с тем же X-Op-Id → то же КП, не второе
+const opk = "test-kp-" + Date.now();
+const kpBody = JSON.stringify({ roomsData: [{ id: "z", name: "Кухня", walls: [311, 277, 311, 277], angles: [0,0,0,0], area: 8.6, perimeter: 11.8, elements: [] }], calculationData: { ...calc, total: 60000, roomResults: [{ roomName: "Кухня", items: [{ itemName: "Полотно", quantity: 10, unit: "м²", unitPrice: 6000, total: 60000 }], subtotal: 60000, subtotalAfterHeight: 60000 }], extraItems: [] }, totalArea: 8.6, clientAddress: "QA Повтор КП " + tail });
+const k1 = await j(await fetch(`${API}/estimates`, { method: "POST", headers: { ...H, "X-Op-Id": opk }, body: kpBody }));
+const k2 = await j(await fetch(`${API}/estimates`, { method: "POST", headers: { ...H, "X-Op-Id": opk }, body: kpBody }));
+check("повтор POST /estimates с тем же X-Op-Id → то же КП", !!k1.id && k1.id === k2.id, `${k1.id} vs ${k2.id}`);
+if (k1.measurementObjectId) await fetch(`${API}/objects/${k1.measurementObjectId}`, { method: "DELETE", headers: H });
 // уборка
 for (const id of [est.id, dup.id ?? dup.estimate?.id]) if (id) await fetch(`${API}/estimates/${id}`, { method: "DELETE", headers: H });
 console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);

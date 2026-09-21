@@ -7,6 +7,7 @@ import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
 import { KP_LIMITS } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent } from "@/lib/clients";
+import { withIdempotency } from "@/lib/idempotency";
 
 export async function GET() {
   try {
@@ -56,7 +57,22 @@ export async function GET() {
   }
 }
 
+/**
+ * Создание КП идемпотентно (21.09.2026): мобилка шлёт X-Op-Id, и если ответ
+ * потерялся на плохой связи, повтор вернёт то же КП, а не создаст второе
+ * (вместе со вторым объектом, клиентом и +1 к месячному счётчику).
+ */
 export async function POST(request: Request) {
+  let masterId: string;
+  try {
+    masterId = (await requireAuth()).id;
+  } catch {
+    return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+  }
+  return withIdempotency(request, masterId, "POST /estimates", () => createEstimate(request));
+}
+
+async function createEstimate(request: Request): Promise<NextResponse> {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
