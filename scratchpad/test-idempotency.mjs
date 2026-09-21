@@ -16,5 +16,16 @@ await fetch(`${API}/objects/${m1.id}/workshop`, { method: "POST", headers: { ...
 await fetch(`${API}/objects/${m1.id}/workshop`, { method: "POST", headers: { ...H, "X-Op-Id": wop }, body: "{}" });
 const card = await j(await fetch(`${API}/objects/${m1.id}`, { headers: H }));
 check("двойной POST workshop с одним X-Op-Id → одна запись", card.workshopOrders?.length === 1, card.workshopOrders?.length);
+// гонка: два ОДНОВРЕМЕННЫХ запроса с одним X-Op-Id → один объект
+const cop = "test-cop-" + Date.now();
+const cbody = JSON.stringify({ address: "QA Гонка " + cop, status: "saved", rooms: [{ name: "Зал", walls: [431,307,431,307], normalCorners: [true,true,true,true], angles: [90,90,90,90], area: 13.2, perimeter: 14.8, elements: [] }] });
+const [c1, c2] = await Promise.all([1, 2].map(() => fetch(`${API}/measurements`, { method: "POST", headers: { ...H, "X-Op-Id": cop }, body: cbody })));
+const [j1, j2] = [await j(c1), await j(c2)];
+check("одновременные повторы → один и тот же id", j1.id && j1.id === j2.id, `${c1.status}:${j1.id} vs ${c2.status}:${j2.id}`);
+const feed = await j(await fetch(`${API}/objects`, { headers: H }));
+const rows = (feed.objects ?? feed.items ?? feed).filter?.((o) => (o.title ?? o.address ?? "").includes(cop)) ?? [];
+check("в ленте ровно один объект гонки", rows.length === 1, rows.length);
+if (j1.id) await fetch(`${API}/measurements/${j1.id}`, { method: "DELETE", headers: H });
+if (j2.id && j2.id !== j1.id) await fetch(`${API}/measurements/${j2.id}`, { method: "DELETE", headers: H });
 for (const id of [m1.id, m3.id]) await fetch(`${API}/measurements/${id}`, { method: "DELETE", headers: H });
 console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
