@@ -353,13 +353,20 @@ export async function POST(request: Request) {
           controller.close();
         } catch (error) {
           console.error("Stream error:", error);
+          // Мастеру нужен понятный текст и знание, что делать (22.09.2026).
+          // Раньше любая причина схлопывалась в «Ошибка AI»: когда на счету
+          // модели кончились деньги (402), это выглядело как поломка приложения.
+          const status = (error as { status?: number } | null)?.status;
+          const message =
+            status === 402
+              ? "Ассистент временно недоступен — закончился лимит. Уже пополняем, попробуй позже. Замеры, КП и цех работают как обычно."
+              : status === 429
+                ? "Слишком много вопросов подряд. Подожди минуту и спроси ещё раз."
+                : status === 401 || status === 403
+                  ? "Ассистент временно недоступен. Мы уже чиним."
+                  : "Не получилось ответить. Попробуй ещё раз.";
           controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "error",
-                message: "Ошибка AI",
-              })}\n\n`
-            )
+            encoder.encode(`data: ${JSON.stringify({ type: "error", message, retriable: status !== 402 })}\n\n`)
           );
           controller.close();
         }
