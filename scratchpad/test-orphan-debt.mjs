@@ -1,0 +1,23 @@
+const API = process.env.API ?? "http://localhost:3000/api";
+const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t.slice(0, 200); } };
+let ok = 0, fail = 0; const check = (n, c, x = "") => { if (c) { ok++; console.log("✅", n); } else { fail++; console.log("❌", n, x); } };
+let r = await fetch(`${API}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: "+77000000077", password: "qa12345" }) });
+const H = { "Content-Type": "application/json", Cookie: r.headers.get("set-cookie")?.split(";")[0] };
+const tail = String(Date.now()).slice(-6);
+const before = await j(await fetch(`${API}/money`, { headers: H }));
+// быстрое КП без комнат = КП без объекта
+const calc = { totalArea: 0, totalPerimeter: 0, total: 45000, roomResults: [], extraItems: [{ itemName: "Доделка", quantity: 1, unit: "шт", unitPrice: 45000, total: 45000 }], quickEstimate: true };
+const est = await j(await fetch(`${API}/estimates`, { method: "POST", headers: H, body: JSON.stringify({ roomsData: [], calculationData: calc, totalArea: 0, clientName: "QA Быстрый долг " + tail }) }));
+check("быстрое КП создано без объекта", !!est.id && !est.measurementObjectId, JSON.stringify(est).slice(0, 120));
+let money = await j(await fetch(`${API}/money`, { headers: H }));
+check("пока не принято — в долги не попало", !money.owedToMe.some((o) => o.id === est.id), "");
+await fetch(`${API}/estimates/${est.id}`, { method: "PUT", headers: H, body: JSON.stringify({ status: "SENT" }) });
+await fetch(`${API}/estimates/by-public/${est.publicId}/confirm`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+money = await j(await fetch(`${API}/money`, { headers: H }));
+const row = money.owedToMe.find((o) => o.id === est.id);
+check("принятое быстрое КП попало в «Должны мне»", !!row && row.due === 45000, JSON.stringify(row));
+check("итог вырос ровно на сумму КП", money.owedToMeTotal === before.owedToMeTotal + 45000, `${money.owedToMeTotal} vs ${before.owedToMeTotal}`);
+await fetch(`${API}/estimates/${est.id}`, { method: "DELETE", headers: H });
+const cl = await j(await fetch(`${API}/clients`, { headers: H }));
+for (const c of (cl.clients ?? cl ?? [])) if ((c.name ?? "").startsWith("QA Быстрый долг")) await fetch(`${API}/clients/${c.id}`, { method: "DELETE", headers: H });
+console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);

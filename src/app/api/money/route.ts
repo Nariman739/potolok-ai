@@ -30,7 +30,7 @@ export async function GET() {
     const { start, end } = monthBoundsAlmaty();
     const prev = monthBoundsAlmaty(-1);
 
-    const [objects, owner] = await Promise.all([
+    const [objects, owner, orphanConfirmed] = await Promise.all([
       prisma.measurementObject.findMany({
         where: {
           ...inScope(scope),
@@ -47,6 +47,20 @@ export async function GET() {
         },
       }),
       prisma.master.findUnique({ where: { id: scope.ownerId }, select: { materialPercent: true } }),
+      // КП без объекта (быстрое КП, доделка), которые клиент принял: деньги по ним
+      // такие же реальные, а в «Должны мне» их не было вовсе (23.09.2026).
+      prisma.estimate.findMany({
+        where: {
+          ...inScope(scope),
+          deletedAt: null,
+          status: "CONFIRMED",
+          OR: [{ measurementObjectId: null }, { measurementObject: { deletedAt: { not: null } } }],
+        },
+        select: {
+          id: true, total: true, clientName: true, clientAddress: true, updatedAt: true,
+          client: { select: { id: true, name: true, phone: true } },
+        },
+      }),
     ]);
     const materialPercent = owner?.materialPercent ?? 40;
 
@@ -93,6 +107,22 @@ export async function GET() {
         profitMonth += money.profit;
         if (money.profitIsEstimate) profitEstimated = true;
       }
+    }
+
+    for (const e of orphanConfirmed) {
+      const price = Math.round(e.total ?? 0);
+      if (price <= 0) continue;
+      owedToMe.push({
+        id: e.id,
+        kind: "estimate",
+        title: e.clientAddress || e.client?.name || e.clientName || "КП без объекта",
+        client: e.client,
+        stage: "confirmed",
+        price,
+        paid: 0,
+        due: price,
+        installAt: null,
+      });
     }
 
     (owedToMe as { due: number }[]).sort((a, b) => b.due - a.due);
