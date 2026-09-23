@@ -66,6 +66,10 @@ export async function GET() {
 
     const owedToMe: object[] = [];
     const owedByMe: object[] = [];
+    // Обязательства мастера (Нариман 23.09): клиент отдал деньги, а работа не
+    // закрыта. Сюда же объекты, где деньги есть, а КП ещё нет — цена не
+    // определена, но человек уже заплатил и ждёт.
+    const prepaid: object[] = [];
     let receivedMonth = 0, receivedPrev = 0, profitMonth = 0, closedMonth = 0, profitEstimated = false;
 
     for (const o of objects) {
@@ -94,6 +98,15 @@ export async function GET() {
         owedToMe.push({
           id: o.id, title, client: o.client, stage,
           price: money.price, paid: money.paid, due: money.due,
+          installAt: o.installAt?.toISOString() ?? null,
+        });
+      }
+      if (money.paid > 0 && stage !== "closed") {
+        prepaid.push({
+          id: o.id, title, client: o.client, stage,
+          price: money.price, paid: money.paid,
+          // Что именно не так: нет цены, оплачено полностью или частично.
+          state: money.price == null ? "no_price" : money.settled ? "paid_full" : "paid_part",
           installAt: o.installAt?.toISOString() ?? null,
         });
       }
@@ -131,6 +144,8 @@ export async function GET() {
       month: { received: receivedMonth, receivedPrev, profit: profitMonth, profitIsEstimate: profitEstimated, closed: closedMonth },
       owedToMe,
       owedToMeTotal: (owedToMe as { due: number }[]).reduce((s, x) => s + x.due, 0),
+      prepaid,
+      prepaidTotal: (prepaid as { paid: number }[]).reduce((s, x) => s + x.paid, 0),
       owedByMe,
       owedByMeTotal: (owedByMe as { fee: number }[]).reduce((s, x) => s + x.fee, 0),
       materialPercent,
