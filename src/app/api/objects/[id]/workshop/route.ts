@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope, type Scope } from "@/lib/company";
-import { addClientEvent } from "@/lib/clients";
+import { addClientEvent, syncClientStatusForObject } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 
 /**
@@ -99,6 +99,7 @@ async function createWorkshopOrder(request: Request, masterId: string, id: strin
       }).catch(() => {});
     }
 
+    syncClientStatusForObject(id).catch(() => {});
     return NextResponse.json(order);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

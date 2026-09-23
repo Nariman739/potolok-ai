@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { syncClientStatusForObject } from "@/lib/clients";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -304,6 +305,7 @@ export async function PATCH(
       installerPaidAt: updated.installerPaidAt,
       partnerAmount: primary?.partner?.amount ?? 0,
     });
+    syncClientStatusForObject(id).catch(() => {});
     const { stage, isManual } = resolveStage({ ...updated, settled: money.settled });
     return NextResponse.json({
       stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual,

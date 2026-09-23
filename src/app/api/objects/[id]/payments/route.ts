@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { withIdempotency } from "@/lib/idempotency";
-import { addClientEvent } from "@/lib/clients";
+import { addClientEvent, syncClientStatusForObject } from "@/lib/clients";
 
 /**
  * Деньги от клиента по объекту (Этап 4).
@@ -42,6 +42,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           metadata: { measurementObjectId: obj.id, paymentId: payment.id, amount, kind },
         }).catch(() => {});
       }
+      // Деньги получены — клиент в воронке точно не «Новый».
+      syncClientStatusForObject(obj.id).catch(() => {});
       return NextResponse.json(payment);
     });
   } catch (error) {

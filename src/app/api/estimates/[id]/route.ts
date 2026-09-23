@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { syncClientStatusForObject } from "@/lib/clients";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -149,6 +150,10 @@ export async function PUT(
       },
     });
     if (adjust) await persistPartner(id, adjust.partner);
+    // Отправил КП → клиент в воронке «в работе», а не «новый».
+    if (status !== undefined && existing.measurementObjectId) {
+      syncClientStatusForObject(existing.measurementObjectId).catch(() => {});
+    }
 
     return NextResponse.json({
       ...updated,

@@ -203,3 +203,48 @@ export async function changeClientStatus(
 
   return updated;
 }
+
+/**
+ * Статус клиента в воронке следует за этапом объекта (23.09.2026).
+ * Раньше он менялся только когда клиент нажимал «Принять» по ссылке или
+ * подписывал договор — а 85% КП живут без ответа клиента. Объект уже в цеху
+ * с предоплатой, а в воронке человек всё ещё «Новый».
+ *
+ * Правило: только вверх (NEW → IN_PROGRESS → WON). Вниз статус не роняем —
+ * это решение мастера. Отправил КП → в работе; согласовали, цех, деньги,
+ * закрыл → сделка выиграна.
+ */
+export async function syncClientStatusForObject(objectId: string): Promise<void> {
+  const { resolveStage } = await import("./object-stage");
+  const obj = await prisma.measurementObject.findFirst({
+    where: { id: objectId, deletedAt: null },
+    select: {
+      clientId: true,
+      manualStage: true,
+      estimates: { where: { deletedAt: null }, select: { status: true, total: true, createdAt: true, deletedAt: true } },
+      workshopOrders: { select: { id: true } },
+      payments: { select: { amount: true } },
+      client: { select: { status: true } },
+    },
+  });
+  if (!obj?.clientId || !obj.client) return;
+  const paid = obj.payments.reduce((s, p) => s + p.amount, 0);
+  const price = obj.estimates.find((e) => e.status === "CONFIRMED")?.total ?? obj.estimates[0]?.total ?? 0;
+  const { stage } = resolveStage({
+    manualStage: obj.manualStage,
+    estimates: obj.estimates,
+    workshopOrders: obj.workshopOrders,
+    settled: price > 0 && paid >= price,
+  });
+  const rank: Record<string, number> = { NEW: 0, IN_PROGRESS: 1, WON: 2, LOST: 2 };
+  const target: DealStatus | null =
+    ["confirmed", "workshop", "installed", "closed"].includes(stage) || paid > 0
+      ? "WON"
+      : ["sent", "viewed", "calculated"].includes(stage)
+        ? "IN_PROGRESS"
+        : null;
+  if (!target) return;
+  const current = canonicalizeStatus(obj.client.status);
+  if ((rank[current] ?? 0) >= (rank[target] ?? 0)) return;
+  await changeClientStatus(obj.clientId, target, target === "WON" ? "Объект согласован (по этапу)" : "КП посчитано и отправлено (по этапу)");
+}
