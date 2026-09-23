@@ -117,9 +117,12 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
     if (existing) return existing;
   }
 
-  if (name && !phone) {
+  // Без телефона по одному имени не склеиваем (23.09.2026): две разные «Айгуль»
+  // становились одним клиентом, и объекты чужого человека попадали в его карточку.
+  // Исключение — тот же адрес: это точно тот же заказ.
+  if (name && !phone && address) {
     const existing = await prisma.client.findFirst({
-      where: { masterId, name, phone: null, deletedAt: null },
+      where: { masterId, name, phone: null, address, deletedAt: null },
     });
     if (existing) return existing;
   }

@@ -109,6 +109,23 @@ export async function PUT(
         )
       : null;
 
+    // Принятое клиентом КП нельзя тихо переписать (23.09.2026). Раньше можно было
+    // изменить сумму или позиции у CONFIRMED и у подписанного договором КП: клиент
+    // открывал ссылку и видел «Принято» на цену, которую не согласовывал.
+    // Правки цен по договорённости делаются новым вариантом КП («+ Ещё вариант»).
+    const locked = existing.status === "CONFIRMED" || !!existing.contractSignedAt || !!existing.actSignedAt;
+    const touchesContent = touchesMoney || roomsData !== undefined || totalArea !== undefined;
+    if (locked && touchesContent) {
+      return NextResponse.json(
+        {
+          error: existing.contractSignedAt
+            ? "КП уже подписано договором — сумму и позиции менять нельзя. Сделай «+ Ещё вариант»."
+            : "Клиент уже принял это КП — сумму и позиции менять нельзя. Сделай «+ Ещё вариант».",
+        },
+        { status: 409 },
+      );
+    }
+
     // Validate status transitions that master can do
     const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED"];
     if (status !== undefined && !allowedMasterStatuses.includes(status)) {
