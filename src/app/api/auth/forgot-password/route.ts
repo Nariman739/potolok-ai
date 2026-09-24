@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendWhatsappOtp, whatsappConfigured } from "@/lib/whatsapp";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
@@ -25,6 +26,23 @@ export async function POST(request: Request) {
       where: { phone },
       select: { id: true, telegramChatId: true, firstName: true },
     });
+
+    // WhatsApp — второй канал для кода (24.09.2026). Бота в Telegram знают
+    // 32 мастера из 357, и остальные, забыв пароль, теряли доступ навсегда.
+    // Шлём туда, когда привязки к Telegram нет, а WhatsApp настроен.
+    const viaWhatsapp = !!master && !master.telegramChatId && whatsappConfigured();
+    if (viaWhatsapp && master) {
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      await prisma.master.update({
+        where: { id: master.id },
+        data: { resetOtp: otp, resetOtpExpiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      });
+      const sent = await sendWhatsappOtp(phone, otp);
+      // Канал оставляем неизвестным для чужих: ответ одинаковый в любом случае,
+      // иначе по нему можно перебирать, кто зарегистрирован.
+      if (!sent.ok) console.warn("[forgot-password] whatsapp failed", sent.error);
+      return NextResponse.json({ ok: true, channel: sent.ok ? "whatsapp" : undefined });
+    }
 
     // Always return ok to avoid user enumeration
     if (!master || !master.telegramChatId) {
@@ -56,7 +74,7 @@ export async function POST(request: Request) {
       `Код действует 10 минут. Никому не сообщайте его.`
     );
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, channel: "telegram" });
   } catch (error) {
     console.error("Forgot password error:", error);
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
