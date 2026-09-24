@@ -110,6 +110,20 @@ export function AdminPanel({
           >
             📏 Рулетки
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/admin/ceilings")}
+          >
+            🏠 База потолков
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/admin/feedback")}
+          >
+            💬 Пожелания
+          </Button>
         </div>
       </div>
 
