@@ -1,8 +1,11 @@
+import { after } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { companyIdFor } from "@/lib/company";
 import { prisma } from "@/lib/prisma";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { buildSystemPrompt, VISION_EXTRACTION_PROMPT, computeRoomSummary } from "@/lib/assistant-prompt";
+import { quickAnswer } from "@/lib/assistant-quick";
 import { calculate } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import type { ChatMessage, RoomInput } from "@/lib/types";
@@ -141,6 +144,31 @@ export async function POST(request: Request) {
             )
           );
 
+          // Частый вопрос «где/как» — отвечаем сами, без модели (24.09.2026).
+          // Текст всё равно взят из навигации помощника, зато мгновенно и
+          // бесплатно. Сомнительные формулировки сюда не попадают — они уходят
+          // модели, как раньше.
+          const quick = !imageUrl && photoUrls.length === 0 ? quickAnswer(message ?? "", false) : null;
+          if (quick) {
+            for (const part of quick.answer.match(/.{1,40}(\s|$)/g) ?? [quick.answer]) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text", content: part })}\n\n`));
+              await new Promise((r) => setTimeout(r, 25));
+            }
+            const quickMsg: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: quick.answer,
+              timestamp: new Date().toISOString(),
+            };
+            await prisma.chatSession.update({
+              where: { id: sessionId },
+              data: { messages: JSON.parse(JSON.stringify([...allMessages, quickMsg])) },
+            });
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+            controller.close();
+            return;
+          }
+
           // Agent 1: Vision Extractor (if photo present)
           // Send indicator first so user sees immediate feedback during ~3-5s extraction
           let visionData: string | null = null;
@@ -179,9 +207,16 @@ export async function POST(request: Request) {
             { role: "system", content: systemPrompt },
           ];
 
-          for (let i = 0; i < allMessages.length; i++) {
-            const msg = allMessages[i];
-            const isCurrentMsg = i === allMessages.length - 1;
+          // В модель уходила ВСЯ переписка сессии, и каждый следующий ответ
+          // стоил дороже предыдущего (24.09.2026). Для вопросов «как и где»
+          // хвост разговора не нужен: держим последние сообщения, текущее
+          // всегда среди них.
+          const HISTORY_LIMIT = 12;
+          const history = allMessages.length > HISTORY_LIMIT ? allMessages.slice(-HISTORY_LIMIT) : allMessages;
+
+          for (let i = 0; i < history.length; i++) {
+            const msg = history[i];
+            const isCurrentMsg = i === history.length - 1;
 
             if (msg.role === "user") {
               if (isCurrentMsg && visionData) {
@@ -211,7 +246,9 @@ export async function POST(request: Request) {
             model: AI_MODEL,
             messages: openaiMessages,
             stream: true,
-            max_tokens: 2000,
+            // Ответ помощника — несколько строк, а не лекция. Расчётный блок
+            // room_data короткий, в 900 токенов помещается с запасом.
+            max_tokens: 900,
             stream_options: { include_usage: true },
           });
 
@@ -312,6 +349,32 @@ export async function POST(request: Request) {
               );
             } catch (e) {
               console.error("Failed to parse client_data:", e);
+            }
+          }
+
+          // Пожелание мастера (24.09.2026): ассистент спрашивает, чего не
+          // хватает, и кладёт ответ отдельным блоком. Блок служебный —
+          // сохраняем и вырезаем, мастеру его видеть незачем.
+          const feedbackMatch = fullContent.match(/```feedback\s*\n([\s\S]*?)\n```/);
+          if (feedbackMatch) {
+            fullContent = fullContent.replace(feedbackMatch[0], "").replace(/\n{3,}/g, "\n\n").trim();
+            try {
+              const parsed = JSON.parse(feedbackMatch[1]) as { topic?: unknown; text?: unknown };
+              const text = typeof parsed.text === "string" ? parsed.text.trim().slice(0, 500) : "";
+              const topic = typeof parsed.topic === "string" ? parsed.topic.trim().slice(0, 40) : "другое";
+              if (text.length >= 3) {
+                after(async () => {
+                  try {
+                    await prisma.masterFeedback.create({
+                      data: { masterId: master.id, companyId: await companyIdFor(master.id), topic, text, source: "assistant" },
+                    });
+                  } catch (e) {
+                    console.error("Failed to save feedback:", e);
+                  }
+                });
+              }
+            } catch (e) {
+              console.error("Failed to parse feedback:", e);
             }
           }
 

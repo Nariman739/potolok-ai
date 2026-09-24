@@ -132,6 +132,7 @@ model Master {
   pushDevices     PushDevice[]
   workshopOrders  WorkshopOrder[]
   payments        Payment[]
+  feedback        MasterFeedback[]
   /// Доля материала в цене клиенту, % — для оценки прибыли, пока закупка
   /// по объекту не указана (Этап 4). Мастер может поправить.
   materialPercent Int              @default(40)
@@ -473,6 +474,30 @@ enum EstimateStatus {
 // ============================================
 // CHAT / ASSISTANT
 // ============================================
+
+/// Что мастера просят добавить или что им мешает (24.09.2026). Ассистент
+/// спрашивает об этом сам и складывает ответы сюда — иначе обратная связь
+/// растворялась в чатах и до нас не доходила.
+model MasterFeedback {
+  id        String    @id @default(uuid())
+  masterId  String
+  companyId String?
+  /// Слово темы от ассистента: «замер», «кп», «деньги», «цех», «другое»
+  topic     String    @default("другое")
+  /// Пожелание словами мастера
+  text      String
+  /// Откуда пришло: "assistant" | "manual"
+  source    String    @default("assistant")
+  /// Отметка, что мы это разобрали
+  handledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([masterId])
+  @@index([handledAt])
+}
 
 model ChatSession {
   id              String     @id @default(uuid())
