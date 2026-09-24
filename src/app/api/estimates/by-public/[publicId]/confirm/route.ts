@@ -5,22 +5,35 @@ import { sendPushToMaster } from "@/lib/push";
 import { formatPrice } from "@/lib/format";
 import { changeClientStatus, addClientEvent } from "@/lib/clients";
 
-// In-memory rate limit (best-effort; fine for a single-instance Vercel function).
-// 5 attempts per IP per 15 minutes — enough to keep enumeration noise down
-// without blocking legit "double-tap" confirms.
+/**
+ * Ограничение частоты подтверждений.
+ *
+ * Считаем по КП, а не по адресу: за одним IP сидит целый офис, подъезд или
+ * оператор мобильной связи, и шестой заказчик за четверть часа не мог принять
+ * своё предложение (аудит 24.09.2026). Перебирать при этом нечего — publicId
+ * это uuid, его не угадать, а по одному КП больше пяти нажатий подряд не
+ * бывает. Общий предохранитель по адресу оставляем, но широкий.
+ */
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
+const MAX_PER_ESTIMATE = 5;
+const MAX_PER_IP = 60;
 const attempts = new Map<string, { count: number; firstAt: number }>();
 
-function rateLimited(ip: string): boolean {
+function hit(key: string, max: number): boolean {
   const now = Date.now();
-  const rec = attempts.get(ip);
+  const rec = attempts.get(key);
   if (!rec || now - rec.firstAt > WINDOW_MS) {
-    attempts.set(ip, { count: 1, firstAt: now });
+    attempts.set(key, { count: 1, firstAt: now });
     return false;
   }
   rec.count += 1;
-  return rec.count > MAX_ATTEMPTS;
+  return rec.count > max;
+}
+
+function rateLimited(ip: string, publicId: string): boolean {
+  // Карта живёт в памяти функции — подчищаем, чтобы не росла бесконечно.
+  if (attempts.size > 5000) attempts.clear();
+  return hit(`kp:${publicId}`, MAX_PER_ESTIMATE) || hit(`ip:${ip}`, MAX_PER_IP);
 }
 
 export async function POST(
@@ -35,8 +48,8 @@ export async function POST(
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       "unknown";
-    if (rateLimited(ip)) {
-      return NextResponse.json({ error: "Слишком много попыток" }, { status: 429 });
+    if (rateLimited(ip, publicId)) {
+      return NextResponse.json({ error: "Слишком много попыток. Подождите немного и попробуйте снова." }, { status: 429 });
     }
 
     const estimate = await prisma.estimate.findFirst({

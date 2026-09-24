@@ -29,6 +29,9 @@ export function ConfirmSection({
   const [confirmed, setConfirmed] = useState(initialConfirmed);
   const [loading, setLoading] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+  // Отказ сервера надо показать: раньше при ошибке спиннер просто гас, клиент
+  // считал, что принял, а мастер видел молчание (аудит 24.09.2026).
+  const [error, setError] = useState<string | null>(null);
 
   // Support both new (roomResults) and old (variants) format
   const roomResults: RoomResult[] = calc.roomResults
@@ -53,13 +56,25 @@ export function ConfirmSection({
   async function handleConfirm() {
     if (confirmed || loading) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/estimates/by-public/${publicId}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (res.ok) setConfirmed(true);
+      if (res.ok) {
+        setConfirmed(true);
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(
+        res.status === 429
+          ? "Слишком много попыток подряд. Подождите минуту и нажмите снова."
+          : body?.error || "Не получилось принять. Позвоните мастеру — он отметит вручную.",
+      );
+    } catch {
+      setError("Нет связи. Проверьте интернет и попробуйте ещё раз.");
     } finally {
       setLoading(false);
     }
@@ -67,6 +82,12 @@ export function ConfirmSection({
 
   return (
     <div className="px-4">
+      {error && !confirmed && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
+          <p className="text-sm font-medium text-red-700">{error}</p>
+        </div>
+      )}
+
       {/* Success banner */}
       {confirmed && (
         <div className="mb-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-center">
