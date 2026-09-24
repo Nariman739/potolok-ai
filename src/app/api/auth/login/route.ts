@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -58,6 +58,10 @@ export async function POST(request: Request) {
     }
 
     const token = await createSession(master.id);
+    // Вошёл — счётчик неудачных попыток обнуляем. Раньше квоту жгли и удачные
+    // входы, а ключ общий на IP: в офисе или за одним оператором десяток
+    // обычных входов закрывал вход остальным на 15 минут (аудит 24.09.2026).
+    await clearRateLimit(`login:${ip}`);
 
     return NextResponse.json({
       id: master.id,

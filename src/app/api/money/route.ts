@@ -61,11 +61,16 @@ export async function GET() {
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
-      // Деньги месяца считаем по самим платежам, а не по живым объектам:
-      // мастер смахнул объект из ленты — и полученные по нему деньги пропадали
-      // из отчёта, хотя в кассе они есть (аудит 24.09.2026).
+      // Деньги месяца считаем по платежам живых объектов. Объект в корзине
+      // мастер убрал сознательно — тянуть его деньги в отчёт неправильно,
+      // поэтому о такой потере предупреждаем прямо при удалении
+      // (аудит 24.09.2026).
       prisma.payment.findMany({
-        where: { ...inScope(scope), paidAt: { gte: prev.start, lt: end } },
+        where: {
+          ...inScope(scope),
+          paidAt: { gte: prev.start, lt: end },
+          measurementObject: { deletedAt: null },
+        },
         select: { amount: true, paidAt: true },
       }),
     ]);

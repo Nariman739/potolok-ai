@@ -346,15 +346,19 @@ export async function DELETE(
     const { id } = await params;
     const existing = await prisma.measurementObject.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
-      select: { id: true },
+      select: { id: true, payments: { select: { amount: true } } },
     });
     if (!existing) return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
     const now = new Date();
+    // Деньги по объекту в корзине выпадают из отчёта за месяц — скажем об
+    // этом в ответе, чтобы приложение предупредило до, а не после
+    // (аудит 24.09.2026).
+    const paidTotal = existing.payments.reduce((sum, p) => sum + p.amount, 0);
     const [, estimates] = await prisma.$transaction([
       prisma.measurementObject.update({ where: { id }, data: { deletedAt: now } }),
       prisma.estimate.updateMany({ where: { measurementObjectId: id, deletedAt: null }, data: { deletedAt: now } }),
     ]);
-    return NextResponse.json({ ok: true, estimatesDeleted: estimates.count });
+    return NextResponse.json({ ok: true, estimatesDeleted: estimates.count, paidTotal });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
