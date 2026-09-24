@@ -128,7 +128,13 @@ export async function GET() {
       owedToMe.push({
         id: e.id,
         kind: "estimate",
-        title: e.clientAddress || e.client?.name || e.clientName || "КП без объекта",
+        // Безымянное КП надо как-то опознать — датой (24.09.2026): строка
+        // «КП без объекта» ничего мастеру не говорила.
+        title:
+          e.clientAddress ||
+          e.client?.name ||
+          e.clientName ||
+          `Быстрое КП от ${e.updatedAt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`,
         client: e.client,
         stage: "confirmed",
         price,
