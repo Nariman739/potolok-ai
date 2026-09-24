@@ -135,6 +135,16 @@ export async function PUT(
         { status: 400 }
       );
     }
+    // Назад по воронке статус сам не едет (24.09.2026). Приложение помечает КП
+    // отправленным, когда мастер делится PDF, — а поделиться можно и тем КП,
+    // которое клиент уже открыл или принял. Без этой защиты объект падал
+    // с «Согласовали» обратно на «Отправил». Явный отказ мастера пропускаем.
+    const movesBack =
+      status !== undefined &&
+      status !== "REJECTED" &&
+      ["VIEWED", "CONFIRMED"].includes(existing.status) &&
+      ["DRAFT", "SENT"].includes(status);
+    const statusToSet = movesBack ? undefined : status;
 
     const updated = await prisma.estimate.update({
       where: { id },
@@ -142,7 +152,7 @@ export async function PUT(
         ...(clientName !== undefined && { clientName }),
         ...(clientPhone !== undefined && { clientPhone }),
         ...(clientAddress !== undefined && { clientAddress }),
-        ...(status !== undefined && { status }),
+        ...(statusToSet !== undefined && { status: statusToSet }),
         ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
         ...(roomsData !== undefined && { roomsData }),
         ...(totalArea !== undefined && { totalArea: Number(totalArea) || 0 }),
@@ -151,7 +161,7 @@ export async function PUT(
     });
     if (adjust) await persistPartner(id, adjust.partner);
     // Отправил КП → клиент в воронке «в работе», а не «новый».
-    if (status !== undefined && existing.measurementObjectId) {
+    if (statusToSet !== undefined && existing.measurementObjectId) {
       syncClientStatusForObject(existing.measurementObjectId).catch(() => {});
     }
 
