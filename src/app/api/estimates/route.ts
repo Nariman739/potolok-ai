@@ -350,6 +350,10 @@ async function createEstimate(request: Request): Promise<NextResponse> {
         companyId: scope.companyId,
         roomsData,
         ...estimateAdjustData(adjust),
+        // Итог с поднятым минимальным заказом — пишем после спреда, иначе
+        // сюда попадала голая сумма позиций (аудит 24.09.2026).
+        total,
+        standardTotal: total,
         totalArea: totalArea || 0,
         clientName: clientName || null,
         clientPhone: clientPhone || null,
