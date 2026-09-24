@@ -68,6 +68,12 @@ export default async function ContractPublicPage({
       clientAddress: estimate.clientAddress,
       total: estimate.total,
       createdAt: estimate.createdAt,
+      // Сроки и схему оплаты мастер задаёт при создании договора, они лежат
+      // в базе — но сюда не передавались, и каждый клиент видел «по
+      // согласованию Сторон» и жёсткие 50/50 (аудит 24.09.2026).
+      workStartDate: estimate.workStartDate,
+      workDurationDays: estimate.workDurationDays,
+      paymentSchedule: estimate.paymentSchedule as never,
     },
     calc,
   );

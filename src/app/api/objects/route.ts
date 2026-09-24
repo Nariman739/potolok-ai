@@ -103,6 +103,9 @@ export async function GET(request: NextRequest) {
           },
           estimates: {
             where: { deletedAt: null },
+            // Порядок задаём явно: от него зависит, какое КП станет основным
+            // и какую сумму увидит мастер в ленте (аудит 24.09.2026).
+            orderBy: { createdAt: "desc" },
             select: {
               id: true,
               status: true,

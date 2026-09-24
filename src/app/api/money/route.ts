@@ -30,7 +30,7 @@ export async function GET() {
     const { start, end } = monthBoundsAlmaty();
     const prev = monthBoundsAlmaty(-1);
 
-    const [objects, owner, orphanConfirmed] = await Promise.all([
+    const [objects, owner, orphanConfirmed, monthPayments] = await Promise.all([
       prisma.measurementObject.findMany({
         where: {
           ...inScope(scope),
@@ -41,7 +41,7 @@ export async function GET() {
           id: true, address: true, manualStage: true, materialCost: true, installerFee: true, installerPaidAt: true, installAt: true,
           client: { select: { id: true, name: true, phone: true } },
           installer: { select: { id: true, name: true, phone: true } },
-          estimates: { where: { deletedAt: null }, select: { status: true, total: true, clientName: true, createdAt: true, deletedAt: true, partner: { select: { amount: true } } } },
+          estimates: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, select: { status: true, total: true, clientName: true, createdAt: true, deletedAt: true, partner: { select: { amount: true } } } },
           workshopOrders: { select: { id: true } },
           payments: { select: { id: true, amount: true, paidAt: true } },
         },
@@ -61,6 +61,13 @@ export async function GET() {
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
+      // Деньги месяца считаем по самим платежам, а не по живым объектам:
+      // мастер смахнул объект из ленты — и полученные по нему деньги пропадали
+      // из отчёта, хотя в кассе они есть (аудит 24.09.2026).
+      prisma.payment.findMany({
+        where: { ...inScope(scope), paidAt: { gte: prev.start, lt: end } },
+        select: { amount: true, paidAt: true },
+      }),
     ]);
     const materialPercent = owner?.materialPercent ?? 40;
 
@@ -71,6 +78,10 @@ export async function GET() {
     // определена, но человек уже заплатил и ждёт.
     const prepaid: object[] = [];
     let receivedMonth = 0, receivedPrev = 0, profitMonth = 0, closedMonth = 0, profitEstimated = false;
+    for (const p of monthPayments) {
+      if (p.paidAt >= start && p.paidAt < end) receivedMonth += p.amount;
+      else if (p.paidAt >= prev.start && p.paidAt < prev.end) receivedPrev += p.amount;
+    }
 
     for (const o of objects) {
       const primary = pickPrimaryEstimate(o.estimates);
@@ -86,10 +97,6 @@ export async function GET() {
       const { stage } = resolveStage({ manualStage: o.manualStage, estimates: o.estimates, workshopOrders: o.workshopOrders, settled: money.settled });
       const title = o.address || o.client?.name || primary?.clientName || "Объект";
 
-      for (const p of o.payments) {
-        if (p.paidAt >= start && p.paidAt < end) receivedMonth += p.amount;
-        else if (p.paidAt >= prev.start && p.paidAt < prev.end) receivedPrev += p.amount;
-      }
 
       const waitingForClient = ["measured", "calculated", "sent", "viewed"].includes(stage);
       // Клиент мог не нажать «Принять» (так у 85% КП), но предоплату уже отдал —

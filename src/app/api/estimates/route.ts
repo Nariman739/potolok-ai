@@ -260,9 +260,26 @@ async function createEstimate(request: Request): Promise<NextResponse> {
             const conflict =
               otherClient || (!!cAddress && !!wantedAddress && cAddress !== wantedAddress && !sameClient);
             if (conflict) return false;
-            const freshNoEstimates = c.updatedAt.getTime() >= freshAfter && c._count.estimates === 0;
+            // Склейка «по свежести» — для случая «сохранил замер и тут же
+            // посчитал КП», когда ни адреса, ни клиента ещё нет. Если у КП
+            // адрес уже вписан, а у кандидата пусто — это другой заказ:
+            // в новостройке одинаковые квартиры имеют одинаковые стены, и
+            // такое КП уезжало на соседнюю квартиру (аудит 24.09.2026).
+            const anonymousCandidate = !cAddress && !c.clientId;
+            const freshNoEstimates =
+              c.updatedAt.getTime() >= freshAfter &&
+              c._count.estimates === 0 &&
+              (!anonymousCandidate || (!wantedAddress && !linkedClientId));
             return sameClient || sameAddress || freshNoEstimates;
           });
+          // Несколько одинаковых по стенам кандидатов — угадывать нельзя:
+          // лучше завести новый объект, чем повесить КП на чужую квартиру.
+          const twins = candidates.filter(
+            (c) => c.rooms.length === rooms.length && signature(c.rooms) === wanted,
+          ).length;
+          if (twins > 1 && same && !norm(same.address) && !same.clientId) {
+            linkedMeasurementId = null;
+          }
           if (same) linkedMeasurementId = same.id;
         }
         if (!linkedMeasurementId && rooms.length > 0) {

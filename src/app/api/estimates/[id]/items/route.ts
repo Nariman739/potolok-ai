@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope } from "@/lib/company";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
@@ -31,6 +32,9 @@ export async function PATCH(
     });
     if (!existing) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
+    }
+    if (isEstimateLocked(existing)) {
+      return NextResponse.json({ error: estimateLockMessage(existing) }, { status: 409 });
     }
 
     const calc = existing.calculationData as unknown as CalculationResult;

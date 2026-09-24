@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import type { Metadata } from "next";
 import { Trash2 } from "lucide-react";
 import { TrashClient } from "./trash-client";
@@ -17,10 +18,14 @@ const LIMIT = 100;
 export default async function TrashPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
+  // Корзина смотрела только записи автора: бригадир удалял объект замерщика
+  // и не находил его у себя, а вернуть не мог никто (аудит 24.09.2026).
+  // Прайс-варианты остаются личными — они и создаются у владельца.
+  const scope = await getScope(master);
 
   const [estimates, clients, measurements, variants] = await Promise.all([
     prisma.estimate.findMany({
-      where: { masterId: master.id, deletedAt: { not: null } },
+      where: { ...inScope(scope), deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
       take: LIMIT,
       select: {
@@ -33,7 +38,7 @@ export default async function TrashPage() {
       },
     }),
     prisma.client.findMany({
-      where: { masterId: master.id, deletedAt: { not: null } },
+      where: { ...inScope(scope), deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
       take: LIMIT,
       select: {
@@ -45,7 +50,7 @@ export default async function TrashPage() {
       },
     }),
     prisma.measurementObject.findMany({
-      where: { masterId: master.id, deletedAt: { not: null } },
+      where: { ...inScope(scope), deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
       take: LIMIT,
       select: {

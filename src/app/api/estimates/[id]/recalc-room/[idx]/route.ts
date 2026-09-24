@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope } from "@/lib/company";
 import { calculate, type CustomItemInfo } from "@/lib/calculate";
 import { DEFAULT_PRICES } from "@/lib/constants";
@@ -56,6 +57,9 @@ export async function POST(
     });
     if (!estimate) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
+    }
+    if (isEstimateLocked(estimate)) {
+      return NextResponse.json({ error: estimateLockMessage(estimate) }, { status: 409 });
     }
 
     const roomsData = (estimate.roomsData as unknown as RoomInput[]) ?? [];

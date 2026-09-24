@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { syncClientStatusForObject } from "@/lib/clients";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
@@ -114,17 +115,9 @@ export async function PUT(
     // изменить сумму или позиции у CONFIRMED и у подписанного договором КП: клиент
     // открывал ссылку и видел «Принято» на цену, которую не согласовывал.
     // Правки цен по договорённости делаются новым вариантом КП («+ Ещё вариант»).
-    const locked = existing.status === "CONFIRMED" || !!existing.contractSignedAt || !!existing.actSignedAt;
     const touchesContent = touchesMoney || roomsData !== undefined || totalArea !== undefined;
-    if (locked && touchesContent) {
-      return NextResponse.json(
-        {
-          error: existing.contractSignedAt
-            ? "КП уже подписано договором — сумму и позиции менять нельзя. Сделай «+ Ещё вариант»."
-            : "Клиент уже принял это КП — сумму и позиции менять нельзя. Сделай «+ Ещё вариант».",
-        },
-        { status: 409 },
-      );
+    if (isEstimateLocked(existing) && touchesContent) {
+      return NextResponse.json({ error: estimateLockMessage(existing) }, { status: 409 });
     }
 
     // Validate status transitions that master can do

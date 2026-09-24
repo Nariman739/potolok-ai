@@ -97,8 +97,13 @@ export function pickPrimaryEstimate<T extends { status: string; createdAt: Date;
 ): T | null {
   const alive = estimates.filter((e) => !e.deletedAt);
   if (alive.length === 0) return null;
-  const confirmed = alive.find((e) => e.status === "CONFIRMED");
-  if (confirmed) return confirmed;
   const sorted = [...alive].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  // Принятых КП на объекте может быть несколько: мастер делает «+ Ещё вариант»,
+  // клиент подтверждает новый. Берём ПОСЛЕДНЕЕ принятое — это и есть цена, о
+  // которой договорились. Раньше брали первое попавшееся в массиве, и порядок
+  // задавала база: лента показывала одну сумму, карточка другую, «Деньги»
+  // третью (аудит 24.09.2026).
+  const confirmed = sorted.find((e) => e.status === "CONFIRMED");
+  if (confirmed) return confirmed;
   return sorted.find((e) => e.status !== "REVISED") ?? sorted[0];
 }

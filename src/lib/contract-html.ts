@@ -96,22 +96,68 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
   return calc.roomResults ?? (calc as any).variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
 }
 
-function buildWorksTable(roomResults: RoomResult[]): string {
+/**
+ * Таблица работ договора и акта.
+ *
+ * Раньше печатались только позиции по комнатам, а «Дополнительно», надбавка
+ * за высоту и скидка — нет. Клиент складывал столбик и получал одну сумму,
+ * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
+ * (аудит 24.09.2026). Теперь таблица сходится с итогом.
+ */
+function buildWorksTable(roomResults: RoomResult[], calc?: CalculationResult | null): string {
   let rows = "";
   let num = 0;
+  const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
+    num++;
+    return `<tr>
+        <td style="${tdStyle}">${num}</td>
+        <td style="${tdStyle}">${name}</td>
+        <td style="${tdStyle} text-align:center;">${qty}</td>
+        <td style="${tdStyle} text-align:center;">${unit}</td>
+        <td style="${tdStyle} text-align:right;">${price}</td>
+        <td style="${tdStyle} text-align:right;">${sum}</td>
+      </tr>`;
+  };
+
+  let roomsSum = 0;
   for (const rr of roomResults) {
     for (const item of (rr.items ?? [])) {
-      num++;
-      rows += `<tr>
-        <td style="${tdStyle}">${num}</td>
-        <td style="${tdStyle}">${esc(item.itemName)} (${esc(rr.roomName)})</td>
-        <td style="${tdStyle} text-align:center;">${item.quantity}</td>
-        <td style="${tdStyle} text-align:center;">${esc(item.unit)}</td>
-        <td style="${tdStyle} text-align:right;">${fmtPrice(item.unitPrice)}</td>
-        <td style="${tdStyle} text-align:right;">${fmtPrice(item.total)}</td>
-      </tr>`;
+      roomsSum += item.total ?? 0;
+      rows += row(
+        `${esc(item.itemName)} (${esc(rr.roomName)})`,
+        String(item.quantity),
+        esc(item.unit),
+        fmtPrice(item.unitPrice),
+        fmtPrice(item.total),
+      );
     }
   }
+
+  // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
+  const heightExtra = (calc?.roomResults ?? []).reduce((acc, rr) => {
+    const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
+    const before = (rr as { subtotal?: number }).subtotal;
+    return acc + (after != null && before != null && after > before ? after - before : 0);
+  }, 0);
+  if (heightExtra > 0) {
+    rows += row("Надбавка за высоту потолка", "1", "усл.", fmtPrice(heightExtra), fmtPrice(heightExtra));
+  }
+
+  for (const extra of (calc?.extraItems ?? [])) {
+    rows += row(
+      esc(extra.itemName),
+      String(extra.quantity ?? 1),
+      esc(extra.unit ?? "усл."),
+      fmtPrice(extra.unitPrice ?? extra.total ?? 0),
+      fmtPrice(extra.total ?? 0),
+    );
+  }
+
+  const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
+  if (discount > 0) {
+    rows += row("Скидка", "1", "усл.", `−${fmtPrice(discount)}`, `−${fmtPrice(discount)}`);
+  }
+  void roomsSum;
   return rows;
 }
 
@@ -154,7 +200,7 @@ export function generateContractHtml(
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults);
+  const worksRows = buildWorksTable(roomResults, calc);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
@@ -374,11 +420,14 @@ export function generateActHtml(
   calc: CalculationResult
 ): string {
   const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
-  const today = fmtDate(new Date());
+  // Дата акта — та, что записана при подписании. Раньше подставлялась
+  // текущая, и подписанный месяц назад акт каждый раз открывался
+  // сегодняшним числом (аудит 24.09.2026).
+  const today = fmtDate(estimate.createdAt ? new Date(estimate.createdAt) : new Date());
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults);
+  const worksRows = buildWorksTable(roomResults, calc);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(estimate.clientName) || "___________________________";
@@ -512,7 +561,10 @@ function numberToWordsKz(amount: number): string {
   if (thousands > 0) {
     let tText = threeDigits(thousands);
     // "один тысяча" → "одна тысяча", "два тысячи" → "две тысячи"
-    tText = tText.replace(/\bодин$/, "одна").replace(/\bдва$/, "две");
+    // «один тысяча» → «одна тысяча». Через \b не работало: в JS граница слова
+    // не срабатывает перед кириллицей, и каждый договор с суммой вроде
+    // 481 000 печатал «четыреста восемьдесят один тысяча» (аудит 24.09.2026).
+    tText = tText.replace(/один$/, "одна").replace(/два$/, "две");
     const tWord = thousands % 10 === 1 && thousands % 100 !== 11 ? "тысяча"
       : [2, 3, 4].includes(thousands % 10) && ![12, 13, 14].includes(thousands % 100) ? "тысячи"
       : "тысяч";

@@ -19,15 +19,29 @@ export async function POST(
     const scope = await getScope(master);
     const { id } = await params;
 
-    const result = await prisma.measurementObject.updateMany({
+    // Удаление объекта уносит в корзину и его КП одним и тем же моментом
+    // (DELETE /objects/:id). Возвращали же только сам объект: он оживал без
+    // цены, без КП и выпадал из «Должны мне» (аудит 24.09.2026). Поднимаем
+    // пачку целиком — по той же отметке времени, с запасом в пару секунд.
+    const trashed = await prisma.measurementObject.findFirst({
       where: { id, ...inScope(scope), deletedAt: { not: null } },
-      data: { deletedAt: null },
+      select: { id: true, deletedAt: true },
     });
-    if (result.count === 0) {
+    if (!trashed?.deletedAt) {
       return NextResponse.json({ error: "Замер не найден в корзине" }, { status: 404 });
     }
+    const from = new Date(trashed.deletedAt.getTime() - 2000);
+    const to = new Date(trashed.deletedAt.getTime() + 2000);
 
-    return NextResponse.json({ success: true });
+    const [, estimates] = await prisma.$transaction([
+      prisma.measurementObject.update({ where: { id }, data: { deletedAt: null } }),
+      prisma.estimate.updateMany({
+        where: { measurementObjectId: id, deletedAt: { gte: from, lte: to } },
+        data: { deletedAt: null },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true, estimatesRestored: estimates.count });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

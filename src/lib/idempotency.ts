@@ -50,6 +50,10 @@ export async function withIdempotency(
       if (!seen) break; // первый запрос упал и снял заглушку — выполняем сами
       // Чужой id (другой мастер угадал uuid) — не отдаём чужой ответ.
       if (seen.masterId !== masterId) return run();
+      // Тот же id, но другая операция: раньше повтор отдавал ответ от первой,
+      // и, например, POST /estimates получал 200 с телом замера — КП при этом
+      // не создавалось, а телефон считал, что всё прошло (аудит 24.09.2026).
+      if (seen.path !== path) return run();
       if (!isPending(seen.response)) return replay(seen.response);
       // Заглушка старше минуты — процесс умер посередине, забираем операцию себе.
       if (Date.now() - seen.createdAt.getTime() > 60_000) {
