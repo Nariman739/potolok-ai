@@ -153,8 +153,11 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     // КП на 16 500 (аудит 24.09.2026). Прайс — владельца компании, как и везде.
     // Скидку мастер ставит осознанно, поэтому ниже минимума она опустить может;
     // поднимаем только расчёт без скидки.
+    // Быстрое КП (доделка, слив воды, подклейка) идёт без замера и площади —
+    // там мастер осознанно берёт мало, минимум к нему не относится.
     const discountGiven = !!adjustInputsRaw.discount && adjustInputsRaw.discount.value > 0;
-    if (!discountGiven) {
+    const isFullMeasurement = Number(totalArea) > 0;
+    if (!discountGiven && isFullMeasurement) {
       const ownerPrices = await prisma.masterPrice.findMany({
         where: { masterId: scope.ownerId, itemCode: "min_order" },
         select: { price: true },
