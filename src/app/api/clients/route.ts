@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
-import type { ClientSource, DealStatus } from "@/generated/prisma/client";
+import type { ClientSource, DealStatus, Prisma } from "@/generated/prisma/client";
 
 const ALLOWED_STATUSES = [
   "NEW",
@@ -31,12 +31,7 @@ export async function GET(request: Request) {
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search")?.trim();
 
-    const where: {
-      masterId: string | { in: string[] };
-      deletedAt: null;
-      status?: DealStatus;
-      OR?: Array<Record<string, unknown>>;
-    } = { ...inScope(scope), deletedAt: null };
+    const where: Prisma.ClientWhereInput = { ...inScope(scope), deletedAt: null };
 
     if (status && (ALLOWED_STATUSES as readonly string[]).includes(status)) {
       where.status = status as DealStatus;
@@ -137,6 +132,8 @@ export async function POST(request: Request) {
 
     const client = await getOrCreateClient({
       masterId: master.id,
+      companyId: scope.companyId,
+      masterIds: scope.masterIds,
       name: name || null,
       phone: phone || null,
       address: address || null,

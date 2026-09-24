@@ -164,6 +164,8 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     if (!linkedClientId && (clientName || clientPhone)) {
       const auto = await getOrCreateClient({
         masterId: master.id,
+        companyId: scope.companyId,
+        masterIds: scope.masterIds,
         name: clientName || null,
         phone: clientPhone || null,
         address: clientAddress || null,
@@ -267,6 +269,7 @@ async function createEstimate(request: Request): Promise<NextResponse> {
           const created = await prisma.measurementObject.create({
             data: {
               masterId: master.id,
+              companyId: scope.companyId,
               clientId: linkedClientId,
               // Адрес важнее всего для ленты объектов. Если мастер его не
               // ввёл — подставляем имя клиента, чтобы объект не назывался
@@ -310,6 +313,7 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     const estimate = await prisma.estimate.create({
       data: {
         masterId: master.id,
+        companyId: scope.companyId,
         roomsData,
         ...estimateAdjustData(adjust),
         totalArea: totalArea || 0,

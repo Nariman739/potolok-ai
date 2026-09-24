@@ -2,6 +2,7 @@
 // Handles: text messages, photos (vision), voice messages (STT)
 
 import { prisma } from "@/lib/prisma";
+import { companyIdFor } from "@/lib/company";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { buildSystemPrompt } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
@@ -498,6 +499,7 @@ async function createEstimateFromBot(
     const estimate = await prisma.estimate.create({
       data: {
         masterId,
+        companyId: await companyIdFor(masterId),
         roomsData: JSON.parse(JSON.stringify(rooms)),
         calculationData: JSON.parse(JSON.stringify(calcResult)),
         totalArea: calcResult.totalArea,

@@ -82,6 +82,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
     if (!linkedClientId && (clientName || clientPhone)) {
       const auto = await getOrCreateClient({
         masterId: master.id,
+        companyId: scope.companyId,
+        masterIds: scope.masterIds,
         name: clientName || null,
         phone: clientPhone || null,
         address: address || null,
@@ -92,6 +94,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
     const obj = await prisma.measurementObject.create({
       data: {
         masterId: master.id,
+        companyId: scope.companyId,
         clientId: linkedClientId,
         // Кто замерял — тот, кто создал объект (Этап 3)
         measuredByMemberId: scope.members.find((m) => m.isMe)?.id ?? null,

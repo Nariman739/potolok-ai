@@ -69,6 +69,8 @@ export async function PATCH(
     } else if (clientName || clientPhone) {
       const auto = await getOrCreateClient({
         masterId: master.id,
+        companyId: scope.companyId,
+        masterIds: scope.masterIds,
         name: clientName || null,
         phone: clientPhone || null,
         address: address || null,

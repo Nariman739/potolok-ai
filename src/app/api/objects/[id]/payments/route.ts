@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!obj) return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
 
       const payment = await prisma.payment.create({
-        data: { masterId: obj.masterId, measurementObjectId: obj.id, amount, kind, note, paidAt },
+        data: { masterId: obj.masterId, companyId: scope.companyId, measurementObjectId: obj.id, amount, kind, note, paidAt },
       });
       if (obj.clientId) {
         addClientEvent({

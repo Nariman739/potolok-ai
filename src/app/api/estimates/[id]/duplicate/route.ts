@@ -24,6 +24,7 @@ export async function POST(
     const copy = await prisma.estimate.create({
       data: {
         masterId: master.id,
+        companyId: scope.companyId,
         clientName: existing.clientName ? `${existing.clientName} (копия)` : null,
         clientPhone: existing.clientPhone,
         clientAddress: existing.clientAddress,

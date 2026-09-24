@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { ClientSource, DealStatus, EventType } from "@/generated/prisma/client";
+import type { ClientSource, DealStatus, EventType, Prisma } from "@/generated/prisma/client";
 
 // Legacy → canonical статусы. В UI у мастера теперь только 4 кнопки
 // (Новый / В работе / Сделка / Отказ), но старые билды mobile продолжают
@@ -81,6 +81,14 @@ const normalizePhone = normalizeClientPhone;
 
 export type GetOrCreateClientInput = {
   masterId: string;
+  /**
+   * Компания-владелец (24.09.2026). Проставляется новому клиенту и расширяет
+   * поиск дубля на всю бригаду: замерщик и бригадир заводили одного человека
+   * дважды, а карточка с историей оставалась у того, кто позвонил первым.
+   */
+  companyId?: string | null;
+  /** Мастера компании — чтобы найти клиента, заведённого напарником до перехода. */
+  masterIds?: string[];
   name: string | null | undefined;
   phone?: string | null;
   address?: string | null;
@@ -90,7 +98,12 @@ export type GetOrCreateClientInput = {
 };
 
 export async function getOrCreateClient(input: GetOrCreateClientInput) {
-  const { masterId } = input;
+  const { masterId, companyId } = input;
+  // Клиент принадлежит компании: ищем дубль по всей бригаде, а не только
+  // среди своих записей. Без companyId (старый вызов) — прежнее поведение.
+  const owner: Prisma.ClientWhereInput = companyId
+    ? { OR: [{ companyId }, { masterId: { in: input.masterIds?.length ? input.masterIds : [masterId] } }] }
+    : { masterId };
   const name = (input.name ?? "").trim();
   const phone = normalizePhone(input.phone);
   const address = input.address?.trim() || null;
@@ -112,7 +125,7 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
     // Старые записи могли сохраниться 10 цифрами без семёрки — ищем и их.
     const variants = phone.length === 11 && phone.startsWith("7") ? [phone, phone.slice(1), `8${phone.slice(1)}`] : [phone];
     const existing = await prisma.client.findFirst({
-      where: { masterId, phone: { in: variants }, deletedAt: null },
+      where: { ...owner, phone: { in: variants }, deletedAt: null },
     });
     if (existing) return existing;
   }
@@ -122,7 +135,7 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   // Исключение — тот же адрес: это точно тот же заказ.
   if (name && !phone && address) {
     const existing = await prisma.client.findFirst({
-      where: { masterId, name, phone: null, address, deletedAt: null },
+      where: { ...owner, name, phone: null, address, deletedAt: null },
     });
     if (existing) return existing;
   }
@@ -130,6 +143,7 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   const created = await prisma.client.create({
     data: {
       masterId,
+      companyId: companyId ?? null,
       name: name || phone || "Без имени",
       phone,
       address,

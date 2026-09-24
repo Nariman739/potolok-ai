@@ -133,9 +133,49 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
   };
 }
 
-/** where-фрагмент «данные компании» для объектов/КП/клиентов. */
+/**
+ * where-фрагмент «данные компании» для объектов/КП/клиентов/оплат.
+ *
+ * 24.09.2026: данные принадлежат компании (`companyId`), а не автору записи.
+ * Раньше видимость считалась только по `masterId` участников — убрали человека
+ * из «Людей», и его объекты, КП и клиенты пропадали из ленты владельца, а сам
+ * уволенный уносил базу с телефонами.
+ *
+ * Переходный период: читаем по обоим признакам. У записей до миграции
+ * `companyId` проставлен по активной компании автора, у новых — сразу при
+ * создании; ветка по `masterId` страхует записи, созданные старым кодом
+ * между миграцией и выкладкой.
+ *
+ * Фильтр заворачивается в `AND`, а не в `OR` верхнего уровня: в нескольких
+ * запросах (`/objects`, `/today`, `/money`) у where уже есть свой `OR`, и он
+ * бы затёр наш при спреде `{ ...inScope(scope) }`.
+ */
 export function inScope(scope: Scope) {
-  return scope.masterIds.length === 1 ? { masterId: scope.masterIds[0] } : { masterId: { in: scope.masterIds } };
+  const byMaster = scope.masterIds.length === 1 ? { masterId: scope.masterIds[0] } : { masterId: { in: scope.masterIds } };
+  return { AND: [{ OR: [{ companyId: scope.companyId }, byMaster] }] };
+}
+
+/**
+ * id компании-владельца данных для мастера — там, где полного `Scope` под рукой
+ * нет (Telegram-бот, сохранение расчёта ассистентом). Активная компания, если
+ * мастер в ней всё ещё участник, иначе своя. null — молча, чтобы не ронять
+ * создание КП из-за принадлежности.
+ */
+export async function companyIdFor(masterId: string): Promise<string | null> {
+  try {
+    const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
+    if (me?.activeCompanyId) {
+      const active = await prisma.company.findFirst({
+        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null } } },
+        select: { id: true },
+      });
+      if (active) return active.id;
+    }
+    const own = await prisma.company.findUnique({ where: { ownerId: masterId }, select: { id: true } });
+    return own?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**

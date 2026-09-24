@@ -134,7 +134,7 @@ model Master {
   payments        Payment[]
   /// Доля материала в цене клиенту, % — для оценки прибыли, пока закупка
   /// по объекту не указана (Этап 4). Мастер может поправить.
-  materialPercent Int @default(40)
+  materialPercent Int              @default(40)
 
   /// Компания, которой мастер владеет (есть у всех)
   ownedCompany    Company? @relation("CompanyOwner")
@@ -164,18 +164,18 @@ model Company {
 /// которого просто записали именем и суммой). Если по номеру найдётся
 /// зарегистрированный мастер — привязывается.
 model Member {
-  id        String  @id @default(uuid())
-  companyId String
-  masterId  String?
-  name      String
-  phone     String?
+  id         String    @id @default(uuid())
+  companyId  String
+  masterId   String?
+  name       String
+  phone      String?
   /// "owner" | "member" — пока только подпись, прав не даёт
-  role      String  @default("member")
+  role       String    @default("member")
   /// Сколько обычно платим за монтаж (₸) — подставляется в наряд
   defaultFee Int?
-  createdAt DateTime @default(now())
-  joinedAt  DateTime?
-  removedAt DateTime?
+  createdAt  DateTime  @default(now())
+  joinedAt   DateTime?
+  removedAt  DateTime?
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   master  Master? @relation("MemberMaster", fields: [masterId], references: [id], onDelete: SetNull)
@@ -210,8 +210,8 @@ model PushDevice {
   token    String @unique
   platform String // "ios" | "android"
 
-  createdAt  DateTime @default(now())
-  lastSeenAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
   /// Ставится, когда Expo ответил DeviceNotRegistered — приложение удалили
   /// или уведомления отключили. Такие токены пропускаем при рассылке.
   disabledAt DateTime?
@@ -350,9 +350,12 @@ model PriceVariant {
 // ============================================
 
 model Estimate {
-  id       String @id @default(uuid())
-  publicId String @unique @default(uuid())
-  masterId String
+  id        String  @id @default(uuid())
+  publicId  String  @unique @default(uuid())
+  masterId  String
+  /// Компания-владелец данных (24.09.2026). Заполняется при создании;
+  /// у старых записей проставлена миграцией по активной компании автора.
+  companyId String?
 
   // Client info (legacy + new CRM link)
   clientName    String?
@@ -440,6 +443,7 @@ model Estimate {
   @@index([clientId])
   @@index([masterId, deletedAt])
   @@index([measurementObjectId])
+  @@index([companyId])
 }
 
 /// Вознаграждение посреднику (дизайнеру) по КП. Наценка уже РАЗМАЗАНА по
@@ -503,6 +507,9 @@ enum ChatStatus {
 model MeasurementObject {
   id        String  @id @default(uuid())
   masterId  String
+  /// Компания-владелец данных (24.09.2026). Заполняется при создании;
+  /// у старых записей проставлена миграцией по активной компании автора.
+  companyId String?
   clientId  String?
   address   String  @default("")
   totalArea Float   @default(0)
@@ -540,7 +547,7 @@ model MeasurementObject {
   installerFee       Int?
   installAt          DateTime?
   // Токен публичного наряда монтажнику (/n/[token]) — открывается без установки
-  workOrderToken     String? @unique
+  workOrderToken     String?   @unique
 
   measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
   installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)
@@ -567,6 +574,7 @@ model MeasurementObject {
   @@index([masterId, createdAt])
   @@index([clientId])
   @@index([masterId, deletedAt])
+  @@index([companyId])
 }
 
 model MeasurementRoom {
@@ -617,9 +625,9 @@ model WorkshopOrder {
 
   /// id комнат (MeasurementRoom.id), попавших в PDF
   roomIds    Json
-  roomsCount Int    @default(0)
+  roomsCount Int     @default(0)
   /// Суммарная площадь отправленных комнат, м²
-  area       Float  @default(0)
+  area       Float   @default(0)
   /// Заметка мастера («второй этаж», «полотно белое мат»)
   note       String?
 
@@ -638,6 +646,9 @@ model WorkshopOrder {
 model Payment {
   id                  String   @id @default(uuid())
   masterId            String
+  /// Компания-владелец данных (24.09.2026). Заполняется при создании;
+  /// у старых записей проставлена миграцией по активной компании автора.
+  companyId           String?
   measurementObjectId String
   amount              Int
   /// "prepayment" | "final" | "other"
@@ -651,6 +662,7 @@ model Payment {
 
   @@index([measurementObjectId, paidAt])
   @@index([masterId, paidAt])
+  @@index([companyId])
 }
 
 model AiRenderLog {
@@ -916,6 +928,9 @@ model InstagramSession {
 model Client {
   id        String        @id @default(uuid())
   masterId  String
+  /// Компания-владелец данных (24.09.2026). Заполняется при создании;
+  /// у старых записей проставлена миграцией по активной компании автора.
+  companyId String?
   name      String
   phone     String?
   address   String?
@@ -948,6 +963,7 @@ model Client {
   @@index([masterId, phone])
   @@index([masterId, createdAt])
   @@index([masterId, deletedAt])
+  @@index([companyId])
 }
 
 model ClientEvent {

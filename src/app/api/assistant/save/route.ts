@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { companyIdFor } from "@/lib/company";
 import { prisma } from "@/lib/prisma";
 import { KP_LIMITS } from "@/lib/constants";
 import type { CalculationResult, RoomInput } from "@/lib/types";
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
     const estimate = await prisma.estimate.create({
       data: {
         masterId: master.id,
+        companyId: await companyIdFor(master.id),
         roomsData: chatSession.extractedRooms!,
         calculationData: chatSession.calculationData!,
         totalArea,
