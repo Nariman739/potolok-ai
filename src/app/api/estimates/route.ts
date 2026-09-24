@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_PRICES } from "@/lib/constants";
 import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
@@ -138,13 +139,29 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     // кто размазывает посредника по ценам и кладёт итог в total. Старые
     // приложения шлют discountPercent + уже посчитанный total — total игнорируем,
     // discountPercent подхватывается как «скидка в %» (readAdjustInputs).
+    const adjustInputsRaw = readAdjustInputs(body);
     const adjust = resolveAdjust(
       calculationData as CalculationResult,
-      readAdjustInputs(body),
+      adjustInputsRaw,
       null,
       { calcIsBase: true }
     );
-    const total = adjust.total;
+    let total = adjust.total;
+
+    // Минимальный заказ мастера. Приложение его не считает и шлёт голую сумму
+    // позиций: мастер выставил «меньше 90 000 не берусь», а из телефона уходило
+    // КП на 16 500 (аудит 24.09.2026). Прайс — владельца компании, как и везде.
+    // Скидку мастер ставит осознанно, поэтому ниже минимума она опустить может;
+    // поднимаем только расчёт без скидки.
+    const discountGiven = !!adjustInputsRaw.discount && adjustInputsRaw.discount.value > 0;
+    if (!discountGiven) {
+      const ownerPrices = await prisma.masterPrice.findMany({
+        where: { masterId: scope.ownerId, itemCode: "min_order" },
+        select: { price: true },
+      });
+      const minOrder = ownerPrices[0]?.price ?? DEFAULT_PRICES.min_order ?? 0;
+      if (minOrder > 0 && total > 0 && total < minOrder) total = minOrder;
+    }
 
     // Подхватываем 3D-превью из первой комнаты у которой оно есть
     const room3dPreviewUrl =

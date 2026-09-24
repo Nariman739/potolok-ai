@@ -273,7 +273,9 @@ export function ContactsPage({
         fonts={fonts}
         index={pageNum}
         total={totalPages}
-        brand="potolok.ai"
+        // Подпись страницы — компания мастера, как на остальных страницах:
+        // на последнем листе с реквизитами стоял наш бренд (аудит 24.09.2026).
+        brand={data.master.companyName}
       />
     </Page>
   );

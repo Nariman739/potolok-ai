@@ -271,7 +271,10 @@ function mapBranding(m: {
   warrantyInstall: number;
 }): PdfMasterBranding {
   return {
-    companyName: m.companyName || `${m.firstName} ${m.lastName ?? ""}`.trim() || "potolok.ai",
+    // Мастер без названия компании — это он сам, а не мы. КП «от potolok.ai»
+    // клиенту отправлять нельзя: мастера прячут свои инструменты
+    // (аудит 24.09.2026).
+    companyName: m.companyName || `${m.firstName} ${m.lastName ?? ""}`.trim() || "Мастер натяжных потолков",
     ownerName: `${m.firstName} ${m.lastName ?? ""}`.trim() || m.firstName,
     phone: m.phone,
     whatsappPhone: m.whatsappPhone || m.phone,

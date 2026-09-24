@@ -1558,7 +1558,10 @@ function CoverClassicArchitectural({
         <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
         <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         <StatClassic label={spotsCount > 0 ? "Точек света" : "Дней работы"} value={spotsCount > 0 ? String(spotsCount) : "5–7"} theme={theme} fonts={fonts} />
-        <StatClassic label="Гарантия" value="10 лет" theme={theme} fonts={fonts} />
+        {/* Гарантия — из настроек мастера. Раньше обложка обещала 10 лет
+            независимо от того, что стоит у мастера и что написано в
+            договоре (аудит 24.09.2026). */}
+        <StatClassic label="Гарантия" value={`${master.warrantyMaterials} лет`} theme={theme} fonts={fonts} />
       </View>
 
       {/* Цена — крупно по центру внизу, бордо */}
