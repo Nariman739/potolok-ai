@@ -21,6 +21,12 @@ export async function POST(request: Request) {
     if (!phone) {
       return NextResponse.json({ error: "Неверный формат телефона" }, { status: 400 });
     }
+    // Второй счётчик — на номер: лимит по IP обходится сменой адреса, а номера
+    // мастеров публичны на страницах портфолио (аудит 24.09.2026).
+    const byPhone = await checkRateLimit(`forgot-phone:${phone}`, 5, 15 * 60 * 1000);
+    if (!byPhone.allowed) {
+      return NextResponse.json({ error: "Слишком много запросов. Подождите 15 минут." }, { status: 429 });
+    }
 
     const master = await prisma.master.findUnique({
       where: { phone },

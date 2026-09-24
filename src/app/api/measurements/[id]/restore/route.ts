@@ -1,20 +1,26 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 
 // POST /api/measurements/[id]/restore
 // Восстанавливает soft-deleted замер. Комнаты (MeasurementRoom) не теряли
 // связь — они снова видны автоматически.
+// 24.09.2026: корзина осталась на проверке «я автор записи», когда всё
+// остальное перешло на принадлежность компании. Уволенный сотрудник мог
+// вернуть из корзины и БЕЗВОЗВРАТНО удалить объект, КП или клиента бригады —
+// то есть уничтожить ровно те данные, которые переход на компании и защищал.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const master = await requireAuth();
+    const scope = await getScope(master);
     const { id } = await params;
 
     const result = await prisma.measurementObject.updateMany({
-      where: { id, masterId: master.id, deletedAt: { not: null } },
+      where: { id, ...inScope(scope), deletedAt: { not: null } },
       data: { deletedAt: null },
     });
     if (result.count === 0) {

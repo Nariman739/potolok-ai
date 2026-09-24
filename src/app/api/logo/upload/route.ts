@@ -20,6 +20,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Файл не найден" }, { status: 400 });
     }
 
+    // SVG убран, и список стал строгим (аудит 24.09.2026): прежняя проверка
+    // пропускала любой image/*, а SVG — это исполняемая разметка. Файл лежит
+    // в публичном хранилище, и открытый по прямой ссылке скрипт внутри него
+    // выполняется на чужом домене. Логотипу вектор не нужен.
     const allowedTypes = [
       "image/jpeg",
       "image/jpg",
@@ -27,13 +31,11 @@ export async function POST(request: Request) {
       "image/webp",
       "image/heic",
       "image/heif",
-      "image/svg+xml",
     ];
-    const isImage =
-      file.type.startsWith("image/") || allowedTypes.includes(file.type.toLowerCase());
+    const isImage = allowedTypes.includes(file.type.toLowerCase());
     if (!isImage) {
       return NextResponse.json(
-        { error: "Логотип должен быть картинкой (PNG, JPG, WEBP или SVG)" },
+        { error: "Логотип должен быть картинкой: PNG, JPG, WEBP или HEIC" },
         { status: 400 },
       );
     }

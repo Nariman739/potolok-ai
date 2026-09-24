@@ -18,6 +18,13 @@ export async function POST(request: Request) {
     if (!phone) {
       return NextResponse.json({ error: "Неверный формат телефона" }, { status: 400 });
     }
+    // Лимит по IP один атакующий обходит дешёвыми прокси, а номера мастеров
+    // видны на публичных страницах портфолио. Считаем попытки и на номер
+    // (аудит 24.09.2026): код шестизначный, живёт 10 минут.
+    const byPhone = await checkRateLimit(`reset-phone:${phone}`, 10, 15 * 60 * 1000);
+    if (!byPhone.allowed) {
+      return NextResponse.json({ error: "Слишком много попыток. Запросите код заново позже." }, { status: 429 });
+    }
     if (!otp || !newPassword) {
       return NextResponse.json({ error: "Введите код и новый пароль" }, { status: 400 });
     }
@@ -43,6 +50,9 @@ export async function POST(request: Request) {
       where: { id: master.id },
       data: { passwordHash, resetOtp: null, resetOtpExpiresAt: null },
     });
+    // Пароль меняют в том числе потому, что телефон потеряли или увели доступ.
+    // Старые сессии живут до 30 дней, поэтому обрываем их все (24.09.2026).
+    await prisma.session.deleteMany({ where: { masterId: master.id } });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

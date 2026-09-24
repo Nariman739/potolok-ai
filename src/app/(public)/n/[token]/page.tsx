@@ -9,6 +9,12 @@ import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
  * здесь нет — только то, что нужно на объекте.
  */
 
+// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
+// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
+// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
+// (аудит 24.09.2026).
+export const robots = { index: false, follow: false };
+
 export const dynamic = "force-dynamic";
 
 type RoomEl = { type?: string; length?: number };

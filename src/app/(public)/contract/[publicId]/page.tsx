@@ -7,6 +7,12 @@ import type { Metadata } from "next";
 import { SignSection } from "./sign-section";
 import { CheckCircle2 } from "lucide-react";
 
+// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
+// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
+// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
+// (аудит 24.09.2026).
+export const robots = { index: false, follow: false };
+
 export const metadata: Metadata = {
   title: "Договор",
 };

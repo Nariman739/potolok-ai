@@ -12,6 +12,12 @@ import { after } from "next/server";
 import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
 
+// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
+// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
+// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
+// (аудит 24.09.2026).
+export const robots = { index: false, follow: false };
+
 export async function generateMetadata({
   params,
 }: {
