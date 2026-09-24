@@ -21,7 +21,8 @@ let r = await fetch(`${API}/measurements`, { method: "POST", headers: H2, body: 
 const obj = await j(r);
 check("объект сотрудника создан", !!obj.id, JSON.stringify(obj).slice(0, 150));
 
-r = await fetch(`${API}/estimates`, { method: "POST", headers: H2, body: JSON.stringify({ fromMeasurementId: obj.id, clientName: "QA Владелец Теста", clientPhone: mkPhone, clientAddress: "QA Владение, Сарыарка 5", rooms: [{ ...room("Зал"), serverId: undefined }], totalArea: 12 }) });
+const calc = { totalArea: 12, totalPerimeter: 14, total: 100000, roomResults: [{ roomName: "Зал", items: [{ itemName: "Полотно", quantity: 12, unit: "м²", unitPrice: 8333, total: 100000 }], subtotal: 100000, subtotalAfterHeight: 100000 }], extraItems: [] };
+r = await fetch(`${API}/estimates`, { method: "POST", headers: H2, body: JSON.stringify({ fromMeasurementId: obj.id, clientName: "QA Владелец Теста", clientPhone: mkPhone, clientAddress: "QA Владение, Сарыарка 5", roomsData: [{ id: "a", ...room("Зал"), angles: [0, 0, 0, 0] }], calculationData: calc, totalArea: 12 }) });
 const est = await j(r);
 check("КП сотрудника создано", !!est.id, JSON.stringify(est).slice(0, 150));
 
@@ -45,7 +46,7 @@ check("объект ушедшего остался в ленте владель
 const card = await j(await fetch(`${API}/objects/${obj.id}`, { headers: H1 }));
 check("владелец открывает карточку объекта", card.id === obj.id, JSON.stringify(card).slice(0, 120));
 check("КП ушедшего видно владельцу", (card.estimates ?? []).some((e) => e.id === est.id), JSON.stringify(card.estimates ?? []).slice(0, 120));
-check("оплата ушедшего осталась на объекте", (card.payments ?? []).some((p) => p.amount === 50000), JSON.stringify(card.payments ?? []).slice(0, 120));
+check("оплата ушедшего осталась на объекте", (card.money?.payments ?? []).some((p) => p.amount === 50000), JSON.stringify(card.money ?? {}).slice(0, 160));
 const clients1 = await j(await fetch(`${API}/clients?search=${mkPhone}`, { headers: H1 }));
 const list1 = Array.isArray(clients1) ? clients1 : clients1.clients ?? [];
 check("клиент ушедшего остался у владельца", list1.some((c) => c.id === obj.clientId), JSON.stringify(list1).slice(0, 150));

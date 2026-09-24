@@ -141,10 +141,11 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
  * из «Людей», и его объекты, КП и клиенты пропадали из ленты владельца, а сам
  * уволенный уносил базу с телефонами.
  *
- * Переходный период: читаем по обоим признакам. У записей до миграции
- * `companyId` проставлен по активной компании автора, у новых — сразу при
- * создании; ветка по `masterId` страхует записи, созданные старым кодом
- * между миграцией и выкладкой.
+ * Переходный период: запись без `companyId` (создана старым кодом между
+ * миграцией и выкладкой) видна автору. Ветка по `masterId` намеренно
+ * ограничена такими записями: без этого ограничения ушедший сотрудник
+ * продолжал видеть объекты, которые делал в бригаде, — то есть уносил базу,
+ * ради чего всё и затевалось.
  *
  * Фильтр заворачивается в `AND`, а не в `OR` верхнего уровня: в нескольких
  * запросах (`/objects`, `/today`, `/money`) у where уже есть свой `OR`, и он
@@ -152,7 +153,7 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
  */
 export function inScope(scope: Scope) {
   const byMaster = scope.masterIds.length === 1 ? { masterId: scope.masterIds[0] } : { masterId: { in: scope.masterIds } };
-  return { AND: [{ OR: [{ companyId: scope.companyId }, byMaster] }] };
+  return { AND: [{ OR: [{ companyId: scope.companyId }, { AND: [{ companyId: null }, byMaster] }] }] };
 }
 
 /**
