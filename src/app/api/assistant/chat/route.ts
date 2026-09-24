@@ -252,15 +252,36 @@ export async function POST(request: Request) {
             stream_options: { include_usage: true },
           });
 
+          // Служебный блок feedback мастеру видеть не нужно: он уходил в чат
+          // прямо куском JSON (24.09.2026). Вырезать после стрима поздно —
+          // текст уже у мастера, поэтому обрываем показ на самом маркере.
+          const FEEDBACK_MARK = "```feedback";
+          let emitted = 0;
+          let suppressed = false;
+          const send = (text: string) => {
+            if (text) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text", content: text })}\n\n`));
+          };
+
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta?.content;
             if (delta) {
               fullContent += delta;
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: "text", content: delta })}\n\n`
-                )
-              );
+              if (!suppressed) {
+                const at = fullContent.indexOf(FEEDBACK_MARK);
+                if (at >= 0) {
+                  suppressed = true;
+                  send(fullContent.slice(emitted, at));
+                  emitted = at;
+                } else {
+                  // Маркер может разорваться между чанками — придерживаем хвост
+                  // длиной чуть меньше маркера, пока не станет ясно.
+                  const safeUpTo = Math.max(emitted, fullContent.length - (FEEDBACK_MARK.length - 1));
+                  if (safeUpTo > emitted) {
+                    send(fullContent.slice(emitted, safeUpTo));
+                    emitted = safeUpTo;
+                  }
+                }
+              }
             }
             if (chunk.usage) {
               totalCostUsd += computeCostFromUsage(chunk.usage, AI_MODEL);
@@ -351,6 +372,9 @@ export async function POST(request: Request) {
               console.error("Failed to parse client_data:", e);
             }
           }
+
+          // Придержанный хвост (маркер так и не появился) — дошлём.
+          if (!suppressed && emitted < fullContent.length) send(fullContent.slice(emitted));
 
           // Пожелание мастера (24.09.2026): ассистент спрашивает, чего не
           // хватает, и кладёт ответ отдельным блоком. Блок служебный —
