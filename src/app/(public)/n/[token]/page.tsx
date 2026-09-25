@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
+import { asLang, tFor, localeOf, formatDocDate, type Lang } from "@/lib/i18n";
+import "@/lib/i18n/work-order";
 
 /**
  * Наряд монтажнику (Этап 3, 20.09.2026). Открывается по ссылке из WhatsApp
@@ -19,17 +21,22 @@ export const dynamic = "force-dynamic";
 
 type RoomEl = { type?: string; length?: number };
 
-function lightSummary(elements: unknown): string[] {
+function lightSummary(elements: unknown, lang: Lang): string[] {
   if (!Array.isArray(elements) || elements.length === 0) return [];
+  const t = tFor(lang);
   const els = elements as RoomEl[];
-  const n = (t: string) => els.filter((e) => e?.type === t).length;
+  const n = (type: string) => els.filter((e) => e?.type === type).length;
+  const pcs = t("wo.pcs");
   const out: string[] = [];
-  const spots = n("spot"); if (spots) out.push(`Софиты: ${spots} шт.`);
-  const ch = n("chandelier") + n("pendant"); if (ch) out.push(`Люстра: ${ch} шт.`);
-  const tr = els.filter((e) => e?.type === "track"); if (tr.length) out.push(`Трек: ${tr.length} шт.${tr[0]?.length ? ` · ${Math.round(tr.reduce((s, e) => s + (e.length ?? 0), 0) / 100 * 10) / 10} м` : ""}`);
-  const ll = els.filter((e) => e?.type === "lightline"); if (ll.length) out.push(`Световая линия: ${ll.length} шт.${ll[0]?.length ? ` · ${Math.round(ll.reduce((s, e) => s + (e.length ?? 0), 0) / 100 * 10) / 10} м` : ""}`);
-  const cu = n("curtain") + n("subcurtain") + n("builtin_gardina"); if (cu) out.push(`Гардина / подшторник: ${cu} шт.`);
-  const fl = n("floating"); if (fl) out.push(`Парящий профиль: ${fl} участок${fl > 1 ? "а" : ""}`);
+  const spots = n("spot"); if (spots) out.push(`${t("wo.el.spot")}: ${spots} ${pcs}`);
+  const ch = n("chandelier") + n("pendant"); if (ch) out.push(`${t("wo.el.chandelier")}: ${ch} ${pcs}`);
+  const tr = els.filter((e) => e?.type === "track");
+  if (tr.length) out.push(`${t("wo.el.track")}: ${tr.length} ${pcs}${tr[0]?.length ? ` · ${Math.round(tr.reduce((s, e) => s + (e.length ?? 0), 0) / 100 * 10) / 10} м` : ""}`);
+  const ll = els.filter((e) => e?.type === "lightline");
+  if (ll.length) out.push(`${t("wo.el.lightline")}: ${ll.length} ${pcs}${ll[0]?.length ? ` · ${Math.round(ll.reduce((s, e) => s + (e.length ?? 0), 0) / 100 * 10) / 10} м` : ""}`);
+  const cu = n("curtain") + n("subcurtain") + n("builtin_gardina"); if (cu) out.push(`${t("wo.el.curtain")}: ${cu} ${pcs}`);
+  const fl = n("floating");
+  if (fl) out.push(`${t("wo.el.floating")}: ${fl} ${fl > 1 ? t("wo.sections") : t("wo.section")}`);
   return out;
 }
 
@@ -85,16 +92,19 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
       rooms: { orderBy: { sortOrder: "asc" } },
       client: { select: { name: true, phone: true, address: true } },
       installer: { select: { name: true, phone: true } },
-      master: { select: { firstName: true, lastName: true, phone: true, companyName: true, whatsappPhone: true } },
+      master: { select: { firstName: true, lastName: true, phone: true, companyName: true, whatsappPhone: true, language: true } },
       workshopOrders: { orderBy: { sentAt: "desc" }, take: 1 },
     },
   });
   if (!obj) notFound();
 
   const company = obj.master.companyName || [obj.master.firstName, obj.master.lastName].filter(Boolean).join(" ");
+  // Язык наряда — язык мастера: наряд отправляет он и свою бригаду знает.
+  const lang = asLang(obj.master.language);
+  const t = tFor(lang);
   const masterPhone = obj.master.whatsappPhone || obj.master.phone;
   const when = obj.installAt
-    ? obj.installAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    ? `${formatDocDate(new Date(obj.installAt.toLocaleString("en-US", { timeZone: "Asia/Almaty" })), lang)}, ${obj.installAt.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty", hour: "2-digit", minute: "2-digit" })}`
     : null;
   const totalArea = Math.round(obj.rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
 
@@ -102,59 +112,59 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-2xl px-4 py-6 space-y-5">
         <header className="space-y-1">
-          <p className="text-xs uppercase tracking-wider text-slate-500">Наряд на монтаж · {company}</p>
-          <h1 className="text-2xl font-bold">{obj.address || obj.client?.name || "Объект"}</h1>
+          <p className="text-xs uppercase tracking-wider text-slate-500">{t("wo.title")} · {company}</p>
+          <h1 className="text-2xl font-bold">{obj.address || obj.client?.name || t("wo.object")}</h1>
           {when && <p className="text-lg font-semibold text-orange-600">{when}</p>}
           <p className="text-slate-600">
-            {obj.rooms.length} комн. · {totalArea} м²
-            {obj.installer ? ` · монтаж: ${obj.installer.name}` : ""}
+            {obj.rooms.length} {t("wo.rooms")} · {totalArea} м²
+            {obj.installer ? ` · ${t("wo.install")}: ${obj.installer.name}` : ""}
           </p>
         </header>
 
         <section className="rounded-xl bg-white border border-slate-200 p-4 space-y-2">
-          {obj.client?.name && <p><span className="text-slate-500">Заказчик:</span> {obj.client.name}</p>}
+          {obj.client?.name && <p><span className="text-slate-500">{t("wo.client")}:</span> {obj.client.name}</p>}
           {obj.client?.phone && (
-            <p><span className="text-slate-500">Телефон заказчика:</span> <a className="text-blue-700 underline" href={`tel:${obj.client.phone}`}>{obj.client.phone}</a></p>
+            <p><span className="text-slate-500">{t("wo.clientPhone")}:</span> <a className="text-blue-700 underline" href={`tel:${obj.client.phone}`}>{obj.client.phone}</a></p>
           )}
           {masterPhone && (
-            <p><span className="text-slate-500">Вопросы:</span> <a className="text-blue-700 underline" href={`https://wa.me/${masterPhone.replace(/\D/g, "")}`}>{masterPhone}</a> ({company})</p>
+            <p><span className="text-slate-500">{t("wo.questions")}:</span> <a className="text-blue-700 underline" href={`https://wa.me/${masterPhone.replace(/\D/g, "")}`}>{masterPhone}</a> ({company})</p>
           )}
           {obj.installerFee != null && (
-            <p className="pt-1 text-lg"><span className="text-slate-500">За монтаж:</span> <b>{obj.installerFee.toLocaleString("ru-RU")} ₸</b></p>
+            <p className="pt-1 text-lg"><span className="text-slate-500">{t("wo.fee")}:</span> <b>{obj.installerFee.toLocaleString(localeOf(lang))} ₸</b></p>
           )}
           {obj.workshopOrders[0] && (
             <p className="text-sm text-slate-500">
-              Полотно ушло в цех {obj.workshopOrders[0].sentAt.toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty", day: "numeric", month: "long" })}
-              {" "}· {obj.workshopOrders[0].roomsCount} комн.
+              {t("wo.toWorkshop", { date: formatDocDate(new Date(obj.workshopOrders[0].sentAt.toLocaleString("en-US", { timeZone: "Asia/Almaty" })), lang) })}
+              {" "}· {obj.workshopOrders[0].roomsCount} {t("wo.rooms")}
             </p>
           )}
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Комнаты</h2>
+          <h2 className="text-lg font-semibold">{t("wo.roomsTitle")}</h2>
           {obj.rooms.map((r, i) => {
-            const lights = lightSummary(r.elements);
+            const lights = lightSummary(r.elements, lang);
             return (
               <div key={r.id} className="rounded-xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row gap-4">
                 <RoomSvg walls={r.walls as number[]} angles={r.angles as number[] | null} normalCorners={r.normalCorners as boolean[] | null} bulges={r.arcBulges as number[] | null} cornerRadii={r.cornerRadii as number[] | null} />
                 <div className="flex-1 space-y-1">
-                  <p className="font-semibold">{i + 1}. {r.name || "Комната"}</p>
-                  <p className="text-slate-600">{r.area} м² · периметр {r.perimeter} м · {(r.walls as number[]).length} стен</p>
+                  <p className="font-semibold">{i + 1}. {r.name || t("wo.room")}</p>
+                  <p className="text-slate-600">{r.area} м² · {t("wo.perimeter")} {r.perimeter} м · {(r.walls as number[]).length} {t("wo.walls")}</p>
                   {lights.length > 0 ? (
                     <ul className="text-sm text-slate-800 list-disc pl-5">
                       {lights.map((l) => <li key={l}>{l}</li>)}
                     </ul>
                   ) : (
-                    <p className="text-sm text-slate-400">Без света и доп. элементов</p>
+                    <p className="text-sm text-slate-400">{t("wo.noLights")}</p>
                   )}
-                  <p className="text-xs text-slate-400">Длины стен на чертеже — в см</p>
+                  <p className="text-xs text-slate-400">{t("wo.wallsInCm")}</p>
                 </div>
               </div>
             );
           })}
         </section>
 
-        <footer className="text-xs text-slate-400 pt-4">Potolok AI · наряд обновляется автоматически, ссылка постоянная</footer>
+        <footer className="text-xs text-slate-400 pt-4">{t("wo.footer")}</footer>
       </div>
     </main>
   );
