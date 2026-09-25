@@ -125,10 +125,12 @@ export async function POST(request: Request) {
     // Мобилка ходит с Bearer-токеном, веб — с cookie: подсказки «где что»
     // должны быть словами того интерфейса, из которого спрашивают.
     const platform = request.headers.get("authorization")?.startsWith("Bearer ") ? "mobile" : "web";
+    // Язык ответа — тот, что мастер выбрал в приложении (25.09.2026).
+    const lang = master.language === "kk" ? "kk" : "ru";
     const systemPrompt = buildSystemPrompt(
       master.companyName || master.firstName,
       prices,
-      { platform }
+      { platform, lang }
     );
 
     let fullContent = "";
@@ -148,7 +150,7 @@ export async function POST(request: Request) {
           // Текст всё равно взят из навигации помощника, зато мгновенно и
           // бесплатно. Сомнительные формулировки сюда не попадают — они уходят
           // модели, как раньше.
-          const quick = !imageUrl && photoUrls.length === 0 ? quickAnswer(message ?? "", false) : null;
+          const quick = !imageUrl && photoUrls.length === 0 ? quickAnswer(message ?? "", false, lang) : null;
           if (quick) {
             for (const part of quick.answer.match(/.{1,40}(\s|$)/g) ?? [quick.answer]) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text", content: part })}\n\n`));

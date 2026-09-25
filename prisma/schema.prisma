@@ -133,9 +133,13 @@ model Master {
   workshopOrders  WorkshopOrder[]
   payments        Payment[]
   feedback        MasterFeedback[]
+  /// Язык мастера: "ru" | "kk" (25.09.2026). Приложение присылает свой выбор,
+  /// сервер отвечает на нём же — ассистент, уведомления, документы клиенту.
+  language        String           @default("ru")
+
   /// Доля материала в цене клиенту, % — для оценки прибыли, пока закупка
   /// по объекту не указана (Этап 4). Мастер может поправить.
-  materialPercent Int              @default(40)
+  materialPercent Int @default(40)
 
   /// Компания, которой мастер владеет (есть у всех)
   ownedCompany    Company? @relation("CompanyOwner")

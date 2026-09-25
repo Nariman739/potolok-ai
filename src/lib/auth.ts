@@ -100,6 +100,8 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     whatsappPhone: m.whatsappPhone,
     address: m.address,
     subscriptionTier: m.subscriptionTier,
+    // В базе колонка строковая, наружу отдаём только два известных значения.
+    language: m.language === "kk" ? "kk" : "ru",
     isOwner: m.isOwner,
     kpGeneratedThisMonth: m.kpGeneratedThisMonth,
     telegramChatId: m.telegramChatId,

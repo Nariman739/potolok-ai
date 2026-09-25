@@ -19,4 +19,12 @@ const misses = [
 ];
 for (const q of misses) check(`отдаём модели: «${q}»`, !quickAnswer(q, false), "ответили шаблоном");
 check("с фото всегда модель", !quickAnswer("как отправить в цех", true));
+
+
+// Казахские вопросы тоже должны ловиться и отвечаться по-казахски
+const kkCases = [["ақша қайда", "деньги"], ["цехқа қалай жіберемін", "цех"], ["өлшеуді қалай бастаймын", "замер"]];
+for (const [q, rule] of kkCases) {
+  const r = quickAnswer(q, false, "kk");
+  check(`казахский вопрос «${q}»`, !!r && r.rule === rule && /[әғқңөұүһі]/i.test(r.answer), JSON.stringify(r)?.slice(0, 80));
+}
 console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);

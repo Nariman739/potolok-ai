@@ -44,12 +44,18 @@ export async function PUT(request: Request) {
       "passportData",
       "contractCity",
       "onboardingCompleted",
+      // Язык мастера: приложение присылает свой выбор, сервер отвечает на нём
+      // же — помощник, уведомления, документы клиенту (25.09.2026).
+      "language",
     ];
 
     const intFields = ["prepaymentPercent", "warrantyMaterials", "warrantyInstall"];
     const boolFields = ["onboardingCompleted"];
 
     const updateData: Record<string, string | number | boolean> = {};
+    if ("language" in body && body.language !== "ru" && body.language !== "kk") {
+      return NextResponse.json({ error: "Неизвестный язык" }, { status: 400 });
+    }
     for (const field of allowedFields) {
       if (field in body && !boolFields.includes(field)) {
         updateData[field] = body[field];

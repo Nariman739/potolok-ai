@@ -224,6 +224,8 @@ export interface MasterProfile {
   brandColor: string;
   instagramUrl?: string | null;
   whatsappPhone?: string | null;
+  /** Язык мастера: интерфейс, помощник, документы клиенту (25.09.2026). */
+  language?: "ru" | "kk";
   address?: string | null;
   subscriptionTier: "FREE" | "PRO" | "PROPLUS";
   isOwner: boolean;
