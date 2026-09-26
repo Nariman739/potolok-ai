@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { SignSection } from "./sign-section";
+import { PrintButton } from "./print-button";
 import { CheckCircle2 } from "lucide-react";
 
 // Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
@@ -123,7 +124,8 @@ export default async function ContractPublicPage({
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end">
+      <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end gap-2 print:hidden">
+        <PrintButton lang={lang} />
         <Link
           href={`?lang=${otherLang}`}
           prefetch={false}

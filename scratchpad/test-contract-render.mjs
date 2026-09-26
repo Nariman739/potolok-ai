@@ -1,6 +1,7 @@
 // Свой договор мастера печатается: метки в заготовке, подстановка в живой договор (26.09.2026).
 const API = process.env.API ?? "https://potolok.ai/api";
 const SITE = API.replace(/\/api$/, "");
+const stripScripts = (h) => h.replace(/<script[\s\S]*?<\/script>/g, "");
 const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t.slice(0, 300); } };
 let ok = 0, fail = 0; const check = (n, c, x = "") => { if (c) { ok++; console.log("✅", n); } else { fail++; console.log("❌", n, x); } };
 const r0 = await fetch(`${API}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: "+77000000077", password: "qa12345" }) });
@@ -60,7 +61,7 @@ if (target) {
   check("итог договора на месте", page.includes(fmt(target.total).replace(" ₸", "") + " ₸"), fmt(target.total));
   // Смотрим только видимую разметку: в dev-режиме Next кладёт в служебный
   // payload и сырой шаблон (отладка await), в проде его нет.
-  const visible = page.split("<script")[0];
+  const visible = stripScripts(page);
   check("меток на странице не осталось", !/\{[а-яё_]+\}/i.test(visible), visible.match(/\{[а-яё_]+\}/gi)?.slice(0, 5)?.join(" "));
   check("таблица работ заполнена", (page.match(/<tr>/g) ?? []).length >= 2, String((page.match(/<tr>/g) ?? []).length));
   check("имя клиента подставлено", !target.clientName || page.includes(target.clientName.replace(/&/g, "&amp;")), target.clientName);
@@ -91,9 +92,9 @@ if (!fresh) {
   r = await fetch(`${API}/contract/template`, { method: "POST", headers: H, body: JSON.stringify({ body: mine, note: "тест: шаблон изменён после подписи", language: "ru" }) });
   pg = await (await fetch(`${SITE}/contract/${made.contractPublicId}?lang=ru`)).text();
   check("после правки шаблона подписанный текст прежний", pg.includes(frozenClause));
-  check("и в нём нет меток", !/\{[а-яё_]+\}/i.test(pg.split("<script")[0]));
+  check("и в нём нет меток", !/\{[а-яё_]+\}/i.test(stripScripts(pg)));
   const pgKk = await (await fetch(`${SITE}/contract/${made.contractPublicId}?lang=kk`)).text();
-  check("казахский снимок тоже заморожен и без меток", /Орындаушы/.test(pgKk) && !/\{[а-яё_]+\}/i.test(pgKk.split("<script")[0]));
+  check("казахский снимок тоже заморожен и без меток", /Орындаушы/.test(pgKk) && !/\{[а-яё_]+\}/i.test(stripScripts(pgKk)));
 }
 
 // 6. Возвращаем QA типовую заготовку как действующую версию

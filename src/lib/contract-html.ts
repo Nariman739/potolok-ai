@@ -703,6 +703,7 @@ export function contractPlaceholderValues(
     сумма: fmtPrice(total).replace(/\s*₸$/, ""),
     сумма_прописью: numberToWordsKz(total, lang),
     предоплата: fmtPrice(Math.round((total * (first?.percent ?? 50)) / 100)),
+    остаток: fmtPrice(Math.round((total * (100 - (first?.percent ?? 50))) / 100)),
     срок: estimate.workDurationDays ? durationText(estimate.workDurationDays, lang) : t("ct.byAgreement"),
     дата_начала: estimate.workStartDate ? dateText(estimate.workStartDate, lang) : t("ct.byAgreement"),
     исполнитель: esc(getMasterName(master)),
@@ -718,6 +719,10 @@ export function contractPlaceholderValues(
 }
 
 const PREPAY_TAG = /\{\s*предоплата\s*\}/gi;
+const REST_TAG = /\{\s*остаток\s*\}/gi;
+const SUM_TAG = /\{\s*сумма\s*\}/i;
+/** Сумма в тексте: «50 000 ₸», «50 000 тенге», «50 000 теңге». */
+const MONEY_RE = /(\d[\d\s\u00a0\u202f]{2,})\s?(?:₸|тенге|теңге)/g;
 
 /**
  * Договор из шаблона мастера.
@@ -726,6 +731,11 @@ const PREPAY_TAG = /\{\s*предоплата\s*\}/gi;
  * «Предоплата — 30% — {предоплата}», и сумма считается от процента в той же
  * строке: так один и тот же шаблон печатает верные цифры и при 30/70, и при
  * 50/50. Если процента в строке нет — берём этапы договора по порядку.
+ *
+ * Метка {остаток} — то, что осталось заплатить: сумма договора минус все
+ * суммы, названные между строкой «{сумма}» и самой меткой. Нужна, когда
+ * предоплата фиксированная («50 000 ₸, остальное после акта»): процент тут
+ * не поможет, а «остальная сумма» без цифры клиенту ни о чём (26.09.2026).
  */
 export function renderContractTemplate(
   body: string,
@@ -750,5 +760,15 @@ export function renderContractTemplate(
     if (percent == null || !Number.isFinite(percent)) return whole;
     return fmtPrice(Math.round((total * percent) / 100));
   });
-  return fillTemplate(withStages, contractPlaceholderValues(master, estimate, calc, lang));
+  const sumAt = withStages.search(SUM_TAG);
+  const withRest = withStages.replace(REST_TAG, (whole: string, offset: number) => {
+    const region = withStages.slice(sumAt >= 0 && sumAt < offset ? sumAt : 0, offset);
+    let paid = 0;
+    for (const m of region.matchAll(MONEY_RE)) {
+      const n = Number(m[1].replace(/[\s\u00a0\u202f]/g, ""));
+      if (Number.isFinite(n) && n > 0 && n < total) paid += n;
+    }
+    return fmtPrice(Math.max(0, total - paid));
+  });
+  return fillTemplate(withRest, contractPlaceholderValues(master, estimate, calc, lang));
 }
