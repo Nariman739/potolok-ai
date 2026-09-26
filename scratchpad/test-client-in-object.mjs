@@ -1,0 +1,25 @@
+// 26.09.2026: клиент — карточка внутри объекта: «ещё N объектов», «перезвонить».
+const API = process.env.API ?? "https://potolok.ai/api";
+const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t.slice(0, 200); } };
+let ok = 0, fail = 0; const check = (n, c, x = "") => { if (c) { ok++; console.log("✅", n); } else { fail++; console.log("❌", n, x); } };
+const login = async (phone) => { const r = await fetch(`${API}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone, password: "qa12345" }) }); return { "Content-Type": "application/json", Cookie: r.headers.get("set-cookie")?.split(";")[0] }; };
+const H = await login("+77000000077");
+const tail = String(Date.now()).slice(-6);
+const room = { name: "Зал", walls: [400, 300, 400, 300], normalCorners: [true,true,true,true], angles: [90,90,90,90], area: 12, perimeter: 14, elements: [] };
+const phone = `7701${tail}9`;
+const a = await j(await fetch(`${API}/measurements`, { method: "POST", headers: H, body: JSON.stringify({ address: `QA Кв1 ${tail}`, status: "saved", clientName: `QA Дизайнер ${tail}`, clientPhone: phone, rooms: [room] }) }));
+const b = await j(await fetch(`${API}/measurements`, { method: "POST", headers: H, body: JSON.stringify({ address: `QA Кв2 ${tail}`, status: "saved", clientName: `QA Дизайнер ${tail}`, clientPhone: phone, rooms: [room] }) }));
+check("два объекта одного клиента", !!a.id && !!b.id && a.clientId && a.clientId === b.clientId, JSON.stringify([a.clientId, b.clientId]));
+let card = await j(await fetch(`${API}/objects/${a.id}`, { headers: H }));
+check("в карточке: ещё 1 объект у клиента", card.client?.otherObjects === 1, card.client?.otherObjects);
+check("nextContactAt есть в ответе (null)", card.client && "nextContactAt" in card.client);
+const when = new Date(Date.now() + 86400000).toISOString();
+const put = await fetch(`${API}/clients/${a.clientId}`, { method: "PUT", headers: H, body: JSON.stringify({ nextContactAt: when }) });
+card = await j(await fetch(`${API}/objects/${a.id}`, { headers: H }));
+check("«перезвонить» доехало в карточку объекта", put.status === 200 && card.client?.nextContactAt?.slice(0, 10) === when.slice(0, 10), JSON.stringify([put.status, card.client?.nextContactAt]));
+await fetch(`${API}/measurements/${b.id}`, { method: "DELETE", headers: H });
+card = await j(await fetch(`${API}/objects/${a.id}`, { headers: H }));
+check("удалённый объект в счёт не идёт", card.client?.otherObjects === 0, card.client?.otherObjects);
+await fetch(`${API}/measurements/${a.id}`, { method: "DELETE", headers: H });
+await fetch(`${API}/clients/${a.clientId}`, { method: "DELETE", headers: H });
+console.log(`\n${ok} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
