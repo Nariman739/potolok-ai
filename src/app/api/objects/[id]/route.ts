@@ -34,7 +34,7 @@ export async function GET(
       where: { id, ...inScope(scope), deletedAt: null },
       include: {
         rooms: { orderBy: { sortOrder: "asc" } },
-        client: { select: { id: true, name: true, phone: true, address: true, status: true } },
+        client: { select: { id: true, name: true, phone: true, address: true, status: true, nextContactAt: true } },
         measuredBy: { select: { id: true, name: true } },
         installer: { select: { id: true, name: true, phone: true } },
         estimates: {
@@ -67,6 +67,11 @@ export async function GET(
     }
 
     const primary = pickPrimaryEstimate(obj.estimates);
+    // Клиент — карточка внутри объекта (26.09.2026): вкладки «Клиенты» больше
+    // нет, и про «у этого человека ещё две квартиры» мастер узнаёт здесь.
+    const otherObjects = obj.clientId
+      ? await prisma.measurementObject.count({ where: { clientId: obj.clientId, deletedAt: null, id: { not: obj.id } } })
+      : 0;
     // «Взять на объект»: материалы складываем по КП, которое считается главным —
     // принятому клиентом, иначе последнему. Расчёт тянем отдельно: в списке КП
     // выше его нет нарочно, JSON тяжёлый.
@@ -169,7 +174,9 @@ export async function GET(
       createdAt: obj.createdAt.toISOString(),
       updatedAt: obj.updatedAt.toISOString(),
       publicShareId: obj.publicShareId,
-      client: obj.client,
+      client: obj.client
+        ? { ...obj.client, nextContactAt: obj.client.nextContactAt?.toISOString() ?? null, otherObjects }
+        : null,
       // Кто делает (Этап 3) — мобилка показывает только когда scope.isTeam
       measuredBy: obj.measuredBy,
       installer: obj.installer,
