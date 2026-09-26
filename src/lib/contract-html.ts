@@ -1,8 +1,9 @@
 import type { CalculationResult, RoomResult } from "./types";
 import { asLang, tFor, formatDocDate, type Lang } from "./i18n";
 import "./i18n/contract";
+import { fillTemplate, type PlaceholderKey } from "./contract-template";
 
-interface MasterData {
+export interface MasterData {
   firstName: string;
   lastName?: string | null;
   companyName?: string | null;
@@ -25,7 +26,7 @@ interface MasterData {
   contractCity?: string | null;
 }
 
-interface EstimateData {
+export interface EstimateData {
   publicId: string;
   clientName?: string | null;
   clientPhone?: string | null;
@@ -629,4 +630,125 @@ function numberToWordsKazakh(amount: number): string {
   if (rest > 0) parts.push(threeDigits(rest));
 
   return parts.join(" ").trim() + " теңге";
+}
+
+// ============================================
+// СВОЙ ДОГОВОР МАСТЕРА: печать из шаблона с метками (27.09.2026)
+// ============================================
+
+/** Дата в договоре — тем же видом, что печатает типовой. */
+export function dateText(d: Date | string, language: Lang | string = "ru"): string {
+  return fmtDate(new Date(d), asLang(language));
+}
+
+/** «10 рабочих дней» / «10 жұмыс күні». */
+export function durationText(days: number, language: Lang | string = "ru"): string {
+  return `${days} ${workDayWord(days, asLang(language))}`;
+}
+
+/** «10 лет» / «10 жыл» — срок гарантии. */
+export function yearsText(years: number, language: Lang | string = "ru"): string {
+  return `${years} ${yearWord(years, asLang(language))}`;
+}
+
+/**
+ * Реквизиты исполнителя строками <p> — без имени, телефона и подписи: они
+ * в шаблоне стоят отдельными метками, чтобы мастер мог их переставить.
+ */
+function executorRequisites(master: MasterData, t: T): string {
+  const lines: string[] = [];
+  if (master.contractType === "ip") {
+    if (master.bin) lines.push(`<p>${t("ct.lbl.bin")}: ${esc(master.bin)}</p>`);
+    if (master.iin) lines.push(`<p>${t("ct.lbl.iin")}: ${esc(master.iin)}</p>`);
+    if (master.legalAddress) lines.push(`<p>${t("ct.lbl.address")}: ${esc(master.legalAddress)}</p>`);
+    if (master.bankName) lines.push(`<p>${t("ct.lbl.bank")}: ${esc(master.bankName)}</p>`);
+    if (master.iban) lines.push(`<p>${t("ct.lbl.iban")}: ${esc(master.iban)}</p>`);
+    if (master.kbe) lines.push(`<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>`);
+    if (master.bik) lines.push(`<p>${t("ct.lbl.bik")}: ${esc(master.bik)}</p>`);
+  } else {
+    if (master.iin) lines.push(`<p>${t("ct.lbl.iin")}: ${esc(master.iin)}</p>`);
+    if (master.passportData) lines.push(`<p>${t("ct.lbl.idDoc")}: ${esc(master.passportData)}</p>`);
+  }
+  return lines.join("\n      ");
+}
+
+/** Схема оплаты договора: своя у КП или по проценту предоплаты из профиля. */
+function scheduleOf(master: MasterData, estimate: EstimateData, t: T): PaymentStage[] {
+  return estimate.paymentSchedule && estimate.paymentSchedule.length > 0
+    ? estimate.paymentSchedule
+    : defaultPaymentSchedule(master.prepaymentPercent, t);
+}
+
+/**
+ * Значения меток для конкретного договора. Считаются теми же функциями, что
+ * и типовой договор: сумма прописью, дата, таблица работ выглядят одинаково,
+ * правил ли мастер шаблон или нет.
+ */
+export function contractPlaceholderValues(
+  master: MasterData,
+  estimate: EstimateData,
+  calc: CalculationResult,
+  language: Lang | string = "ru",
+): Record<PlaceholderKey, string> {
+  const lang = asLang(language);
+  const t = tFor(lang);
+  const total = estimate.total;
+  const schedule = scheduleOf(master, estimate, t);
+  const first = schedule[0];
+  return {
+    клиент: esc(estimate.clientName) || "___________________________",
+    телефон_клиента: esc(estimate.clientPhone) || "_______________",
+    адрес: esc(estimate.clientAddress) || "___________________________",
+    // В типовом тексте знак ₸ стоит после метки: «{сумма} ₸».
+    сумма: fmtPrice(total).replace(/\s*₸$/, ""),
+    сумма_прописью: numberToWordsKz(total, lang),
+    предоплата: fmtPrice(Math.round((total * (first?.percent ?? 50)) / 100)),
+    срок: estimate.workDurationDays ? durationText(estimate.workDurationDays, lang) : t("ct.byAgreement"),
+    дата_начала: estimate.workStartDate ? dateText(estimate.workStartDate, lang) : t("ct.byAgreement"),
+    исполнитель: esc(getMasterName(master)),
+    реквизиты_исполнителя: executorRequisites(master, t),
+    телефон_исполнителя: esc(getMasterPhone(master)),
+    город: esc(master.contractCity) || "_______________",
+    дата: dateText(estimate.createdAt, lang),
+    номер: estimate.publicId.slice(0, 8).toUpperCase(),
+    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc),
+    гарантия_материал: yearsText(master.warrantyMaterials, lang),
+    гарантия_монтаж: yearsText(master.warrantyInstall, lang),
+  };
+}
+
+const PREPAY_TAG = /\{\s*предоплата\s*\}/gi;
+
+/**
+ * Договор из шаблона мастера.
+ *
+ * Метка {предоплата} — сумма этапа оплаты. Мастер пишет в шаблоне
+ * «Предоплата — 30% — {предоплата}», и сумма считается от процента в той же
+ * строке: так один и тот же шаблон печатает верные цифры и при 30/70, и при
+ * 50/50. Если процента в строке нет — берём этапы договора по порядку.
+ */
+export function renderContractTemplate(
+  body: string,
+  master: MasterData,
+  estimate: EstimateData,
+  calc: CalculationResult,
+  language: Lang | string = "ru",
+): string {
+  const lang = asLang(language);
+  const t = tFor(lang);
+  const total = estimate.total;
+  const schedule = scheduleOf(master, estimate, t);
+  let stage = 0;
+  const withStages = body.replace(PREPAY_TAG, (whole: string, offset: number) => {
+    const lineStart = Math.max(body.lastIndexOf("<p", offset), body.lastIndexOf("\n", offset), 0);
+    const ends = [body.indexOf("</p>", offset), body.indexOf("\n", offset)].filter((i) => i >= 0);
+    const lineEnd = ends.length ? Math.min(...ends) : body.length;
+    const line = body.slice(lineStart, lineEnd);
+    const inLine = line.match(/(\d{1,3})\s*%/);
+    const percent = inLine ? Number(inLine[1]) : schedule[stage]?.percent;
+    stage++;
+    if (percent == null || !Number.isFinite(percent)) return whole;
+    return fmtPrice(Math.round((total * percent) / 100));
+  });
+  return fillTemplate(withStages, contractPlaceholderValues(master, estimate, calc, lang));
 }

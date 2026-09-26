@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
-import { generateContractHtml } from "@/lib/contract-html";
+import { generateContractHtml, dateText, durationText, yearsText } from "@/lib/contract-html";
 import { asLang } from "@/lib/i18n";
 
 /**
@@ -24,8 +24,19 @@ const MARK = {
   phone: "@@ТЕЛКЛИЕНТА@@",
   address: "@@АДРЕС@@",
   company: "@@ИСПОЛНИТЕЛЬ@@",
+  masterPhone: "@@ТЕЛМАСТЕРА@@",
+  city: "@@ГОРОД@@",
   work: "@@РАБОТА@@",
   total: 1234567,
+  // Даты, срок и гарантии — числами-маркерами, которые в живом договоре не
+  // встречаются; потом они меняются на метки (27.09.2026). Раньше в шаблон
+  // запекались дата его создания, «_______» вместо города и гарантии из
+  // профиля на тот день — и каждый новый договор печатал их как есть.
+  createdAt: new Date("2002-02-02T12:00:00Z"),
+  workStart: new Date("2001-01-01T12:00:00Z"),
+  durationDays: 999,
+  warrantyMaterials: 7777,
+  warrantyInstall: 8888,
 };
 
 export async function GET(request: Request) {
@@ -46,14 +57,35 @@ export async function GET(request: Request) {
     };
 
     const html = generateContractHtml(
-      { ...owner, companyName: MARK.company },
+      {
+        ...owner,
+        companyName: MARK.company,
+        // Реквизиты в шаблон не запекаем — они меткой {реквизиты_исполнителя},
+        // и мастер, поменяв банк в профиле, получит свежие в каждом договоре.
+        legalName: null,
+        bin: null,
+        iin: null,
+        passportData: null,
+        legalAddress: null,
+        bankName: null,
+        iban: null,
+        kbe: null,
+        bik: null,
+        phone: MARK.masterPhone,
+        whatsappPhone: MARK.masterPhone,
+        contractCity: MARK.city,
+        warrantyMaterials: MARK.warrantyMaterials,
+        warrantyInstall: MARK.warrantyInstall,
+      },
       {
         publicId: "{номер}",
         clientName: MARK.client,
         clientPhone: MARK.phone,
         clientAddress: MARK.address,
         total: MARK.total,
-        createdAt: new Date(),
+        createdAt: MARK.createdAt,
+        workStartDate: MARK.workStart,
+        workDurationDays: MARK.durationDays,
       },
       calc as never,
       lang,
@@ -68,6 +100,17 @@ export async function GET(request: Request) {
       .replace(new RegExp(esc(MARK.phone), "g"), "{телефон_клиента}")
       .replace(new RegExp(esc(MARK.address), "g"), "{адрес}")
       .replace(new RegExp(esc(MARK.company), "g"), "{исполнитель}")
+      .replace(new RegExp(esc(MARK.masterPhone), "g"), "{телефон_исполнителя}")
+      .replace(new RegExp(esc(MARK.city), "g"), "{город}")
+      .replace(new RegExp(esc(dateText(MARK.createdAt, lang)), "g"), "{дата}")
+      .replace(new RegExp(esc(dateText(MARK.workStart, lang)), "g"), "{дата_начала}")
+      .replace(new RegExp(esc(durationText(MARK.durationDays, lang)), "g"), "{срок}")
+      .replace(new RegExp(esc(yearsText(MARK.warrantyMaterials, lang)), "g"), "{гарантия_материал}")
+      .replace(new RegExp(esc(yearsText(MARK.warrantyInstall, lang)), "g"), "{гарантия_монтаж}")
+      // Номер договора генератор поднимает в верхний регистр.
+      .replace(/\{НОМЕР\}/g, "{номер}")
+      // В блоке подписей после имени — реквизиты (БИН, счёт, банк) из профиля.
+      .replace("<p>{исполнитель}</p>", "<p>{исполнитель}</p>\n      {реквизиты_исполнителя}")
       .replace(new RegExp(esc(money), "g"), "{сумма}")
       .replace(/1\s?234\s?567/g, "{сумма}");
 

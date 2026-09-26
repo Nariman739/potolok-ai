@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateContractHtml } from "@/lib/contract-html";
+import { renderContract } from "@/lib/contract-render";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor, getScope, inScope } from "@/lib/company";
@@ -145,6 +145,10 @@ export async function POST(
       paymentSchedule: validatedSchedule,
     };
     const calcForSnapshot = estimate.calculationData as never;
+    const [renderedRu, renderedKk] = await Promise.all([
+      renderContract(estimate.masterId, estimate.master, contractData, calcForSnapshot, "ru"),
+      renderContract(estimate.masterId, estimate.master, contractData, calcForSnapshot, "kk"),
+    ]);
 
     const snapshot = {
       master: estimate.master,
@@ -166,11 +170,10 @@ export async function POST(
       // отсюда, а не из живого расчёта: мастер мог потом поправить и цены, и
       // сам шаблон, а под подписью должно остаться ровно то, что человек
       // читал (26.09.2026).
-      html: {
-        ru: generateContractHtml(estimate.master, contractData, calcForSnapshot, "ru"),
-        kk: generateContractHtml(estimate.master, contractData, calcForSnapshot, "kk"),
-      },
-      version: 3,
+      // Если у мастера свой шаблон — снимок собирается из него (27.09.2026).
+      html: { ru: renderedRu.html, kk: renderedKk.html },
+      templateVersion: { ru: renderedRu.templateVersion, kk: renderedKk.templateVersion },
+      version: 4,
       createdAt: new Date().toISOString(),
     };
 

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
-import { generateContractHtml } from "@/lib/contract-html";
+import { renderContract } from "@/lib/contract-render";
 import { asLang, tFor, localeOf, type Lang } from "@/lib/i18n";
 import "@/lib/i18n/contract";
 import Link from "next/link";
@@ -83,7 +83,9 @@ export default async function ContractPublicPage({
   } | null;
   const frozenHtml = estimate.contractSignedAt ? snap?.html?.[lang] : undefined;
 
-  const html = frozenHtml ?? generateContractHtml(
+  // Не подписан — живой текст: типовой или из шаблона мастера (27.09.2026).
+  const html = frozenHtml ?? (await renderContract(
+    estimate.masterId,
     estimate.master,
     {
       publicId: estimate.publicId,
@@ -101,7 +103,7 @@ export default async function ContractPublicPage({
     },
     calc,
     lang,
-  );
+  )).html;
 
   const isSigned = !!estimate.contractSignedAt;
 
