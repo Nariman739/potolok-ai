@@ -74,7 +74,16 @@ export default async function ContractPublicPage({
   const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
   const calc = estimate.calculationData as unknown as CalculationResult;
-  const html = generateContractHtml(
+  // Подписанный договор рисуем из снимка, сделанного при создании: живой
+  // расчёт с тех пор мог измениться, а документ, под которым стоит подпись,
+  // меняться не должен — именно за это в суде и бьют (26.09.2026).
+  const snap = estimate.contractTextSnapshot as {
+    version?: number;
+    html?: Record<string, string>;
+  } | null;
+  const frozenHtml = estimate.contractSignedAt ? snap?.html?.[lang] : undefined;
+
+  const html = frozenHtml ?? generateContractHtml(
     estimate.master,
     {
       publicId: estimate.publicId,

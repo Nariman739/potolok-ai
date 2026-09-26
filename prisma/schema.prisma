@@ -133,6 +133,7 @@ model Master {
   workshopOrders  WorkshopOrder[]
   payments        Payment[]
   feedback        MasterFeedback[]
+  contracts       MasterContract[]
   /// Язык мастера: "ru" | "kk" (25.09.2026). Приложение присылает свой выбор,
   /// сервер отвечает на нём же — ассистент, уведомления, документы клиенту.
   language        String           @default("ru")
@@ -270,6 +271,43 @@ enum VisualizationApprovalStatus {
 // ============================================
 // PRICING
 // ============================================
+
+/// Свой договор мастера (26.09.2026).
+///
+/// До этого договор был один на всех — жёсткий шаблон в коде, куда
+/// подставлялись реквизиты и суммы. Мастер не мог поменять ни слова: у
+/// одного предоплата 30%, у другого гарантия три года, третий вывозит мусор
+/// сам и хочет это записать.
+///
+/// Правится разговором с помощником, каждая правка — новая версия, старые
+/// остаются: договор это документ, откат к прошлой редакции должен быть
+/// всегда. Активна одна версия, по ней создаются новые договоры.
+///
+/// ВАЖНО: на уже подписанные договоры смена шаблона не влияет — там текст
+/// заморожен в Estimate.contractTextSnapshot на момент создания.
+model MasterContract {
+  id        String   @id @default(uuid())
+  masterId  String
+  companyId String?
+  /// "contract" | "act" — договор или акт выполненных работ
+  kind      String   @default("contract")
+  /// "ru" | "kk" — у мастера может быть свой текст на каждом языке
+  language  String   @default("ru")
+  /// Номер версии внутри пары (мастер, вид, язык): 1, 2, 3…
+  version   Int      @default(1)
+  /// Тело документа с метками подстановки: {клиент}, {сумма}, {адрес}…
+  body      String
+  /// Чем правка вызвана: слова мастера помощнику. Пусто у первой версии.
+  note      String?
+  /// Эта версия используется при создании новых договоров
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@index([masterId, kind, language, isActive])
+  @@index([masterId, createdAt])
+}
 
 model MasterPrice {
   id             String  @id @default(uuid())

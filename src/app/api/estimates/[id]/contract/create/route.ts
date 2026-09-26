@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { generateContractHtml } from "@/lib/contract-html";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor, getScope, inScope } from "@/lib/company";
@@ -131,6 +132,20 @@ export async function POST(
     }
 
     const contractPublicId = crypto.randomUUID();
+    // Данные для замороженного текста — ровно те, что уходят в живой рендер.
+    const contractData = {
+      publicId: estimate.publicId,
+      clientName: estimate.clientName,
+      clientPhone: estimate.clientPhone,
+      clientAddress: estimate.clientAddress,
+      total: estimate.total,
+      createdAt: estimate.createdAt,
+      workStartDate: startDate,
+      workDurationDays: duration,
+      paymentSchedule: validatedSchedule,
+    };
+    const calcForSnapshot = estimate.calculationData as never;
+
     const snapshot = {
       master: estimate.master,
       estimate: {
@@ -147,7 +162,15 @@ export async function POST(
         workDurationDays: duration,
         paymentSchedule: validatedSchedule,
       },
-      version: 2,
+      // Готовый текст документа на обоих языках. Подписанный договор рисуется
+      // отсюда, а не из живого расчёта: мастер мог потом поправить и цены, и
+      // сам шаблон, а под подписью должно остаться ровно то, что человек
+      // читал (26.09.2026).
+      html: {
+        ru: generateContractHtml(estimate.master, contractData, calcForSnapshot, "ru"),
+        kk: generateContractHtml(estimate.master, contractData, calcForSnapshot, "kk"),
+      },
+      version: 3,
       createdAt: new Date().toISOString(),
     };
 
