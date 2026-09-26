@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileSignature } from "lucide-react";
+import { tFor, type Lang } from "@/lib/i18n";
+import "@/lib/i18n/contract";
 
-export function SignSection({ publicId }: { publicId: string }) {
+export function SignSection({ publicId, lang = "ru" }: { publicId: string; lang?: Lang }) {
+  const t = tFor(lang);
   const router = useRouter();
   const [name, setName] = useState("");
   const [passport, setPassport] = useState("");
@@ -33,10 +36,10 @@ export function SignSection({ publicId }: { publicId: string }) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Ошибка");
+      if (!res.ok) throw new Error(data?.error ?? t("sign.error"));
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      setError(e instanceof Error ? e.message : t("sign.error"));
     } finally {
       setSubmitting(false);
     }
@@ -47,30 +50,30 @@ export function SignSection({ publicId }: { publicId: string }) {
       <CardContent className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <FileSignature className="h-5 w-5 text-[#1e3a5f]" />
-          <h2 className="text-lg font-bold">Подтвердить договор</h2>
+          <h2 className="text-lg font-bold">{t("sign.ct.title")}</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Прочитайте условия выше. Если согласны — введите ваше ФИО как в удостоверении и нажмите «Подтвердить». После подтверждения исполнитель получит уведомление.
+          {t("sign.ct.hint")}
         </p>
 
         <div className="space-y-3">
           <div>
-            <Label htmlFor="signer-name">ФИО (как в удостоверении) *</Label>
+            <Label htmlFor="signer-name">{t("sign.fio")}</Label>
             <Input
               id="signer-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Иванов Иван Иванович"
+              placeholder={t("sign.fioPlaceholder")}
               autoComplete="off"
             />
           </div>
           <div>
-            <Label htmlFor="signer-passport">№ удостоверения / паспорта</Label>
+            <Label htmlFor="signer-passport">{t("sign.idNum")}</Label>
             <Input
               id="signer-passport"
               value={passport}
               onChange={(e) => setPassport(e.target.value)}
-              placeholder="N12345678 (необязательно)"
+              placeholder={t("sign.idPlaceholder")}
               autoComplete="off"
             />
           </div>
@@ -83,7 +86,7 @@ export function SignSection({ publicId }: { publicId: string }) {
               className="mt-1"
             />
             <span>
-              Я ознакомился с условиями договора и подтверждаю своё согласие. Понимаю, что моё подтверждение фиксируется электронно с указанием времени и IP-адреса.
+              {t("sign.ct.consent")}
             </span>
           </label>
 
@@ -99,11 +102,11 @@ export function SignSection({ publicId }: { publicId: string }) {
           onClick={submit}
         >
           {submitting ? (
-            "Сохраняем…"
+            t("sign.saving")
           ) : (
             <>
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              Подтвердить и подписать
+              {t("sign.ct.submit")}
             </>
           )}
         </Button>

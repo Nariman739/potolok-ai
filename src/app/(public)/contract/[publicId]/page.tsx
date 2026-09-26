@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
 import { generateContractHtml } from "@/lib/contract-html";
+import { asLang, tFor, localeOf, type Lang } from "@/lib/i18n";
+import "@/lib/i18n/contract";
+import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { SignSection } from "./sign-section";
@@ -19,10 +22,13 @@ export const metadata: Metadata = {
 
 export default async function ContractPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }) {
   const { publicId } = await params;
+  const { lang: langParam } = await searchParams;
 
   const estimate = await prisma.estimate.findFirst({
     where: { contractPublicId: publicId, deletedAt: null },
@@ -49,6 +55,7 @@ export default async function ContractPublicPage({
           warrantyMaterials: true,
           warrantyInstall: true,
           contractCity: true,
+          language: true,
         },
       },
     },
@@ -57,6 +64,14 @@ export default async function ContractPublicPage({
   if (!estimate) notFound();
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+
+  // Язык документа: по умолчанию язык мастера, но заказчик может переключить
+  // ссылкой ?lang= — у мастера-казаха бывает русскоязычный заказчик и наоборот,
+  // а документ, который человек подписывает, он должен читать на своём языке
+  // (26.09.2026).
+  const lang: Lang = langParam === "ru" || langParam === "kk" ? langParam : asLang(estimate.master.language);
+  const t = tFor(lang);
+  const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
   const calc = estimate.calculationData as unknown as CalculationResult;
   const html = generateContractHtml(
@@ -76,6 +91,7 @@ export default async function ContractPublicPage({
       paymentSchedule: estimate.paymentSchedule as never,
     },
     calc,
+    lang,
   );
 
   const isSigned = !!estimate.contractSignedAt;
@@ -87,14 +103,24 @@ export default async function ContractPublicPage({
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
             <div className="text-sm">
-              <span className="font-semibold">Договор подписан</span>
+              <span className="font-semibold">{t("page.ct.signed")}</span>
               {" — "}
               {estimate.contractSignerName} ·{" "}
-              {estimate.contractSignedAt?.toLocaleString("ru-RU")}
+              {estimate.contractSignedAt?.toLocaleString(localeOf(lang))}
             </div>
           </div>
         </div>
       )}
+
+      <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end">
+        <Link
+          href={`?lang=${otherLang}`}
+          prefetch={false}
+          className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+          {t(`ct.lang.${otherLang}`)}
+        </Link>
+      </div>
 
       <div className="max-w-3xl mx-auto px-3 py-4">
         <div
@@ -107,18 +133,18 @@ export default async function ContractPublicPage({
         {isSigned ? (
           <div className="bg-white rounded-lg shadow-sm p-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-3" />
-            <h2 className="text-lg font-bold mb-1">Договор подписан</h2>
+            <h2 className="text-lg font-bold mb-1">{t("page.ct.signed")}</h2>
             <p className="text-sm text-muted-foreground">
               <strong>{estimate.contractSignerName}</strong>
               {estimate.contractSignerPassport
-                ? `, удостоверение ${estimate.contractSignerPassport}`
+                ? t("page.idDoc", { v: estimate.contractSignerPassport })
                 : ""}
               <br />
-              {estimate.contractSignedAt?.toLocaleString("ru-RU")}
+              {estimate.contractSignedAt?.toLocaleString(localeOf(lang))}
             </p>
           </div>
         ) : (
-          <SignSection publicId={publicId} />
+          <SignSection publicId={publicId} lang={lang} />
         )}
       </div>
     </div>

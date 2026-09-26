@@ -1,4 +1,6 @@
 import type { CalculationResult, RoomResult } from "./types";
+import { asLang, tFor, formatDocDate, type Lang } from "./i18n";
+import "./i18n/contract";
 
 interface MasterData {
   firstName: string;
@@ -41,26 +43,33 @@ export type PaymentStage = {
   when: string; // before_start | on_start_day | on_delivery | after_install | after_act
 };
 
-const WHEN_LABELS: Record<string, string> = {
-  before_start: "до начала выполнения работ",
-  on_start_day: "в день начала работ",
-  on_delivery: "при поставке материалов",
-  after_install: "после завершения монтажа",
-  after_act: "после подписания Акта выполненных работ",
-};
+type T = ReturnType<typeof tFor>;
 
-function defaultPaymentSchedule(prepaymentPercent: number): PaymentStage[] {
+/** Момент оплаты: переводится только известный код, чужой текст остаётся как есть. */
+const WHEN_CODES = new Set([
+  "before_start",
+  "on_start_day",
+  "on_delivery",
+  "after_install",
+  "after_act",
+]);
+
+function whenLabel(when: string, t: T): string {
+  return WHEN_CODES.has(when) ? t(`ct.pay.${when}`) : esc(when);
+}
+
+function defaultPaymentSchedule(prepaymentPercent: number, t: T): PaymentStage[] {
   const prep = Math.max(0, Math.min(100, prepaymentPercent || 50));
   const rest = 100 - prep;
   if (prep === 0) {
-    return [{ name: "Оплата по факту", percent: 100, when: "after_act" }];
+    return [{ name: t("ct.stage.byFact"), percent: 100, when: "after_act" }];
   }
   if (prep === 100) {
-    return [{ name: "Полная предоплата", percent: 100, when: "before_start" }];
+    return [{ name: t("ct.stage.fullPrepay"), percent: 100, when: "before_start" }];
   }
   return [
-    { name: "Предоплата", percent: prep, when: "before_start" },
-    { name: "Окончательный расчёт", percent: rest, when: "after_act" },
+    { name: t("ct.stage.prepay"), percent: prep, when: "before_start" },
+    { name: t("ct.stage.final"), percent: rest, when: "after_act" },
   ];
 }
 
@@ -74,7 +83,12 @@ function fmtPrice(n: number | undefined | null): string {
   return new Intl.NumberFormat("ru-RU").format(Math.round(val)) + " ₸";
 }
 
-function fmtDate(d: Date): string {
+/**
+ * Дата в документе. Русский вид не трогаем ни на символ (это боевой договор),
+ * казахский берём из общего `formatDocDate`: «2026 жылғы 5 қыркүйек».
+ */
+function fmtDate(d: Date, lang: Lang = "ru"): string {
+  if (lang === "kk") return formatDocDate(new Date(d), "kk");
   return new Date(d).toLocaleDateString("ru-RU", {
     day: "2-digit",
     month: "long",
@@ -104,7 +118,7 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
-function buildWorksTable(roomResults: RoomResult[], calc?: CalculationResult | null): string {
+function buildWorksTable(roomResults: RoomResult[], t: T, calc?: CalculationResult | null): string {
   let rows = "";
   let num = 0;
   const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
@@ -140,14 +154,14 @@ function buildWorksTable(roomResults: RoomResult[], calc?: CalculationResult | n
     return acc + (after != null && before != null && after > before ? after - before : 0);
   }, 0);
   if (heightExtra > 0) {
-    rows += row("Надбавка за высоту потолка", "1", "усл.", fmtPrice(heightExtra), fmtPrice(heightExtra));
+    rows += row(t("ct.heightExtra"), "1", t("ct.unitService"), fmtPrice(heightExtra), fmtPrice(heightExtra));
   }
 
   for (const extra of (calc?.extraItems ?? [])) {
     rows += row(
       esc(extra.itemName),
       String(extra.quantity ?? 1),
-      esc(extra.unit ?? "усл."),
+      esc(extra.unit ?? t("ct.unitService")),
       fmtPrice(extra.unitPrice ?? extra.total ?? 0),
       fmtPrice(extra.total ?? 0),
     );
@@ -155,7 +169,7 @@ function buildWorksTable(roomResults: RoomResult[], calc?: CalculationResult | n
 
   const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
   if (discount > 0) {
-    rows += row("Скидка", "1", "усл.", `−${fmtPrice(discount)}`, `−${fmtPrice(discount)}`);
+    rows += row(t("ct.discount"), "1", t("ct.unitService"), `−${fmtPrice(discount)}`, `−${fmtPrice(discount)}`);
   }
   void roomsSum;
   return rows;
@@ -185,6 +199,18 @@ const pageStyle = `
   table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 `;
 
+/** Шапка таблицы работ — одинаковая в договоре и акте. */
+function worksTableHead(t: T): string {
+  return `<tr>
+          <th style="${thStyle} width:30px;">${t("ct.th.num")}</th>
+          <th style="${thStyle}">${t("ct.th.name")}</th>
+          <th style="${thStyle} width:50px;">${t("ct.th.qty")}</th>
+          <th style="${thStyle} width:50px;">${t("ct.th.unit")}</th>
+          <th style="${thStyle} width:80px;">${t("ct.th.price")}</th>
+          <th style="${thStyle} width:90px;">${t("ct.th.sum")}</th>
+        </tr>`;
+}
+
 // ============================================
 // CONTRACT (Договор / Соглашение)
 // ============================================
@@ -192,51 +218,46 @@ const pageStyle = `
 export function generateContractHtml(
   master: MasterData,
   estimate: EstimateData,
-  calc: CalculationResult
+  calc: CalculationResult,
+  language: Lang | string = "ru"
 ): string {
+  const lang = asLang(language);
+  const t = tFor(lang);
   const isIp = master.contractType === "ip";
+  const kind = isIp ? "ip" : "ind";
   const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
-  const date = fmtDate(estimate.createdAt);
+  const date = fmtDate(estimate.createdAt, lang);
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, calc);
+  const worksRows = buildWorksTable(roomResults, t, calc);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
     estimate.paymentSchedule && estimate.paymentSchedule.length > 0
       ? estimate.paymentSchedule
-      : defaultPaymentSchedule(master.prepaymentPercent);
+      : defaultPaymentSchedule(master.prepaymentPercent, t);
   const startDateStr = estimate.workStartDate
-    ? fmtDate(new Date(estimate.workStartDate))
-    : "по согласованию Сторон";
+    ? fmtDate(new Date(estimate.workStartDate), lang)
+    : t("ct.byAgreement");
   const durationStr = estimate.workDurationDays
-    ? `${estimate.workDurationDays} ${
-        estimate.workDurationDays % 10 === 1 && estimate.workDurationDays % 100 !== 11
-          ? "рабочий день"
-          : [2, 3, 4].includes(estimate.workDurationDays % 10) &&
-              ![12, 13, 14].includes(estimate.workDurationDays % 100)
-            ? "рабочих дня"
-            : "рабочих дней"
-      }`
-    : "по согласованию Сторон";
+    ? `${estimate.workDurationDays} ${workDayWord(estimate.workDurationDays, lang)}`
+    : t("ct.byAgreement");
 
-  const title = isIp
-    ? "ДОГОВОР НА ОКАЗАНИЕ УСЛУГ"
-    : "СОГЛАШЕНИЕ О ВЫПОЛНЕНИИ РАБОТ";
+  const title = t(`ct.title.${kind}`);
 
   // Executor info
   let executorText: string;
   if (isIp) {
     executorText = `<strong>${esc(getMasterName(master))}</strong>` +
-      (master.bin ? `, БИН ${esc(master.bin)}` : "") +
-      (master.iin ? `, ИИН ${esc(master.iin)}` : "") +
-      `, именуемый(-ая) в дальнейшем «Исполнитель»`;
+      (master.bin ? t("ct.reqBin", { v: esc(master.bin) }) : "") +
+      (master.iin ? t("ct.reqIin", { v: esc(master.iin) }) : "") +
+      t("ct.executorNamed");
   } else {
     executorText = `<strong>${esc(getMasterName(master))}</strong>` +
-      (master.iin ? `, ИИН ${esc(master.iin)}` : "") +
-      (master.passportData ? `, удостоверение личности ${esc(master.passportData)}` : "") +
-      `, именуемый(-ая) в дальнейшем «Исполнитель»`;
+      (master.iin ? t("ct.reqIin", { v: esc(master.iin) }) : "") +
+      (master.passportData ? t("ct.reqIdDoc", { v: esc(master.passportData) }) : "") +
+      t("ct.executorNamed");
   }
 
   // Client info
@@ -248,43 +269,43 @@ export function generateContractHtml(
   let executorReqs: string;
   if (isIp) {
     executorReqs = `
-      <p><strong>Исполнитель:</strong></p>
+      <p><strong>${t("ct.executor")}</strong></p>
       <p>${esc(getMasterName(master))}</p>
-      ${master.bin ? `<p>БИН: ${esc(master.bin)}</p>` : ""}
-      ${master.iin ? `<p>ИИН: ${esc(master.iin)}</p>` : ""}
-      ${master.legalAddress ? `<p>Адрес: ${esc(master.legalAddress)}</p>` : ""}
-      ${master.bankName ? `<p>Банк: ${esc(master.bankName)}</p>` : ""}
-      ${master.iban ? `<p>IBAN: ${esc(master.iban)}</p>` : ""}
-      ${master.kbe ? `<p>КБе: ${esc(master.kbe)}</p>` : ""}
-      ${master.bik ? `<p>БИК: ${esc(master.bik)}</p>` : ""}
-      <p>Тел: ${esc(getMasterPhone(master))}</p>
+      ${master.bin ? `<p>${t("ct.lbl.bin")}: ${esc(master.bin)}</p>` : ""}
+      ${master.iin ? `<p>${t("ct.lbl.iin")}: ${esc(master.iin)}</p>` : ""}
+      ${master.legalAddress ? `<p>${t("ct.lbl.address")}: ${esc(master.legalAddress)}</p>` : ""}
+      ${master.bankName ? `<p>${t("ct.lbl.bank")}: ${esc(master.bankName)}</p>` : ""}
+      ${master.iban ? `<p>${t("ct.lbl.iban")}: ${esc(master.iban)}</p>` : ""}
+      ${master.kbe ? `<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>` : ""}
+      ${master.bik ? `<p>${t("ct.lbl.bik")}: ${esc(master.bik)}</p>` : ""}
+      <p>${t("ct.lbl.phone")}: ${esc(getMasterPhone(master))}</p>
       <br>
-      <p>Подпись ________________</p>
+      <p>${t("ct.sign")}</p>
     `;
   } else {
     executorReqs = `
-      <p><strong>Исполнитель:</strong></p>
+      <p><strong>${t("ct.executor")}</strong></p>
       <p>${esc(getMasterName(master))}</p>
-      ${master.iin ? `<p>ИИН: ${esc(master.iin)}</p>` : ""}
-      ${master.passportData ? `<p>Уд. личности: ${esc(master.passportData)}</p>` : ""}
-      <p>Тел: ${esc(getMasterPhone(master))}</p>
+      ${master.iin ? `<p>${t("ct.lbl.iin")}: ${esc(master.iin)}</p>` : ""}
+      ${master.passportData ? `<p>${t("ct.lbl.idDoc")}: ${esc(master.passportData)}</p>` : ""}
+      <p>${t("ct.lbl.phone")}: ${esc(getMasterPhone(master))}</p>
       <br>
-      <p>Подпись ________________</p>
+      <p>${t("ct.sign")}</p>
     `;
   }
 
   const clientReqs = `
-    <p><strong>Заказчик:</strong></p>
-    <p>ФИО: ${clientName}</p>
-    <p>Тел: ${clientPhone}</p>
-    <p>Адрес: ${clientAddress}</p>
-    <p>ИИН: _______________</p>
+    <p><strong>${t("ct.client")}</strong></p>
+    <p>${t("ct.lbl.fio")}: ${clientName}</p>
+    <p>${t("ct.lbl.phone")}: ${clientPhone}</p>
+    <p>${t("ct.lbl.address")}: ${clientAddress}</p>
+    <p>${t("ct.lbl.iin")}: _______________</p>
     <br>
-    <p>Подпись ________________</p>
+    <p>${t("ct.sign")}</p>
   `;
 
   return `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <title>${title} №${contractNum}</title>
@@ -292,30 +313,21 @@ export function generateContractHtml(
 </head>
 <body>
   <h1>${title}</h1>
-  <p class="center">№ ${contractNum} от ${date}</p>
+  <p class="center">${t("ct.numDate", { num: contractNum, date })}</p>
   <p class="center">${city}</p>
 
   <div class="parties">
-    <p>${executorText}, с одной стороны, и</p>
-    <p><strong>${clientName}</strong>, именуемый(-ая) в дальнейшем «Заказчик», с другой стороны,
-    совместно именуемые «Стороны», заключили настоящий ${isIp ? "Договор" : "Соглашение"} о нижеследующем:</p>
+    <p>${executorText}${t("ct.oneSide")}</p>
+    <p><strong>${clientName}</strong>${t(`ct.clientNamed.${kind}`)}</p>
   </div>
 
-  <h2>1. ПРЕДМЕТ ${isIp ? "ДОГОВОРА" : "СОГЛАШЕНИЯ"}</h2>
+  <h2>${t(`ct.h1.${kind}`)}</h2>
   <div class="section">
-    <p>1.1. Исполнитель обязуется выполнить работы по монтажу натяжных потолков по адресу: ${clientAddress},
-    а Заказчик обязуется принять и оплатить выполненные работы.</p>
-    <p>1.2. Перечень и объём работ:</p>
+    <p>${t("ct.p11", { address: clientAddress })}</p>
+    <p>${t("ct.p12")}</p>
     <table>
       <thead>
-        <tr>
-          <th style="${thStyle} width:30px;">№</th>
-          <th style="${thStyle}">Наименование</th>
-          <th style="${thStyle} width:50px;">Кол.</th>
-          <th style="${thStyle} width:50px;">Ед.</th>
-          <th style="${thStyle} width:80px;">Цена</th>
-          <th style="${thStyle} width:90px;">Сумма</th>
-        </tr>
+        ${worksTableHead(t)}
       </thead>
       <tbody>
         ${worksRows}
@@ -323,77 +335,69 @@ export function generateContractHtml(
     </table>
   </div>
 
-  <h2>2. СТОИМОСТЬ РАБОТ И ПОРЯДОК ОПЛАТЫ</h2>
+  <h2>${t("ct.h2")}</h2>
   <div class="section">
-    <p>2.1. Общая стоимость работ по настоящему ${isIp ? "Договору" : "Соглашению"} составляет:
-    <strong>${fmtPrice(total)}</strong> (${numberToWordsKz(total)}).</p>
-    <p>2.2. Оплата производится в следующем порядке:</p>
+    <p>${t(`ct.p21.${kind}`, { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
+    <p>${t("ct.p22")}</p>
     ${schedule
       .map(
-        (s, i) => `<p>&nbsp;&nbsp;&nbsp;${String.fromCharCode(0x430 + i)}) ${esc(s.name)} — ${s.percent}% — <strong>${fmtPrice(Math.round((total * s.percent) / 100))}</strong> — ${WHEN_LABELS[s.when] ?? esc(s.when)};</p>`,
+        (s, i) => `<p>&nbsp;&nbsp;&nbsp;${String.fromCharCode(0x430 + i)}) ${esc(s.name)} — ${s.percent}% — <strong>${fmtPrice(Math.round((total * s.percent) / 100))}</strong> — ${whenLabel(s.when, t)};</p>`,
       )
       .join("\n    ")}
-    <p>2.3. Оплата производится наличными или переводом на ${isIp ? "расчётный счёт Исполнителя" : "карту Исполнителя"}.</p>
+    <p>${t(`ct.p23.${kind}`)}</p>
   </div>
 
-  <h2>3. СРОКИ ВЫПОЛНЕНИЯ РАБОТ</h2>
+  <h2>${t("ct.h3")}</h2>
   <div class="section">
-    <p>3.1. Дата начала работ: ${startDateStr}</p>
-    <p>3.2. Срок выполнения работ: ${durationStr} с момента начала работ.</p>
-    <p>3.3. Сроки могут быть скорректированы по взаимному согласию Сторон.</p>
+    <p>${t("ct.p31", { date: startDateStr })}</p>
+    <p>${t("ct.p32", { duration: durationStr })}</p>
+    <p>${t("ct.p33")}</p>
   </div>
 
-  <h2>4. ГАРАНТИЙНЫЕ ОБЯЗАТЕЛЬСТВА</h2>
+  <h2>${t("ct.h4")}</h2>
   <div class="section">
-    <p>4.1. Исполнитель предоставляет гарантию:</p>
-    <p>&nbsp;&nbsp;&nbsp;а) На материалы (полотно) — <strong>${master.warrantyMaterials} ${yearWord(master.warrantyMaterials)}</strong>;</p>
-    <p>&nbsp;&nbsp;&nbsp;б) На монтажные работы — <strong>${master.warrantyInstall} ${yearWord(master.warrantyInstall)}</strong>.</p>
-    <p>4.2. Гарантия не распространяется на повреждения, возникшие в результате:</p>
-    <p>&nbsp;&nbsp;&nbsp;— затопления со стороны соседей или коммуникаций;</p>
-    <p>&nbsp;&nbsp;&nbsp;— механических повреждений, нанесённых Заказчиком или третьими лицами;</p>
-    <p>&nbsp;&nbsp;&nbsp;— нарушения условий эксплуатации.</p>
-    <p>4.3. Гарантийное обслуживание осуществляется бесплатно в течение гарантийного срока.</p>
+    <p>${t("ct.p41")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p41a", { term: `${master.warrantyMaterials} ${yearWord(master.warrantyMaterials, lang)}` })}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p41b", { term: `${master.warrantyInstall} ${yearWord(master.warrantyInstall, lang)}` })}</p>
+    <p>${t("ct.p42")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p42a")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p42b")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p42c")}</p>
+    <p>${t("ct.p43")}</p>
   </div>
 
-  <h2>5. ПРАВА И ОБЯЗАННОСТИ СТОРОН</h2>
+  <h2>${t("ct.h5")}</h2>
   <div class="section">
-    <p><strong>5.1. Исполнитель обязуется:</strong></p>
-    <p>&nbsp;&nbsp;&nbsp;— выполнить работы качественно, в соответствии с технологией монтажа;</p>
-    <p>&nbsp;&nbsp;&nbsp;— использовать материалы надлежащего качества;</p>
-    <p>&nbsp;&nbsp;&nbsp;— устранить дефекты, выявленные при приёмке;</p>
-    <p>&nbsp;&nbsp;&nbsp;— убрать за собой строительный мусор.</p>
-    <p><strong>5.2. Заказчик обязуется:</strong></p>
-    <p>&nbsp;&nbsp;&nbsp;— обеспечить доступ к помещению в согласованное время;</p>
-    <p>&nbsp;&nbsp;&nbsp;— произвести оплату в установленном порядке;</p>
-    <p>&nbsp;&nbsp;&nbsp;— принять работы и подписать Акт выполненных работ.</p>
+    <p><strong>${t("ct.p51")}</strong></p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p51a")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p51b")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p51c")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p51d")}</p>
+    <p><strong>${t("ct.p52")}</strong></p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p52a")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p52b")}</p>
+    <p>&nbsp;&nbsp;&nbsp;${t("ct.p52c")}</p>
   </div>
 
-  <h2>6. ОТВЕТСТВЕННОСТЬ СТОРОН</h2>
+  <h2>${t("ct.h6")}</h2>
   <div class="section">
-    <p>6.1. За нарушение сроков выполнения работ Исполнитель уплачивает неустойку в размере
-    0,1% от стоимости работ за каждый день просрочки, но не более 10% от общей суммы.</p>
-    <p>6.2. За нарушение сроков оплаты Заказчик уплачивает неустойку в размере
-    0,1% от неоплаченной суммы за каждый день просрочки.</p>
+    <p>${t("ct.p61")}</p>
+    <p>${t("ct.p62")}</p>
   </div>
 
-  <h2>7. ФОРС-МАЖОР</h2>
+  <h2>${t("ct.h7")}</h2>
   <div class="section">
-    <p>7.1. Стороны освобождаются от ответственности за неисполнение обязательств,
-    если оно вызвано обстоятельствами непреодолимой силы (стихийные бедствия,
-    действия государственных органов и т.д.).</p>
+    <p>${t("ct.p71")}</p>
   </div>
 
-  <h2>8. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ</h2>
+  <h2>${t("ct.h8")}</h2>
   <div class="section">
-    <p>8.1. Настоящий ${isIp ? "Договор" : "Соглашение"} вступает в силу с момента подписания и
-    действует до полного исполнения Сторонами своих обязательств.</p>
-    <p>8.2. Все споры решаются путём переговоров, а при недостижении согласия —
-    в судебном порядке по месту нахождения ответчика.</p>
-    <p>8.3. ${isIp ? "Договор" : "Соглашение"} составлен(-о) в двух экземплярах, имеющих
-    одинаковую юридическую силу, по одному для каждой из Сторон.</p>
+    <p>${t(`ct.p81.${kind}`)}</p>
+    <p>${t("ct.p82")}</p>
+    <p>${t(`ct.p83.${kind}`)}</p>
   </div>
 
-  <h2>9. РЕКВИЗИТЫ И ПОДПИСИ СТОРОН</h2>
+  <h2>${t("ct.h9")}</h2>
   <div class="sign-block">
     <div class="sign-col">
       ${executorReqs}
@@ -404,7 +408,7 @@ export function generateContractHtml(
   </div>
 
   <p style="font-size:10px;color:#999;text-align:center;margin-top:40px;">
-    Документ сформирован в PotolokAI
+    ${t("ct.footer")}
   </p>
 </body>
 </html>`;
@@ -417,51 +421,48 @@ export function generateContractHtml(
 export function generateActHtml(
   master: MasterData,
   estimate: EstimateData,
-  calc: CalculationResult
+  calc: CalculationResult,
+  language: Lang | string = "ru"
 ): string {
+  const lang = asLang(language);
+  const t = tFor(lang);
+  const kind = master.contractType === "ip" ? "ip" : "ind";
   const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
   // Дата акта — та, что записана при подписании. Раньше подставлялась
   // текущая, и подписанный месяц назад акт каждый раз открывался
   // сегодняшним числом (аудит 24.09.2026).
-  const today = fmtDate(estimate.createdAt ? new Date(estimate.createdAt) : new Date());
+  const today = fmtDate(estimate.createdAt ? new Date(estimate.createdAt) : new Date(), lang);
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, calc);
+  const worksRows = buildWorksTable(roomResults, t, calc);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(estimate.clientName) || "___________________________";
 
   return `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
-  <title>Акт выполненных работ №${contractNum}</title>
+  <title>${t("act.docTitle", { num: contractNum })}</title>
   <style>${pageStyle}</style>
 </head>
 <body>
-  <h1>АКТ ВЫПОЛНЕННЫХ РАБОТ</h1>
-  <p class="center">к ${master.contractType === "ip" ? "Договору" : "Соглашению"} № ${contractNum}</p>
+  <h1>${t("act.title")}</h1>
+  <p class="center">${t(`act.toDoc.${kind}`, { num: contractNum })}</p>
   <p class="center">${today}, ${city}</p>
 
   <div class="parties">
-    <p>Исполнитель: <strong>${masterName}</strong></p>
-    <p>Заказчик: <strong>${clientName}</strong></p>
+    <p>${t("act.executor")}<strong>${masterName}</strong></p>
+    <p>${t("act.client")}<strong>${clientName}</strong></p>
   </div>
 
   <div class="section">
-    <p>Исполнитель выполнил, а Заказчик принял следующие работы:</p>
+    <p>${t("act.intro")}</p>
 
     <table>
       <thead>
-        <tr>
-          <th style="${thStyle} width:30px;">№</th>
-          <th style="${thStyle}">Наименование</th>
-          <th style="${thStyle} width:50px;">Кол.</th>
-          <th style="${thStyle} width:50px;">Ед.</th>
-          <th style="${thStyle} width:80px;">Цена</th>
-          <th style="${thStyle} width:90px;">Сумма</th>
-        </tr>
+        ${worksTableHead(t)}
       </thead>
       <tbody>
         ${worksRows}
@@ -469,38 +470,36 @@ export function generateActHtml(
     </table>
 
     <p style="text-align:right;margin-top:8px;">
-      <strong>ИТОГО: ${fmtPrice(total)}</strong>
+      <strong>${t("act.total", { sum: fmtPrice(total) })}</strong>
     </p>
   </div>
 
   <div class="section">
-    <p>Вышеперечисленные работы выполнены в полном объёме и в установленные сроки.
-    Заказчик претензий по объёму, качеству и срокам выполнения работ не имеет.</p>
-    <p>Общая стоимость выполненных работ составляет: <strong>${fmtPrice(total)}</strong>
-    (${numberToWordsKz(total)}).</p>
+    <p>${t("act.noClaims")}</p>
+    <p>${t("act.sum", { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
   </div>
 
   <div class="sign-block">
     <div class="sign-col">
-      <p><strong>Исполнитель:</strong></p>
+      <p><strong>${t("ct.executor")}</strong></p>
       <p>${masterName}</p>
-      <p>Тел: ${esc(getMasterPhone(master))}</p>
+      <p>${t("ct.lbl.phone")}: ${esc(getMasterPhone(master))}</p>
       <br>
-      <p>Подпись ________________</p>
-      <p style="font-size:11px;color:#666;">Дата: ${today}</p>
+      <p>${t("ct.sign")}</p>
+      <p style="font-size:11px;color:#666;">${t("act.date", { date: today })}</p>
     </div>
     <div class="sign-col">
-      <p><strong>Заказчик:</strong></p>
+      <p><strong>${t("ct.client")}</strong></p>
       <p>${clientName}</p>
-      <p>Тел: ${esc(estimate.clientPhone) || "_______________"}</p>
+      <p>${t("ct.lbl.phone")}: ${esc(estimate.clientPhone) || "_______________"}</p>
       <br>
-      <p>Подпись ________________</p>
-      <p style="font-size:11px;color:#666;">Дата: _______________</p>
+      <p>${t("ct.sign")}</p>
+      <p style="font-size:11px;color:#666;">${t("act.date", { date: "_______________" })}</p>
     </div>
   </div>
 
   <p style="font-size:10px;color:#999;text-align:center;margin-top:40px;">
-    Документ сформирован в PotolokAI
+    ${t("ct.footer")}
   </p>
 </body>
 </html>`;
@@ -510,13 +509,29 @@ export function generateActHtml(
 // Helpers
 // ============================================
 
-function yearWord(n: number): string {
+/** «год / года / лет» по-русски, по-казахски существительное не меняется. */
+function yearWord(n: number, lang: Lang = "ru"): string {
+  if (lang === "kk") return "жыл";
   if (n % 10 === 1 && n % 100 !== 11) return "год";
   if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "года";
   return "лет";
 }
 
-function numberToWordsKz(amount: number): string {
+/** «рабочий день / рабочих дня / рабочих дней»; по-казахски — «жұмыс күні». */
+function workDayWord(n: number, lang: Lang = "ru"): string {
+  if (lang === "kk") return "жұмыс күні";
+  if (n % 10 === 1 && n % 100 !== 11) return "рабочий день";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "рабочих дня";
+  return "рабочих дней";
+}
+
+/**
+ * Сумма прописью. В договоре это то, по чему считают, если цифры оспаривают,
+ * поэтому пишем на языке документа: по-русски «четыреста восемьдесят одна
+ * тысяча тенге», по-казахски «төрт жүз сексен бір мың теңге».
+ */
+function numberToWordsKz(amount: number, lang: Lang = "ru"): string {
+  if (lang === "kk") return numberToWordsKazakh(amount);
   const n = Math.round(amount);
   if (n === 0) return "ноль тенге";
 
@@ -576,4 +591,42 @@ function numberToWordsKz(amount: number): string {
   }
 
   return parts.join(" ").trim() + " тенге";
+}
+
+/**
+ * Сумма прописью по-казахски. В казахском числительные не согласуются:
+ * «екі мың», «бес жүз мың», «үш миллион» — форма слова одна, меняется только
+ * множитель, поэтому склонений здесь нет.
+ */
+function numberToWordsKazakh(amount: number): string {
+  const n = Math.round(amount);
+  if (n === 0) return "нөл теңге";
+
+  const units = ["", "бір", "екі", "үш", "төрт", "бес", "алты", "жеті", "сегіз", "тоғыз"];
+  const tens = ["", "он", "жиырма", "отыз", "қырық", "елу", "алпыс", "жетпіс", "сексен", "тоқсан"];
+
+  function threeDigits(num: number): string {
+    if (num === 0) return "";
+    const parts: string[] = [];
+    const h = Math.floor(num / 100);
+    const t = Math.floor((num % 100) / 10);
+    const u = num % 10;
+    // 100 — «жүз», 200 — «екі жүз»: «бір жүз» в казахском не говорят.
+    if (h === 1) parts.push("жүз");
+    else if (h > 1) parts.push(`${units[h]} жүз`);
+    if (t > 0) parts.push(tens[t]);
+    if (u > 0) parts.push(units[u]);
+    return parts.join(" ");
+  }
+
+  const parts: string[] = [];
+  const millions = Math.floor(n / 1_000_000);
+  const thousands = Math.floor((n % 1_000_000) / 1_000);
+  const rest = n % 1_000;
+
+  if (millions > 0) parts.push(`${threeDigits(millions)} миллион`);
+  if (thousands > 0) parts.push(`${threeDigits(thousands)} мың`);
+  if (rest > 0) parts.push(threeDigits(rest));
+
+  return parts.join(" ").trim() + " теңге";
 }
