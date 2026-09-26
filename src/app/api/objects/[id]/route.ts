@@ -11,6 +11,8 @@ import {
   pickPrimaryEstimate,
 } from "@/lib/object-stage";
 import { moneySummary } from "@/lib/money";
+import { summarizeMaterials } from "@/lib/object-materials";
+import type { CalculationResult } from "@/lib/types";
 
 /**
  * Карточка объекта — вся жизнь заказа в одном месте: замер и комнаты,
@@ -65,6 +67,13 @@ export async function GET(
     }
 
     const primary = pickPrimaryEstimate(obj.estimates);
+    // «Взять на объект»: материалы складываем по КП, которое считается главным —
+    // принятому клиентом, иначе последнему. Расчёт тянем отдельно: в списке КП
+    // выше его нет нарочно, JSON тяжёлый.
+    const primaryCalc = primary
+      ? await prisma.estimate.findUnique({ where: { id: primary.id }, select: { calculationData: true } })
+      : null;
+    const materials = summarizeMaterials(primaryCalc?.calculationData as CalculationResult | null);
     // Деньги (Этап 4): цена — принятое/последнее КП; закрыл = смонтировали + деньги.
     // Процент материала — владельца компании (общая настройка, как прайс).
     const owner = await prisma.master.findUnique({ where: { id: scope.ownerId }, select: { materialPercent: true } });
@@ -180,6 +189,7 @@ export async function GET(
       autoStage: autoStage({ estimates: obj.estimates, workshopOrders: obj.workshopOrders }),
       primaryEstimateId: primary?.id ?? null,
       total: primary?.total ?? null,
+      materials,
       history,
     });
   } catch (error) {

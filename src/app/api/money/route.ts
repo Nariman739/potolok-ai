@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { moneySummary } from "@/lib/money";
 import { pickPrimaryEstimate, resolveStage } from "@/lib/object-stage";
+import { orphanEstimateTitle } from "@/lib/orphan-estimate";
 
 /**
  * Экран «Деньги» (Этап 4): должны мне · должен я · заработал за месяц.
@@ -57,7 +58,7 @@ export async function GET() {
           OR: [{ measurementObjectId: null }, { measurementObject: { deletedAt: { not: null } } }],
         },
         select: {
-          id: true, total: true, clientName: true, clientAddress: true, updatedAt: true,
+          id: true, total: true, clientName: true, clientAddress: true, totalArea: true, createdAt: true, updatedAt: true,
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
@@ -140,13 +141,7 @@ export async function GET() {
       owedToMe.push({
         id: e.id,
         kind: "estimate",
-        // Безымянное КП надо как-то опознать — датой (24.09.2026): строка
-        // «КП без объекта» ничего мастеру не говорила.
-        title:
-          e.clientAddress ||
-          e.client?.name ||
-          e.clientName ||
-          `Быстрое КП от ${e.updatedAt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`,
+        title: orphanEstimateTitle(e),
         client: e.client,
         stage: "confirmed",
         price,

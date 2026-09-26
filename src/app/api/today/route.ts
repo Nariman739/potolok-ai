@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getActionableClients } from "@/lib/clients";
 import { resolveStage, pickPrimaryEstimate } from "@/lib/object-stage";
+import { orphanEstimateTitle } from "@/lib/orphan-estimate";
 
 /**
  * «Сегодня» — что делать прямо сейчас (Этап 1, 20.09.2026). Стартовый экран.
@@ -84,7 +85,7 @@ export async function GET() {
         orderBy: { updatedAt: "asc" },
         take: 10,
         select: {
-          id: true, status: true, total: true, clientName: true, clientPhone: true, clientAddress: true, updatedAt: true,
+          id: true, status: true, total: true, clientName: true, clientPhone: true, clientAddress: true, totalArea: true, createdAt: true, updatedAt: true,
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
@@ -137,8 +138,7 @@ export async function GET() {
       waiting.push({
         kind: "estimate" as const,
         id: e.id,
-        // QA-прогон 20.09: строка «КП» без имени и адреса ни о чём не говорит
-        title: e.clientAddress || e.client?.name || e.clientName || `КП на ${Math.round(e.total).toLocaleString("ru-KZ")} ₸`,
+        title: orphanEstimateTitle(e),
         clientId: e.client?.id ?? null,
         clientName: e.client?.name ?? e.clientName ?? null,
         clientPhone: e.client?.phone ?? e.clientPhone ?? null,

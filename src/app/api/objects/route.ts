@@ -8,6 +8,7 @@ import {
   pickPrimaryEstimate,
   type ObjectStage,
 } from "@/lib/object-stage";
+import { orphanEstimateTitle } from "@/lib/orphan-estimate";
 
 /**
  * Лента объектов — одна строка на объект вместо двух вкладок «Замеры» и «КП».
@@ -211,11 +212,10 @@ export async function GET(request: NextRequest) {
       const calc = e.calculationData as { roomResults?: unknown[] } | null;
       const roomsCount = Array.isArray(calc?.roomResults) ? calc!.roomResults!.length : 0;
       const clientName = e.client?.name ?? e.clientName ?? null;
-      const isQuick = !e.totalArea || e.totalArea === 0;
       rows.push({
         kind: "estimate",
         id: e.id,
-        title: e.clientAddress || clientName || (isQuick ? "Быстрое КП" : `КП ${e.totalArea.toFixed(1)} м²`),
+        title: orphanEstimateTitle(e),
         address: e.clientAddress || null,
         clientId: e.client?.id ?? e.clientId ?? null,
         clientName,
