@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
+import { asLang, tFor, formatDocDate, type Lang } from "@/lib/i18n";
+import "@/lib/i18n/kp-public";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -67,10 +69,13 @@ function stripInternalPrices(value: unknown): unknown {
 
 export default async function PublicKpPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }) {
   const { publicId } = await params;
+  const { lang: langParam } = await searchParams;
 
   const estimate = await prisma.estimate.findFirst({
     where: { publicId, deletedAt: null },
@@ -85,6 +90,7 @@ export default async function PublicKpPage({
           whatsappPhone: true,
           phone: true,
           telegramChatId: true,
+          language: true,
         },
       },
     },
@@ -112,21 +118,26 @@ export default async function PublicKpPage({
         });
         if (res.count === 0) return; // кто-то уже отметил — второй раз не шумим
 
-        const clientStr = estimate.clientName || "Клиент";
+        // Уведомление читает МАСТЕР — значит на его языке, а не на языке
+        // страницы, которую открыл клиент (25.09.2026).
+        const tm = tFor(asLang(estimate.master.language));
+        const clientStr = estimate.clientName || tm("notify.client");
         const price = estimate.total || estimate.standardTotal || 0;
 
         if (estimate.master.telegramChatId) {
-          const text =
-            `👀 <b>${clientStr} открыл ваше КП!</b>\n\n` +
-            (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
-            `\n<i>Ожидаем подтверждение от клиента.</i>`;
+          const text = tm("notify.viewed.tg", {
+            client: clientStr,
+            price: price ? tm("notify.price", { sum: formatPrice(price) }) : "",
+          });
           await Promise.resolve(sendTelegramMessage(estimate.master.telegramChatId, text)).catch(() => {});
         }
 
         // Пуш на телефон — основной канал. Telegram привязан у 9% мастеров.
         await sendPushToMaster(estimate.masterId, {
-          title: `${clientStr} открыл ваше КП`,
-          body: price ? `Сумма ${formatPrice(price)}. Ждём ответа клиента.` : "Ждём ответа клиента.",
+          title: tm("notify.viewed.title", { client: clientStr }),
+          body: price
+            ? tm("notify.viewed.body", { sum: formatPrice(price) })
+            : tm("notify.viewed.bodyNoPrice"),
           data: { screen: `/estimate/${estimate.id}` },
         }).catch(() => {});
 
@@ -154,6 +165,13 @@ export default async function PublicKpPage({
   // на экране их не видно, но «Просмотреть код» показывал (21.09.2026).
   const calc = stripInternalPrices(estimate.calculationData) as unknown as CalculationResult & { quickEstimate?: boolean };
   const master = estimate.master;
+  // Язык страницы: по умолчанию язык мастера, но заказчик может переключить
+  // ссылкой ?lang= — у мастера-казаха бывает русскоязычный клиент и наоборот,
+  // а угадывать за человека, на каком языке читать документ о деньгах, нельзя
+  // (25.09.2026).
+  const lang: Lang = langParam === "ru" || langParam === "kk" ? langParam : asLang(master.language);
+  const t = tFor(lang);
+  const otherLang: Lang = lang === "kk" ? "ru" : "kk";
   const company = master.companyName || master.firstName;
   const brandColor = master.brandColor || "#1e3a5f";
   const isQuick = !!(calc as { quickEstimate?: boolean }).quickEstimate;
@@ -210,11 +228,23 @@ export default async function PublicKpPage({
             </div>
           )}
 
+          {/* Переключатель языка для заказчика: язык мастера — лишь догадка
+              о том, на каком ему удобнее читать (25.09.2026). */}
+          <div className="absolute right-4 top-4 z-20">
+            <Link
+              href={`?lang=${otherLang}`}
+              prefetch={false}
+              className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-sm hover:bg-white/20"
+            >
+              {t(`kp.lang.${otherLang}`)}
+            </Link>
+          </div>
+
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             {company}
           </h1>
           <p className="text-white/60 text-xs mt-1 uppercase tracking-widest font-medium">
-            Коммерческое предложение
+            {t("kp.title")}
           </p>
 
           {/* Info pills */}
@@ -241,25 +271,25 @@ export default async function PublicKpPage({
                 }`}
               >
                 {isExpired
-                  ? "⚠️ Срок истёк"
-                  : `до ${formatDate(estimate.validUntil)}`}
+                  ? t("kp.expired")
+                  : t("kp.validUntil", { date: formatDocDate(new Date(estimate.validUntil), lang) })}
               </span>
             )}
             {estimate.status === "CONFIRMED" && (
               <span className="bg-emerald-500/30 text-emerald-200 text-sm px-3 py-1.5 rounded-full border border-emerald-400/40">
-                Принято
+                {t("kp.accepted")}
               </span>
             )}
             {isRevised && (
               <span className="bg-orange-500/30 text-orange-200 text-sm px-3 py-1.5 rounded-full border border-orange-400/40">
-                Пересмотрено
+                {t("kp.revised")}
               </span>
             )}
           </div>
 
           {/* Price summary */}
           <div className="mt-6 text-center">
-            <p className="text-white/50 text-xs mb-0.5">Стоимость</p>
+            <p className="text-white/50 text-xs mb-0.5">{t("kp.price")}</p>
             {estimate.discountAmount > 0 && (
               <p className="text-white/40 text-sm line-through mb-0.5">
                 {formatPrice(estimate.total + estimate.discountAmount)}
@@ -271,8 +301,8 @@ export default async function PublicKpPage({
             {estimate.discountAmount > 0 && (
               <p className="text-emerald-300 text-xs mt-1">
                 {estimate.discountPercent > 0
-                  ? `Скидка ${estimate.discountPercent}% · −${formatPrice(estimate.discountAmount)}`
-                  : `Скидка −${formatPrice(estimate.discountAmount)}`}
+                  ? t("kp.discountPercent", { percent: estimate.discountPercent, sum: formatPrice(estimate.discountAmount) })
+                  : t("kp.discount", { sum: formatPrice(estimate.discountAmount) })}
               </p>
             )}
           </div>
@@ -294,10 +324,10 @@ export default async function PublicKpPage({
       {isRevised && (
         <div className="mx-4 mt-4 rounded-2xl bg-orange-50 border border-orange-200 p-4 text-center">
           <p className="text-orange-700 font-semibold text-base">
-            Предложение пересмотрено
+            {t("kp.revisedTitle")}
           </p>
           <p className="text-orange-600 text-sm mt-1">
-            Мастер отправит вам обновлённый расчёт. Это КП больше не действительно.
+            {t("kp.revisedText")}
           </p>
         </div>
       )}
@@ -321,7 +351,7 @@ export default async function PublicKpPage({
               style={{ backgroundColor: brandColor }}
             >
               <span aria-hidden="true">🔮</span>
-              <span>Открыть в 3D</span>
+              <span>{t("kp.open3d")}</span>
             </Link>
           )}
         </section>
