@@ -85,7 +85,7 @@ export default async function ContractPublicPage({
 
   // Не подписан — живой текст: типовой или из шаблона мастера (27.09.2026).
   const html = frozenHtml ?? (await renderContract(
-    estimate.masterId,
+    estimate,
     estimate.master,
     {
       publicId: estimate.publicId,

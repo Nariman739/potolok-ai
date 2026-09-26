@@ -69,7 +69,34 @@ if (target) {
   check("казахская страница открывается", /Тапсырыс беруші|Орындаушы/.test(pageKk));
 }
 
-// 5. Возвращаем QA типовую заготовку как действующую версию
+// 5. Заморозка: подписанный договор не меняется, даже если мастер поправил шаблон
+let fresh = null;
+for (const e of (Array.isArray(estimates) ? estimates : []).filter((e) => e.total > 0).slice(0, 40)) {
+  const full = await j(await fetch(`${API}/estimates/${e.id}`, { headers: H }));
+  if (full && !full.contractPublicId) { fresh = full; break; }
+}
+if (!fresh) {
+  console.log("ℹ️ у QA не осталось КП без договора — заморозку не проверяем");
+} else {
+  const frozenClause = "2.5. Подписанный текст заморожен тестом.";
+  r = await fetch(`${API}/contract/template`, { method: "POST", headers: H, body: JSON.stringify({ body: mine.replace("<h2>3.", `<p>${frozenClause}</p>\n  </div>\n  <h2>3.`), note: "тест: заморозка", language: "ru" }) });
+  check("шаблон с меткой заморозки сохранён", r.status === 200, String(r.status));
+  r = await fetch(`${API}/estimates/${fresh.id}/contract/create`, { method: "POST", headers: H, body: JSON.stringify({}) });
+  const made = await j(r);
+  check("новый договор создан из шаблона", r.status === 200 && made.contractPublicId, JSON.stringify(made).slice(0, 100));
+  let pg = await (await fetch(`${SITE}/contract/${made.contractPublicId}?lang=ru`)).text();
+  check("до подписи виден пункт из шаблона", pg.includes(frozenClause));
+  r = await fetch(`${API}/contract/${made.contractPublicId}/sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signerName: "QA Тестов", agreed: true }) });
+  check("договор подписан", r.status === 200, `${r.status} ${await r.text()}`.slice(0, 120));
+  r = await fetch(`${API}/contract/template`, { method: "POST", headers: H, body: JSON.stringify({ body: mine, note: "тест: шаблон изменён после подписи", language: "ru" }) });
+  pg = await (await fetch(`${SITE}/contract/${made.contractPublicId}?lang=ru`)).text();
+  check("после правки шаблона подписанный текст прежний", pg.includes(frozenClause));
+  check("и в нём нет меток", !/\{[а-яё_]+\}/i.test(pg.split("<script")[0]));
+  const pgKk = await (await fetch(`${SITE}/contract/${made.contractPublicId}?lang=kk`)).text();
+  check("казахский снимок тоже заморожен и без меток", /Орындаушы/.test(pgKk) && !/\{[а-яё_]+\}/i.test(pgKk.split("<script")[0]));
+}
+
+// 6. Возвращаем QA типовую заготовку как действующую версию
 r = await fetch(`${API}/contract/template`, { method: "POST", headers: H, body: JSON.stringify({ body: starter.body, note: "тест: вернул типовой", language: "ru" }) });
 check("вернули типовой", r.status === 200);
 

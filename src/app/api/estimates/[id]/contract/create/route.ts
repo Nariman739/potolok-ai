@@ -146,8 +146,8 @@ export async function POST(
     };
     const calcForSnapshot = estimate.calculationData as never;
     const [renderedRu, renderedKk] = await Promise.all([
-      renderContract(estimate.masterId, estimate.master, contractData, calcForSnapshot, "ru"),
-      renderContract(estimate.masterId, estimate.master, contractData, calcForSnapshot, "kk"),
+      renderContract(estimate, estimate.master, contractData, calcForSnapshot, "ru"),
+      renderContract(estimate, estimate.master, contractData, calcForSnapshot, "kk"),
     ]);
 
     const snapshot = {

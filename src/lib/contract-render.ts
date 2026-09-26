@@ -17,9 +17,17 @@ import {
 import { asLang, type Lang } from "./i18n";
 import type { CalculationResult } from "./types";
 
-/** Чей шаблон печатать: владельца компании, в которой состоит автор КП. */
-export async function contractOwnerId(masterId: string): Promise<string> {
+/**
+ * Чей шаблон печатать. КП принадлежит компании (companyId), а не автору:
+ * сотрудник мог уйти и завести свою — его старые КП по-прежнему печатаются
+ * договором владельца. Без companyId — по текущей компании автора.
+ */
+export async function contractOwnerId(masterId: string, companyId?: string | null): Promise<string> {
   try {
+    if (companyId) {
+      const c = await prisma.company.findUnique({ where: { id: companyId }, select: { ownerId: true } });
+      if (c) return c.ownerId;
+    }
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (!me?.activeCompanyId) return masterId;
     const company = await prisma.company.findFirst({
@@ -46,7 +54,7 @@ export type RenderedContract = {
 };
 
 export async function renderContract(
-  authorMasterId: string,
+  author: { masterId: string; companyId?: string | null },
   master: MasterData,
   estimate: EstimateData,
   calc: CalculationResult,
@@ -54,7 +62,7 @@ export async function renderContract(
 ): Promise<RenderedContract> {
   const lang = asLang(language);
   try {
-    const ownerId = await contractOwnerId(authorMasterId);
+    const ownerId = await contractOwnerId(author.masterId, author.companyId);
     const tpl = await activeContractTemplate(ownerId, lang);
     if (tpl) {
       return { html: renderContractTemplate(tpl.body, master, estimate, calc, lang), templateVersion: tpl.version };
