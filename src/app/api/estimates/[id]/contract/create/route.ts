@@ -170,7 +170,7 @@ export async function POST(
       // отсюда, а не из живого расчёта: мастер мог потом поправить и цены, и
       // сам шаблон, а под подписью должно остаться ровно то, что человек
       // читал (26.09.2026).
-      // Если у мастера свой шаблон — снимок собирается из него (27.09.2026).
+      // Если у мастера свой шаблон — снимок собирается из него (26.09.2026).
       html: { ru: renderedRu.html, kk: renderedKk.html },
       templateVersion: { ru: renderedRu.templateVersion, kk: renderedKk.templateVersion },
       version: 4,

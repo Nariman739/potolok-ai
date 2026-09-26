@@ -83,7 +83,7 @@ export default async function ContractPublicPage({
   } | null;
   const frozenHtml = estimate.contractSignedAt ? snap?.html?.[lang] : undefined;
 
-  // Не подписан — живой текст: типовой или из шаблона мастера (27.09.2026).
+  // Не подписан — живой текст: типовой или из шаблона мастера (26.09.2026).
   const html = frozenHtml ?? (await renderContract(
     estimate,
     estimate.master,

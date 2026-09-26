@@ -1,4 +1,4 @@
-// Свой договор мастера печатается: метки в заготовке, подстановка в живой договор (27.09.2026).
+// Свой договор мастера печатается: метки в заготовке, подстановка в живой договор (26.09.2026).
 const API = process.env.API ?? "https://potolok.ai/api";
 const SITE = API.replace(/\/api$/, "");
 const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t.slice(0, 300); } };
