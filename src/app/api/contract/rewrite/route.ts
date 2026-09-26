@@ -93,7 +93,46 @@ ${tags}
       text = text.slice(0, warnAt).trim();
     }
 
-    const check = checkTemplate(text);
+    let check = checkTemplate(text);
+
+    // Модель всё же выкинула обязательное — просим переделать, назвав
+    // потерянное поимённо. Мастер просил убрать пункт, модель послушалась,
+    // но документ без суммы не документ (26.09.2026). Вторая попытка одна:
+    // дальше отдаём как есть с предупреждением, решать человеку.
+    if (check.missing.length > 0) {
+      const lost = check.missing.map((m) => `{${m.key}} — ${m.about}`).join("; ");
+      const retry = await getOpenRouter().chat.completions.create({
+        model: AI_MODEL,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: `Текущий договор:\n\n${current}\n\n---\nЧто поменять: ${ask}` },
+          { role: "assistant", content: text },
+          {
+            role: "user",
+            content: `В этой версии пропало обязательное: ${lost}. Верни договор заново — с учётом моей правки, но сохранив эти места. Если моя правка прямо противоречит им, оставь их и объясни строкой «ВНИМАНИЕ:».`,
+          },
+        ],
+        max_tokens: 8000,
+        temperature: 0.1,
+      });
+      const second = retry.choices[0]?.message?.content?.trim().replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+      if (retry.usage) {
+        await recordAiUsage(master.id, computeCostFromUsage(retry.usage, AI_MODEL)).catch(() => {});
+      }
+      if (second) {
+        const secondCheck = checkTemplate(second);
+        if (secondCheck.missing.length < check.missing.length) {
+          text = second;
+          check = secondCheck;
+          const w = text.lastIndexOf("ВНИМАНИЕ:");
+          if (w > text.length - 600 && w > 0) {
+            warning = text.slice(w + "ВНИМАНИЕ:".length).trim();
+            text = text.slice(0, w).trim();
+          }
+        }
+      }
+    }
+
     const problem = explainCheck(check, language);
 
     if (completion.usage) {
