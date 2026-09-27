@@ -396,6 +396,8 @@ export function generateContractHtml(
     <p>${t(`ct.p81.${kind}`)}</p>
     <p>${t("ct.p82")}</p>
     <p>${t(`ct.p83.${kind}`)}</p>
+    <p>${t(`ct.p84.${kind}`)}</p>
+    <p>${t("ct.p85")}</p>
   </div>
 
   <h2>${t("ct.h9")}</h2>
@@ -416,51 +418,144 @@ export function generateContractHtml(
 }
 
 // ============================================
-// ACT (Акт выполненных работ)
+// ACT (Акт приёмки выполненных работ)
 // ============================================
+
+/**
+ * Данные акта (27.09.2026). Акт — не копия договора с другим заголовком, а
+ * документ по ГК РК ст. 630: либо «видимых недостатков нет», либо список
+ * замечаний со сроком. Дата акта запускает гарантию (ст. 634), правила
+ * эксплуатации в нём — обязанность подрядчика (ст. 643).
+ */
+export interface ActData {
+  publicId: string;
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientAddress?: string | null;
+  total: number;
+  /** Получено от клиента на дату акта (по платежам объекта). */
+  paid: number;
+  /** Дата договора (создания КП) — для строки «к Договору № … от …». */
+  contractDate: Date;
+  /** Дата акта: фактическое завершение работ, а после подписи — день подписи. */
+  actDate: Date;
+  /** Замечания мастера при составлении; пусто — приёмка без замечаний. */
+  remarks?: string[] | null;
+  remarksDueDays?: number | null;
+  /** Мотивированный отказ клиента с публичной страницы. */
+  clientRemarks?: string | null;
+  clientRemarksAt?: Date | null;
+  /** Особенности помещения, о которых заказчик предупреждён. */
+  objectNotes?: string | null;
+  /** Фото готового потолка. */
+  photos?: string[] | null;
+  signed?: { name: string; at: Date; method?: string | null; ip?: string | null } | null;
+}
+
+function addYears(d: Date, years: number): Date {
+  const r = new Date(d);
+  r.setFullYear(r.getFullYear() + years);
+  return r;
+}
+
+/** Строка стороны в шапке акта: имя, БИН/ИИН, телефон, адрес. */
+function partyLine(parts: (string | null | undefined)[]): string {
+  return parts.filter((p): p is string => !!p && p.trim().length > 0).join(", ");
+}
 
 export function generateActHtml(
   master: MasterData,
-  estimate: EstimateData,
+  act: ActData,
   calc: CalculationResult,
   language: Lang | string = "ru"
 ): string {
   const lang = asLang(language);
   const t = tFor(lang);
   const kind = master.contractType === "ip" ? "ip" : "ind";
-  const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
-  // Дата акта — та, что записана при подписании. Раньше подставлялась
-  // текущая, и подписанный месяц назад акт каждый раз открывался
-  // сегодняшним числом (аудит 24.09.2026).
-  const today = fmtDate(estimate.createdAt ? new Date(estimate.createdAt) : new Date(), lang);
+  const contractNum = act.publicId.slice(0, 8).toUpperCase();
+  const actDate = fmtDate(act.actDate, lang);
   const city = esc(master.contractCity) || "_______________";
-  const total = estimate.total;
-  const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, t, calc);
+  const total = act.total;
+  const paid = Math.max(0, Math.min(total, Math.round(act.paid || 0)));
+  const rest = Math.max(0, Math.round(total - paid));
+  const worksRows = buildWorksTable(getRoomResults(calc), t, calc);
 
   const masterName = esc(getMasterName(master));
-  const clientName = esc(estimate.clientName) || "___________________________";
+  const clientName = esc(act.clientName) || "___________________________";
+  const clientPhone = esc(act.clientPhone) || "_______________";
+
+  const executorLine = partyLine([
+    `<strong>${masterName}</strong>`,
+    master.contractType === "ip" && master.bin ? `${t("ct.lbl.bin")} ${esc(master.bin)}` : null,
+    master.iin ? `${t("ct.lbl.iin")} ${esc(master.iin)}` : null,
+    getMasterPhone(master) ? t("act.party.phone", { phone: esc(getMasterPhone(master)) }) : null,
+  ]);
+  const clientLine = partyLine([
+    `<strong>${clientName}</strong>`,
+    act.clientPhone ? t("act.party.phone", { phone: clientPhone }) : null,
+    act.clientAddress ? t("act.party.object", { address: esc(act.clientAddress) }) : null,
+  ]);
+
+  // Разделы нумеруются по мере появления: особенностей и фото может не быть.
+  let n = 0;
+  const h = (key: string) => `<h2>${++n}. ${t(key)}</h2>`;
+
+  const remarks = (act.remarks ?? []).map((r) => r.trim()).filter(Boolean);
+  const clientRemarks = act.clientRemarks?.trim() || "";
+  const withRemarks = remarks.length > 0 || clientRemarks.length > 0;
+  const dueDays = act.remarksDueDays && act.remarksDueDays > 0 ? act.remarksDueDays : 10;
+
+  const acceptance = withRemarks
+    ? `<p>${t("act.accept.withRemarks")}</p>
+    ${remarks.length ? `<ol>${remarks.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>` : ""}
+    ${
+      clientRemarks
+        ? `<p>${t("act.accept.clientRemarks", { date: act.clientRemarksAt ? fmtDate(act.clientRemarksAt, lang) : actDate })}</p>
+    <p style="white-space:pre-wrap;">${esc(clientRemarks)}</p>`
+        : ""
+    }
+    <p>${t("act.accept.due", { n: dueDays })}</p>`
+    : `<p>${t("act.accept.clean")}</p>`;
+
+  const photos = (act.photos ?? []).filter((u) => /^https?:\/\//.test(u)).slice(0, 10);
+  const notes = act.objectNotes?.trim() || "";
+
+  const signedBlock = act.signed
+    ? `<p style="color:#059669;"><strong>${t("act.sign.done")}</strong></p>
+      <p style="font-size:11px;color:#666;">${
+        act.signed.method === "device"
+          ? t("act.sign.device")
+          : t("act.sign.link", { phone: clientPhone })
+      }</p>
+      <p style="font-size:11px;color:#666;">${t("act.sign.stamp", { name: esc(act.signed.name), date: fmtDate(act.signed.at, lang) })}${
+        act.signed.ip ? t("act.sign.ip", { ip: esc(act.signed.ip) }) : ""
+      }</p>`
+    : `<p>${t("ct.sign")}</p>
+      <p style="font-size:11px;color:#666;">${t("act.date", { date: "_______________" })}</p>`;
 
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <title>${t("act.docTitle", { num: contractNum })}</title>
-  <style>${pageStyle}</style>
+  <style>${pageStyle}
+  .act-photos { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0; }
+  .act-photos img { width:160px; height:120px; object-fit:cover; border:1px solid #999; }
+  ol { margin:6px 0 6px 20px; padding:0; } ol li { margin:2px 0; }</style>
 </head>
 <body>
   <h1>${t("act.title")}</h1>
-  <p class="center">${t(`act.toDoc.${kind}`, { num: contractNum })}</p>
-  <p class="center">${today}, ${city}</p>
+  <p class="center">${t(`act.toDocDated.${kind}`, { num: contractNum, date: fmtDate(act.contractDate, lang) })}</p>
+  <p class="center">${actDate}, ${city}</p>
 
   <div class="parties">
-    <p>${t("act.executor")}<strong>${masterName}</strong></p>
-    <p>${t("act.client")}<strong>${clientName}</strong></p>
+    <p>${t("act.executor")}${executorLine}</p>
+    <p>${t("act.client")}${clientLine}</p>
   </div>
 
+  ${h("act.h.works")}
   <div class="section">
     <p>${t("act.intro")}</p>
-
     <table>
       <thead>
         ${worksTableHead(t)}
@@ -469,16 +564,55 @@ export function generateActHtml(
         ${worksRows}
       </tbody>
     </table>
-
-    <p style="text-align:right;margin-top:8px;">
-      <strong>${t("act.total", { sum: fmtPrice(total) })}</strong>
-    </p>
+    <p style="text-align:right;margin-top:8px;"><strong>${t("act.total", { sum: fmtPrice(total) })}</strong></p>
   </div>
 
+  ${h("act.h.money")}
   <div class="section">
-    <p>${t("act.noClaims")}</p>
-    <p>${t("act.sum", { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
+    <p>${t("act.money.total", { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
+    <p>${t("act.money.paid", { sum: fmtPrice(paid) })}</p>
+    <p>${rest > 0 ? t("act.money.rest", { sum: fmtPrice(rest) }) : t("act.money.settled")}</p>
   </div>
+
+  ${h("act.h.accept")}
+  <div class="section">
+    ${acceptance}
+    <p>${t("act.accept.hidden")}</p>
+  </div>
+
+  ${h("act.h.warranty")}
+  <div class="section">
+    <p>${t("act.warranty.material", { term: yearsText(master.warrantyMaterials, lang), date: fmtDate(addYears(act.actDate, master.warrantyMaterials), lang) })}</p>
+    <p>${t("act.warranty.install", { term: yearsText(master.warrantyInstall, lang), date: fmtDate(addYears(act.actDate, master.warrantyInstall), lang) })}</p>
+    <p>${t("act.warranty.from")}</p>
+    <p>${t("act.warranty.excl")}</p>
+  </div>
+
+  ${h("act.h.care")}
+  <div class="section">
+    <p>${t("act.care.intro")}</p>
+    ${[1, 2, 3, 4, 5, 6].map((i) => `<p>&nbsp;&nbsp;&nbsp;${i}) ${t(`act.care.${i}`)}</p>`).join("\n    ")}
+  </div>
+
+  ${
+    notes
+      ? `${h("act.h.notes")}
+  <div class="section">
+    <p>${t("act.notes.intro")}</p>
+    <p style="white-space:pre-wrap;">${esc(notes)}</p>
+  </div>`
+      : ""
+  }
+
+  ${
+    photos.length
+      ? `${h("act.h.photos")}
+  <div class="section">
+    <p>${t("act.photos.intro")}</p>
+    <div class="act-photos">${photos.map((u) => `<a href="${esc(u)}"><img src="${esc(u)}" alt=""></a>`).join("")}</div>
+  </div>`
+      : ""
+  }
 
   <div class="sign-block">
     <div class="sign-col">
@@ -487,15 +621,14 @@ export function generateActHtml(
       <p>${t("ct.lbl.phone")}: ${esc(getMasterPhone(master))}</p>
       <br>
       <p>${t("ct.sign")}</p>
-      <p style="font-size:11px;color:#666;">${t("act.date", { date: today })}</p>
+      <p style="font-size:11px;color:#666;">${t("act.date", { date: actDate })}</p>
     </div>
     <div class="sign-col">
       <p><strong>${t("ct.client")}</strong></p>
-      <p>${clientName}</p>
-      <p>${t("ct.lbl.phone")}: ${esc(estimate.clientPhone) || "_______________"}</p>
+      <p>${act.signed ? esc(act.signed.name) : clientName}</p>
+      <p>${t("ct.lbl.phone")}: ${clientPhone}</p>
       <br>
-      <p>${t("ct.sign")}</p>
-      <p style="font-size:11px;color:#666;">${t("act.date", { date: "_______________" })}</p>
+      ${signedBlock}
     </div>
   </div>
 

@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
-import { generateActHtml } from "@/lib/contract-html";
+import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
+import { PrintButton } from "../../contract/[publicId]/print-button";
 import { asLang, tFor, localeOf, type Lang } from "@/lib/i18n";
 import "@/lib/i18n/contract";
 import Link from "next/link";
@@ -33,31 +34,7 @@ export default async function ActPublicPage({
   const estimate = await prisma.estimate.findFirst({
     where: { actPublicId: publicId, deletedAt: null },
     include: {
-      master: {
-        select: {
-          firstName: true,
-          lastName: true,
-          companyName: true,
-          phone: true,
-          whatsappPhone: true,
-          address: true,
-          contractType: true,
-          bin: true,
-          iin: true,
-          legalName: true,
-          legalAddress: true,
-          bankName: true,
-          iban: true,
-          kbe: true,
-          bik: true,
-          passportData: true,
-          prepaymentPercent: true,
-          warrantyMaterials: true,
-          warrantyInstall: true,
-          contractCity: true,
-          language: true,
-        },
-      },
+      master: { select: ACT_MASTER_SELECT },
     },
   });
 
@@ -72,19 +49,12 @@ export default async function ActPublicPage({
   const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
   const calc = estimate.calculationData as unknown as CalculationResult;
-  const html = generateActHtml(
-    estimate.master,
-    {
-      publicId: estimate.publicId,
-      clientName: estimate.actSignerName || estimate.clientName,
-      clientPhone: estimate.clientPhone,
-      clientAddress: estimate.clientAddress,
-      total: estimate.total,
-      createdAt: estimate.actCompletionDate ?? estimate.createdAt,
-    },
-    calc,
-    lang,
-  );
+  // Подписанный акт — из снимка на момент подписи; живой — с текущими
+  // платежами и замечаниями (27.09.2026).
+  const snap = estimate.actTextSnapshot as { html?: Record<string, string> } | null;
+  const frozen = estimate.actSignedAt ? snap?.html?.[lang] : undefined;
+  const html = frozen ?? (await renderAct(estimate.master, estimate, calc, lang));
+  const clientRemarksAt = estimate.actClientRemarksAt && !estimate.actSignedAt ? estimate.actClientRemarksAt : null;
 
   const isSigned = !!estimate.actSignedAt;
 
@@ -104,7 +74,8 @@ export default async function ActPublicPage({
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end">
+      <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end gap-2 print:hidden">
+        <PrintButton lang={lang} />
         <Link
           href={`?lang=${otherLang}`}
           prefetch={false}
@@ -133,7 +104,11 @@ export default async function ActPublicPage({
             </p>
           </div>
         ) : (
-          <ActSignSection publicId={publicId} lang={lang} />
+          <ActSignSection
+            publicId={publicId}
+            lang={lang}
+            remarksSentAt={clientRemarksAt ? clientRemarksAt.toLocaleString(localeOf(lang)) : null}
+          />
         )}
       </div>
     </div>
