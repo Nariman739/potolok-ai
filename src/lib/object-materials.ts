@@ -39,11 +39,20 @@ export function summarizeMaterials(calc: CalculationResult | null | undefined): 
   const acc = new Map<string, MaterialLine>();
   const add = (it: { itemCode: string; itemName: string; unit: string; quantity: number }) => {
     const known = byCode.get(it.itemCode);
-    const category = (known?.category ?? "other") as ProductCategory;
+    // КП из приложения шлёт generic-коды (canvas/profile/spot/custom…), их нет
+    // в PRODUCT_ITEMS. Если код совпадает с именем категории — берём её, чтобы
+    // порядок «как ходишь по магазину» работал и для мобильных КП.
+    const category = (known?.category ??
+      (ORDER.includes(it.itemCode as ProductCategory) ? (it.itemCode as ProductCategory) : "other"));
     if (SKIP.has(category)) return;
     // Разовые позиции мастера («Люстра клиента», «Выезд») тоже кладём — он их
     // сам добавил, значит, они ему нужны.
-    const key = it.itemCode || it.itemName;
+    // Ключ склейки: код+имя+единица. Гульмира 30.09.2026: у всех кастомных
+    // позиций мастера itemCode="custom", и склейка по одному коду сложила
+    // 12.5 М.П. подшторника с 18 ШТУКАМИ углов → «Подшторник ЛДСП: 30.5 м.п.».
+    // Та же беда была у полотна: 3.2м и 5.5м плёнки шли под одним кодом
+    // "canvas" и сливались в одну строку — а в магазине это разные рулоны.
+    const key = `${it.itemCode}|${it.itemName}|${it.unit}`;
     const line = acc.get(key);
     if (line) line.quantity += it.quantity;
     else acc.set(key, { code: it.itemCode, name: it.itemName, unit: it.unit, quantity: it.quantity, category });
