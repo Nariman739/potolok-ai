@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/backup-data",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/act-reminders",
+      "schedule": "0 5 * * *"
     }
   ]
 }

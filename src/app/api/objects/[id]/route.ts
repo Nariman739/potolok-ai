@@ -11,6 +11,7 @@ import {
   pickPrimaryEstimate,
 } from "@/lib/object-stage";
 import { moneySummary } from "@/lib/money";
+import { objectDocs } from "@/lib/object-docs";
 import { summarizeMaterials } from "@/lib/object-materials";
 import type { CalculationResult } from "@/lib/types";
 
@@ -196,6 +197,14 @@ export async function GET(
       autoStage: autoStage({ estimates: obj.estimates, workshopOrders: obj.workshopOrders }),
       primaryEstimateId: primary?.id ?? null,
       total: primary?.total ?? null,
+      // Договор и акт по главному КП (30.09.2026)
+      docs: await objectDocs({
+        estimateId: primary?.id ?? null,
+        declinedAt: obj.docsDeclinedAt,
+        stage,
+        paid: money.paid,
+        ownerId: scope.ownerId,
+      }),
       materials,
       history,
     });

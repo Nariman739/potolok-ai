@@ -93,6 +93,7 @@ export default async function ContractPublicPage({
       clientName: estimate.clientName,
       clientPhone: estimate.clientPhone,
       clientAddress: estimate.clientAddress,
+      clientIin: estimate.clientIin,
       total: estimate.total,
       createdAt: estimate.createdAt,
       // Сроки и схему оплаты мастер задаёт при создании договора, они лежат

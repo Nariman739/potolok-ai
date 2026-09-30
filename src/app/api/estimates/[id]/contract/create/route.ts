@@ -52,10 +52,13 @@ export async function POST(
       workStartDate,
       workDurationDays,
       paymentSchedule,
+      sent,
     } = body as {
       workStartDate?: string;
       workDurationDays?: number;
       paymentSchedule?: unknown;
+      /** true — мастер отправил ссылку клиенту (30.09.2026) */
+      sent?: boolean;
     };
 
     const estimate = await prisma.estimate.findFirst({
@@ -112,10 +115,11 @@ export async function POST(
 
     // Идемпотентность — если уже создан, обновляем условия (но не publicId/snapshot)
     if (estimate.contractPublicId) {
-      if (startDate || duration || validatedSchedule) {
+      if (startDate || duration || validatedSchedule || (sent === true && !estimate.contractSentAt)) {
         await prisma.estimate.update({
           where: { id },
           data: {
+            ...(sent === true && !estimate.contractSentAt && { contractSentAt: new Date() }),
             ...(startDate && { workStartDate: startDate }),
             ...(duration && { workDurationDays: duration }),
             ...(validatedSchedule && {
@@ -138,6 +142,7 @@ export async function POST(
       clientName: estimate.clientName,
       clientPhone: estimate.clientPhone,
       clientAddress: estimate.clientAddress,
+      clientIin: estimate.clientIin,
       total: estimate.total,
       createdAt: estimate.createdAt,
       workStartDate: startDate,
@@ -183,6 +188,7 @@ export async function POST(
         contractPublicId,
         contractCreatedAt: new Date(),
         contractTextSnapshot: snapshot as unknown as object,
+        ...(sent === true && { contractSentAt: new Date() }),
         ...(startDate && { workStartDate: startDate }),
         ...(duration && { workDurationDays: duration }),
         ...(validatedSchedule && {

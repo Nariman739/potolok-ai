@@ -31,6 +31,8 @@ export interface EstimateData {
   clientName?: string | null;
   clientPhone?: string | null;
   clientAddress?: string | null;
+  /** ИИН заказчика — из ответа на «Данные для договора» (30.09.2026) */
+  clientIin?: string | null;
   total: number;
   createdAt: Date;
   workStartDate?: Date | string | null;
@@ -300,7 +302,7 @@ export function generateContractHtml(
     <p>${t("ct.lbl.fio")}: ${clientName}</p>
     <p>${t("ct.lbl.phone")}: ${clientPhone}</p>
     <p>${t("ct.lbl.address")}: ${clientAddress}</p>
-    <p>${t("ct.lbl.iin")}: _______________</p>
+    <p>${t("ct.lbl.iin")}: ${esc(estimate.clientIin) || "_______________"}</p>
     <br>
     <p>${t("ct.sign")}</p>
   `;
@@ -831,6 +833,7 @@ export function contractPlaceholderValues(
   return {
     клиент: esc(estimate.clientName) || "___________________________",
     телефон_клиента: esc(estimate.clientPhone) || "_______________",
+    иин_клиента: esc(estimate.clientIin) || "_______________",
     адрес: esc(estimate.clientAddress) || "___________________________",
     // В типовом тексте знак ₸ стоит после метки: «{сумма} ₸».
     сумма: fmtPrice(total).replace(/\s*₸$/, ""),
@@ -903,5 +906,14 @@ export function renderContractTemplate(
     }
     return fmtPrice(Math.max(0, total - paid));
   });
-  return fillTemplate(withRest, contractPlaceholderValues(master, estimate, calc, lang));
+  let filled = fillTemplate(withRest, contractPlaceholderValues(master, estimate, calc, lang));
+  // Шаблоны, сохранённые до метки {иин_клиента} (30.09.2026), печатали ИИН
+  // заказчика прочерком. Строка «ИИН: ____» у них одна — в реквизитах
+  // заказчика (у исполнителя реквизиты идут меткой), её и заполняем.
+  if (estimate.clientIin && !/\{\s*иин_клиента\s*\}/i.test(body)) {
+    const blank = `<p>${t("ct.lbl.iin")}: _______________</p>`;
+    const at = filled.lastIndexOf(blank);
+    if (at >= 0) filled = filled.slice(0, at) + `<p>${t("ct.lbl.iin")}: ${esc(estimate.clientIin)}</p>` + filled.slice(at + blank.length);
+  }
+  return filled;
 }

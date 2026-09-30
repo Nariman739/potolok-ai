@@ -457,6 +457,13 @@ model Estimate {
   actSentAt          DateTime?
   /// "link" — по ссылке на телефоне клиента, "device" — на устройстве мастера
   actSignMethod      String?
+  /// ИИН заказчика для договора и акта (реквизиты, форма Р-1). Мастер получает
+  /// его ответом клиента на «Данные для договора» (30.09.2026).
+  clientIin          String?
+  /// Когда мастер отправил клиенту ссылку на договор
+  contractSentAt     DateTime?
+  /// Когда мастеру ушло напоминание «акт не подписан» — одно, не больше
+  actRemindedAt      DateTime?
 
   // Data (JSON)
   roomsData       Json
@@ -643,6 +650,9 @@ model MeasurementObject {
   // Деньги (Этап 4). materialCost — сколько отдал за материал по этому объекту
   // (спрашиваем в момент закрытия, не в настройках). installerPaidAt —
   // монтажнику выплачено. Платежи от клиента — в Payment.
+  /// Мастер выбрал «Без договора» для этого объекта (30.09.2026): договор и
+  /// акт больше не предлагаются, в «Документах» доступны кнопкой.
+  docsDeclinedAt  DateTime?
   materialCost    Int?
   installerPaidAt DateTime?
   payments        Payment[]

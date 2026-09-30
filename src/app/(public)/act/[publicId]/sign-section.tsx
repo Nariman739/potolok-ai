@@ -14,11 +14,14 @@ export function ActSignSection({
   publicId,
   lang = "ru",
   remarksSentAt = null,
+  method = "link",
 }: {
   publicId: string;
   lang?: Lang;
   /** Когда заказчик уже отправлял замечания — показываем это вместо формы. */
   remarksSentAt?: string | null;
+  /** "device" — подпись на телефоне мастера в присутствии клиента */
+  method?: "link" | "device";
 }) {
   const t = tFor(lang);
   const router = useRouter();
@@ -67,6 +70,7 @@ export function ActSignSection({
         body: JSON.stringify({
           signerName: name.trim(),
           agreed: true,
+          method,
         }),
       });
       const data = await res.json();

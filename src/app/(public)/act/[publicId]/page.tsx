@@ -26,10 +26,13 @@ export default async function ActPublicPage({
   searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; by?: string }>;
 }) {
   const { publicId } = await params;
-  const { lang: langParam } = await searchParams;
+  const { lang: langParam, by } = await searchParams;
+  // «Подписать здесь» из приложения мастера: клиент рядом, подпись на
+  // телефоне мастера — в акте так и пишем (30.09.2026).
+  const onDevice = by === "device";
 
   const estimate = await prisma.estimate.findFirst({
     where: { actPublicId: publicId, deletedAt: null },
@@ -77,7 +80,7 @@ export default async function ActPublicPage({
       <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end gap-2 print:hidden">
         <PrintButton lang={lang} />
         <Link
-          href={`?lang=${otherLang}`}
+          href={`?lang=${otherLang}${onDevice ? "&by=device" : ""}`}
           prefetch={false}
           className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
         >
@@ -108,6 +111,7 @@ export default async function ActPublicPage({
             publicId={publicId}
             lang={lang}
             remarksSentAt={clientRemarksAt ? clientRemarksAt.toLocaleString(localeOf(lang)) : null}
+            method={onDevice ? "device" : "link"}
           />
         )}
       </div>

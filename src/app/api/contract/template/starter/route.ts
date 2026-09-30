@@ -22,6 +22,7 @@ import { asLang } from "@/lib/i18n";
 const MARK = {
   client: "@@КЛИЕНТ@@",
   phone: "@@ТЕЛКЛИЕНТА@@",
+  clientIin: "@@ИИНКЛИЕНТА@@",
   address: "@@АДРЕС@@",
   company: "@@ИСПОЛНИТЕЛЬ@@",
   masterPhone: "@@ТЕЛМАСТЕРА@@",
@@ -82,6 +83,7 @@ export async function GET(request: Request) {
         clientName: MARK.client,
         clientPhone: MARK.phone,
         clientAddress: MARK.address,
+        clientIin: MARK.clientIin,
         total: MARK.total,
         createdAt: MARK.createdAt,
         workStartDate: MARK.workStart,
@@ -98,6 +100,7 @@ export async function GET(request: Request) {
     let body = html
       .replace(new RegExp(esc(MARK.client), "g"), "{клиент}")
       .replace(new RegExp(esc(MARK.phone), "g"), "{телефон_клиента}")
+      .replace(new RegExp(esc(MARK.clientIin), "g"), "{иин_клиента}")
       .replace(new RegExp(esc(MARK.address), "g"), "{адрес}")
       .replace(new RegExp(esc(MARK.company), "g"), "{исполнитель}")
       .replace(new RegExp(esc(MARK.masterPhone), "g"), "{телефон_исполнителя}")
