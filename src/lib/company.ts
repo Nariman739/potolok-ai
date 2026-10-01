@@ -205,3 +205,39 @@ export async function ownerBrandFor<M extends object>(masterId: string, master: 
     return master;
   }
 }
+
+/** where «мои собственные данные»: своя компания или записи без companyId за мной. */
+async function ownDataWhere(masterId: string) {
+  const own = await ensureOwnCompany(masterId);
+  return { OR: [{ companyId: own.id }, { companyId: null, masterId }] };
+}
+
+/** Сколько объектов/КП/клиентов у мастера в его собственной компании (для вопроса «перенести?»). */
+export async function ownDataCounts(masterId: string): Promise<{ objects: number; estimates: number; clients: number }> {
+  const where = await ownDataWhere(masterId);
+  const [objects, estimates, clients] = await Promise.all([
+    prisma.measurementObject.count({ where: { ...where, deletedAt: null } }),
+    prisma.estimate.count({ where: { ...where, deletedAt: null } }),
+    prisma.client.count({ where: { ...where, deletedAt: null } }),
+  ]);
+  return { objects, estimates, clients };
+}
+
+/**
+ * Слияние (01.10.2026): мастер, который уже работал сам, принимает приглашение
+ * и забирает свои объекты, КП, клиентов и оплаты в компанию. Дальше они
+ * принадлежат компании (правило 24.09: данные — у компании, не у автора),
+ * при выходе обратно не возвращаются — об этом приложение предупреждает.
+ * Корзину переносим тоже: восстановить из неё должна уметь бригада.
+ */
+export async function transferOwnDataTo(masterId: string, companyId: string): Promise<{ objects: number; estimates: number; clients: number; payments: number }> {
+  const where = await ownDataWhere(masterId);
+  const data = { companyId };
+  const [o, e, c, p] = await prisma.$transaction([
+    prisma.measurementObject.updateMany({ where, data }),
+    prisma.estimate.updateMany({ where, data }),
+    prisma.client.updateMany({ where, data }),
+    prisma.payment.updateMany({ where, data }),
+  ]);
+  return { objects: o.count, estimates: e.count, clients: c.count, payments: p.count };
+}

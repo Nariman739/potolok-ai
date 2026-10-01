@@ -107,6 +107,12 @@ export async function POST(request: Request) {
     });
     // Компания есть у всех с первого дня (Этап 3): пока мастер один, он её не видит.
     await ensureOwnCompany(master.id).catch((e) => console.warn("ensureOwnCompany:", e));
+    // Руководитель мог добавить этот номер в «Люди» ДО регистрации — тогда запись
+    // участника висела без masterId и приглашение человеку не показывалось никогда
+    // (аудит 01.10.2026). Привязываем: он увидит приглашение на «Сегодня».
+    await prisma.member
+      .updateMany({ where: { phone, masterId: null, removedAt: null }, data: { masterId: master.id } })
+      .catch((e) => console.warn("link pending members:", e));
 
     // Дефолтный прайс — одним createMany. Вложенный create гнал по инсерту на
     // позицию (50+ round-trip'ов), из-за чего регистрация тянулась ~10 секунд.

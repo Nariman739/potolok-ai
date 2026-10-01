@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, normalizePhone } from "@/lib/company";
+import { getScope, normalizePhone, ownDataCounts } from "@/lib/company";
 
 /**
  * Компания и люди (Этап 3). GET — состав; POST — добавить человека
@@ -24,7 +24,10 @@ export async function GET() {
       companyName: m.company.name,
       ownerName: [m.company.owner.firstName, m.company.owner.lastName].filter(Boolean).join(" "),
     }));
-    return NextResponse.json({ ...scope, invites, canReturnToOwn: !scope.isOwner });
+    // Сколько своих данных у приглашённого — приложение спросит, переносить ли их
+    // в компанию при принятии (слияние уже работающих мастеров, 01.10.2026).
+    const ownData = invites.length > 0 ? await ownDataCounts(master.id) : null;
+    return NextResponse.json({ ...scope, invites, ownData, canReturnToOwn: !scope.isOwner });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -55,9 +58,16 @@ export async function POST(request: Request) {
     if (phone) {
       const dup = await prisma.member.findFirst({ where: { companyId: scope.companyId, phone } });
       if (dup) {
+        // Человек мог зарегистрироваться после того, как его записали без приложения.
+        const nowRegistered = dup.masterId ? null : await prisma.master.findFirst({ where: { phone }, select: { id: true } });
         const restored = await prisma.member.update({
           where: { id: dup.id },
-          data: { removedAt: null, name: name || dup.name, defaultFee: defaultFee ?? dup.defaultFee },
+          data: {
+            removedAt: null,
+            name: name || dup.name,
+            defaultFee: defaultFee ?? dup.defaultFee,
+            ...(nowRegistered ? { masterId: nowRegistered.id } : {}),
+          },
         });
         return NextResponse.json({ member: restored, linked: false, invited: !!restored.phone, restored: true });
       }

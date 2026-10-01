@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureOwnCompany, getScope } from "@/lib/company";
+import { ensureOwnCompany, getScope, transferOwnDataTo } from "@/lib/company";
 
 /**
  * Переход между компаниями по СОГЛАСИЮ мастера (21.09.2026).
- * POST { companyId } — принять приглашение: работать в компании, куда меня добавили.
+ * POST { companyId, bringData? } — принять приглашение: работать в компании, куда меня
+ *   добавили; bringData: true — ещё и перенести туда свои объекты/КП/клиентов (слияние).
  * POST { own: true } — вернуться в свою компанию.
  *
  * Раньше мастера с пустым аккаунтом владелец затягивал к себе одним добавлением
@@ -15,7 +16,7 @@ import { ensureOwnCompany, getScope } from "@/lib/company";
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
-    const body = (await request.json().catch(() => ({}))) as { companyId?: unknown; own?: unknown };
+    const body = (await request.json().catch(() => ({}))) as { companyId?: unknown; own?: unknown; bringData?: unknown };
 
     if (body.own === true) {
       const own = await ensureOwnCompany(master.id);
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
       prisma.master.update({ where: { id: master.id }, data: { activeCompanyId: companyId } }),
       ...(membership.joinedAt ? [] : [prisma.member.update({ where: { id: membership.id }, data: { joinedAt: new Date() } })]),
     ]);
-    return NextResponse.json(await getScope({ id: master.id, activeCompanyId: companyId }));
+    const transferred = body.bringData === true ? await transferOwnDataTo(master.id, companyId) : null;
+    return NextResponse.json({ ...(await getScope({ id: master.id, activeCompanyId: companyId })), transferred });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
