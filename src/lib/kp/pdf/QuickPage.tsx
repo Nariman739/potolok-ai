@@ -1,22 +1,37 @@
 import React from "react";
 import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
-import type { PdfData } from "../pdf-data";
-import { fmtDate, fmtPrice } from "./shared";
+import type { PdfData, PdfLineItem } from "../pdf-data";
+import { fmtDate, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
 
-// Одностраничное «быстрое» КП.
+// «Быстрое» КП.
 // Когда клиент в WhatsApp спрашивает «а сколько примерно?» — мастер
-// быстро присылает этот лист: примерная цена + дисклеймер + WhatsApp CTA.
+// быстро присылает этот лист: цена + из чего она складывается (позиции
+// с ценой за м²/м.п./шт.) + дисклеймер + WhatsApp CTA.
 // Дизайн использует ту же тему (palette + fonts), что и полное КП.
-
-const A4_W = 595;
-const A4_H = 842;
+// Вёрстка потоковая (не absolute): список позиций любой длины, при
+// переполнении react-pdf сам переносит хвост на вторую страницу.
 
 export function QuickPage({ data }: { data: PdfData }) {
   const { theme, fonts, master, estimate, qrDataUrl } = data;
   const isDarkCover = theme.palette.coverBg !== theme.palette.pageBg;
+  const textMain = isDarkCover ? "#FFFFFF" : theme.palette.pageText;
+  const textMuted = isDarkCover ? "#FFFFFFB3" : theme.palette.pageMuted;
+  const hairline = isDarkCover ? "#FFFFFF" : theme.palette.hairline;
 
-  // Округляем примерную цену до 10 000 ₸ — чтобы выглядело "от руки"
-  const approxPrice = Math.round(estimate.total / 10000) * 10000;
+  const groups = [
+    ...estimate.rooms
+      .filter((r) => r.items.length > 0)
+      .map((r) => ({ title: r.name, items: r.items, total: r.total })),
+    ...(estimate.extraItems.length > 0
+      ? [{ title: "Дополнительно", items: estimate.extraItems, total: 0 }]
+      : []),
+  ];
+  const hasItems = groups.length > 0;
+  const showGroupTitles = groups.length > 1;
+
+  // Без позиций — округляем до 10 000 ₸, «ориентир от руки».
+  // С позициями — точная сумма, иначе не сходится со списком.
+  const price = hasItems ? estimate.total : Math.round(estimate.total / 10000) * 10000;
 
   const waPhone = master.whatsappPhone.replace(/\D/g, "");
   const waUrl = `https://wa.me/${waPhone}`;
@@ -24,10 +39,11 @@ export function QuickPage({ data }: { data: PdfData }) {
   // Тексты — берём из config.quick если мастер переопределил, иначе дефолты.
   // Дефолты можно тоже редактировать через AI-помощника в конструкторе.
   const q = data.config.quick ?? {};
+  const name = firstName(estimate.clientName);
   const heroTitle =
     q.heroTitle ??
-    (estimate.clientName
-      ? `${firstName(estimate.clientName)}, вот примерная стоимость по вашей квартире`
+    (name && name !== "Клиент"
+      ? `${name}, вот примерная стоимость по вашей квартире`
       : "Примерная стоимость по вашей квартире");
   const pricePreLabel = q.pricePreLabel ?? "Полная стоимость работ с материалами";
   const priceDisclaimer =
@@ -53,6 +69,15 @@ export function QuickPage({ data }: { data: PdfData }) {
         ];
   const ctaLabel = q.ctaLabel ?? "Написать в WhatsApp · ответим в течение 15 минут";
 
+  const eyebrow = {
+    fontFamily: fonts.body.family,
+    fontSize: 8,
+    color: textMuted,
+    letterSpacing: 1.5,
+    textTransform: "uppercase" as const,
+    fontWeight: 600 as const,
+  };
+
   return (
     <Page
       size="A4"
@@ -60,11 +85,15 @@ export function QuickPage({ data }: { data: PdfData }) {
         backgroundColor: theme.palette.coverBg,
         color: theme.palette.coverText,
         fontFamily: fonts.body.family,
-        padding: 0,
+        paddingTop: 36,
+        paddingBottom: 44,
+        paddingLeft: 40,
+        paddingRight: 40,
       }}
     >
       {/* Верхняя цветная полоса-якорь */}
       <View
+        fixed
         style={{
           position: "absolute",
           left: 0,
@@ -78,21 +107,15 @@ export function QuickPage({ data }: { data: PdfData }) {
       {/* Шапка: лого + название компании + tagline */}
       <View
         style={{
-          position: "absolute",
-          top: 36,
-          left: 40,
-          right: 40,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          marginBottom: 28,
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image
-              src={master.logoUrl}
-              style={{ width: 36, height: 36, marginRight: 12 }}
-            />
+            <Image src={master.logoUrl} style={{ width: 36, height: 36, marginRight: 12 }} />
           ) : (
             <View
               style={{
@@ -122,7 +145,7 @@ export function QuickPage({ data }: { data: PdfData }) {
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
                 fontSize: 14,
-                color: isDarkCover ? "#FFFFFF" : theme.palette.pageText,
+                color: textMain,
               }}
             >
               {master.companyName}
@@ -132,7 +155,7 @@ export function QuickPage({ data }: { data: PdfData }) {
                 style={{
                   fontFamily: fonts.body.family,
                   fontSize: 8,
-                  color: isDarkCover ? "#FFFFFF99" : theme.palette.pageMuted,
+                  color: textMuted,
                   marginTop: 2,
                   letterSpacing: 0.4,
                 }}
@@ -142,75 +165,51 @@ export function QuickPage({ data }: { data: PdfData }) {
             )}
           </View>
         </View>
-        <Text
-          style={{
-            fontFamily: fonts.body.family,
-            fontSize: 8,
-            color: isDarkCover ? "#FFFFFF99" : theme.palette.pageMuted,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-          }}
-        >
+        <Text style={{ ...eyebrow, fontWeight: 400, letterSpacing: 1.5 }}>
           Предварительный расчёт · {fmtDate(estimate.createdAt)}
         </Text>
       </View>
 
-      {/* Главный блок: личное обращение по имени + локация под ним */}
-      <View
+      {/* Личное обращение по имени + адрес/площадь под ним */}
+      <Text
         style={{
-          position: "absolute",
-          top: 130,
-          left: 40,
-          right: 40,
+          fontFamily: fonts.display.family,
+          fontWeight: fonts.display.weight as 400 | 700 | 800,
+          fontSize: 22,
+          color: textMain,
+          lineHeight: 1.15,
+          marginBottom: 8,
+          letterSpacing: -0.5,
         }}
       >
-        <Text
-          style={{
-            fontFamily: fonts.display.family,
-            fontWeight: fonts.display.weight as 400 | 700 | 800,
-            fontSize: 24,
-            color: isDarkCover ? "#FFFFFF" : theme.palette.pageText,
-            lineHeight: 1.15,
-            marginBottom: 10,
-            letterSpacing: -0.5,
-          }}
-        >
-          {heroTitle}
+        {heroTitle}
+      </Text>
+      {(estimate.clientAddress || estimate.totalArea > 0) && (
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMuted, lineHeight: 1.4 }}>
+          {[
+            estimate.clientAddress,
+            estimate.totalArea > 0
+              ? `${estimate.totalArea.toFixed(1).replace(".", ",")} м²`
+              : null,
+            estimate.rooms.length > 0
+              ? `${estimate.rooms.length} ${pluralRu(estimate.rooms.length, ["помещение", "помещения", "помещений"])}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join("  ·  ")}
         </Text>
-        {(estimate.clientAddress || estimate.totalArea > 0) && (
-          <Text
-            style={{
-              fontFamily: fonts.body.family,
-              fontSize: 10,
-              color: isDarkCover ? "#FFFFFFB3" : theme.palette.pageMuted,
-              lineHeight: 1.4,
-            }}
-          >
-            {[
-              estimate.clientAddress,
-              estimate.totalArea > 0
-                ? `${estimate.totalArea.toFixed(1).replace(".", ",")} м²`
-                : null,
-              estimate.rooms.length > 0
-                ? `${estimate.rooms.length} ${pluralRu(estimate.rooms.length, ["помещение", "помещения", "помещений"])}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join("  ·  ")}
-          </Text>
-        )}
-      </View>
+      )}
 
-      {/* Цена — крупный блок в accent, как доминанта страницы */}
+      {/* Цена — блок в accent, доминанта страницы */}
       <View
+        wrap={false}
         style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 235,
+          marginTop: 20,
+          marginLeft: -40,
+          marginRight: -40,
           backgroundColor: theme.palette.accent,
-          paddingTop: 40,
-          paddingBottom: 36,
+          paddingTop: hasItems ? 22 : 36,
+          paddingBottom: hasItems ? 20 : 32,
           paddingLeft: 40,
           paddingRight: 40,
           alignItems: "center",
@@ -224,29 +223,24 @@ export function QuickPage({ data }: { data: PdfData }) {
             letterSpacing: 2.2,
             textTransform: "uppercase",
             fontWeight: 600,
-            marginBottom: 14,
+            marginBottom: 10,
           }}
         >
           {pricePreLabel}
         </Text>
-        <Text
-          style={{
-            fontFamily: fonts.display.family,
-            fontWeight: fonts.display.weight as 400 | 700 | 800,
-            fontSize: 78,
-            color: theme.palette.accentText,
-            lineHeight: 0.95,
-            letterSpacing: -2,
-          }}
-        >
-          {fmtPrice(approxPrice)}
-        </Text>
+        <PriceText
+          amount={price}
+          size={hasItems ? 48 : 72}
+          color={theme.palette.accentText}
+          fonts={fonts}
+          align="center"
+        />
         <Text
           style={{
             fontFamily: fonts.body.family,
-            fontSize: 10,
+            fontSize: 9,
             color: theme.palette.accentText + "E6",
-            marginTop: 18,
+            marginTop: 14,
             letterSpacing: 0.3,
             textAlign: "center",
             maxWidth: 440,
@@ -257,28 +251,59 @@ export function QuickPage({ data }: { data: PdfData }) {
         </Text>
       </View>
 
+      {/* Из чего складывается цена — позиции с ценой за единицу */}
+      {hasItems && (
+        <View style={{ marginTop: 22 }}>
+          <Text style={{ ...eyebrow, marginBottom: 8 }}>Из чего складывается цена</Text>
+          {groups.map((g, gi) => (
+            <View key={gi} style={{ marginBottom: showGroupTitles ? 10 : 0 }}>
+              {showGroupTitles && (
+                <View
+                  wrap={false}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    paddingTop: 6,
+                    paddingBottom: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: textMain,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: fonts.display.family,
+                      fontWeight: fonts.display.weight as 400 | 700 | 800,
+                      fontSize: 12,
+                      color: textMain,
+                    }}
+                  >
+                    {g.title}
+                  </Text>
+                  {g.total > 0 && (
+                    <PriceText amount={g.total} size={11} tengeSize={10} color={theme.palette.accent} fonts={fonts} use="body" weight={600} />
+                  )}
+                </View>
+              )}
+              {g.items.map((it, i) => (
+                <QuickItemRow key={i} item={it} data={data} textMain={textMain} textMuted={textMuted} hairline={hairline} isDark={isDarkCover} />
+              ))}
+            </View>
+          ))}
+          {estimate.discountAmount > 0 && (
+            <Text style={{ fontFamily: fonts.body.family, fontSize: 9, color: textMuted, marginTop: 6, textAlign: "right" }}>
+              {estimate.discountPercent > 0 ? `Скидка ${estimate.discountPercent}%: ` : "Скидка: "}
+              −{Math.round(estimate.discountAmount).toLocaleString("ru-RU")}{" "}
+              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+              {" — уже учтена в сумме"}
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Что вы получаете — три пункта в строку */}
-      <View
-        style={{
-          position: "absolute",
-          left: 40,
-          right: 40,
-          top: 470,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: fonts.body.family,
-            fontSize: 9,
-            color: isDarkCover ? "#FFFFFFCC" : theme.palette.pageMuted,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            fontWeight: 600,
-            marginBottom: 14,
-          }}
-        >
-          {itemsTitle}
-        </Text>
+      <View wrap={false} style={{ marginTop: 22 }}>
+        <Text style={{ ...eyebrow, marginBottom: 12 }}>{itemsTitle}</Text>
         <View style={{ flexDirection: "row" }}>
           {items.slice(0, 3).map((it, i) => (
             <IncludedItem
@@ -294,16 +319,13 @@ export function QuickPage({ data }: { data: PdfData }) {
       </View>
 
       {/* CTA: написать в WhatsApp */}
-      <Link src={waUrl}>
+      <Link src={waUrl} style={{ marginTop: 22, textDecoration: "none" }}>
         <View
+          wrap={false}
           style={{
-            position: "absolute",
-            left: 40,
-            right: 40,
-            top: 620,
             backgroundColor: "#25D366",
-            paddingTop: 18,
-            paddingBottom: 18,
+            paddingTop: 16,
+            paddingBottom: 16,
             paddingLeft: 24,
             paddingRight: 24,
             flexDirection: "row",
@@ -328,7 +350,7 @@ export function QuickPage({ data }: { data: PdfData }) {
               style={{
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
-                fontSize: 22,
+                fontSize: 20,
                 color: "#FFFFFF",
               }}
             >
@@ -337,9 +359,8 @@ export function QuickPage({ data }: { data: PdfData }) {
           </View>
           <Text
             style={{
-              fontFamily: fonts.display.family,
-              fontWeight: fonts.display.weight as 400 | 700 | 800,
-              fontSize: 32,
+              fontFamily: "Inter",
+              fontSize: 28,
               color: "#FFFFFF",
             }}
           >
@@ -348,29 +369,18 @@ export function QuickPage({ data }: { data: PdfData }) {
         </View>
       </Link>
 
-      {/* Доп.контакты + QR — внизу */}
+      {/* Доп.контакты + QR */}
       <View
+        wrap={false}
         style={{
-          position: "absolute",
-          left: 40,
-          right: 40,
-          bottom: 50,
+          marginTop: 22,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <View>
-          <Text
-            style={{
-              fontFamily: fonts.body.family,
-              fontSize: 8,
-              color: isDarkCover ? "#FFFFFF99" : theme.palette.pageMuted,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
+          <Text style={{ ...eyebrow, fontWeight: 400, letterSpacing: 1, marginBottom: 4 }}>
             Позвонить или написать
           </Text>
           <Text
@@ -378,20 +388,14 @@ export function QuickPage({ data }: { data: PdfData }) {
               fontFamily: fonts.display.family,
               fontWeight: fonts.display.weight as 400 | 700 | 800,
               fontSize: 14,
-              color: isDarkCover ? "#FFFFFF" : theme.palette.pageText,
+              color: textMain,
               marginBottom: 3,
             }}
           >
             {master.phone}
           </Text>
           {master.instagramUrl && (
-            <Text
-              style={{
-                fontFamily: fonts.body.family,
-                fontSize: 10,
-                color: isDarkCover ? "#FFFFFFB3" : theme.palette.pageMuted,
-              }}
-            >
+            <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMuted }}>
               @
               {master.instagramUrl
                 .replace(/^https?:\/\/(www\.)?instagram\.com\//, "")
@@ -403,23 +407,9 @@ export function QuickPage({ data }: { data: PdfData }) {
           <View style={{ alignItems: "center" }}>
             <Image
               src={qrDataUrl}
-              style={{
-                width: 70,
-                height: 70,
-                backgroundColor: "#FFFFFF",
-                padding: 4,
-                marginBottom: 6,
-              }}
+              style={{ width: 70, height: 70, backgroundColor: "#FFFFFF", padding: 4, marginBottom: 6 }}
             />
-            <Text
-              style={{
-                fontFamily: fonts.body.family,
-                fontSize: 7,
-                color: isDarkCover ? "#FFFFFF99" : theme.palette.pageMuted,
-                letterSpacing: 0.5,
-                textAlign: "center",
-              }}
-            >
+            <Text style={{ fontFamily: fonts.body.family, fontSize: 7, color: textMuted, letterSpacing: 0.5 }}>
               Открыть онлайн
             </Text>
           </View>
@@ -428,10 +418,11 @@ export function QuickPage({ data }: { data: PdfData }) {
 
       {/* Footer */}
       <Text
+        fixed
         style={{
           position: "absolute",
           left: 40,
-          bottom: 22,
+          bottom: 20,
           fontFamily: fonts.body.family,
           fontSize: 7,
           color: isDarkCover ? "#FFFFFF66" : theme.palette.pageMuted,
@@ -441,6 +432,58 @@ export function QuickPage({ data }: { data: PdfData }) {
         Расчёт сделан в potolok.ai · Это ориентир, не публичная оферта
       </Text>
     </Page>
+  );
+}
+
+function QuickItemRow({
+  item,
+  data,
+  textMain,
+  textMuted,
+  hairline,
+  isDark,
+}: {
+  item: PdfLineItem;
+  data: PdfData;
+  textMain: string;
+  textMuted: string;
+  hairline: string;
+  isDark: boolean;
+}) {
+  const { fonts } = data;
+  return (
+    <View wrap={false}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingTop: 5,
+        paddingBottom: 5,
+      }}
+    >
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMain, lineHeight: 1.3 }}>
+          {item.name}
+        </Text>
+        <View style={{ marginTop: 1 }}>
+          <QtyPriceText
+            quantity={item.quantity}
+            unit={item.unit}
+            unitPrice={item.unitPrice}
+            fonts={fonts}
+            size={8.5}
+            color={textMuted}
+          />
+        </View>
+      </View>
+      <View style={{ width: 90 }}>
+        <PriceText amount={item.total} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />
+      </View>
+    </View>
+    {/* Разделитель полоской, не border: border с прозрачным цветом на тёмной
+        теме react-pdf рисует зелёным. */}
+    <View style={{ height: 0.5, backgroundColor: hairline, opacity: isDark ? 0.2 : 1 }} />
+    </View>
   );
 }
 

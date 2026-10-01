@@ -298,3 +298,38 @@ export function SectionTitle({
     </View>
   );
 }
+
+export function fmtQty(n: number): string {
+  if (n === Math.floor(n)) return String(n);
+  return n.toFixed(1).replace(".", ",");
+}
+
+/** «65,6 м² × 2 500 ₸» — сколько за единицу, чтобы клиент видел цену за м²/м.п./шт.
+ *  ₸ — отдельным шрифтом: у Manrope/Playfair этого глифа нет. */
+export function QtyPriceText({
+  quantity,
+  unit,
+  unitPrice,
+  fonts,
+  size,
+  color,
+  align = "left",
+}: {
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  fonts: FontPair;
+  size: number;
+  color: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <Text style={{ fontFamily: fonts.body.family, fontSize: size, color, textAlign: align }}>
+      {fmtQty(quantity)} {unit}
+      {unitPrice > 0 ? ` × ${fmtPriceNum(unitPrice)} ` : ""}
+      {unitPrice > 0 && (
+        <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+      )}
+    </Text>
+  );
+}

@@ -1,7 +1,7 @@
 import React from "react";
 import { Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtArea, makeStyles, PageFooter, PriceText, tengeSafeFamily } from "./shared";
+import { fmtArea, makeStyles, PageFooter, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
 
@@ -289,17 +289,16 @@ function ItemRow({
           {item.name}
         </Text>
       </View>
-      <View style={{ width: 70, paddingRight: 8 }}>
-        <Text
-          style={{
-            fontFamily: fonts.body.family,
-            fontSize: 9,
-            color: theme.palette.pageMuted,
-            textAlign: "right",
-          }}
-        >
-          {formatQty(item.quantity)} {item.unit}
-        </Text>
+      <View style={{ width: 120, paddingRight: 8 }}>
+        <QtyPriceText
+          quantity={item.quantity}
+          unit={item.unit}
+          unitPrice={item.unitPrice}
+          fonts={fonts}
+          size={9}
+          color={theme.palette.pageMuted}
+          align="right"
+        />
       </View>
       <View style={{ width: 80 }}>
         <PriceText
@@ -315,11 +314,6 @@ function ItemRow({
       </View>
     </View>
   );
-}
-
-function formatQty(n: number): string {
-  if (n === Math.floor(n)) return String(n);
-  return n.toFixed(1).replace(".", ",");
 }
 
 function pluralRu(n: number, forms: [string, string, string]): string {
