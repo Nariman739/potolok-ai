@@ -38,7 +38,17 @@ export async function GET() {
       rows = await loadPriceItems(companyId);
     }
     // Legacy-коды вне каталога (spot_gu10…) мастеру не показываем — они и раньше были невидимы.
-    const items = rows.filter((r) => r.category !== "legacy").map(toV2);
+    // Порядок: каталожные в порядке каталога, затем свои по дате создания —
+    // иначе мигрированные свои позиции (createdAt раньше миграции) всплывали первыми.
+    const order = new Map(PRODUCT_ITEMS.map((tpl, i) => [tpl.code, i]));
+    const items = rows
+      .filter((r) => r.category !== "legacy")
+      .sort((a, b) => {
+        const ia = a.templateCode ? order.get(a.templateCode) ?? 999 : 1000;
+        const ib = b.templateCode ? order.get(b.templateCode) ?? 999 : 1000;
+        return ia - ib || a.sortOrder - b.sortOrder || a.createdAt.getTime() - b.createdAt.getTime();
+      })
+      .map(toV2);
     return NextResponse.json({ items, isOwner: scope.isOwner, companyName: scope.companyName });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
