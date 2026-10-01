@@ -14,9 +14,12 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
 
     // Корзина — по компании (с 01.10.2026 варианты живут в PriceItem).
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Прайс компании меняет её владелец" }, { status: 403 });
+    }
     const companyId = await priceBookCompanyId(scope.ownerId);
     const result = await prisma.priceItem.updateMany({
-      where: { id, companyId, deletedAt: { not: null } },
+      where: { id, companyId, deletedAt: { not: null }, templateCode: null },
       data: { deletedAt: null },
     });
     if (result.count === 0) {

@@ -18,7 +18,7 @@ export {
   TEMPLATE_ROLES, CATEGORY_ROLES, VARIANT_CATEGORIES, EXTRA_NAME_RE, templateRole, inferRole,
 } from "./price-roles";
 export type { PriceRole, WallKind, RoleMeta } from "./price-roles";
-import { templateRole, inferRole, type WallKind } from "./price-roles";
+import { templateRole, inferRole, type WallKind, type PriceRole } from "./price-roles";
 
 // ------------------------------------------------------------------
 // Загрузка
@@ -340,3 +340,55 @@ export async function createCustomItem(companyId: string, input: { name: string;
 export function toLegacyCustomItem(r: PriceItemRow, masterId: string) {
   return { id: r.id, masterId, code: r.code, name: r.name, unit: r.unit, price: r.price, category: "custom", createdAt: r.createdAt, updatedAt: r.updatedAt };
 }
+
+// ------------------------------------------------------------------
+// Форма /prices/v2 («Мой прайс»)
+// ------------------------------------------------------------------
+
+export type PriceItemV2 = {
+  id: string;
+  code: string;
+  templateCode: string | null;
+  role: PriceRole;
+  appliesTo: string[];
+  wallKind: Record<string, unknown> | null;
+  category: string | null;
+  name: string;
+  unit: string;
+  price: number;
+  /** цена каталога, если позиция каталожная */
+  defaultPrice: number | null;
+  installerPrice: number | null;
+  photoUrl: string | null;
+  isHidden: boolean;
+  needsReview: boolean;
+  sortOrder: number;
+  isTemplate: boolean;
+  /** цена отличается от каталожной */
+  isCustom: boolean;
+};
+
+export function toV2(r: PriceItemRow): PriceItemV2 {
+  const tpl = r.templateCode ? PRODUCT_BY_CODE[r.templateCode] : undefined;
+  return {
+    id: r.id,
+    code: r.code,
+    templateCode: r.templateCode,
+    role: r.role as PriceRole,
+    appliesTo: r.appliesTo,
+    wallKind: (r.wallKind as Record<string, unknown> | null) ?? null,
+    category: r.category,
+    name: r.name,
+    unit: r.unit,
+    price: r.price,
+    defaultPrice: tpl?.defaultPrice ?? null,
+    installerPrice: r.installerPrice ?? null,
+    photoUrl: r.photoUrl ?? null,
+    isHidden: r.isHidden,
+    needsReview: r.needsReview,
+    sortOrder: r.sortOrder,
+    isTemplate: r.templateCode !== null,
+    isCustom: tpl ? r.price !== tpl.defaultPrice : false,
+  };
+}
+

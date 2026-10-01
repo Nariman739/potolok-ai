@@ -14,9 +14,12 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
     const { id } = await ctx.params;
 
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Прайс компании меняет её владелец" }, { status: 403 });
+    }
     const companyId = await priceBookCompanyId(scope.ownerId);
     const existing = await prisma.priceItem.findFirst({
-      where: { id, companyId, deletedAt: { not: null } },
+      where: { id, companyId, deletedAt: { not: null }, templateCode: null },
       select: { id: true, photoUrl: true },
     });
     if (!existing) {
