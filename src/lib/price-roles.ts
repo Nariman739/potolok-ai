@@ -114,10 +114,15 @@ export const VARIANT_CATEGORIES = Object.keys(CATEGORY_ROLES).filter((c) => c !=
  */
 export const EXTRA_NAME_RE = /(диф+уз|деф+уз|вентил|вытяжк|пожар|трубопров|демонтаж|блок питания|лайт ?бокс|радиус)/i;
 
-/** Роль своей позиции по категории и имени; needsReview — если роль выведена не из категории. */
+/**
+ * Роль своей позиции по категории и имени; needsReview — если роль выведена не из категории.
+ * Категорию при этом НЕ меняем: старое приложение ищет выбранный вариант внутри
+ * его категории (`variantsByCategory[cat].find(id)`), и «Дифузор» из «Люстр»,
+ * переехав в «Прочее», тихо слетел бы на дефолт в комнатах Жандоса (ревью 01.10.2026).
+ */
 export function inferRole(category: string, name: string, noInsert = false): RoleMeta & { needsReview: boolean; category: string } {
   if (EXTRA_NAME_RE.test(name)) {
-    return { role: "extra", needsReview: category !== "other" && category !== "custom", category: "other" };
+    return { role: "extra", needsReview: category !== "other" && category !== "custom", category };
   }
   const base = CATEGORY_ROLES[category] ?? CATEGORY_ROLES.other;
   const meta: RoleMeta = { ...base, wallKind: base.wallKind ? { ...base.wallKind } : undefined };

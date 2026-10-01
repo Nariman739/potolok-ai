@@ -122,7 +122,8 @@ ON CONFLICT ("companyId", "code") DO NOTHING;
 
 -- 2. Свои варианты: PriceVariant → PriceItem С ТЕМ ЖЕ id (на него ссылаются комнаты и снапшоты КП).
 --    Роль — по категории; имена штучных допработ (диффузор, вентиляция, пожарка, трубопровод,
---    демонтаж, блок питания, лайтбокс, радиус) → extra с needsReview, в какой бы категории ни лежали.
+--    демонтаж, блок питания, лайтбокс, радиус) → extra с needsReview. Категория остаётся родной:
+--    старое приложение резолвит выбранный вариант внутри его категории.
 WITH cat("category", "role", "appliesTo", "wallKind") AS (VALUES
 ('canvas', 'canvas', ARRAY[]::text[], NULL),
 ('profile', 'wall', ARRAY[]::text[], NULL),
@@ -146,7 +147,7 @@ SELECT pv.id, c.id, 'own:' || pv.id, NULL,
        CASE WHEN pv.name ~* '(диф+уз|деф+уз|вентил|вытяжк|пожар|трубопров|демонтаж|блок питания|лайт ?бокс|радиус)' THEN NULL
             WHEN COALESCE(cat."role", '') = 'wall' THEN COALESCE(cat."wallKind", '{}'::jsonb) || jsonb_build_object('noInsert', pv."noInsert", 'withInsert', (pv.category = 'profile' AND NOT pv."noInsert"))
             ELSE cat."wallKind" END,
-       CASE WHEN pv.name ~* '(диф+уз|деф+уз|вентил|вытяжк|пожар|трубопров|демонтаж|блок питания|лайт ?бокс|радиус)' THEN 'other' ELSE pv.category END,
+       pv.category,
        pv.name, pv.unit, pv.price, pv."installerPrice", pv."photoUrl", false,
        (pv.name ~* '(диф+уз|деф+уз|вентил|вытяжк|пожар|трубопров|демонтаж|блок питания|лайт ?бокс|радиус)' AND pv.category NOT IN ('other')),
        pv."sortOrder", pv."physicalWidthMm", pv."physicalHeightMm", pv."colorHex", pv."mountingType", pv."glbModelUrl", pv."createdAt", pv."updatedAt", pv."deletedAt"

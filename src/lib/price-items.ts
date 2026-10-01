@@ -306,7 +306,9 @@ export async function updateOwnItem(existing: PriceItemRow, updates: Partial<Own
   const category = updates.category ?? existing.category ?? "other";
   const name = updates.name ?? existing.name;
   const noInsert = updates.noInsert ?? wk.noInsert ?? false;
-  if (updates.category !== undefined || updates.name !== undefined || updates.noInsert !== undefined) {
+  // Бывший CustomItem живёт в category "custom" — на него ссылаются room.customItems веб-калькулятора,
+  // роль и категорию не пересчитываем (ревью 01.10.2026).
+  if (existing.category !== "custom" && (updates.category !== undefined || updates.name !== undefined || updates.noInsert !== undefined)) {
     const inferred = inferRole(category, name, noInsert);
     data.role = inferred.role;
     data.appliesTo = inferred.appliesTo ?? [];

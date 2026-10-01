@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
+import { PRODUCT_ITEMS } from "@/lib/constants";
 import {
   CATEGORY_ROLES,
   createOwnItem,
@@ -28,9 +29,14 @@ export async function GET() {
     const scope = await getScope(master);
     const companyId = await priceBookCompanyId(scope.ownerId);
     // Новые каталожные коды (pk14, diffuser…) появляются у компании при первом
-    // открытии «Моего прайса» — чтобы у каждой строки был id.
-    await seedTemplateItems(companyId);
-    const rows = await loadPriceItems(companyId);
+    // открытии «Моего прайса» — чтобы у каждой строки был id. В стабильном
+    // состоянии записи нет: сидим только если чего-то не хватает.
+    let rows = await loadPriceItems(companyId);
+    const have = new Set(rows.map((r) => r.code));
+    if (PRODUCT_ITEMS.some((tpl) => !have.has(tpl.code))) {
+      await seedTemplateItems(companyId);
+      rows = await loadPriceItems(companyId);
+    }
     // Legacy-коды вне каталога (spot_gu10…) мастеру не показываем — они и раньше были невидимы.
     const items = rows.filter((r) => r.category !== "legacy").map(toV2);
     return NextResponse.json({ items, isOwner: scope.isOwner, companyName: scope.companyName });

@@ -106,7 +106,9 @@ export async function POST(request: Request) {
       },
     });
     // Компания есть у всех с первого дня (Этап 3): пока мастер один, он её не видит.
-    const company = await ensureOwnCompany(master.id);
+    // Компания и прайс — не роняем регистрацию: сид ленивый, недостающее
+    // создастся при первом обращении (getScope / upsertTemplateItem).
+    const company = await ensureOwnCompany(master.id).catch((e) => { console.warn("ensureOwnCompany:", e); return null; });
     // Руководитель мог добавить этот номер в «Люди» ДО регистрации — тогда запись
     // участника висела без masterId и приглашение человеку не показывалось никогда
     // (аудит 01.10.2026). Привязываем: он увидит приглашение на «Сегодня».
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
 
     // Дефолтный прайс компании — одним createMany в PriceItem («Мой прайс», 01.10.2026).
     // Вложенный create гнал по инсерту на позицию (50+ round-trip'ов) — регистрация тянулась ~10 секунд.
-    await seedTemplateItems(company.id);
+    if (company) await seedTemplateItems(company.id).catch((e) => console.warn("seedTemplateItems:", e));
 
     await createSession(master.id);
 
