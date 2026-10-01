@@ -4,9 +4,10 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
 import { PRODUCT_BY_CODE } from "@/lib/constants";
+import { priceBookCompanyId, upsertTemplateItem } from "@/lib/price-items";
 
-// PUT — обновить дефолтную позицию мастера: цена, фото, скрытие.
-// Поддерживает multipart (с фото) и JSON (без).
+// PUT — обновить каталожную позицию компании: цена, фото, скрытие, цена монтажнику.
+// Поддерживает multipart (с фото) и JSON (без). Источник — PriceItem (01.10.2026).
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ itemCode: string }> },
@@ -15,14 +16,18 @@ export async function PUT(
     const master = await requireAuth();
     // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Цены компании меняет её владелец" }, { status: 403 });
+    }
     const { itemCode } = await params;
 
     if (!PRODUCT_BY_CODE[itemCode]) {
       return NextResponse.json({ error: "Неизвестный код позиции" }, { status: 400 });
     }
 
-    const existing = await prisma.masterPrice.findUnique({
-      where: { masterId_itemCode: { masterId: scope.ownerId, itemCode } },
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const existing = await prisma.priceItem.findUnique({
+      where: { companyId_code: { companyId, code: itemCode } },
     });
 
     const contentType = request.headers.get("content-type") || "";
@@ -98,21 +103,10 @@ export async function PUT(
     if (newPhotoUrl !== undefined) data.photoUrl = newPhotoUrl;
     else if (removePhoto) data.photoUrl = null;
 
-    const result = await prisma.masterPrice.upsert({
-      where: { masterId_itemCode: { masterId: scope.ownerId, itemCode } },
-      update: data,
-      create: {
-        masterId: scope.ownerId,
-        itemCode,
-        price: price ?? PRODUCT_BY_CODE[itemCode].defaultPrice,
-        installerPrice: installerPrice === null ? null : (installerPrice ?? null),
-        photoUrl: newPhotoUrl ?? null,
-        isHidden: isHidden ?? false,
-      },
-    });
+    const result = await upsertTemplateItem(companyId, itemCode, data);
 
     return NextResponse.json({
-      itemCode: result.itemCode,
+      itemCode: result.code,
       price: result.price,
       installerPrice: result.installerPrice,
       photoUrl: result.photoUrl,

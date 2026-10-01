@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { PRODUCT_ITEMS, DEFAULT_PRICES, CATEGORY_LABELS } from "@/lib/constants";
 import type { ProductCategory } from "@/lib/constants";
 import { CatalogConfigurator } from "./catalog-configurator";
+import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
 
 export async function generateMetadata({
   params,
@@ -56,11 +57,8 @@ export default async function CatalogPage({
   if (!master) notFound();
 
   // Load master's price overrides
-  const masterPrices = await prisma.masterPrice.findMany({
-    where: { masterId: master.id },
-  });
-  const priceOverrides: Record<string, number> = {};
-  for (const mp of masterPrices) priceOverrides[mp.itemCode] = mp.price;
+  // Цены компании мастера (PriceItem, 01.10.2026)
+  const priceOverrides = await priceMapFor(await priceBookCompanyIdForMaster(master.id));
 
   // Build catalog items with master's prices
   const catalogItems = PRODUCT_ITEMS

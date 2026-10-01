@@ -25,15 +25,15 @@ export interface ProductItem {
 
 export const PRODUCT_ITEMS: ProductItem[] = [
   // Полотно (за м²)
-  { code: "canvas_320", name: "Полотно матовое 320см", unit: "м²", defaultPrice: 2000, category: "canvas", description: "Ширина до 3.2м" },
+  { code: "canvas_320", name: "Полотно матовое 320см", unit: "м²", defaultPrice: 1500, category: "canvas", description: "Ширина до 3.2м" },
   { code: "canvas_550", name: "Полотно сатиновое 550см", unit: "м²", defaultPrice: 2700, category: "canvas", description: "Ширина до 5.5м" },
   { code: "canvas_over", name: "Полотно глянцевое/цветное", unit: "м²", defaultPrice: 3700, category: "canvas", description: "Любая ширина" },
 
   // Профили (за м.п.)
   { code: "profile_plastic", name: "Пластиковый профиль", unit: "м.п.", defaultPrice: 500, category: "profile", description: "Багет (под галтель или вставку)" },
-  { code: "insert", name: "Вставка", unit: "м.п.", defaultPrice: 1000, category: "profile", description: "Маскировочная лента" },
-  { code: "profile_shadow", name: "Теневой профиль", unit: "м.п.", defaultPrice: 7000, category: "profile", description: "Алюминиевый теневой зазор" },
-  { code: "profile_floating", name: "Парящий профиль", unit: "м.п.", defaultPrice: 14000, category: "profile", description: "Алюминиевый с подсветкой" },
+  { code: "insert", name: "Вставка", unit: "м.п.", defaultPrice: 600, category: "profile", description: "Маскировочная лента" },
+  { code: "profile_shadow", name: "Теневой профиль", unit: "м.п.", defaultPrice: 5000, category: "profile", description: "Алюминиевый теневой зазор" },
+  { code: "profile_floating", name: "Парящий профиль", unit: "м.п.", defaultPrice: 9000, category: "profile", description: "Алюминиевый с подсветкой" },
   // Серик 2026-05-20: добавлены алюминиевый профиль и подсветка
   // для расчёта новых типов профиля периметра (билд 53).
   { code: "profile_aluminum", name: "Алюминиевый профиль", unit: "м.п.", defaultPrice: 3000, category: "profile", description: "Алюминиевый багет (под вставку или без)" },
@@ -45,7 +45,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // добавляет сам через «+ Добавить свой», если они ему реально нужны.
   // Лишние строки только мешали в прайсе.
   { code: "spot_client", name: "Софиты клиентские (установка)", unit: "шт.", defaultPrice: 2500, category: "spot", description: "Клиент даёт софит — мы только устанавливаем" },
-  { code: "spot_ours", name: "Софиты GX53 с установкой", unit: "шт.", defaultPrice: 5000, category: "spot", description: "Наш софит + установка" },
+  { code: "spot_ours", name: "Софиты GX53 с установкой", unit: "шт.", defaultPrice: 3500, category: "spot", description: "Наш софит + установка" },
 
   // Серик 2026-05-21: двойные софиты — отдельная категория, чтобы мастер
   // мог в прайсе грузить фото своих парных моделей и выставлять цену
@@ -55,7 +55,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "spot_pair_ours", name: "Двойной софит с установкой", unit: "пара", defaultPrice: 9000, category: "spot_pair", description: "Наша пара + установка" },
 
   // Подвесной светильник / бра — отдельная категория (меньше люстры)
-  { code: "pendant", name: "Закладная под подвесной светильник", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под подвесной светильник / бра" },
+  { code: "pendant", name: "Закладная под бра / подвес", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под бра или подвесной светильник" },
   { code: "pendant_install", name: "Установка подвесного светильника", unit: "шт.", defaultPrice: 3000, category: "spot", description: "Монтаж подвесного светильника / бра" },
 
   // Люстры
@@ -66,7 +66,7 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // (раньше были в chandelier). Теперь мастер видит их отдельно в прайсе
   // и может грузить варианты с фото; в дизайнере picker «Трек» / «Свет.линия»
   // подтянет именно эти варианты, а не люстровые.
-  { code: "track_magnetic", name: "Трек магнитный", unit: "м.п.", defaultPrice: 27000, category: "track" },
+  { code: "track_magnetic", name: "Трек магнитный", unit: "м.п.", defaultPrice: 20000, category: "track" },
   { code: "light_line", name: "Световая линия", unit: "м.п.", defaultPrice: 15000, category: "lightline" },
 
   // Карнизы (за м.п.)
@@ -75,7 +75,9 @@ export const PRODUCT_ITEMS: ProductItem[] = [
 
   // Гардины (за м.п.)
   { code: "gardina_plastic", name: "Пластиковая гардина на потолок", unit: "м.п.", defaultPrice: 5000, category: "gardina" },
-  { code: "gardina_aluminum", name: "Встроенная гардина в потолок", unit: "м.п.", defaultPrice: 17000, category: "gardina" },
+  { code: "gardina_aluminum", name: "Встроенная гардина в потолок", unit: "м.п.", defaultPrice: 10000, category: "gardina" },
+  // Аудит 01.10.2026: ПК-14 мастера заводили вариантом 90 раз — каталог его не знал.
+  { code: "pk14", name: "Карниз ПК-14", unit: "м.п.", defaultPrice: 15000, category: "gardina", description: "Алюминиевый потолочный карниз под шторы" },
 
   // Подшторник (за м.п.)
   { code: "podshtornik_plastic", name: "Подшторник пластиковый (брус)", unit: "м.п.", defaultPrice: 2500, category: "podshtornik" },
@@ -92,6 +94,10 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Прочее
   { code: "pipe_bypass", name: "Обход трубы", unit: "шт.", defaultPrice: 2000, category: "other" },
   { code: "eurobrus", name: "Евробрус", unit: "м.п.", defaultPrice: 5500, category: "other" },
+  // Аудит 01.10.2026: то, что мастера вписывали в КП руками, — теперь в каталоге.
+  { code: "diffuser", name: "Диффузор (установка)", unit: "шт.", defaultPrice: 15000, category: "other", description: "Теневой диффузор вентиляции" },
+  { code: "vent_grille", name: "Вентиляционная решётка", unit: "шт.", defaultPrice: 15000, category: "other" },
+  { code: "demontage", name: "Демонтаж старого потолка", unit: "м²", defaultPrice: 500, category: "other" },
 
   // Спецпараметры
   { code: "min_order", name: "Минимальный заказ", unit: "₸", defaultPrice: 90000, category: "special" },
@@ -109,6 +115,21 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "install_corner", name: "Обработка угла", unit: "шт.", defaultPrice: 500, category: "install", description: "Доп. обработка угла" },
   { code: "install_pipe", name: "Обход трубы (работа)", unit: "шт.", defaultPrice: 1000, category: "install", description: "Обход трубы" },
 ];
+
+/**
+ * Дефолты, понижённые 01.10.2026 до медиан активных мастеров (аудит: наши
+ * цены были выше рынка на 20–45%, а 51% КП уходили с ними). Старые значения
+ * нужны миграции PriceItem: строка, равная старому дефолту, = «мастер не трогал».
+ */
+export const LOWERED_DEFAULTS_2026_10: Record<string, { from: number; to: number }> = {
+  canvas_320: { from: 2000, to: 1500 },
+  insert: { from: 1000, to: 600 },
+  profile_shadow: { from: 7000, to: 5000 },
+  profile_floating: { from: 14000, to: 9000 },
+  spot_ours: { from: 5000, to: 3500 },
+  track_magnetic: { from: 27000, to: 20000 },
+  gardina_aluminum: { from: 17000, to: 10000 },
+};
 
 export const DEFAULT_PRICES: Record<string, number> = Object.fromEntries(
   PRODUCT_ITEMS.map((item) => [item.code, item.defaultPrice])

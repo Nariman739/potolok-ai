@@ -164,6 +164,65 @@ model Company {
 
   owner   Master   @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members Member[]
+  priceItems PriceItem[]
+}
+
+/// «Мой прайс» (01.10.2026): ОДНА сущность для всего, что продаёт компания.
+/// Заменяет три механизма — MasterPrice (цена к коду каталога), PriceVariant
+/// (свой вариант по категории) и CustomItem. Строки каталога PRODUCT_ITEMS
+/// материализуются по компании (code = код каталога), свои позиции получают
+/// code "own:<id>". Для мигрированных PriceVariant id сохранён — на него
+/// ссылаются wallProfiles/variantOverrides комнат и variantId в снапшотах КП.
+///
+/// role — единственный ответ на вопрос «как это посчитать и где показать»:
+///   canvas  — по площади комнаты (м²)
+///   wall    — по длине стен, на которых выбран (м.п.); wallKind уточняет
+///             {withInsert, aluminumCorners, endsCeiling}
+///   point   — по элементам чертежа из appliesTo (софит, люстра, бра) (шт.)
+///   linear  — по погонным элементам из appliesTo (трек, линия, гардина, подшторник)
+///   corner  — лишние углы (авто)
+///   extra   — количество вводит мастер (диффузор, демонтаж, радиус…)
+///   param   — мин. заказ, коэффициент высоты
+///   install — цены монтажнику (как у родителя)
+model PriceItem {
+  id           String  @id @default(uuid())
+  companyId    String
+  /// код каталога (canvas_320) или "own:<id>"
+  code         String
+  /// из какого шаблона каталога создана (null — полностью своя)
+  templateCode String?
+  role         String
+  /// для point/linear — типы элементов чертежа; для wall — WallProfileType, который реализует
+  appliesTo    String[] @default([])
+  wallKind     Json?
+  /// Категория старого прайса (для проекций /prices/variants и пикеров по категории)
+  category     String?
+  name         String
+  unit         String
+  price        Float
+  installerPrice Float?
+  photoUrl     String?
+  isHidden     Boolean @default(false)
+  /// Роль выведена эвристикой при миграции — показать «проверьте, как считать»
+  needsReview  Boolean @default(false)
+  sortOrder    Int     @default(0)
+
+  // 3D-рендер (перенесено из PriceVariant как есть)
+  physicalWidthMm  Int?
+  physicalHeightMm Int?
+  colorHex         String?
+  mountingType     String?
+  glbModelUrl      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId, role, deletedAt])
+  @@index([companyId, category, deletedAt])
 }
 
 /// Участник компании. masterId = null → человек без приложения (монтажник,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope } from "@/lib/company";
+import { priceBookCompanyId } from "@/lib/price-items";
 
 // POST /api/prices/variants/[id]/permanent-delete
 // Жёсткое удаление soft-deleted варианта прайса. Доступно только из корзины.
@@ -11,8 +13,10 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
     const master = await requireAuth();
     const { id } = await ctx.params;
 
-    const existing = await prisma.priceVariant.findFirst({
-      where: { id, masterId: master.id, deletedAt: { not: null } },
+    const scope = await getScope(master);
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const existing = await prisma.priceItem.findFirst({
+      where: { id, companyId, deletedAt: { not: null } },
       select: { id: true, photoUrl: true },
     });
     if (!existing) {
@@ -22,7 +26,7 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
     if (existing.photoUrl) {
       try { await del(existing.photoUrl); } catch { /* ignore — blob cleanup best-effort */ }
     }
-    await prisma.priceVariant.delete({ where: { id } });
+    await prisma.priceItem.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

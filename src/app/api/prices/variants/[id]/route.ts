@@ -2,50 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, inScope } from "@/lib/company";
+import { getScope } from "@/lib/company";
+import { VARIANT_CATEGORIES, isOwnVariant, priceBookCompanyId, toLegacyVariant, updateOwnItem, type OwnItemInput } from "@/lib/price-items";
 
-async function findOwned(id: string, masterId: string) {
-  return prisma.priceVariant.findFirst({ where: { id, masterId, deletedAt: null } });
+// Правка/удаление своей позиции прайса (бывший PriceVariant) — источник PriceItem (01.10.2026).
+
+async function findOwned(id: string, companyId: string) {
+  const row = await prisma.priceItem.findFirst({ where: { id, companyId, deletedAt: null } });
+  return row && isOwnVariant(row) ? row : null;
 }
 
 export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Прайс компании меняет её владелец" }, { status: 403 });
+    }
     const { id } = await ctx.params;
-    const existing = await findOwned(id, scope.ownerId);
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const existing = await findOwned(id, companyId);
     if (!existing) {
       return NextResponse.json({ error: "Вариант не найден" }, { status: 404 });
     }
 
     const contentType = request.headers.get("content-type") || "";
-    const updates: {
-      name?: string;
-      unit?: string;
-      price?: number;
-      installerPrice?: number | null;
-      sortOrder?: number;
-      photoUrl?: string | null;
-      category?: string;
-      noInsert?: boolean;
-      physicalWidthMm?: number | null;
-      physicalHeightMm?: number | null;
-      colorHex?: string | null;
-      mountingType?: string | null;
-      glbModelUrl?: string | null;
-    } = {};
-
-    const ALLOWED_CATEGORIES_SET = new Set([
-      "canvas",
-      "profile",
-      "spot",
-      "chandelier",
-      "curtain",
-      "gardina",
-      "podshtornik",
-      "track",
-      "lightline",
-    ]);
+    const updates: Partial<OwnItemInput> = {};
 
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
@@ -63,7 +45,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       }
       if (form.has("category")) {
         const cat = String(form.get("category") || "");
-        if (!ALLOWED_CATEGORIES_SET.has(cat)) {
+        if (!VARIANT_CATEGORIES.includes(cat)) {
           return NextResponse.json({ error: "Неверная категория" }, { status: 400 });
         }
         updates.category = cat;
@@ -110,7 +92,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (body.noInsert !== undefined) updates.noInsert = body.noInsert === true || body.noInsert === "true";
       if (body.category !== undefined) {
         const cat = String(body.category);
-        if (!ALLOWED_CATEGORIES_SET.has(cat)) {
+        if (!VARIANT_CATEGORIES.includes(cat)) {
           return NextResponse.json({ error: "Неверная категория" }, { status: 400 });
         }
         updates.category = cat;
@@ -126,12 +108,15 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       if (body.glbModelUrl !== undefined) updates.glbModelUrl = body.glbModelUrl === null ? null : String(body.glbModelUrl);
     }
 
-    if (updates.price !== undefined && (!isFinite(updates.price) || updates.price < 0)) {
-      return NextResponse.json({ error: "Неверная цена" }, { status: 400 });
+    if (updates.price !== undefined && (!isFinite(updates.price) || updates.price < 0 || updates.price > 10_000_000)) {
+      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
+    }
+    if (updates.name !== undefined && !updates.name) {
+      return NextResponse.json({ error: "Название обязательно" }, { status: 400 });
     }
 
-    const variant = await prisma.priceVariant.update({ where: { id }, data: updates });
-    return NextResponse.json(variant);
+    const item = await updateOwnItem(existing, updates);
+    return NextResponse.json(toLegacyVariant(item, scope.ownerId));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -145,15 +130,18 @@ export async function DELETE(_request: NextRequest, ctx: { params: Promise<{ id:
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Прайс компании меняет её владелец" }, { status: 403 });
+    }
     const { id } = await ctx.params;
-    const existing = await findOwned(id, scope.ownerId);
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const existing = await findOwned(id, companyId);
     if (!existing) {
       return NextResponse.json({ error: "Вариант не найден" }, { status: 404 });
     }
     // Soft-delete: фото в Vercel Blob НЕ удаляем — оно нужно при restore.
-    // Hard-delete фото уйдёт только если мастер сделает «Удалить навсегда»
-    // из /dashboard/trash (см. PR-B).
-    await prisma.priceVariant.update({
+    // Hard-delete фото уйдёт только если мастер сделает «Удалить навсегда» из /dashboard/trash.
+    await prisma.priceItem.update({
       where: { id },
       data: { deletedAt: new Date() },
     });

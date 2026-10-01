@@ -7,9 +7,9 @@ import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "
 import { buildSystemPrompt, VISION_EXTRACTION_PROMPT, computeRoomSummary } from "@/lib/assistant-prompt";
 import { quickAnswer } from "@/lib/assistant-quick";
 import { calculate } from "@/lib/calculate";
-import { DEFAULT_PRICES } from "@/lib/constants";
 import type { ChatMessage, RoomInput } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
 
 export const maxDuration = 60;
 
@@ -82,13 +82,8 @@ export async function POST(request: Request) {
     }
 
     // Load master prices
-    const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: master.id },
-    });
-    const prices: Record<string, number> = { ...DEFAULT_PRICES };
-    for (const mp of masterPrices) {
-      prices[mp.itemCode] = mp.price;
-    }
+    // Прайс компании мастера (PriceItem, 01.10.2026)
+    const prices = await priceMapFor(await priceBookCompanyIdForMaster(master.id));
 
     // Get or create chat session
     let sessionId = inputSessionId;

@@ -1,67 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
-import { PRODUCT_ITEMS } from "@/lib/constants";
+import { PRODUCT_BY_CODE } from "@/lib/constants";
+import { legacyPricesView, loadPriceItems, priceBookCompanyId, upsertTemplateItem } from "@/lib/price-items";
 
+// GET — прайс в старой форме (каталог + переопределения + бывшие CustomItem).
+// С 01.10.2026 источник — PriceItem («Мой прайс»), ответ не изменился:
+// приложение в сторах и веб-кабинет читают его как раньше.
 export async function GET() {
   try {
     const master = await requireAuth();
     // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
-
-    const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: scope.ownerId },
-    });
-
-    const mpMap: Record<string, { price: number; installerPrice: number | null; photoUrl: string | null; isHidden: boolean }> = {};
-    for (const mp of masterPrices) {
-      mpMap[mp.itemCode] = {
-        price: mp.price,
-        installerPrice: mp.installerPrice,
-        photoUrl: mp.photoUrl,
-        isHidden: mp.isHidden,
-      };
-    }
-
-    // Return all items with master's overrides (price/photo/hidden + installer)
-    const items = PRODUCT_ITEMS.map((item) => {
-      const mp = mpMap[item.code];
-      return {
-        code: item.code,
-        name: item.name,
-        unit: item.unit,
-        category: item.category,
-        description: item.description,
-        defaultPrice: item.defaultPrice,
-        price: mp?.price ?? item.defaultPrice,
-        installerPrice: mp?.installerPrice ?? null,
-        photoUrl: mp?.photoUrl ?? null,
-        isHidden: mp?.isHidden ?? false,
-        isCustom: mp != null && mp.price !== item.defaultPrice,
-      };
-    });
-
-    // Also load custom items and append them
-    const customItems = await prisma.customItem.findMany({
-      where: { masterId: scope.ownerId },
-      orderBy: { createdAt: "asc" },
-    });
-
-    const customPriceItems = customItems.map((ci) => ({
-      code: ci.code,
-      name: ci.name,
-      unit: ci.unit,
-      category: "custom" as const,
-      description: undefined,
-      defaultPrice: ci.price,
-      price: ci.price,
-      isCustom: false,
-      isCustomItem: true,
-      customItemId: ci.id,
-    }));
-
-    return NextResponse.json([...items, ...customPriceItems]);
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const rows = await loadPriceItems(companyId);
+    return NextResponse.json(legacyPricesView(rows));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -77,8 +30,12 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const master = await requireAuth();
-    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
+    // Цены компании меняет только владелец (аудит 01.10.2026: раньше любой
+    // участник бригады мог переписать прайс). Участник правит цену в самом КП.
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Цены компании меняет её владелец" }, { status: 403 });
+    }
     const body = await request.json();
     const { items } = body as { items: { itemCode: string; price: number; installerPrice?: number | null }[] };
 
@@ -94,27 +51,19 @@ export async function PUT(request: Request) {
     if (bad) {
       return NextResponse.json({ error: `Цена «${bad.itemCode}» должна быть от 0 до 10 000 000 ₸` }, { status: 400 });
     }
+    const unknown = items.find((it) => !PRODUCT_BY_CODE[it.itemCode]);
+    if (unknown) {
+      return NextResponse.json({ error: `Неизвестная позиция «${unknown.itemCode}»` }, { status: 400 });
+    }
 
-    // Upsert all prices (включая installerPrice если передан).
+    const companyId = await priceBookCompanyId(scope.ownerId);
     await Promise.all(
-      items.map((item) => {
-        const installerPrice = item.installerPrice === null ? null : item.installerPrice;
-        return prisma.masterPrice.upsert({
-          where: {
-            masterId_itemCode: {
-              masterId: scope.ownerId,
-              itemCode: item.itemCode,
-            },
-          },
-          update: { price: item.price, ...(item.installerPrice !== undefined && { installerPrice }) },
-          create: {
-            masterId: scope.ownerId,
-            itemCode: item.itemCode,
-            price: item.price,
-            installerPrice: installerPrice ?? null,
-          },
-        });
-      })
+      items.map((item) =>
+        upsertTemplateItem(companyId, item.itemCode, {
+          price: item.price,
+          ...(item.installerPrice !== undefined && { installerPrice: item.installerPrice === null ? null : item.installerPrice }),
+        }),
+      ),
     );
 
     return NextResponse.json({ success: true });

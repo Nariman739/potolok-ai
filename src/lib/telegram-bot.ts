@@ -6,7 +6,7 @@ import { companyIdFor } from "@/lib/company";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { buildSystemPrompt } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
-import { DEFAULT_PRICES, KP_LIMITS, SMM_LIMITS } from "@/lib/constants";
+import { KP_LIMITS, SMM_LIMITS } from "@/lib/constants";
 import {
   sendTelegramMessage,
   sendTelegramMessageWithButtons,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/content-plan";
 import type { ChatMessage, RoomInput, CalculationResult } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
 
 // ─────────────────────────────────────────────────────
 // Main entry: process any Telegram message
@@ -188,13 +189,8 @@ async function processAIChat(
   visionContext: string | null = null
 ): Promise<AIResult> {
   // Load master prices
-  const masterPrices = await prisma.masterPrice.findMany({
-    where: { masterId },
-  });
-  const prices: Record<string, number> = { ...DEFAULT_PRICES };
-  for (const mp of masterPrices) {
-    prices[mp.itemCode] = mp.price;
-  }
+  // Прайс компании мастера (PriceItem, 01.10.2026) — у участника бригады цены владельца.
+  const prices = await priceMapFor(await priceBookCompanyIdForMaster(masterId));
 
   // Get or create active Telegram chat session
   let chatSession = await prisma.chatSession.findFirst({

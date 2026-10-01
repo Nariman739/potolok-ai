@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
+import {
+  VARIANT_CATEGORIES,
+  createOwnItem,
+  legacyVariantsView,
+  loadPriceItems,
+  priceBookCompanyId,
+  toLegacyVariant,
+} from "@/lib/price-items";
 
-const ALLOWED_CATEGORIES = [
-  "canvas",
-  "profile",
-  "spot",
-  "chandelier",
-  "curtain",
-  "gardina",
-  "podshtornik",
-  "track",
-  "lightline",
-] as const;
+// «Свои варианты» — с 01.10.2026 это свои позиции PriceItem («Мой прайс»),
+// ответ в старой форме PriceVariant. Категории открыты все, включая «Прочее»:
+// раньше под «Прочее»/«Углы» сервер отвечал 400, и мастера клали диффузор в «Люстры».
 
 const ALLOWED_UNITS = ["м²", "м.п.", "шт.", "пара", "₸"] as const;
 
 function isCategory(v: string): boolean {
-  return (ALLOWED_CATEGORIES as readonly string[]).includes(v);
+  return VARIANT_CATEGORIES.includes(v);
 }
 
 function isUnit(v: string): boolean {
@@ -32,19 +31,9 @@ export async function GET(request: NextRequest) {
     // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
     const category = request.nextUrl.searchParams.get("category");
-
-    const where: { masterId: string; deletedAt: null; category?: string } = {
-      masterId: scope.ownerId,
-      deletedAt: null,
-    };
-    if (category && isCategory(category)) where.category = category;
-
-    const variants = await prisma.priceVariant.findMany({
-      where,
-      orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
-    });
-
-    return NextResponse.json(variants);
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const rows = await loadPriceItems(companyId);
+    return NextResponse.json(legacyVariantsView(rows, scope.ownerId, category && isCategory(category) ? category : null));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -57,8 +46,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const master = await requireAuth();
-    // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
+    if (!scope.isOwner) {
+      return NextResponse.json({ error: "Позиции в прайс компании добавляет её владелец" }, { status: 403 });
+    }
     const contentType = request.headers.get("content-type") || "";
 
     let category: string;
@@ -66,7 +57,6 @@ export async function POST(request: NextRequest) {
     let unit: string;
     let price: number;
     let installerPrice: number | null = null;
-    let baseCode: string | null = null;
     let photoUrl: string | null = null;
     let sortOrder = 0;
     let noInsert = false;
@@ -88,7 +78,6 @@ export async function POST(request: NextRequest) {
         const raw = String(form.get("installerPrice"));
         installerPrice = raw === "" || raw === "null" ? null : parseFloat(raw);
       }
-      baseCode = (form.get("baseCode") as string) || null;
       sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
       noInsert = form.get("noInsert") === "1" || form.get("noInsert") === "true";
       if (form.has("physicalWidthMm")) {
@@ -124,7 +113,6 @@ export async function POST(request: NextRequest) {
       if (body.installerPrice !== undefined) {
         installerPrice = body.installerPrice === null ? null : Number(body.installerPrice);
       }
-      baseCode = body.baseCode || null;
       sortOrder = body.sortOrder ?? 0;
       noInsert = body.noInsert === true || body.noInsert === "true";
       physicalWidthMm = typeof body.physicalWidthMm === "number" ? body.physicalWidthMm : null;
@@ -143,31 +131,28 @@ export async function POST(request: NextRequest) {
     if (!isUnit(unit)) {
       return NextResponse.json({ error: "Неверная единица измерения" }, { status: 400 });
     }
-    if (!isFinite(price) || price < 0) {
-      return NextResponse.json({ error: "Неверная цена" }, { status: 400 });
+    if (!isFinite(price) || price < 0 || price > 10_000_000) {
+      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
     }
 
-    const variant = await prisma.priceVariant.create({
-      data: {
-        masterId: scope.ownerId,
-        category,
-        baseCode,
-        name,
-        unit,
-        price,
-        installerPrice: installerPrice === null || Number.isNaN(installerPrice) ? null : installerPrice,
-        photoUrl,
-        sortOrder,
-        noInsert,
-        physicalWidthMm,
-        physicalHeightMm,
-        colorHex,
-        mountingType,
-        glbModelUrl,
-      },
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const item = await createOwnItem(companyId, {
+      category,
+      name,
+      unit,
+      price,
+      installerPrice: installerPrice === null || Number.isNaN(installerPrice) ? null : installerPrice,
+      photoUrl,
+      sortOrder,
+      noInsert,
+      physicalWidthMm,
+      physicalHeightMm,
+      colorHex,
+      mountingType,
+      glbModelUrl,
     });
 
-    return NextResponse.json(variant);
+    return NextResponse.json(toLegacyVariant(item, scope.ownerId));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

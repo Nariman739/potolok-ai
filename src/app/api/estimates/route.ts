@@ -9,6 +9,7 @@ import type { CalculationResult } from "@/lib/types";
 import { KP_LIMITS } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
+import { priceBookCompanyId } from "@/lib/price-items";
 
 export async function GET() {
   try {
@@ -158,8 +159,8 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     const discountGiven = !!adjustInputsRaw.discount && adjustInputsRaw.discount.value > 0;
     const isFullMeasurement = Number(totalArea) > 0;
     if (!discountGiven && isFullMeasurement) {
-      const ownerPrices = await prisma.masterPrice.findMany({
-        where: { masterId: scope.ownerId, itemCode: "min_order" },
+      const ownerPrices = await prisma.priceItem.findMany({
+        where: { companyId: await priceBookCompanyId(scope.ownerId), templateCode: "min_order", deletedAt: null },
         select: { price: true },
       });
       const minOrder = ownerPrices[0]?.price ?? DEFAULT_PRICES.min_order ?? 0;

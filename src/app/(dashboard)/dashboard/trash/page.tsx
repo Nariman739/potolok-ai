@@ -5,6 +5,7 @@ import { getScope, inScope } from "@/lib/company";
 import type { Metadata } from "next";
 import { Trash2 } from "lucide-react";
 import { TrashClient } from "./trash-client";
+import { priceBookCompanyId } from "@/lib/price-items";
 
 export const metadata: Metadata = {
   title: "Корзина",
@@ -60,8 +61,8 @@ export default async function TrashPage() {
         deletedAt: true,
       },
     }),
-    prisma.priceVariant.findMany({
-      where: { masterId: master.id, deletedAt: { not: null } },
+    prisma.priceItem.findMany({
+      where: { companyId: await priceBookCompanyId(master.id), deletedAt: { not: null }, code: { startsWith: "own:" } },
       orderBy: { deletedAt: "desc" },
       take: LIMIT,
       select: {
@@ -105,6 +106,7 @@ export default async function TrashPage() {
         }))}
         variants={variants.map((v) => ({
           ...v,
+          category: v.category ?? "other",
           deletedAt: v.deletedAt!.toISOString(),
         }))}
       />

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getScope, inScope } from "@/lib/company";
-import { calculate, type CustomItemInfo } from "@/lib/calculate";
-import { DEFAULT_PRICES } from "@/lib/constants";
+import { getScope } from "@/lib/company";
+import { calculate } from "@/lib/calculate";
 import type { RoomInput, ExtraItem } from "@/lib/types";
+import { priceBookCompanyId, priceMapFor, customItemsMapFor } from "@/lib/price-items";
 
 export async function POST(request: Request) {
   try {
@@ -20,30 +19,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Load master's custom prices
-    const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: scope.ownerId },
-    });
-
-    // Merge: master prices override defaults
-    const priceMap: Record<string, number> = { ...DEFAULT_PRICES };
-    for (const mp of masterPrices) {
-      priceMap[mp.itemCode] = mp.price;
-    }
-
-    // Load custom items for calculation
-    const customItems = await prisma.customItem.findMany({
-      where: { masterId: scope.ownerId },
-    });
-    const customItemsMap: Record<string, CustomItemInfo> = {};
-    for (const ci of customItems) {
-      customItemsMap[ci.code] = {
-        code: ci.code,
-        name: ci.name,
-        unit: ci.unit,
-        price: ci.price,
-      };
-    }
+    // Прайс компании — PriceItem («Мой прайс», 01.10.2026)
+    const companyId = await priceBookCompanyId(scope.ownerId);
+    const priceMap = await priceMapFor(companyId);
+    const customItemsMap = await customItemsMapFor(companyId);
 
     const result = calculate(rooms, priceMap, customItemsMap, extraItems);
 

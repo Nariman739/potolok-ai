@@ -47,12 +47,12 @@ export async function GET(request: NextRequest) {
     prisma.measurementObject.findMany({
       include: { rooms: { orderBy: { sortOrder: "asc" } } },
     }),
-    prisma.priceVariant.findMany(),
+    prisma.priceItem.findMany(),
   ]);
 
   const dump = {
     generatedAt: new Date().toISOString(),
-    schemaNotes: "Estimate, Client, MeasurementObject (+rooms), PriceVariant. Includes soft-deleted.",
+    schemaNotes: "Estimate, Client, MeasurementObject (+rooms), PriceItem (прайс компаний, с 01.10.2026). Includes soft-deleted.",
     counts: {
       estimates: estimates.length,
       clients: clients.length,

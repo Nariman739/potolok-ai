@@ -6,6 +6,7 @@ import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
 import { DEFAULT_PRICES } from "@/lib/constants";
+import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 
 // ── Install price code mapping ──
 // Maps client item codes to install item codes
@@ -90,11 +91,7 @@ export async function GET(
     estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
     // Load master's install prices (overrides)
-    const masterPrices = await prisma.masterPrice.findMany({
-      where: { masterId: scope.ownerId, itemCode: { startsWith: "install_" } },
-    });
-    const priceOverrides: Record<string, number> = {};
-    for (const mp of masterPrices) priceOverrides[mp.itemCode] = mp.price;
+    const priceOverrides = await priceMapFor(await priceBookCompanyId(scope.ownerId));
 
     function getInstallPrice(code: string): number {
       return priceOverrides[code] ?? DEFAULT_PRICES[code] ?? 0;
