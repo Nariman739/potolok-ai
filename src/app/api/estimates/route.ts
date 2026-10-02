@@ -158,7 +158,14 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     // там мастер осознанно берёт мало, минимум к нему не относится.
     const discountGiven = !!adjustInputsRaw.discount && adjustInputsRaw.discount.value > 0;
     const isFullMeasurement = Number(totalArea) > 0;
-    if (!discountGiven && isFullMeasurement) {
+    // С 02.10.2026 приложение показывает минималку мастеру заранее — строкой
+    // «Доплата до минимального заказа» (itemCode min_order) — и даёт убрать её для
+    // этого КП (minOrderWaived). В обоих случаях сервер итог не трогает; молчаливый
+    // подъём остаётся только для старых версий приложения.
+    const appHandledMinOrder =
+      body.minOrderWaived === true ||
+      ((calculationData as { extraItems?: { itemCode?: string }[] }).extraItems ?? []).some((i) => i.itemCode === "min_order");
+    if (!discountGiven && isFullMeasurement && !appHandledMinOrder) {
       const ownerPrices = await prisma.priceItem.findMany({
         where: { companyId: await priceBookCompanyId(scope.ownerId), templateCode: "min_order", deletedAt: null },
         select: { price: true },

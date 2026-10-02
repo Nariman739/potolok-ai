@@ -39,6 +39,8 @@ export type PdfRoom = {
 };
 
 export type PdfLineItem = {
+  /** код позиции из снапшота; "min_order" — доплата до минимального заказа (без кол-ва) */
+  itemCode?: string;
   name: string;
   quantity: number;
   unit: string;
@@ -243,6 +245,7 @@ function mapRooms(calc: CalculationResult): PdfRoom[] {
 
 function mapLineItem(li: LineItem): PdfLineItem {
   return {
+    itemCode: li.itemCode,
     name: li.itemName,
     quantity: li.quantity,
     unit: li.unit,

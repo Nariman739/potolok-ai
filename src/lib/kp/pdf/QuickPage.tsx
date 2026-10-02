@@ -465,16 +465,18 @@ function QuickItemRow({
         <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMain, lineHeight: 1.3 }}>
           {item.name}
         </Text>
-        <View style={{ marginTop: 1 }}>
-          <QtyPriceText
-            quantity={item.quantity}
-            unit={item.unit}
-            unitPrice={item.unitPrice}
-            fonts={fonts}
-            size={8.5}
-            color={textMuted}
-          />
-        </View>
+        {item.itemCode !== "min_order" && (
+          <View style={{ marginTop: 1 }}>
+            <QtyPriceText
+              quantity={item.quantity}
+              unit={item.unit}
+              unitPrice={item.unitPrice}
+              fonts={fonts}
+              size={8.5}
+              color={textMuted}
+            />
+          </View>
+        )}
       </View>
       <View style={{ width: 90 }}>
         <PriceText amount={item.total} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />

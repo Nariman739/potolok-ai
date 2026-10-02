@@ -170,7 +170,7 @@ export function ConfirmSection({
                           <div className="leading-tight">
                             <span className="text-gray-700">{item.itemName}</span>
                             <span className="text-gray-400 ml-1.5">
-                              {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
+                              {item.itemCode === "min_order" ? "" : `${item.quantity} ${item.unit} × ${formatPrice(item.unitPrice)}`}
                             </span>
                           </div>
                           <span className="font-medium ml-2 shrink-0 text-gray-800">
@@ -244,7 +244,7 @@ export function ConfirmSection({
                           <div className="leading-tight flex-1 min-w-0">
                             <span className="text-gray-700">{item.itemName}</span>
                             <span className="text-gray-400 ml-1.5">
-                              {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
+                              {item.itemCode === "min_order" ? "" : `${item.quantity} ${item.unit} × ${formatPrice(item.unitPrice)}`}
                             </span>
                           </div>
                           <span className="font-medium ml-2 shrink-0 text-gray-800">

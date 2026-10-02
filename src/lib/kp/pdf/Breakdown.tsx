@@ -290,15 +290,17 @@ function ItemRow({
         </Text>
       </View>
       <View style={{ width: 120, paddingRight: 8 }}>
-        <QtyPriceText
-          quantity={item.quantity}
-          unit={item.unit}
-          unitPrice={item.unitPrice}
-          fonts={fonts}
-          size={9}
-          color={theme.palette.pageMuted}
-          align="right"
-        />
+        {item.itemCode !== "min_order" && (
+          <QtyPriceText
+            quantity={item.quantity}
+            unit={item.unit}
+            unitPrice={item.unitPrice}
+            fonts={fonts}
+            size={9}
+            color={theme.palette.pageMuted}
+            align="right"
+          />
+        )}
       </View>
       <View style={{ width: 80 }}>
         <PriceText
