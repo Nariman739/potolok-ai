@@ -28,13 +28,13 @@ export type WallKind = {
   noInsert?: boolean;
 };
 
-export type RoleMeta = { role: PriceRole; appliesTo?: string[]; wallKind?: WallKind };
+export type RoleMeta = { role: PriceRole; appliesTo?: string[]; wallKind?: WallKind; /** полотно: ширина рулона, см */ maxWidthCm?: number | null };
 
 /** Роль каждой каталожной позиции. Код, которого здесь нет, считается extra (install_* — install). */
 export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
-  canvas_320: { role: "canvas" },
-  canvas_550: { role: "canvas" },
-  canvas_over: { role: "canvas" },
+  canvas_320: { role: "canvas", maxWidthCm: 320 },
+  canvas_550: { role: "canvas", maxWidthCm: 550 },
+  canvas_over: { role: "canvas", maxWidthCm: null },
 
   profile_plastic: { role: "wall", appliesTo: ["pvc_insert", "pvc"], wallKind: { withInsert: true } },
   insert: { role: "wall", appliesTo: ["pvc_insert", "aluminum_insert"], wallKind: { companion: true } },
@@ -120,6 +120,23 @@ export const EXTRA_NAME_RE = /(диф+уз|деф+уз|вентил|вытяжк
  * его категории (`variantsByCategory[cat].find(id)`), и «Дифузор» из «Люстр»,
  * переехав в «Прочее», тихо слетел бы на дефолт в комнатах Жандоса (ревью 01.10.2026).
  */
+/**
+ * Ширина рулона из названия своего полотна: «до 5 метра», «5,5 м», «320 см», «BAUF 270»,
+ * диапазоны «320-360», «4,0-5,0», «от 4 до 5» — берём верх. «18мм» (толщина) не считается.
+ * null — не распознали (считаем «любая ширина»). Бэкфилл прода — scratchpad/backfill-roll-width.mjs.
+ */
+export function parseRollWidthCm(name: string): number | null {
+  const n = name.toLowerCase().replace(/,/g, ".");
+  const toCm = (v: number): number | null => (v >= 1 && v <= 6 ? Math.round(v * 100) : v >= 100 && v <= 600 ? Math.round(v) : null);
+  const range = n.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|до)\s*(\d+(?:\.\d+)?)/);
+  if (range) { const hi = toCm(parseFloat(range[2])); if (hi !== null) return hi; }
+  const m = n.match(/(\d+(?:\.\d+)?)\s*(?:м(?![м])|m(?![m])|метр)/);
+  if (m) { const v = parseFloat(m[1]); if (v >= 1 && v <= 6) return Math.round(v * 100); }
+  const cm = n.match(/(\d{3})(?!\d)(?!\s*мм)/);
+  if (cm) { const v = parseInt(cm[1], 10); if (v >= 100 && v <= 600) return v; }
+  return null;
+}
+
 export function inferRole(category: string, name: string, noInsert = false): RoleMeta & { needsReview: boolean; category: string } {
   if (EXTRA_NAME_RE.test(name)) {
     return { role: "extra", needsReview: category !== "other" && category !== "custom", category };

@@ -25,9 +25,11 @@ export interface ProductItem {
 
 export const PRODUCT_ITEMS: ProductItem[] = [
   // Полотно (за м²)
-  { code: "canvas_320", name: "Полотно матовое 320см", unit: "м²", defaultPrice: 1500, category: "canvas", description: "Ширина до 3.2м" },
-  { code: "canvas_550", name: "Полотно сатиновое 550см", unit: "м²", defaultPrice: 2700, category: "canvas", description: "Ширина до 5.5м" },
-  { code: "canvas_over", name: "Полотно глянцевое/цветное", unit: "м²", defaultPrice: 3700, category: "canvas", description: "Любая ширина" },
+  // Ширина рулона — в названии и в TEMPLATE_ROLES.maxWidthCm (price-roles.ts): расчёт
+  // берёт самое узкое полотно, перекрывающее комнату по меньшей стороне.
+  { code: "canvas_320", name: "Полотно матовое (до 3,2 м)", unit: "м²", defaultPrice: 1500, category: "canvas", description: "Ширина рулона до 3,2 м" },
+  { code: "canvas_550", name: "Полотно сатиновое (до 5,5 м)", unit: "м²", defaultPrice: 2700, category: "canvas", description: "Ширина рулона до 5,5 м" },
+  { code: "canvas_over", name: "Полотно глянцевое/цветное (любая ширина)", unit: "м²", defaultPrice: 3700, category: "canvas", description: "Любая ширина" },
 
   // Профили (за м.п.)
   { code: "profile_plastic", name: "Пластиковый профиль", unit: "м.п.", defaultPrice: 500, category: "profile", description: "Багет (под галтель или вставку)" },

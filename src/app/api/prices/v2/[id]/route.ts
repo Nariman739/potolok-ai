@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     let name: string | undefined;
     let unit: string | undefined;
     let noInsert: boolean | undefined;
+    let maxWidthCm: number | null | undefined;
 
     const take = (k: string, v: unknown) => {
       if (k === "price") {
@@ -47,11 +48,15 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       else if (k === "name") name = String(v).trim().slice(0, 80);
       else if (k === "unit") unit = String(v);
       else if (k === "noInsert") noInsert = v === true || v === "true";
+      else if (k === "maxWidthCm") {
+        if (v === null || v === "" || v === "null") maxWidthCm = null;
+        else { const n = Number(v); if (Number.isFinite(n) && n >= 100 && n <= 600) maxWidthCm = Math.round(n); }
+      }
     };
 
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
-      for (const k of ["price", "installerPrice", "isHidden", "needsReview", "sortOrder", "name", "unit", "noInsert"]) {
+      for (const k of ["price", "installerPrice", "isHidden", "needsReview", "sortOrder", "name", "unit", "noInsert", "maxWidthCm"]) {
         if (form.has(k)) take(k, form.get(k));
       }
       const file = form.get("photo") as File | null;
@@ -72,7 +77,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       }
     } else {
       const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-      for (const k of ["price", "installerPrice", "isHidden", "needsReview", "sortOrder", "name", "unit", "noInsert"]) {
+      for (const k of ["price", "installerPrice", "isHidden", "needsReview", "sortOrder", "name", "unit", "noInsert", "maxWidthCm"]) {
         if (body[k] !== undefined) take(k, body[k]);
       }
       if (body.removePhoto === true) {
@@ -93,6 +98,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         ...(name !== undefined && { name }),
         ...(unit !== undefined && { unit }),
         ...(noInsert !== undefined && { noInsert }),
+        ...(maxWidthCm !== undefined && { maxWidthCm }),
         ...(data.price !== undefined && { price: data.price as number }),
         ...(data.installerPrice !== undefined && { installerPrice: data.installerPrice as number | null }),
         ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl as string | null }),

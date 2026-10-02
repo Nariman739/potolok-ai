@@ -205,6 +205,9 @@ model PriceItem {
   isHidden     Boolean @default(false)
   /// Роль выведена эвристикой при миграции — показать «проверьте, как считать»
   needsReview  Boolean @default(false)
+  /// Полотно: ширина рулона, см (320, 550). null — любая ширина. Расчёт берёт самое
+  /// узкое полотно, перекрывающее комнату по меньшей стороне (Нариман 02.10.2026).
+  maxWidthCm   Int?
   sortOrder    Int     @default(0)
 
   // 3D-рендер (перенесено из PriceVariant как есть)

@@ -18,7 +18,7 @@ export {
   TEMPLATE_ROLES, CATEGORY_ROLES, VARIANT_CATEGORIES, EXTRA_NAME_RE, templateRole, inferRole,
 } from "./price-roles";
 export type { PriceRole, WallKind, RoleMeta } from "./price-roles";
-import { templateRole, inferRole, type WallKind, type PriceRole } from "./price-roles";
+import { templateRole, inferRole, parseRollWidthCm, type WallKind, type PriceRole } from "./price-roles";
 
 // ------------------------------------------------------------------
 // Загрузка
@@ -151,6 +151,8 @@ export type LegacyVariant = {
   /** новое: роль и флаг «проверьте» — старые клиенты это поле игнорируют */
   role: string;
   needsReview: boolean;
+  /** полотно: ширина рулона, см (null — любая) */
+  maxWidthCm: number | null;
 };
 
 /** Своя позиция (не каталожная и не бывший CustomItem). */
@@ -182,6 +184,7 @@ export function toLegacyVariant(r: PriceItemRow, masterId: string): LegacyVarian
     deletedAt: r.deletedAt ?? null,
     role: r.role,
     needsReview: r.needsReview,
+    maxWidthCm: r.maxWidthCm ?? null,
   };
 }
 
@@ -217,6 +220,7 @@ export async function upsertTemplateItem(
       role: meta.role,
       appliesTo: meta.appliesTo ?? [],
       wallKind: meta.wallKind ?? undefined,
+      maxWidthCm: meta.maxWidthCm ?? null,
       category: tpl.category,
       name: tpl.name,
       unit: tpl.unit,
@@ -240,6 +244,7 @@ export async function seedTemplateItems(companyId: string) {
         role: meta.role,
         appliesTo: meta.appliesTo ?? [],
         wallKind: meta.wallKind ?? undefined,
+        maxWidthCm: meta.maxWidthCm ?? null,
         category: tpl.category,
         name: tpl.name,
         unit: tpl.unit,
@@ -264,6 +269,8 @@ export type OwnItemInput = {
   colorHex?: string | null;
   mountingType?: string | null;
   glbModelUrl?: string | null;
+  /** полотно: ширина рулона, см; undefined — вывести из названия */
+  maxWidthCm?: number | null;
 };
 
 /** Своя позиция (бывший PriceVariant.create). Роль — по категории и имени. */
@@ -281,6 +288,7 @@ export async function createOwnItem(companyId: string, input: OwnItemInput) {
       wallKind: inferred.wallKind ?? undefined,
       category: inferred.category,
       needsReview: inferred.needsReview,
+      maxWidthCm: inferred.role === "canvas" ? (input.maxWidthCm !== undefined ? input.maxWidthCm : parseRollWidthCm(input.name)) : null,
       name: input.name,
       unit: input.unit,
       price: input.price,
@@ -299,8 +307,13 @@ export async function createOwnItem(companyId: string, input: OwnItemInput) {
 /** Правка своей позиции (бывший PriceVariant.update). Смена категории/имени пересчитывает роль. */
 export async function updateOwnItem(existing: PriceItemRow, updates: Partial<OwnItemInput>) {
   const data: Record<string, unknown> = {};
-  for (const k of ["name", "unit", "price", "installerPrice", "photoUrl", "sortOrder", "physicalWidthMm", "physicalHeightMm", "colorHex", "mountingType", "glbModelUrl"] as const) {
+  for (const k of ["name", "unit", "price", "installerPrice", "photoUrl", "sortOrder", "physicalWidthMm", "physicalHeightMm", "colorHex", "mountingType", "glbModelUrl", "maxWidthCm"] as const) {
     if (updates[k] !== undefined) data[k] = updates[k];
+  }
+  // Полотно переименовали, ширину явно не задали — перечитываем из названия.
+  if (existing.role === "canvas" && updates.name !== undefined && updates.maxWidthCm === undefined) {
+    const parsed = parseRollWidthCm(updates.name);
+    if (parsed !== null) data.maxWidthCm = parsed;
   }
   const wk = (existing.wallKind ?? {}) as WallKind;
   const category = updates.category ?? existing.category ?? "other";
@@ -368,6 +381,8 @@ export type PriceItemV2 = {
   isTemplate: boolean;
   /** цена отличается от каталожной */
   isCustom: boolean;
+  /** полотно: ширина рулона, см (null — любая ширина) */
+  maxWidthCm: number | null;
 };
 
 export function toV2(r: PriceItemRow): PriceItemV2 {
@@ -391,6 +406,7 @@ export function toV2(r: PriceItemRow): PriceItemV2 {
     sortOrder: r.sortOrder,
     isTemplate: r.templateCode !== null,
     isCustom: tpl ? r.price !== tpl.defaultPrice : false,
+    maxWidthCm: r.maxWidthCm ?? null,
   };
 }
 
