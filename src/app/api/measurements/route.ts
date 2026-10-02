@@ -63,7 +63,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       clientPhone?: string;
       measuredAt?: string; // ISO — когда мастер замерял на объекте (1-я комната)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
     };
 
     const totalArea = rooms
@@ -116,6 +116,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
                 arcBulges: r.arcBulges ?? undefined,
                 cornerRadii: r.cornerRadii ?? undefined,
                 columns: r.columns ?? undefined,
+                measureDiagonals: r.measureDiagonals ?? undefined,
+                obliqueDiagonals: r.obliqueDiagonals ?? undefined,
                 area: r.area,
                 perimeter: r.perimeter,
                 elements: r.elements || [],

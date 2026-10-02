@@ -12,7 +12,7 @@ export async function PATCH(
     const scope = await getScope(master);
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
@@ -20,6 +20,8 @@ export async function PATCH(
       arcBulges?: number[];
       cornerRadii?: number[];
       columns?: unknown[];
+      measureDiagonals?: number[];
+      obliqueDiagonals?: { from: number; to: number; length: number }[];
       area?: number;
       perimeter?: number;
       elements?: unknown;
@@ -46,6 +48,8 @@ export async function PATCH(
     if (arcBulges !== undefined) data.arcBulges = arcBulges;
     if (cornerRadii !== undefined) data.cornerRadii = cornerRadii;
     if (columns !== undefined) data.columns = columns;
+    if (measureDiagonals !== undefined) data.measureDiagonals = measureDiagonals;
+    if (obliqueDiagonals !== undefined) data.obliqueDiagonals = obliqueDiagonals;
     if (area !== undefined) data.area = area;
     if (perimeter !== undefined) data.perimeter = perimeter;
     if (elements !== undefined) data.elements = elements;

@@ -36,6 +36,8 @@ export async function POST(
         arcBulges?: number[];
         cornerRadii?: number[];
         columns?: unknown[];
+        measureDiagonals?: number[];
+        obliqueDiagonals?: { from: number; to: number; length: number }[];
         area: number;
         perimeter: number;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +57,8 @@ export async function POST(
           arcBulges: r.arcBulges ?? undefined,
           cornerRadii: r.cornerRadii ?? undefined,
           columns: r.columns as any ?? undefined,
+          measureDiagonals: r.measureDiagonals ?? undefined,
+          obliqueDiagonals: r.obliqueDiagonals ?? undefined,
           area: r.area,
           perimeter: r.perimeter,
           elements: r.elements ?? [],

@@ -747,6 +747,10 @@ model MeasurementRoom {
   arcBulges        Json? // number[] — дуги стен (bulge factor)
   cornerRadii      Json? // number[] — радиусы скругления углов (см)
   columns          Json? // RoomColumn[] — колонны в комнате
+  // Диагонали замера (03.10.2026). Раньше жили только в черновике телефона и
+  // терялись при загрузке с сервера — «В цех» уходил без контрольных размеров.
+  measureDiagonals Json? // number[] — режим «Нарисовать», только длины
+  obliqueDiagonals Json? // {from,to,length}[] — косые стены, с концами (индексы вершин)
   area             Float
   perimeter        Float
   elements         Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
