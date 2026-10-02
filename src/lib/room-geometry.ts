@@ -298,6 +298,86 @@ export function validateTShape(dims: TShapeDimensions): string | null {
   return null;
 }
 
+// ============================================
+// Дуги стен (03.10.2026)
+// ============================================
+
+/**
+ * Геометрия круговой дуги по хорде и стрелке прогиба (глубине) — ровно то, что
+ * мастер меряет рулеткой: длину стены по прямой и отступ середины от этой прямой.
+ * Стрелка больше половины хорды — дуга больше полукруга (выпуклая «подкова»):
+ * раньше формула брала малый сегмент, и площадь с периметром занижались.
+ */
+export function arcGeometry(chord: number, sagitta: number): {
+  r: number;
+  /** Центральный угол дуги, рад. */
+  theta: number;
+  /** Дуга больше полукруга — SVG large-arc-flag. */
+  large: boolean;
+  arcLength: number;
+  /** Площадь сегмента между хордой и дугой, см². */
+  segmentArea: number;
+} {
+  const h = Math.abs(sagitta);
+  const c = Math.abs(chord);
+  if (h < 1e-9 || c < 1e-9) return { r: 0, theta: 0, large: false, arcLength: c, segmentArea: 0 };
+  const r = (c * c / 4 + h * h) / (2 * h);
+  const half = Math.asin(Math.min(c / (2 * r), 1));
+  const large = h > c / 2 + 1e-9;
+  const theta = large ? 2 * Math.PI - 2 * half : 2 * half;
+  return { r, theta, large, arcLength: r * theta, segmentArea: (r * r / 2) * (theta - Math.sin(theta)) };
+}
+
+/** Удвоенная ориентированная площадь: > 0 — обход по часовой на экране (повороты направо, y вниз). */
+export function polygonSignedArea2(vertices: Vertex2D[]): number {
+  let s = 0;
+  const n = vertices.length;
+  for (let i = 0; i < n; i++) {
+    const a = vertices[i], b = vertices[(i + 1) % n];
+    s += a.x * b.y - b.x * a.y;
+  }
+  return s;
+}
+
+/**
+ * sweep-flag SVG-дуги для стены: bulge > 0 означает «наружу комнаты» независимо
+ * от того, обходил мастер комнату направо или налево. До 03.10.2026 флаг брался
+ * только по знаку bulge, и у комнат, введённых поворотами «←», дуга рисовалась
+ * внутрь, хотя площадь считалась как наружу.
+ */
+export function arcSweepFlag(bulge: number, signedArea2: number): 0 | 1 {
+  return (bulge > 0) === (signedArea2 > 0) ? 1 : 0;
+}
+
+/** Команда «A …» для SVG-path от a к b с заданной стрелкой, с учётом обхода. */
+export function svgArcCommand(a: Vertex2D, b: Vertex2D, bulge: number, signedArea2: number): string {
+  const chord = Math.hypot(b.x - a.x, b.y - a.y);
+  const g = arcGeometry(chord, bulge);
+  return `A ${g.r.toFixed(1)} ${g.r.toFixed(1)} 0 ${g.large ? 1 : 0} ${arcSweepFlag(bulge, signedArea2)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+}
+
+/**
+ * Точка дуги на расстоянии t∈[0,1] вдоль хорды от a к b (середина при t=0.5 —
+ * это и есть «стрелка»). Нужна для габаритов чертежа и подписей.
+ */
+export function arcPointAt(a: Vertex2D, b: Vertex2D, bulge: number, signedArea2: number, t: number): Vertex2D {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const chord = Math.hypot(dx, dy) || 1;
+  const g = arcGeometry(chord, bulge);
+  // Нормаль наружу комнаты: для обхода по часовой (signed > 0) — слева от хода.
+  const dir = signedArea2 > 0 ? 1 : -1;
+  const nx = (dy / chord) * dir, ny = (-dx / chord) * dir;
+  const outward = bulge > 0 ? 1 : -1;
+  const x = a.x + dx * t, y = a.y + dy * t;
+  if (g.r === 0) return { x, y };
+  // Высота дуги над хордой в точке t: sqrt(r² − (x−c/2)²) − (r − h) для малой дуги,
+  // для большой — центр лежит по ту же сторону, что и дуга: sqrt(...) + (h − r).
+  const u = (t - 0.5) * chord;
+  const inner = Math.max(0, g.r * g.r - u * u);
+  const offset = g.large ? Math.sqrt(inner) + (Math.abs(bulge) - g.r) : Math.sqrt(inner) - (g.r - Math.abs(bulge));
+  return { x: x + nx * offset * outward, y: y + ny * offset * outward };
+}
+
 /**
  * Контур комнаты одной SVG-строкой: с дугами на стенах и скруглениями в углах
  * (21.09.2026). До этого дуга рисовалась отдельной линией поверх прямой заливки,
@@ -316,6 +396,7 @@ export function roomOutlinePath(
   if (n < 3) return "";
   const at = (i: number) => vertices[((i % n) + n) % n];
   const bulgeOf = (i: number) => opts.bulges?.[((i % n) + n) % n] || 0;
+  const signed2 = polygonSignedArea2(vertices);
   const radiusAt = (i: number) => {
     const r = opts.cornerRadii?.[((i % n) + n) % n] || 0;
     if (r <= 0) return 0;
@@ -337,10 +418,7 @@ export function roomOutlinePath(
     const next = at(i + 1);
     const b = bulgeOf(i);
     if (b !== 0) {
-      const chord = Math.hypot(next.x - at(i).x, next.y - at(i).y);
-      const h = Math.abs(b);
-      const r = (chord * chord / 4 + h * h) / (2 * h);
-      d += ` A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 ${b > 0 ? 1 : 0} ${next.x.toFixed(1)} ${next.y.toFixed(1)}`;
+      d += ` ${svgArcCommand(at(i), next, b, signed2)}`;
       continue;
     }
     const rNext = radiusAt(i + 1);
@@ -371,9 +449,7 @@ export function roomPolygonDense(
   const at = (i: number) => vertices[((i % n) + n) % n];
   const bulgeOf = (i: number) => opts.bulges?.[((i % n) + n) % n] || 0;
   // Ориентация обхода: от неё зависит, куда «наружу».
-  let signed = 0;
-  for (let i = 0; i < n; i++) signed += at(i).x * at(i + 1).y - at(i + 1).x * at(i).y;
-  const dir = signed > 0 ? 1 : -1;
+  const signed = polygonSignedArea2(vertices);
 
   const out: Vertex2D[] = [];
   for (let i = 0; i < n; i++) {
@@ -381,19 +457,10 @@ export function roomPolygonDense(
     out.push(a);
     const bulge = bulgeOf(i);
     if (!bulge) continue;
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    // Нормаль наружу комнаты с учётом направления обхода.
-    const nx = (dy / len) * dir, ny = (-dx / len) * dir;
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    // Контрольная точка Безье: кривая проходит через прогиб bulge в середине.
-    const ctrl = { x: mid.x + nx * bulge * 2, y: mid.y + ny * bulge * 2 };
+    // Точки настоящей окружности (03.10.2026; раньше Безье — на полукруге она
+    // заметно отличалась от того, что рисует roomOutlinePath).
     for (let s = 1; s < segments; s++) {
-      const t = s / segments, mt = 1 - t;
-      out.push({
-        x: mt * mt * a.x + 2 * mt * t * ctrl.x + t * t * b.x,
-        y: mt * mt * a.y + 2 * mt * t * ctrl.y + t * t * b.y,
-      });
+      out.push(arcPointAt(a, b, bulge, signed, s / segments));
     }
   }
   return out;
