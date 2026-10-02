@@ -95,7 +95,8 @@ export function legacyPricesView(rows: PriceItemRow[]): LegacyPriceItem[] {
     const row = byTemplate.get(item.code);
     return {
       code: item.code,
-      name: item.name,
+      // Полотно мастер может переименовать («Германская матовая») — отдаём его имя.
+      name: row?.name ?? item.name,
       unit: item.unit,
       category: item.category,
       description: item.description,

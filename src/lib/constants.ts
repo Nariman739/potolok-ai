@@ -27,9 +27,12 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Полотно (за м²)
   // Ширина рулона — в названии и в TEMPLATE_ROLES.maxWidthCm (price-roles.ts): расчёт
   // берёт самое узкое полотно, перекрывающее комнату по меньшей стороне.
-  { code: "canvas_320", name: "Полотно матовое (до 3,2 м)", unit: "м²", defaultPrice: 1500, category: "canvas", description: "Ширина рулона до 3,2 м" },
-  { code: "canvas_550", name: "Полотно сатиновое (до 5,5 м)", unit: "м²", defaultPrice: 2700, category: "canvas", description: "Ширина рулона до 5,5 м" },
-  { code: "canvas_over", name: "Полотно глянцевое/цветное (любая ширина)", unit: "м²", defaultPrice: 3700, category: "canvas", description: "Любая ширина" },
+  // Нариман 02.10.2026: без «матовое/сатин/глянец» — мастер сам назовёт плёнку
+  // («Германская матовая», «Эконом», «BAUF 270»). Стартовые — только по ширине рулона,
+  // их можно переименовать (единственные каталожные позиции с правкой имени).
+  { code: "canvas_320", name: "Полотно (до 3,2 м)", unit: "м²", defaultPrice: 1500, category: "canvas", description: "Ширина рулона до 3,2 м — назови как продаёшь" },
+  { code: "canvas_550", name: "Полотно (до 5,5 м)", unit: "м²", defaultPrice: 2700, category: "canvas", description: "Ширина рулона до 5,5 м — назови как продаёшь" },
+  { code: "canvas_over", name: "Полотно (любая ширина)", unit: "м²", defaultPrice: 3700, category: "canvas", description: "Любая ширина — назови как продаёшь" },
 
   // Профили (за м.п.)
   { code: "profile_plastic", name: "Пластиковый профиль", unit: "м.п.", defaultPrice: 500, category: "profile", description: "Багет (под галтель или вставку)" },

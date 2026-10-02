@@ -111,8 +111,10 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         });
       }
     } else {
-      // Каталожная: имя и единица фиксированы каталогом — меняем цену, монтажнику, фото, скрытие.
-      delete data.name; delete data.unit;
+      // Каталожная: единица фиксирована каталогом. Имя менять можно только у полотна
+      // (Нариман 02.10.2026: «Полотно (до 3,2 м)» → «Германская матовая (до 3,2 м)»).
+      delete data.unit;
+      if (existing.role === "canvas" && name !== undefined) data.name = name; else delete data.name;
       updated = await prisma.priceItem.update({ where: { id }, data });
     }
     return NextResponse.json({ item: toV2(updated) });
