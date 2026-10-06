@@ -58,6 +58,23 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Трафик из платной рекламы (utm_source=instagram / utm_medium=paid) с телефона —
+  // на лендинг приложения /app, а не на главную с веб-регистрацией. UTM сохраняем.
+  if (pathname === "/") {
+    const sp = request.nextUrl.searchParams;
+    const fromAds = sp.get("utm_source") === "instagram" || sp.get("utm_medium") === "paid";
+    const ua = request.headers.get("user-agent") ?? "";
+    if (fromAds && /iPhone|iPad|iPod|Android/i.test(ua)) {
+      const appUrl = request.nextUrl.clone();
+      appUrl.pathname = "/app";
+      const appResponse = NextResponse.redirect(appUrl, 307);
+      for (const [key, value] of Object.entries(securityHeaders)) {
+        appResponse.headers.set(key, value);
+      }
+      return appResponse;
+    }
+  }
+
   // Apply security headers to all responses + expose pathname for server components
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);

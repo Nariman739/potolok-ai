@@ -1380,3 +1380,19 @@ enum ContentPlanStatus {
   PUBLISHED
   SKIPPED
 }
+
+// Лендинг /app (трафик из рекламы): просмотры страницы и нажатия на кнопку стора.
+// Пишется из /api/app-click без авторизации — только обезличенные поля.
+model AppLinkClick {
+  id        String   @id @default(uuid())
+  event     String   // "view" | "click"
+  platform  String   // "ios" | "android" | "other"
+  source    String?  // utm_source
+  campaign  String?  // utm_campaign
+  content   String?  // utm_content (какой ролик)
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([campaign, event])
+}
