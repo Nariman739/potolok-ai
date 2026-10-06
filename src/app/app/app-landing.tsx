@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { PencilRuler, Calculator, Send } from "lucide-react";
+import { Check } from "lucide-react";
 
 export type Platform = "ios" | "android" | "other";
 
@@ -48,22 +48,20 @@ function StoreButton({
   store,
   platform,
   utm,
-  big,
+  size = "md",
 }: {
   store: "ios" | "android";
   platform: Platform;
   utm: Utm;
-  big?: boolean;
+  size?: "md" | "lg" | "bar";
 }) {
   const isIos = store === "ios";
+  const h = size === "lg" ? "h-16 text-lg" : size === "bar" ? "h-13 text-[16px]" : "h-14 text-base";
   return (
     <a
       href={isIos ? IOS_URL : ANDROID_URL}
       onClick={() => track("click", platform, utm)}
-      className={[
-        "group flex w-full items-center justify-center gap-3 rounded-2xl bg-white text-[#0B1220] font-bold shadow-[0_12px_40px_rgba(96,165,250,0.35)] transition-all active:scale-[0.98] hover:shadow-[0_16px_50px_rgba(96,165,250,0.5)]",
-        big ? "h-16 text-lg" : "h-14 text-base",
-      ].join(" ")}
+      className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-white font-bold text-[#0B1220] shadow-[0_12px_40px_rgba(96,165,250,0.35)] transition-all hover:shadow-[0_16px_50px_rgba(96,165,250,0.5)] active:scale-[0.98] ${h}`}
     >
       {isIos ? <AppleIcon className="h-6 w-6" /> : <PlayIcon className="h-6 w-6" />}
       <span>{isIos ? "Скачать в App Store" : "Скачать в Google Play"}</span>
@@ -71,52 +69,78 @@ function StoreButton({
   );
 }
 
-function Cta({ platform, utm, big }: { platform: Platform; utm: Utm; big?: boolean }) {
+function Cta({ platform, utm, size }: { platform: Platform; utm: Utm; size?: "md" | "lg" | "bar" }) {
   if (platform === "other") {
     return (
       <div className="flex flex-col gap-3">
-        <StoreButton store="ios" platform={platform} utm={utm} big={big} />
-        <StoreButton store="android" platform={platform} utm={utm} big={big} />
+        <StoreButton store="ios" platform={platform} utm={utm} size={size} />
+        <StoreButton store="android" platform={platform} utm={utm} size={size} />
       </div>
     );
   }
-  return <StoreButton store={platform} platform={platform} utm={utm} big={big} />;
+  return <StoreButton store={platform} platform={platform} utm={utm} size={size} />;
 }
 
-export function AppLanding({ platform, utm }: { platform: Platform; utm: Utm }) {
+const SHOTS = [
+  {
+    src: "/app/shot-room.jpg",
+    title: "Вбил 8 стен — комната готова",
+    text: "Выступы, ниши, колонны, косые стены. Ты вводишь длины, чертёж рисуется сам: 19,54 м², периметр 19,6 м.",
+  },
+  {
+    src: "/app/shot-light.jpg",
+    title: "Софиты — прямо на чертеже",
+    text: "Тапнул по потолку — софит на месте, размеры от стен подписаны. Монтажнику ничего объяснять не надо.",
+  },
+  {
+    src: "/app/shot-kp.jpg",
+    title: "Цена клиенту — по твоему прайсу",
+    text: "Полотно, профиль, вставка, углы, софиты — всё построчно. Итого 99 210 ₸. Клиент видит, за что платит.",
+  },
+];
+
+const FAQ = [
+  { q: "Сколько стоит?", a: "Сейчас бесплатно. Без карты и пробных периодов." },
+  { q: "На каком телефоне работает?", a: "iPhone и Android. Цены в тенге, под Казахстан." },
+  { q: "Сложно разобраться?", a: "Три стены вбил — комната готова. Остальное приложение делает само." },
+];
+
+export function AppLanding({
+  platform,
+  utm,
+  masters,
+}: {
+  platform: Platform;
+  utm: Utm;
+  masters: number;
+}) {
   const viewed = useRef(false);
+  const heroCta = useRef<HTMLDivElement>(null);
+  const [showBar, setShowBar] = useState(false);
+
   useEffect(() => {
     if (viewed.current) return;
     viewed.current = true;
     track("view", platform, utm);
   }, [platform, utm]);
 
-  const features = [
-    {
-      icon: PencilRuler,
-      title: "Вбей стены — начертит само",
-      text: "Выступы, ниши, колонны, косые стены. Ты вводишь длины, комната рисуется сама.",
-    },
-    {
-      icon: Calculator,
-      title: "Площадь и углы уже посчитаны",
-      text: "Площадь, периметр, дополнительные углы, софиты — всё считается, пока ты замеряешь.",
-    },
-    {
-      icon: Send,
-      title: "Цена клиенту — по твоим ценам",
-      text: "Свой прайс один раз. КП готово на объекте, отправляешь в WhatsApp.",
-    },
-  ];
+  // Плавающая кнопка появляется, когда верхняя кнопка ушла за экран.
+  useEffect(() => {
+    const el = heroCta.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setShowBar(!e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const mastersLabel = `${masters.toLocaleString("ru-RU")} мастер${masters % 10 === 1 && masters % 100 !== 11 ? "" : masters % 10 >= 2 && masters % 10 <= 4 && (masters % 100 < 10 || masters % 100 >= 20) ? "а" : "ов"}`;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0B1220] text-[#F1F5F9]">
-      {/* Фон: тёмный градиент + голубое свечение, как на иконке приложения */}
+    <main className="relative min-h-screen overflow-x-hidden bg-[#0B1220] text-[#F1F5F9]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1E3A8A_0%,_#0B1220_55%)]" />
       <div className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#60A5FA]/20 blur-[120px]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[440px] flex-col px-5 pb-10 pt-6">
-        {/* Шапка */}
+      <div className="relative mx-auto flex min-h-screen max-w-[440px] flex-col px-5 pb-28 pt-6">
         <header className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/app/icon.png" alt="" width={32} height={32} className="rounded-[9px]" />
@@ -126,35 +150,63 @@ export function AppLanding({ platform, utm }: { platform: Platform; utm: Utm }) 
         </header>
 
         {/* Первый экран */}
-        <section className="pt-10">
+        <section className="pt-9">
           <div className="inline-flex items-center rounded-full border border-[#60A5FA]/40 bg-[#60A5FA]/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#93C5FD]">
             Мастерам натяжных потолков
           </div>
 
-          <h1 className="mt-5 text-[44px] font-extrabold leading-[1.02] tracking-tight">
-            Замерил.
-            <br />
-            Посчитал.
-            <br />
+          <h1 className="mt-5 text-[38px] font-extrabold leading-[1.06] tracking-tight">
+            Цена клиенту —{" "}
             <span className="bg-gradient-to-r from-[#93C5FD] to-[#60A5FA] bg-clip-text text-transparent">
-              Отправил.
+              пока ты ещё на объекте
             </span>
           </h1>
 
-          <p className="mt-5 text-[17px] leading-relaxed text-[#CBD5E1]">
-            Приложение мастера натяжных потолков. Вбей размеры стен — комната начертится сама,
-            площадь и цена клиенту уже посчитаны.
+          <p className="mt-4 text-[17px] leading-relaxed text-[#CBD5E1]">
+            Вбей размеры стен — комната начертится сама, площадь и КП посчитаются. Не считай на
+            коленке и не теряй заказы, пока считаешь дома.
           </p>
 
-          <div className="mt-7">
-            <Cta platform={platform} utm={utm} big />
+          <div ref={heroCta} className="mt-6">
+            <Cta platform={platform} utm={utm} size="lg" />
           </div>
-          <p className="mt-3 text-center text-sm text-[#94A3B8]">Бесплатно · iPhone и Android</p>
+
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[#94A3B8]">
+            <span className="inline-flex -space-x-1.5">
+              {["#60A5FA", "#F97316", "#10B981"].map((c) => (
+                <span key={c} className="h-5 w-5 rounded-full border-2 border-[#0B1220]" style={{ background: c }} />
+              ))}
+            </span>
+            <span>
+              <b className="text-[#F1F5F9]">{mastersLabel}</b> уже в приложении · бесплатно
+            </span>
+          </div>
         </section>
 
-        {/* Ролик в «телефоне» */}
+        {/* Три экрана */}
         <section className="mt-12">
-          <div className="mx-auto w-[240px] rounded-[2.2rem] border-[6px] border-[#1E293B] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+          <h2 className="text-[22px] font-extrabold leading-tight">Как это выглядит</h2>
+          <div className="mt-5 flex flex-col gap-5">
+            {SHOTS.map((s) => (
+              <div key={s.src} className="overflow-hidden rounded-2xl border border-[#334155]/60 bg-[#111C33]/70">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={s.src} alt={s.title} width={640} height={530} className="block w-full" loading="lazy" />
+                <div className="p-4">
+                  <div className="font-bold leading-snug">{s.title}</div>
+                  <div className="mt-1 text-[15px] leading-relaxed text-[#94A3B8]">{s.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Ролик */}
+        <section className="mt-12">
+          <h2 className="text-[22px] font-extrabold leading-tight">Комната с 8 стенами — за минуту</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-[#94A3B8]">
+            Без монтажа и ускорения: так это выглядит на объекте.
+          </p>
+          <div className="mx-auto mt-5 w-[240px] rounded-[2.2rem] border-[6px] border-[#1E293B] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
             <video
               className="aspect-[9/16] w-full rounded-[1.8rem] object-cover"
               src="/app/demo.mp4"
@@ -166,21 +218,18 @@ export function AppLanding({ platform, utm }: { platform: Platform; utm: Utm }) 
               preload="metadata"
             />
           </div>
-          <p className="mt-4 text-center text-sm text-[#94A3B8]">
-            Комната с восемью стенами — за минуту, прямо на объекте
-          </p>
         </section>
 
-        {/* Три пункта */}
-        <section className="mt-12 flex flex-col gap-5">
-          {features.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="flex gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#60A5FA]/15 text-[#93C5FD]">
-                <Icon className="h-5 w-5" />
+        {/* Возражения */}
+        <section className="mt-12 flex flex-col gap-3">
+          {FAQ.map((f) => (
+            <div key={f.q} className="flex gap-3 rounded-2xl border border-[#334155]/60 bg-[#111C33]/70 p-4">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#10B981]/20 text-[#34D399]">
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </div>
               <div>
-                <div className="font-bold leading-snug">{title}</div>
-                <div className="mt-1 text-[15px] leading-relaxed text-[#94A3B8]">{text}</div>
+                <div className="font-bold leading-snug">{f.q}</div>
+                <div className="mt-0.5 text-[15px] leading-relaxed text-[#94A3B8]">{f.a}</div>
               </div>
             </div>
           ))}
@@ -216,6 +265,15 @@ export function AppLanding({ platform, utm }: { platform: Platform; utm: Utm }) 
           <span>·</span>
           <Link href="/terms" className="hover:text-[#94A3B8]">Условия</Link>
         </footer>
+      </div>
+
+      {/* Плавающая кнопка — всегда под пальцем */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-20 border-t border-[#334155]/60 bg-[#0B1220]/90 px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl transition-transform duration-300 ${showBar ? "translate-y-0" : "translate-y-full"}`}
+      >
+        <div className="mx-auto max-w-[440px]">
+          <Cta platform={platform} utm={utm} size="bar" />
+        </div>
       </div>
     </main>
   );
