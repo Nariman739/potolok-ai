@@ -82,8 +82,10 @@ export default async function MasterPortfolioPage({
       >
         <div className="max-w-2xl mx-auto">
           {master.logoUrl && (
-            <div className="relative w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden bg-white/20">
-              <Image src={master.logoUrl} alt={name} fill className="object-cover" sizes="80px" />
+            // Квадрат с белой подложкой и object-contain: в круге с object-cover
+            // широкий или текстовый логотип обрезался по краям (07.10.2026)
+            <div className="relative w-20 h-20 mx-auto mb-4 rounded-2xl overflow-hidden bg-white p-2">
+              <Image src={master.logoUrl} alt={name} fill className="object-contain p-2" sizes="80px" />
             </div>
           )}
           <h1 className="text-2xl sm:text-3xl font-bold">{name}</h1>

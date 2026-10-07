@@ -218,11 +218,12 @@ export default async function PublicKpPage({
 
         <div className="relative z-10 text-center py-10 px-6 pb-14">
           {/* Logo / Initials */}
+          {/* object-contain + белая подложка: широкий или текстовый логотип раньше обрезался (07.10.2026) */}
           {master.logoUrl ? (
             <img
               src={master.logoUrl}
               alt={company}
-              className="h-20 w-20 rounded-2xl object-cover mx-auto mb-4 ring-4 ring-white/20 shadow-xl"
+              className="h-20 w-20 rounded-2xl object-contain bg-white p-2 mx-auto mb-4 ring-4 ring-white/20 shadow-xl"
             />
           ) : (
             <div

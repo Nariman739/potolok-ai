@@ -90,7 +90,7 @@ export default async function VisualPage({
             <img
               src={viz.master.logoUrl}
               alt={company}
-              className="h-10 w-10 rounded-lg object-cover"
+              className="h-10 w-10 rounded-lg object-contain bg-white p-0.5"
             />
           )}
           <div className="flex-1">

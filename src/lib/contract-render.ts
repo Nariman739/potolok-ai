@@ -66,6 +66,11 @@ export async function renderContract(
     const ownerId = await contractOwnerId(author.masterId, author.companyId);
     // Валюта договора — владельца компании, если вызывающий её не передал (07.10.2026)
     if (master.currency == null) master = { ...master, currency: await currencyFor(ownerId) };
+    // Логотип владельца в шапке, если вызывающий его не выбрал из базы (07.10.2026)
+    if (master.logoUrl === undefined) {
+      const owner = await prisma.master.findUnique({ where: { id: ownerId }, select: { logoUrl: true } });
+      master = { ...master, logoUrl: owner?.logoUrl ?? null };
+    }
     const tpl = await activeContractTemplate(ownerId, lang);
     if (tpl) {
       return { html: renderContractTemplate(tpl.body, master, estimate, calc, lang), templateVersion: tpl.version };

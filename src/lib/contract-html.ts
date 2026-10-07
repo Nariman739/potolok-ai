@@ -7,6 +7,8 @@ import { asCurrency, currencySymbol, currencyWord, type CurrencyCode } from "./c
 export interface MasterData {
   /** Валюта владельца компании (KZT/RUB); пусто — тенге (07.10.2026) */
   currency?: string | null;
+  /** Логотип владельца компании — печатается в шапке договора и акта (07.10.2026) */
+  logoUrl?: string | null;
   firstName: string;
   lastName?: string | null;
   companyName?: string | null;
@@ -82,6 +84,14 @@ function defaultPaymentSchedule(prepaymentPercent: number, t: T): PaymentStage[]
 function esc(s: string | null | undefined): string {
   if (!s) return "";
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Логотип в шапке документа: только наш Blob, иначе пусто (07.10.2026). */
+export function docLogo(master: Pick<MasterData, "logoUrl">): string {
+  const url = master.logoUrl ?? "";
+  if (!/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/logos\//.test(url)) return "";
+  // Стили инлайном: у договоров из шаблона мастера свой сохранённый <style>, класса .doc-logo там нет.
+  return `<div class="doc-logo" style="text-align:center;margin:0 0 10px"><img src="${esc(url)}" alt="" style="max-height:56px;max-width:200px;object-fit:contain"></div>`;
 }
 
 function fmtPrice(n: number | undefined | null, currency: CurrencyCode): string {
@@ -194,6 +204,8 @@ const pageStyle = `
     font-size: 13px;
     line-height: 1.5;
   }
+  .doc-logo { text-align: center; margin: 0 0 10px; }
+  .doc-logo img { max-height: 56px; max-width: 200px; object-fit: contain; }
   h1 { text-align: center; font-size: 16px; margin: 0 0 4px; }
   h2 { font-size: 13px; margin: 16px 0 6px; }
   .center { text-align: center; }
@@ -319,6 +331,7 @@ export function generateContractHtml(
   <style>${pageStyle}</style>
 </head>
 <body>
+  ${docLogo(master)}
   <h1>${title}</h1>
   <p class="center">${t("ct.numDate", { num: contractNum, date })}</p>
   <p class="center">${city}</p>
@@ -551,6 +564,7 @@ export function generateActHtml(
   ol { margin:6px 0 6px 20px; padding:0; } ol li { margin:2px 0; }</style>
 </head>
 <body>
+  ${docLogo(master)}
   <h1>${t("act.title")}</h1>
   <p class="center">${t(`act.toDocDated.${kind}`, { num: contractNum, date: fmtDate(act.contractDate, lang) })}</p>
   <p class="center">${actDate}, ${city}</p>
@@ -924,6 +938,12 @@ export function renderContractTemplate(
     const blank = `<p>${t("ct.lbl.iin")}: _______________</p>`;
     const at = filled.lastIndexOf(blank);
     if (at >= 0) filled = filled.slice(0, at) + `<p>${t("ct.lbl.iin")}: ${esc(estimate.clientIin)}</p>` + filled.slice(at + blank.length);
+  }
+  // Логотип в шапке и у договора из шаблона мастера (07.10.2026): шаблоны
+  // сохранены до этой правки и своей разметки логотипа не содержат.
+  const logo = docLogo(master);
+  if (logo && !filled.includes("doc-logo")) {
+    filled = filled.replace(/<body[^>]*>/i, (m) => `${m}\n  ${logo}`);
   }
   return filled;
 }
