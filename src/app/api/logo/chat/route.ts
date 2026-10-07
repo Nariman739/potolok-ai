@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { continueLogoChat, type LogoChatMessage } from "@/lib/logo-generation";
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
     console.error("Logo chat error:", error);
+    Sentry.captureException(error, { tags: { feature: "logo-chat" } });
     return NextResponse.json({ error: "Ошибка диалога" }, { status: 500 });
   }
 }

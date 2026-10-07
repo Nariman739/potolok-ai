@@ -237,8 +237,11 @@ export const SMM_LIMITS = {
   PROPLUS: 15,
 } as const;
 
+// Генерация логотипа стоит живых денег (Recraft ~$0,04 за картинку), а все
+// новые мастера — PRO: безлимит дал 13 генераций за полчаса (07.10.2026).
+// 10 в месяц хватает с запасом, при нужде поднимаем руками.
 export const LOGO_LIMITS = {
   FREE: 3,
-  PRO: Infinity,
-  PROPLUS: Infinity,
+  PRO: 10,
+  PROPLUS: 10,
 } as const;

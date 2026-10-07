@@ -2,6 +2,25 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Логотипом можно сделать только файл из нашего хранилища в папке этого
+ * мастера (аудит 07.10.2026). Раньше принималась любая строка: чужой хост
+ * ронял страницу портфолио (next/image вне remotePatterns), а PDF скачивал
+ * произвольный URL со стороны сервера.
+ */
+function isOwnLogoUrl(url: string, masterId: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.protocol === "https:" &&
+      u.hostname.endsWith(".public.blob.vercel-storage.com") &&
+      u.pathname.startsWith(`/logos/${masterId}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
@@ -10,6 +29,9 @@ export async function POST(request: Request) {
 
     if (typeof url !== "string") {
       return NextResponse.json({ error: "url обязателен" }, { status: 400 });
+    }
+    if (url && !isOwnLogoUrl(url, master.id)) {
+      return NextResponse.json({ error: "Можно выбрать только свой логотип" }, { status: 400 });
     }
 
     // Снимаем флаг isCurrent со всех старых, ставим на новый (если есть)

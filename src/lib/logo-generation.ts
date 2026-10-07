@@ -4,6 +4,7 @@ import Replicate from "replicate";
 import { put } from "@vercel/blob";
 import { getOpenRouter, AI_MODEL } from "./openrouter";
 import { computeCostFromUsage } from "./ai-cost-cap";
+import { normalizeLogo } from "./logo-image";
 
 export type LogoChatMessage = {
   role: "assistant" | "user";
@@ -42,10 +43,12 @@ const SYSTEM_PROMPT = `Ты — AI-помощник который помога�
 - Стиль/feeling
 - Цвета
 - Символику если хочет иконку
-- "professional, clean, vector style, square format, white background"
+- "professional, clean, flat vector logo artwork only, isolated on plain solid white background, no gradients, no shadows, no mockup, no photograph, no signboard, no interior scene"
+  (без этого модель рисует вывеску на стене или фото комнаты вместо логотипа — так вышло у двух мастеров 05–07.10.2026)
+- Если название компании кириллицей — напиши в promptEnglish, что текст логотипа должен быть ТОЧНО этим названием латиницей (транслитерация), короткий и крупный; если название длиннее 14 символов — проси только знак-символ без текста или сокращение, иначе модель исказит буквы
 
 Пример promptEnglish:
-"Modern professional logo for 'White Home', a stretched ceiling installation company in Almaty. Conveys reliability and warmth. Color palette: deep navy blue and warm gold. Includes minimalist ceiling/home symbol mark. Clean vector style, balanced composition, square format, white background."`;
+"Modern professional logo for 'White Home', a stretched ceiling installation company in Almaty. Conveys reliability and warmth. Color palette: deep navy blue and warm gold. Includes minimalist ceiling/home symbol mark. Logo text exactly 'White Home', short and large. Clean flat vector logo artwork only, balanced composition, isolated on plain solid white background, no gradients, no shadows, no mockup, no photograph, no signboard, no interior scene."`;
 
 export async function continueLogoChat(
   master: { firstName: string; companyName: string | null; address: string | null },
@@ -128,13 +131,22 @@ export async function generateLogo(
 
   // Recraft v3 — отлично с текстом и логотипами
   // https://replicate.com/recraft-ai/recraft-v3
-  const output = (await replicate.run("recraft-ai/recraft-v3", {
-    input: {
-      prompt: promptEnglish,
-      size: "1024x1024",
-      style: "any",
-    },
-  })) as unknown;
+  // style vector_illustration вместо any (07.10.2026): с «any» модель рисовала
+  // фото вывески на стене или комнату с логотипом — мастер получал мокап,
+  // а не знак. Плоская векторная иллюстрация даёт то, что нужно для КП.
+  const runRecraft = (style: string) =>
+    replicate.run("recraft-ai/recraft-v3", {
+      input: { prompt: promptEnglish, size: "1024x1024", style },
+    }) as Promise<unknown>;
+  let output: unknown;
+  try {
+    output = await runRecraft("vector_illustration");
+  } catch (e) {
+    // Если Replicate не принял стиль (сменили перечень) — не ломаем мастеру
+    // генерацию, падаем обратно на «any».
+    if (e instanceof Error && /style|enum|invalid/i.test(e.message)) output = await runRecraft("any");
+    else throw e;
+  }
 
   // Recraft v3 возвращает строку URL или массив строк, или Stream
   let imageUrl: string | null = null;
@@ -165,9 +177,14 @@ export async function generateLogo(
   if (!res.ok) throw new Error(`Не удалось скачать сгенерированный логотип`);
   const buffer = Buffer.from(await res.arrayBuffer());
 
+  // Recraft отдаёт WebP, а PDF КП умеет только PNG/JPG — до 07.10.2026 файл
+  // лежал как .png с байтами WebP и в КП молча не печатался. Теперь настоящий
+  // PNG, внешний белый фон прозрачный, поля срезаны (см. logo-image.ts).
+  const { png } = await normalizeLogo(buffer);
+
   const timestamp = Date.now();
   const path = `logos/${masterId}/${timestamp}.png`;
-  const blob = await put(path, buffer, {
+  const blob = await put(path, png, {
     access: "public",
     contentType: "image/png",
   });
