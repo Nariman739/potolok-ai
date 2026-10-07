@@ -226,6 +226,8 @@ export interface MasterProfile {
   whatsappPhone?: string | null;
   /** Язык мастера: интерфейс, помощник, документы клиенту (25.09.2026). */
   language?: "ru" | "kk";
+  /** Валюта цен: KZT | RUB. У участника компании — валюта владельца (07.10.2026). */
+  currency: "KZT" | "RUB";
   address?: string | null;
   subscriptionTier: "FREE" | "PRO" | "PROPLUS";
   isOwner: boolean;

@@ -1,4 +1,5 @@
 import { CANVAS_TYPES } from "./constants";
+import { CURRENCIES, asCurrency, type CurrencyCode } from "./currency";
 
 type PriceMap = Record<string, number>;
 
@@ -229,8 +230,12 @@ const MOBILE_NAVIGATION = `## НАВИГАЦИЯ ПО ПРИЛОЖЕНИЮ (ма
 export function buildSystemPrompt(
   masterName: string,
   _prices: PriceMap,
-  opts: { platform?: "mobile" | "web"; lang?: "ru" | "kk" } = {},
+  opts: { platform?: "mobile" | "web"; lang?: "ru" | "kk"; currency?: CurrencyCode | string | null } = {},
 ): string {
+  // Валюта мастера (07.10.2026): знак в примерах и как он сам её называет в речи.
+  const cur = CURRENCIES[asCurrency(opts.currency)];
+  const moneyExample = `120 000 ${cur.symbol}`;
+  const currencyRule = `Валюта мастера — ${cur.wordsRu[2]} (${cur.symbol}); в речи он говорит «${cur.spoken.join("», «")}». Деньги пиши как ${moneyExample}.`;
   /**
    * Казахский язык помощника (25.09.2026).
    *
@@ -267,7 +272,7 @@ export function buildSystemPrompt(
 Никогда: полотно как «кенеп», гарпун как «сүңгі», короб как «қорап»,
 цех как «шеберхана», парящий как «қалқымалы» — это другие вещи.
 
-Деньги пиши как 120 000 ₸, площадь как 40 м².
+Деньги пиши как ${moneyExample}, площадь как 40 м².
 `;
 
   const canvasTypes = CANVAS_TYPES.map(
@@ -275,6 +280,7 @@ export function buildSystemPrompt(
   ).join("\n");
 
   return `Ты — помощник мастера натяжных потолков "${masterName}" ВНУТРИ приложения PotolokAI.
+${currencyRule}
 ${kazakhRules}
 
 Главное твоё дело — объяснять, как пользоваться приложением: где что лежит, куда нажать,

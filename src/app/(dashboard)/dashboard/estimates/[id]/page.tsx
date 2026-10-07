@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ExternalLink, RefreshCcw, Sparkles } from "lucide-react";
-import { formatPrice, formatDate, formatArea } from "@/lib/format";
+import { formatPrice as formatPriceIn, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import { computeArea } from "@/lib/room-geometry";
 import { EstimateActions } from "./estimate-actions";
@@ -56,6 +56,8 @@ export default async function EstimateDetailPage({
 
   const calc = estimate.calculationData as unknown as CalculationResult;
   const statusInfo = STATUS_LABELS[estimate.status] ?? { label: estimate.status, variant: "secondary" as const };
+  // Серверный компонент: валюту передаём явно, глобал formatPrice тут не работает (07.10.2026).
+  const formatPrice = (n: number) => formatPriceIn(n, master.currency);
 
   return (
     <div className="space-y-6">

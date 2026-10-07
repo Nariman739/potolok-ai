@@ -1,3 +1,4 @@
+import { asCurrency, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { prisma } from "./prisma";
 import { normalizePhone as normalizeRaw } from "./phone";
 
@@ -240,4 +241,11 @@ export async function transferOwnDataTo(masterId: string, companyId: string): Pr
     prisma.payment.updateMany({ where, data }),
   ]);
   return { objects: o.count, estimates: e.count, clients: c.count, payments: p.count };
+}
+
+/** Валюта цен для мастера: своя, а у участника чужой компании — валюта владельца (07.10.2026). */
+export async function currencyFor(masterId: string): Promise<CurrencyCode> {
+  const me = await prisma.master.findUnique({ where: { id: masterId }, select: { currency: true } });
+  const resolved = await ownerBrandFor(masterId, { id: masterId, currency: me?.currency ?? DEFAULT_CURRENCY });
+  return asCurrency(resolved.currency);
 }

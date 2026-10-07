@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ClientPicker } from "@/components/clients/client-picker";
+import { useCurrency } from "@/components/currency-provider";
 
 interface WorkItem {
   id: string;
@@ -39,6 +40,7 @@ function QuickEstimateInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialClientId = searchParams.get("clientId") ?? undefined;
+  const { format: formatPrice, symbol } = useCurrency(); // валюта мастера вместо зашитого «₸» (07.10.2026)
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [items, setItems] = useState<WorkItem[]>([]);
@@ -338,13 +340,13 @@ function QuickEstimateInner() {
                         className="w-full rounded border px-2.5 py-1.5 text-sm pr-8 bg-white"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                        ₸
+                        {symbol}
                       </span>
                     </div>
                   </div>
                   {item.quantity > 1 && item.unitPrice > 0 && (
                     <p className="text-xs text-gray-500 text-right">
-                      = {(item.quantity * item.unitPrice).toLocaleString("ru-RU")} ₸
+                      = {formatPrice(item.quantity * item.unitPrice)}
                     </p>
                   )}
                 </div>
@@ -355,7 +357,7 @@ function QuickEstimateInner() {
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="font-semibold text-gray-700">Итого:</span>
               <span className="text-xl font-bold text-[#1e3a5f]">
-                {finalTotal.toLocaleString("ru-RU")} ₸
+                {formatPrice(finalTotal)}
               </span>
             </div>
           </CardContent>
@@ -421,7 +423,7 @@ function QuickEstimateInner() {
           ) : (
             <>
               <Send className="h-4 w-4 mr-2" />
-              Создать КП — {finalTotal.toLocaleString("ru-RU")} ₸
+              Создать КП — {formatPrice(finalTotal)}
             </>
           )}
         </Button>

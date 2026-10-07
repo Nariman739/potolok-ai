@@ -2,16 +2,20 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getOpenRouter } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
+import { CURRENCIES, asCurrency, type CurrencyCode } from "@/lib/currency";
 
 const PARSE_MODEL = "anthropic/claude-sonnet-4";
 
-const SYSTEM_PROMPT = `Ты — помощник мастера натяжных потолков. Мастер надиктовал список работ голосом или текстом.
+// Промпт собираем под валюту мастера: знак и как он её называет в речи (07.10.2026).
+function buildSystemPrompt(currency: CurrencyCode | string | null | undefined): string {
+  const cur = CURRENCIES[asCurrency(currency)];
+  return `Ты — помощник мастера натяжных потолков. Мастер надиктовал список работ голосом или текстом.
 
 Твоя задача: извлечь позиции работ с ценами в JSON.
 
 Правила:
 - Извлекай ТОЛЬКО то что сказал мастер. Не добавляй лишнего.
-- Цены в тенге (₸). Если мастер сказал "двадцать" или "20" — это 20 000 ₸.
+- Цены в ${cur.wordsRu[2]} (${cur.symbol}); в речи мастер говорит «${cur.spoken.join("», «")}». Если мастер сказал "двадцать" или "20" — это 20 000 ${cur.symbol}.
 - Если мастер сказал "по 3 тысячи" и "3 штуки" — unitPrice=3000, quantity=3.
 - Если количество не указано — quantity=1.
 - Единица: "шт." по умолчанию, "м²" для площадей, "м.п." для погонных метров.
@@ -19,6 +23,7 @@ const SYSTEM_PROMPT = `Ты — помощник мастера натяжных
 
 Отвечай ТОЛЬКО валидным JSON массивом, без markdown, без пояснений:
 [{"name":"Слив воды","quantity":1,"unit":"шт.","unitPrice":20000},...]`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
     const completion = await openrouter.chat.completions.create({
       model: PARSE_MODEL,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: buildSystemPrompt(master.currency) },
         { role: "user", content: text.trim() },
       ],
       max_tokens: 1000,

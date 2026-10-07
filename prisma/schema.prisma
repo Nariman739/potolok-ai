@@ -29,6 +29,10 @@ model Master {
   whatsappPhone String?
   address       String?
 
+  // Валюта цен и документов: "KZT" | "RUB" (07.10.2026). Одна на компанию —
+  // у участников берётся у владельца. Цифры в базе не зависят от валюты.
+  currency String @default("KZT")
+
   // Telegram integration
   telegramChatId   String? @unique
   telegramLinkCode String? @unique // temp code for /start deep link

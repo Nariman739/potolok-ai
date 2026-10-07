@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureOwnCompany } from "@/lib/company";
 import { hashPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
+import { currencyForPhone } from "@/lib/currency";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { BILLING_ENABLED } from "@/lib/billing";
 import { seedTemplateItems } from "@/lib/price-items";
@@ -99,6 +100,8 @@ export async function POST(request: Request) {
         firstName,
         companyName: companyName || null,
         portfolioSlug,
+        // Российский номер → рубли, остальным тенге; потом меняется в профиле.
+        currency: currencyForPhone(phone),
         subscriptionTier: "PRO",
         paidUntil: BILLING_ENABLED ? trialEndsAt : null,
         billingNotes: BILLING_ENABLED ? "trial 7d" : null,

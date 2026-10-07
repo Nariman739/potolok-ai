@@ -8,6 +8,7 @@ import { DEFAULT_PRICES } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
 import { PriceVariantPicker } from "@/components/visualization/price-variant-picker";
+import { useCurrency } from "@/components/currency-provider";
 import type { ElementType, FurnitureType, CeilingMode, RoomElement } from "@/lib/room-types";
 import { getVertices } from "@/lib/room-geometry";
 
@@ -482,6 +483,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
 }) {
+  // Валюта мастера вместо зашитого «₸» (07.10.2026): formatPrice уже со знаком.
+  const { format: formatPrice } = useCurrency();
   // На маунте мигрируем legacy span-подшторники в single-anchor модель,
   // чтобы вся остальная логика работала с одной формой данных.
   const [elements, setElements] = useState<RoomElement[]>(() => {
@@ -2889,9 +2892,6 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
   const liveCost = elements.length > 0 ? calcLiveCost() : 0;
 
-  function formatPrice(n: number): string {
-    return n.toLocaleString("ru-RU");
-  }
 
   // ── WhatsApp share ──
   function handleShare() {
@@ -2912,7 +2912,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const podCm = Math.round(totalSubcurtainLengthCm(elements));
     if (podCm > 0) lines.push(`📐 Подшторник: ${podCm} см`);
     if (floatingCount > 0) lines.push(`〰️ Парящий: ${floatingCount} стен`);
-    if (liveCost > 0) lines.push(`\n💰 Ориентировочно: ${formatPrice(liveCost)} ₸`);
+    if (liveCost > 0) lines.push(`\n💰 Ориентировочно: ${formatPrice(liveCost)}`);
     window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
   }
 
@@ -3510,7 +3510,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           <div className="px-3 pb-1.5 flex items-center justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-xs text-muted-foreground">~</span>
-              <span className="text-lg font-bold text-[#1e3a5f]">{formatPrice(liveCost)} ₸</span>
+              <span className="text-lg font-bold text-[#1e3a5f]">{formatPrice(liveCost)}</span>
             </div>
             <button onClick={handleShare}
               className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white active:bg-green-700">

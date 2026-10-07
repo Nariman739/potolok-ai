@@ -1,7 +1,8 @@
 import React from "react";
 import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtDate, fmtPrice, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
+import { fmtDate, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
+import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 
 // СТРАНИЦА 1 — Обложка.
 // 5 ТЕМ — 5 РАЗНЫХ ЛЕЙАУТОВ. Никакого «один шаблон с разными цветами».
@@ -52,9 +53,9 @@ function countSpots(estimate: PdfData["estimate"]): number {
   }, 0);
 }
 
-// fmtPriceParts — для удобства локального использования в Cover-секциях
-function fmtPriceParts(n: number): { num: string; cur: string } {
-  return { num: fmtPriceNum(n), cur: "₸" };
+// fmtPriceParts — число и знак валюты мастера (₸/₽) отдельно: их рисуют разными шрифтами
+function fmtPriceParts(n: number, currency: CurrencyCode): { num: string; cur: string } {
+  return { num: fmtPriceNum(n), cur: currencySymbol(currency) };
 }
 
 // Helper для блока «было/стало» (Нариман 27.06): отображается над
@@ -68,6 +69,7 @@ function fmtPriceParts(n: number): { num: string; cur: string } {
 //   badgeTextColor — что писать поверх accentColor бейджа (обычно белый)
 function CoverDiscountBlock({
   estimate,
+  currency,
   accentColor,
   strikeColor,
   savedColor,
@@ -76,6 +78,7 @@ function CoverDiscountBlock({
   badgeTextColor = "#FFFFFF",
 }: {
   estimate: PdfData["estimate"];
+  currency: CurrencyCode;
   accentColor: string;
   strikeColor: string;
   savedColor: string;
@@ -87,10 +90,10 @@ function CoverDiscountBlock({
   const saved = estimate.discountAmount ?? 0;
   if (saved <= 0) return null;
   // estimate.total — сумма СО скидкой; «было» = total + сумма скидки.
-  // Скидка могла быть введена суммой (dp = 0) — тогда бейдж показывает ₸.
+  // Скидка могла быть введена суммой (dp = 0) — тогда бейдж показывает сумму со знаком валюты.
   const original = estimate.total + saved;
-  const originalParts = fmtPriceParts(original);
-  const savedParts = fmtPriceParts(saved);
+  const originalParts = fmtPriceParts(original, currency);
+  const savedParts = fmtPriceParts(saved, currency);
   // Знак ₸ отдельным шрифтом: у Manrope и Playfair Display его нет, и в PDF
   // вместо тенге печаталась закорючка «¸» — клиент видел «−5 000 ¸». Заметно
   // стало, когда скидку начали вводить суммой: бейдж перестал быть «−10%».
@@ -165,7 +168,7 @@ function CoverMinimal({
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
-  const price = fmtPriceParts(estimate.total);
+  const price = fmtPriceParts(estimate.total, master.currency);
 
   return (
     <Page
@@ -417,6 +420,7 @@ function CoverMinimal({
         <View>
           <CoverDiscountBlock
             estimate={estimate}
+            currency={master.currency}
             accentColor={theme.palette.accent}
             strikeColor={theme.palette.pageMuted}
             savedColor={theme.palette.accent}
@@ -542,7 +546,7 @@ function CoverPremiumDark({
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
-  const price = fmtPriceParts(estimate.total);
+  const price = fmtPriceParts(estimate.total, master.currency);
   const GOLD = theme.palette.accent; // #D4AF37
   const DARK = "#0A1020"; // чуть глубже чем coverBg — нюанс
   const DARK2 = "#0F172A";
@@ -820,6 +824,7 @@ function CoverPremiumDark({
         <View style={{ alignItems: "center" }}>
           <CoverDiscountBlock
             estimate={estimate}
+            currency={master.currency}
             accentColor={GOLD}
             strikeColor="#FFFFFF60"
             savedColor={GOLD}
@@ -851,7 +856,7 @@ function CoverPremiumDark({
               marginLeft: 8,
             }}
           >
-            ₸
+            {price.cur}
           </Text>
         </View>
         {estimate.validUntil && (
@@ -967,7 +972,7 @@ function CoverWarmHandmade({
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
-  const price = fmtPriceParts(estimate.total);
+  const price = fmtPriceParts(estimate.total, master.currency);
   const CREAM_DEEP = "#F7EAD3"; // нюанс глубже, чем coverBg
   const TERRA = theme.palette.accent;
 
@@ -1200,6 +1205,7 @@ function CoverWarmHandmade({
         </Text>
         <CoverDiscountBlock
           estimate={estimate}
+          currency={master.currency}
           accentColor={TERRA}
           strikeColor={theme.palette.coverMuted}
           savedColor={TERRA}
@@ -1229,7 +1235,7 @@ function CoverWarmHandmade({
               marginTop: 12,
             }}
           >
-            ₸
+            {price.cur}
           </Text>
         </View>
         {estimate.validUntil && (
@@ -1338,7 +1344,7 @@ function CoverClassicArchitectural({
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
-  const price = fmtPriceParts(estimate.total);
+  const price = fmtPriceParts(estimate.total, master.currency);
   const BORDO = theme.palette.accent; // #6B2737
 
   return (
@@ -1609,6 +1615,7 @@ function CoverClassicArchitectural({
         <View style={{ alignItems: "flex-end" }}>
           <CoverDiscountBlock
             estimate={estimate}
+            currency={master.currency}
             accentColor={BORDO}
             strikeColor="#888888"
             savedColor={BORDO}
@@ -1637,7 +1644,7 @@ function CoverClassicArchitectural({
               marginLeft: 6,
             }}
           >
-            ₸
+            {price.cur}
           </Text>
         </View>
         </View>
@@ -1733,7 +1740,7 @@ function CoverBoldColor({
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
-  const price = fmtPriceParts(estimate.total);
+  const price = fmtPriceParts(estimate.total, master.currency);
   const ACCENT = theme.palette.accent;
   const TEXT = theme.palette.coverText; // white или dark в зависимости от accent
   const SOFT_TEXT = theme.palette.coverMuted;
@@ -1930,6 +1937,7 @@ function CoverBoldColor({
           </Text>
           <CoverDiscountBlock
             estimate={estimate}
+            currency={master.currency}
             accentColor={ACCENT}
             strikeColor={SOFT_TEXT}
             savedColor={ACCENT}

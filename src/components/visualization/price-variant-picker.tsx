@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, Check, X } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 
 interface PriceVariant {
   id: string;
@@ -47,6 +49,7 @@ interface PriceVariantPickerProps {
 
 export function PriceVariantPicker({ elementType, currentVariantId, onPick, onClose }: PriceVariantPickerProps) {
   const category = ELEMENT_TO_CATEGORY[elementType];
+  const { format, symbol } = useCurrency(); // валюта мастера (07.10.2026)
   const [variants, setVariants] = useState<PriceVariant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +161,7 @@ export function PriceVariantPicker({ elementType, currentVariantId, onPick, onCl
                       <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{spec.join(" · ")}</div>
                     )}
                     <div className="text-[11px] font-bold text-slate-900 mt-1">
-                      {v.price.toLocaleString("ru-RU")} ₸/{v.unit}
+                      {format(v.price)}/{unitLabel(v.unit, symbol)}
                     </div>
                   </div>
                 </button>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor, getScope, inScope } from "@/lib/company";
+import { asCurrency, currencySymbol, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -45,8 +46,8 @@ const C = {
   bgRow: "#f1f5f9",
 };
 
-function fmtPrice(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " \u20B8";
+function fmtPrice(n: number, cur: CurrencyCode): string {
+  return new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " " + currencySymbol(cur);
 }
 
 function sanitizeFilename(s: string): string {
@@ -81,14 +82,15 @@ export async function GET(
 
     const estimate = await prisma.estimate.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
-      include: { master: { select: { companyName: true, firstName: true, phone: true } } },
+      include: { master: { select: { companyName: true, firstName: true, phone: true, currency: true } } },
     });
 
     if (!estimate) {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     }
-    // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
+    // Бренд/реквизиты (и валюта) — владельца компании, если КП делал участник бригады (Этап 3)
     estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+    const cur = asCurrency(estimate.master.currency);
 
     // Load master's install prices (overrides)
     const priceOverrides = await priceMapFor(await priceBookCompanyId(scope.ownerId));
@@ -235,9 +237,9 @@ export async function GET(
           .text(item.name, colX[0] + 8, y, { width: colW2[0] });
         doc.fillColor(C.textLight)
           .text(`${item.quantity} ${item.unit}`, colX[1], y, { width: colW2[1], align: "center" })
-          .text(fmtPrice(item.unitPrice), colX[2], y, { width: colW2[2], align: "right" });
+          .text(fmtPrice(item.unitPrice, cur), colX[2], y, { width: colW2[2], align: "right" });
         doc.font("Sans-Bold").fillColor(C.text)
-          .text(fmtPrice(item.total), colX[3], y, { width: colW2[3], align: "right" });
+          .text(fmtPrice(item.total, cur), colX[3], y, { width: colW2[3], align: "right" });
         y += 16;
       }
 
@@ -249,7 +251,7 @@ export async function GET(
 
       // Room total
       doc.font("Sans-Bold").fontSize(10).fillColor(C.primary)
-        .text(`Итого: ${fmtPrice(room.total)}`, ML, y, { width: contentW, align: "right" });
+        .text(`Итого: ${fmtPrice(room.total, cur)}`, ML, y, { width: contentW, align: "right" });
       y += 24;
     }
 
@@ -267,7 +269,7 @@ export async function GET(
       .text("ИТОГО ЗА МОНТАЖ", ML + 16, y + 8);
     doc.opacity(1);
     doc.font("Sans-Bold").fontSize(20).fillColor(C.white)
-      .text(fmtPrice(grandTotal), ML + 16, y + 22, { width: contentW - 32, align: "right" });
+      .text(fmtPrice(grandTotal, cur), ML + 16, y + 22, { width: contentW - 32, align: "right" });
     y += 60;
 
     // ── Footer ──

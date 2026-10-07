@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import { ChevronDown } from "lucide-react";
 
@@ -26,6 +26,8 @@ export function ConfirmSection({
   isRevised,
   brandColor,
 }: ConfirmSectionProps) {
+  // Валюта владельца КП приходит из CurrencyProvider на серверной странице (07.10.2026)
+  const { format: formatPrice } = useCurrency();
   const [confirmed, setConfirmed] = useState(initialConfirmed);
   const [loading, setLoading] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());

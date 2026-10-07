@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { withIdempotency } from "@/lib/idempotency";
 import { addClientEvent, syncClientStatusForObject } from "@/lib/clients";
+import { formatMoney } from "@/lib/currency";
 
 /**
  * Деньги от клиента по объекту (Этап 4).
@@ -38,7 +39,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         addClientEvent({
           clientId: obj.clientId,
           type: "NOTE",
-          content: `Получено ${amount.toLocaleString("ru-KZ")} ₸${kind === "prepayment" ? " (предоплата)" : kind === "final" ? " (остаток)" : ""}${obj.address ? ` · ${obj.address}` : ""}`,
+          // Валюта компании — у requireAuth она уже владельца (07.10.2026)
+          content: `Получено ${formatMoney(amount, master.currency)}${kind === "prepayment" ? " (предоплата)" : kind === "final" ? " (остаток)" : ""}${obj.address ? ` · ${obj.address}` : ""}`,
           metadata: { measurementObjectId: obj.id, paymentId: payment.id, amount, kind },
         }).catch(() => {});
       }

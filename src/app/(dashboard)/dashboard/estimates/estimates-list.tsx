@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { formatPrice, formatDateShort } from "@/lib/format";
+import { formatDateShort } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Черновик",
@@ -34,6 +35,7 @@ interface Estimate {
 }
 
 export function EstimatesList({ estimates }: { estimates: Estimate[] }) {
+  const { format: formatPrice } = useCurrency(); // валюта мастера (07.10.2026)
   const [query, setQuery] = useState("");
 
   const filtered = query.trim()

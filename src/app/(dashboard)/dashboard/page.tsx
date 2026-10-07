@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Ruler,
 } from "lucide-react";
-import { formatPrice, formatDateShort } from "@/lib/format";
+import { formatPrice as formatPriceIn, formatDateShort } from "@/lib/format";
 import { KP_LIMITS } from "@/lib/constants";
 import { FeedbackButton } from "@/components/feedback-button";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
@@ -43,6 +43,8 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function DashboardPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
+  // Серверный компонент: валюту передаём явно (07.10.2026).
+  const formatPrice = (n: number) => formatPriceIn(n, master.currency);
 
   const monthStart = new Date();
   monthStart.setDate(1);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { addClientEvent, changeClientStatus } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
+import { currencyFor } from "@/lib/company";
 
 export async function POST(
   request: Request,
@@ -98,9 +99,11 @@ export async function POST(
       estimate.master.notifyDealWon !== false
     ) {
       const price = estimate.total || 0;
+      // Валюта владельца компании (07.10.2026)
+      const currency = await currencyFor(estimate.masterId);
       const text =
         `📝 <b>${signedName} подписал договор электронно!</b>\n\n` +
-        (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
+        (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
         `📅 ${signedAt.toLocaleString("ru-RU")}\n` +
         `\n<i>Скачайте подписанный PDF из дашборда.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);

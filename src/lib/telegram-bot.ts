@@ -2,7 +2,8 @@
 // Handles: text messages, photos (vision), voice messages (STT)
 
 import { prisma } from "@/lib/prisma";
-import { companyIdFor } from "@/lib/company";
+import { companyIdFor, currencyFor } from "@/lib/company";
+import { formatMoney, currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { buildSystemPrompt } from "@/lib/assistant-prompt";
 import { calculate } from "@/lib/calculate";
@@ -140,12 +141,15 @@ export async function handleTelegramBotMessage(
       }
     }
 
+    // Валюта — владельца компании мастера, как прайс (07.10.2026)
+    const currency = await currencyFor(master.id);
     const result = await processAIChat(
       master.id,
       master.companyName || master.firstName,
       messageText,
       visionContext ? null : imageUrl, // No photo if vision agents succeeded
-      visionContext
+      visionContext,
+      currency
     );
     totalCostUsd += result.costUsd;
     await recordAiUsage(master.id, totalCostUsd);
@@ -159,7 +163,8 @@ export async function handleTelegramBotMessage(
         result.extractedRooms,
         result.calculationResult,
         result.clientData,
-        result.sessionId
+        result.sessionId,
+        currency
       );
     }
   } catch (error) {
@@ -186,7 +191,8 @@ async function processAIChat(
   masterName: string,
   message: string | null,
   imageUrl: string | null,
-  visionContext: string | null = null
+  visionContext: string | null = null,
+  currency: CurrencyCode = "KZT"
 ): Promise<AIResult> {
   // Load master prices
   // Прайс компании мастера (PriceItem, 01.10.2026) — у участника бригады цены владельца.
@@ -221,7 +227,7 @@ async function processAIChat(
 
   // Skip separate vision extraction — pass photo directly to conversation AI
   // This saves ~8 seconds (critical for Vercel Hobby 10s limit)
-  const systemPrompt = buildSystemPrompt(masterName, prices);
+  const systemPrompt = buildSystemPrompt(masterName, prices, { currency });
 
   // Build OpenAI messages — limit to last 6 messages to stay within timeout
   const openaiMessages: ChatCompletionMessageParam[] = [
@@ -363,7 +369,7 @@ async function processAIChat(
 
   // Append calculation summary if available
   if (calculationResult) {
-    telegramResponse = appendCalculationSummary(telegramResponse, calculationResult);
+    telegramResponse = appendCalculationSummary(telegramResponse, calculationResult, currency);
   }
 
   return {
@@ -443,19 +449,20 @@ function cleanMarkdownForTelegram(text: string): string {
 /** Append calculation summary in readable format */
 function appendCalculationSummary(
   text: string,
-  calc: { total: number; totalArea: number; pricePerM2: number; roomResults: Array<{ roomName: string; area: number; subtotalAfterHeight: number }> }
+  calc: { total: number; totalArea: number; pricePerM2: number; roomResults: Array<{ roomName: string; area: number; subtotalAfterHeight: number }> },
+  currency: CurrencyCode
 ): string {
   const lines = ["\n\n📊 <b>Расчёт:</b>"];
 
   for (const room of calc.roomResults) {
     const area = Math.round(room.area * 100) / 100;
-    lines.push(`• ${room.roomName}: ${area} м² — ${room.subtotalAfterHeight.toLocaleString("ru")} ₸`);
+    lines.push(`• ${room.roomName}: ${area} м² — ${formatMoney(room.subtotalAfterHeight, currency, "ru")}`);
   }
 
   lines.push("");
-  lines.push(`<b>Итого: ${calc.total.toLocaleString("ru")} ₸</b>`);
+  lines.push(`<b>Итого: ${formatMoney(calc.total, currency, "ru")}</b>`);
   const totalArea = Math.round(calc.totalArea * 100) / 100;
-  lines.push(`Площадь: ${totalArea} м² | ${calc.pricePerM2.toLocaleString("ru")} ₸/м²`);
+  lines.push(`Площадь: ${totalArea} м² | ${calc.pricePerM2.toLocaleString("ru")} ${currencySymbol(currency)}/м²`);
 
   return text + lines.join("\n");
 }
@@ -469,7 +476,8 @@ async function createEstimateFromBot(
   rooms: RoomInput[],
   calcResult: CalculationResult,
   clientData: { name?: string; phone?: string; address?: string },
-  sessionId: string
+  sessionId: string,
+  currency: CurrencyCode
 ): Promise<void> {
   try {
     // Check KP limit
@@ -525,7 +533,7 @@ async function createEstimateFromBot(
       chatId,
       `✅ <b>КП создано!</b>\n\n` +
       `👤 ${clientData.name || "Клиент"}\n` +
-      `💰 ${calcResult.total.toLocaleString("ru")} ₸\n` +
+      `💰 ${formatMoney(calcResult.total, currency, "ru")}\n` +
       `📐 ${calcResult.totalArea.toFixed(1)} м²\n\n` +
       `🔗 Ссылка для клиента:\n${kpUrl}\n\n` +
       `Отправьте эту ссылку клиенту в WhatsApp 👆\n` +
@@ -1213,13 +1221,14 @@ export async function handleBotCommand(
         REVISED: "🔄",
       };
 
+      // Валюта владельца компании (07.10.2026)
+      const currency = await currencyFor(masterId);
       const lines = ["📋 <b>Последние КП:</b>\n"];
       for (const est of estimates) {
         const emoji = statusEmoji[est.status] || "📄";
         const date = est.createdAt.toLocaleDateString("ru");
         const client = est.clientName || "Без имени";
-        const total = est.total.toLocaleString("ru");
-        lines.push(`${emoji} ${client} — ${total} ₸ (${date})`);
+        lines.push(`${emoji} ${client} — ${formatMoney(est.total, currency, "ru")} (${date})`);
         lines.push(`   🔗 potolok.ai/kp/${est.publicId}\n`);
       }
 

@@ -49,6 +49,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
     prepaymentPercent: overrides.master?.prepaymentPercent ?? 50,
     warrantyMaterials: overrides.master?.warrantyMaterials ?? 10,
     warrantyInstall: overrides.master?.warrantyInstall ?? 2,
+    currency: overrides.master?.currency ?? "KZT",
   };
 
   // Тестовая 3-комнатная квартира. designerData — реальная геометрия как

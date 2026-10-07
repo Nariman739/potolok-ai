@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!name) return NextResponse.json({ error: "Название обязательно" }, { status: 400 });
     if (!(UNITS as readonly string[]).includes(unit)) return NextResponse.json({ error: "Неверная единица измерения" }, { status: 400 });
     if (!Number.isFinite(price) || price < 0 || price > 10_000_000) {
-      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
+      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000" }, { status: 400 });
     }
     const installerPrice = body.installerPrice === null || body.installerPrice === undefined ? null : Number(body.installerPrice);
 

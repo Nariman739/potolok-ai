@@ -10,6 +10,7 @@ import { KP_LIMITS } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { priceBookCompanyId } from "@/lib/price-items";
+import { formatMoney } from "@/lib/currency";
 
 export async function GET() {
   try {
@@ -383,7 +384,7 @@ async function createEstimate(request: Request): Promise<NextResponse> {
       addClientEvent({
         clientId: linkedClientId,
         type: "KP_CREATED",
-        content: total ? `Сумма: ${Math.round(total)} ₸` : null,
+        content: total ? `Сумма: ${formatMoney(total, master.currency)}` : null,
         metadata: { estimateId: estimate.id },
       }).catch(() => {});
     }

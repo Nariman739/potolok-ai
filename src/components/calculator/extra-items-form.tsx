@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
 import type { ExtraItem } from "@/lib/types";
+import { useCurrency } from "@/components/currency-provider";
 
 interface ExtraItemsFormProps {
   items: ExtraItem[];
@@ -11,6 +12,7 @@ interface ExtraItemsFormProps {
 }
 
 export function ExtraItemsForm({ items, onChange }: ExtraItemsFormProps) {
+  const { symbol } = useCurrency(); // валюта мастера (07.10.2026)
   function update(idx: number, field: keyof ExtraItem, value: string) {
     const next = items.map((it, i) => {
       if (i !== idx) return it;
@@ -83,7 +85,7 @@ export function ExtraItemsForm({ items, onChange }: ExtraItemsFormProps) {
                   step="1"
                   value={item.price || ""}
                   onChange={(e) => update(idx, "price", e.target.value)}
-                  placeholder="Цена ₸"
+                  placeholder={`Цена ${symbol}`}
                   className="h-9 text-xs"
                   inputMode="numeric"
                 />

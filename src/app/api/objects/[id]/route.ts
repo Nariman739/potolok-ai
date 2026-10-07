@@ -13,6 +13,7 @@ import {
 import { moneySummary } from "@/lib/money";
 import { objectDocs } from "@/lib/object-docs";
 import { summarizeMaterials } from "@/lib/object-materials";
+import { formatMoney } from "@/lib/currency";
 import type { CalculationResult } from "@/lib/types";
 
 /**
@@ -111,7 +112,8 @@ export async function GET(
       history.push({
         at: e.createdAt.toISOString(),
         type: "KP_CREATED",
-        text: `КП на ${Math.round(e.total).toLocaleString("ru-KZ")} ₸`,
+        // Валюта компании — у requireAuth она уже владельца (07.10.2026)
+        text: `КП на ${formatMoney(e.total, master.currency)}`,
         estimateId: e.id,
       });
       if (e.contractSignedAt) {
@@ -125,7 +127,7 @@ export async function GET(
       history.push({
         at: pay.paidAt.toISOString(),
         type: "PAYMENT",
-        text: `Получено ${pay.amount.toLocaleString("ru-KZ")} ₸${pay.kind === "prepayment" ? " · предоплата" : pay.kind === "final" ? " · остаток" : ""}${pay.note ? ` · ${pay.note}` : ""}`,
+        text: `Получено ${formatMoney(pay.amount, master.currency)}${pay.kind === "prepayment" ? " · предоплата" : pay.kind === "final" ? " · остаток" : ""}${pay.note ? ` · ${pay.note}` : ""}`,
       });
     }
     for (const w of obj.workshopOrders) {

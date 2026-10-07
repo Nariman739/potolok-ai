@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     const take = (k: string, v: unknown) => {
       if (k === "price") {
         const n = Number(v);
-        if (!Number.isFinite(n) || n < 0 || n > 10_000_000) throw new RangeError("Цена должна быть от 0 до 10 000 000 ₸");
+        if (!Number.isFinite(n) || n < 0 || n > 10_000_000) throw new RangeError("Цена должна быть от 0 до 10 000 000");
         data.price = n;
       } else if (k === "installerPrice") {
         data.installerPrice = v === null || v === "" || v === "null" ? null : Number(v);

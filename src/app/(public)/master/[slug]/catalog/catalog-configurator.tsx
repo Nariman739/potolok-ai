@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { MessageCircle, ChevronDown, ChevronUp, ShoppingCart, X, Send } from "lucide-react";
+import { formatMoney, type CurrencyCode } from "@/lib/currency";
 
 interface CatalogItem {
   code: string;
@@ -26,10 +27,6 @@ interface SelectedItem {
   quantity: number;
 }
 
-function fmtPrice(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " \u20B8";
-}
-
 // Category icons
 const CATEGORY_ICONS: Record<string, string> = {
   canvas: "🎨",
@@ -49,13 +46,17 @@ export function CatalogConfigurator({
   brandColor,
   contactPhone,
   slug,
+  currency,
 }: {
   grouped: CategoryGroup[];
   masterName: string;
   brandColor: string;
   contactPhone: string;
   slug: string;
+  /** Валюта мастера-владельца каталога, с серверной страницы (07.10.2026) */
+  currency: CurrencyCode;
 }) {
+  const fmtPrice = (n: number) => formatMoney(n, currency);
   const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
   const [expandedCat, setExpandedCat] = useState<string>(grouped[0]?.category || "");
   const [showCart, setShowCart] = useState(false);

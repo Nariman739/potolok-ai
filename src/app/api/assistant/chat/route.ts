@@ -125,7 +125,8 @@ export async function POST(request: Request) {
     const systemPrompt = buildSystemPrompt(
       master.companyName || master.firstName,
       prices,
-      { platform, lang }
+      // Валюта у requireAuth уже владельца компании (07.10.2026)
+      { platform, lang, currency: master.currency }
     );
 
     let fullContent = "";

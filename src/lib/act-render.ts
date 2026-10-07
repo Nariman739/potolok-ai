@@ -105,4 +105,6 @@ export const ACT_MASTER_SELECT = {
   warrantyInstall: true,
   contractCity: true,
   language: true,
+  // Валюта в акте — владельца: ownerBrandFor подменит, раз поле в select (07.10.2026)
+  currency: true,
 } as const;

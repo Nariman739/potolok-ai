@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
     // Те же границы, что и при правке одной позиции (21.09.2026).
     const bad = items.find((it) => typeof it.price !== "number" || !Number.isFinite(it.price) || it.price < 0 || it.price > 10_000_000);
     if (bad) {
-      return NextResponse.json({ error: `Цена «${bad.itemCode}» должна быть от 0 до 10 000 000 ₸` }, { status: 400 });
+      return NextResponse.json({ error: `Цена «${bad.itemCode}» должна быть от 0 до 10 000 000` }, { status: 400 });
     }
     const unknown = items.find((it) => !PRODUCT_BY_CODE[it.itemCode]);
     if (unknown) {

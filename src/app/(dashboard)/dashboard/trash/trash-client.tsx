@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Undo2, Trash2, FileText, Users, Ruler, DollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { formatPrice } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
 
 type ModelKind = "estimates" | "clients" | "measurements" | "variants";
 
@@ -96,6 +96,7 @@ function formatRelativeDate(iso: string): string {
 
 export function TrashClient({ estimates, clients, measurements, variants }: Props) {
   const router = useRouter();
+  const { format: formatPrice } = useCurrency(); // валюта мастера (07.10.2026)
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<{ kind: ModelKind; id: string; label: string } | null>(null);
 

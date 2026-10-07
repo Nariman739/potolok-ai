@@ -24,6 +24,7 @@ import {
   type EventTypeKey,
 } from "./constants";
 import { NewClientDialog } from "./new-client-dialog";
+import { useCurrency } from "@/components/currency-provider";
 
 type Item = {
   id: string;
@@ -69,11 +70,8 @@ function formatDate(iso: string) {
   });
 }
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
-}
-
 export function ClientsList({ initialItems }: { initialItems: Item[] }) {
+  const { format: formatMoney } = useCurrency(); // валюта мастера вместо зашитого «₸» (07.10.2026)
   const [items, setItems] = useState<Item[]>(initialItems);
   const [activeStatus, setActiveStatus] = useState<DealStatusKey | "ALL">("ALL");
   const [search, setSearch] = useState("");
@@ -241,7 +239,7 @@ export function ClientsList({ initialItems }: { initialItems: Item[] }) {
                         <span>{c.estimatesCount} КП</span>
                       )}
                       {c.totalSum > 0 && (
-                        <span>{formatMoney(c.totalSum)} ₸</span>
+                        <span>{formatMoney(c.totalSum)}</span>
                       )}
                     </div>
                     {c.lastEvent ? (

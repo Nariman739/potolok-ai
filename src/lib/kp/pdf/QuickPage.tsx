@@ -2,6 +2,7 @@ import React from "react";
 import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData, PdfLineItem } from "../pdf-data";
 import { fmtDate, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
+import { currencySymbol } from "@/lib/currency";
 
 // «Быстрое» КП.
 // Когда клиент в WhatsApp спрашивает «а сколько примерно?» — мастер
@@ -29,7 +30,7 @@ export function QuickPage({ data }: { data: PdfData }) {
   const hasItems = groups.length > 0;
   const showGroupTitles = groups.length > 1;
 
-  // Без позиций — округляем до 10 000 ₸, «ориентир от руки».
+  // Без позиций — округляем до 10 000, «ориентир от руки».
   // С позициями — точная сумма, иначе не сходится со списком.
   const price = hasItems ? estimate.total : Math.round(estimate.total / 10000) * 10000;
 
@@ -230,6 +231,7 @@ export function QuickPage({ data }: { data: PdfData }) {
         </Text>
         <PriceText
           amount={price}
+          currency={master.currency}
           size={hasItems ? 48 : 72}
           color={theme.palette.accentText}
           fonts={fonts}
@@ -281,7 +283,7 @@ export function QuickPage({ data }: { data: PdfData }) {
                     {g.title}
                   </Text>
                   {g.total > 0 && (
-                    <PriceText amount={g.total} size={11} tengeSize={10} color={theme.palette.accent} fonts={fonts} use="body" weight={600} />
+                    <PriceText amount={g.total} currency={master.currency} size={11} tengeSize={10} color={theme.palette.accent} fonts={fonts} use="body" weight={600} />
                   )}
                 </View>
               )}
@@ -294,7 +296,7 @@ export function QuickPage({ data }: { data: PdfData }) {
             <Text style={{ fontFamily: fonts.body.family, fontSize: 9, color: textMuted, marginTop: 6, textAlign: "right" }}>
               {estimate.discountPercent > 0 ? `Скидка ${estimate.discountPercent}%: ` : "Скидка: "}
               −{Math.round(estimate.discountAmount).toLocaleString("ru-RU")}{" "}
-              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>{currencySymbol(master.currency)}</Text>
               {" — уже учтена в сумме"}
             </Text>
           )}
@@ -471,6 +473,7 @@ function QuickItemRow({
               quantity={item.quantity}
               unit={item.unit}
               unitPrice={item.unitPrice}
+              currency={data.master.currency}
               fonts={fonts}
               size={8.5}
               color={textMuted}
@@ -479,7 +482,7 @@ function QuickItemRow({
         )}
       </View>
       <View style={{ width: 90 }}>
-        <PriceText amount={item.total} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />
+        <PriceText amount={item.total} currency={data.master.currency} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />
       </View>
     </View>
     {/* Разделитель полоской, не border: border с прозрачным цветом на тёмной

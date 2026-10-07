@@ -3,6 +3,8 @@ import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import type { MasterProfile } from "./types";
+import { asCurrency } from "./currency";
+import { ownerBrandFor } from "./company";
 
 const SESSION_COOKIE = "session_token";
 const SESSION_DURATION_DAYS = 30;
@@ -87,7 +89,16 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     return null;
   }
 
+  // Валюта одна на компанию: участник видит цены в валюте владельца.
+  // Лишний запрос только у участников чужой компании (activeCompanyId задан).
+  let currency = asCurrency(m.currency);
+  if (m.activeCompanyId) {
+    const resolved = await ownerBrandFor(m.id, { id: m.id, currency: m.currency }).catch(() => null);
+    if (resolved) currency = asCurrency(resolved.currency);
+  }
+
   return {
+    currency,
     id: m.id,
     email: m.email,
     firstName: m.firstName,

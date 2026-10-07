@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, inScope } from "@/lib/company";
+import { currencyFor, getScope, inScope } from "@/lib/company";
+import { currencySymbol, type CurrencyCode } from "@/lib/currency";
+import { numberToWordsKz } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
 
-function fmtPrice(n: number | undefined | null): string {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(Number(n) || 0)) + " ₸";
+function fmtPrice(n: number | undefined | null, cur: CurrencyCode): string {
+  return new Intl.NumberFormat("ru-RU").format(Math.round(Number(n) || 0)) + " " + currencySymbol(cur);
 }
 
 function getRoomResults(calc: CalculationResult): RoomResult[] {
@@ -30,44 +32,6 @@ function yearWord(n: number): string {
   return "лет";
 }
 
-function numberToWords(amount: number): string {
-  const n = Math.round(amount);
-  if (n === 0) return "ноль тенге";
-  const units = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
-  const teens = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать",
-    "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
-  const tens = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят",
-    "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
-  const hundreds = ["", "сто", "двести", "триста", "четыреста", "пятьсот",
-    "шестьсот", "семьсот", "восемьсот", "девятьсот"];
-  function three(num: number): string {
-    if (num === 0) return "";
-    const parts: string[] = [];
-    const h = Math.floor(num / 100), rem = num % 100, t = Math.floor(rem / 10), u = rem % 10;
-    if (h > 0) parts.push(hundreds[h]);
-    if (rem >= 10 && rem < 20) parts.push(teens[rem - 10]);
-    else { if (t > 0) parts.push(tens[t]); if (u > 0) parts.push(units[u]); }
-    return parts.join(" ");
-  }
-  const parts: string[] = [];
-  const mil = Math.floor(n / 1_000_000);
-  const tho = Math.floor((n % 1_000_000) / 1_000);
-  const rest = n % 1_000;
-  if (mil > 0) {
-    const w = mil % 10 === 1 && mil % 100 !== 11 ? "миллион"
-      : [2, 3, 4].includes(mil % 10) && ![12, 13, 14].includes(mil % 100) ? "миллиона" : "миллионов";
-    parts.push(`${three(mil)} ${w}`);
-  }
-  if (tho > 0) {
-    const tStr = three(tho).replace(/\bодин$/, "одна").replace(/\bдва$/, "две");
-    const w = tho % 10 === 1 && tho % 100 !== 11 ? "тысяча"
-      : [2, 3, 4].includes(tho % 10) && ![12, 13, 14].includes(tho % 100) ? "тысячи" : "тысяч";
-    parts.push(`${tStr} ${w}`);
-  }
-  if (rest > 0) parts.push(three(rest));
-  return parts.join(" ").trim() + " тенге";
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -86,6 +50,8 @@ export async function GET(
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
 
     const calc = estimate.calculationData as unknown as CalculationResult;
+    // Валюта владельца компании: знак и слово в сумме прописью (07.10.2026)
+    const cur = await currencyFor(master.id);
     const isIp = master.contractType === "ip";
     const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
     const dateStr = new Date(estimate.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
@@ -163,8 +129,8 @@ export async function GET(
         const rowH = doc.y - ty;
         doc.text(`${item.quantity}`, colX[2] + 2, ty, { width: colW[2], align: "right" });
         doc.text(item.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
-        doc.text(fmtPrice(item.unitPrice), colX[4] + 2, ty, { width: colW[4], align: "right" });
-        doc.font("Sans-Bold").text(fmtPrice(item.total), colX[5] + 2, ty, { width: colW[5], align: "right" });
+        doc.text(fmtPrice(item.unitPrice, cur), colX[4] + 2, ty, { width: colW[4], align: "right" });
+        doc.font("Sans-Bold").text(fmtPrice(item.total, cur), colX[5] + 2, ty, { width: colW[5], align: "right" });
         ty += Math.max(rowH, 12) + 2;
         doc.moveTo(L, ty).lineTo(L + CW, ty).strokeColor("#ccc").lineWidth(0.5).stroke();
         ty += 2;
@@ -174,7 +140,7 @@ export async function GET(
 
     // 2. Оплата
     section("2", "СТОИМОСТЬ И ОПЛАТА");
-    para(`2.1. Общая стоимость: ${fmtPrice(total)} (${numberToWords(total)}).`);
+    para(`2.1. Общая стоимость: ${fmtPrice(total, cur)} (${numberToWordsKz(total, "ru", cur)}).`);
     const WHEN_LABELS_PDF: Record<string, string> = {
       before_start: "до начала выполнения работ",
       on_start_day: "в день начала работ",
@@ -202,7 +168,7 @@ export async function GET(
     stages.forEach((s, i) => {
       const sum = Math.round((total * s.percent) / 100);
       para(
-        `2.${i + 2}. ${s.name} — ${s.percent}% — ${fmtPrice(sum)} — ${WHEN_LABELS_PDF[s.when] ?? s.when}.`,
+        `2.${i + 2}. ${s.name} — ${s.percent}% — ${fmtPrice(sum, cur)} — ${WHEN_LABELS_PDF[s.when] ?? s.when}.`,
       );
     });
 

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
+import { asCurrency, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
 import { DEFAULT_KP_CONFIG } from "./templates";
@@ -81,6 +82,8 @@ export type PdfMasterBranding = {
   prepaymentPercent: number;
   warrantyMaterials: number;
   warrantyInstall: number;
+  /** Валюта цен (владельца компании): знак в КП — ₸ или ₽ (07.10.2026) */
+  currency: CurrencyCode;
 };
 
 export type PdfEstimate = {
@@ -272,6 +275,7 @@ function mapBranding(m: {
   prepaymentPercent: number;
   warrantyMaterials: number;
   warrantyInstall: number;
+  currency?: string | null;
 }): PdfMasterBranding {
   return {
     // Мастер без названия компании — это он сам, а не мы. КП «от potolok.ai»
@@ -292,6 +296,8 @@ function mapBranding(m: {
     prepaymentPercent: m.prepaymentPercent,
     warrantyMaterials: m.warrantyMaterials,
     warrantyInstall: m.warrantyInstall,
+    // estimate.master уже подменён на владельца (ownerBrandFor) — валюта его
+    currency: asCurrency(m.currency),
   };
 }
 

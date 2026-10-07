@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
 import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit";
+import { asCurrency } from "@/lib/currency";
 
 export async function POST(request: Request) {
   try {
@@ -68,6 +69,8 @@ export async function POST(request: Request) {
       phone: master.phone,
       firstName: master.firstName,
       companyName: master.companyName,
+      // Знак валюты нужен приложению сразу после входа (07.10.2026).
+      currency: asCurrency(master.currency),
       token,
     });
   } catch (error) {

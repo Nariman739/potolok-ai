@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
-import { formatPrice, formatArea } from "@/lib/format";
+import { formatArea } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
 import type { CalculationResult } from "@/lib/types";
 
 interface CalculationCardProps {
@@ -13,6 +14,7 @@ interface CalculationCardProps {
 }
 
 export function CalculationCard({ result, onSaveKp }: CalculationCardProps) {
+  const { format: formatPrice } = useCurrency(); // валюта мастера (07.10.2026)
   return (
     <Card className="border-[#1e3a5f]/20">
       <CardContent className="pt-4 pb-3 space-y-3">

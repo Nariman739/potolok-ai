@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope } from "@/lib/company";
+import { currencyFor, getScope } from "@/lib/company";
+import { currencySymbol } from "@/lib/currency";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
     }
 
     const tags = CONTRACT_PLACEHOLDERS.map((p) => `{${p.key}} — ${p.about}`).join("\n");
+    // Пример суммы в промпте — в валюте мастера, иначе модель вставит «₸» в рублёвый договор (07.10.2026)
+    const sym = currencySymbol(await currencyFor(scope.ownerId));
     const system = `Ты правишь ДОГОВОР мастера натяжных потолков в Казахстане. Мастер говорит, что поменять, ты возвращаешь договор целиком с учётом правки.
 
 ЖЁСТКИЕ ПРАВИЛА
@@ -69,7 +72,7 @@ ${tags}
    месте убери: он просит зафиксировать условие, а не считать его каждый раз.
 9. Этапы оплаты. Процент — пиши «30% — {предоплата}»: сумма этапа посчитается
    от процента в той же строке. Фиксированная сумма — пиши её числом
-   («50 000 ₸»), а для последнего этапа ставь {остаток}: он посчитается как
+   («50 000 ${sym}»), а для последнего этапа ставь {остаток}: он посчитается как
    сумма договора минус всё, что названо выше. Никогда не пиши «остальная
    сумма» без метки — клиент должен видеть цифру.`;
 

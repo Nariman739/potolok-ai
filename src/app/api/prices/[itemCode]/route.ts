@@ -92,7 +92,7 @@ export async function PUT(
     // в прайсе ломала все следующие КП. Ноль разрешён: «бесплатно» бывает.
     if (price !== undefined && !Number.isNaN(price)) {
       if (price < 0 || price > 10_000_000) {
-        return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
+        return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000" }, { status: 400 });
       }
       data.price = price;
     }

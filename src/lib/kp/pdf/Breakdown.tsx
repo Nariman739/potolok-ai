@@ -2,6 +2,7 @@ import React from "react";
 import { Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { fmtArea, makeStyles, PageFooter, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
+import { currencySymbol } from "@/lib/currency";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
 
@@ -104,17 +105,18 @@ export function BreakdownPage({
                 color: theme.palette.accentText + "DD",
               }}
             >
-              {/* ₸ — шрифтом, где этот глиф есть: у Manrope/Playfair его нет,
+              {/* Знак валюты — шрифтом, где этот глиф есть: у Manrope/Playfair его нет,
                   печаталось «−5 000 ¸уже учтена». */}
               {estimate.discountPercent > 0 ? `Скидка ${estimate.discountPercent}% (` : "Скидка "}
               −{Math.round(estimate.discountAmount).toLocaleString("ru-RU")}{" "}
-              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+              <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>{currencySymbol(data.master.currency)}</Text>
               {estimate.discountPercent > 0 ? ") уже учтена" : " уже учтена"}
             </Text>
           )}
         </View>
         <PriceText
           amount={estimate.total}
+          currency={data.master.currency}
           size={28}
           color={theme.palette.accentText}
           tengeSize={18}
@@ -240,6 +242,7 @@ function RoomCard({
           </View>
           <PriceText
             amount={room.total}
+            currency={data.master.currency}
             size={14}
             color={theme.palette.accent}
             tengeSize={11}
@@ -295,6 +298,7 @@ function ItemRow({
             quantity={item.quantity}
             unit={item.unit}
             unitPrice={item.unitPrice}
+            currency={data.master.currency}
             fonts={fonts}
             size={9}
             color={theme.palette.pageMuted}
@@ -305,6 +309,7 @@ function ItemRow({
       <View style={{ width: 80 }}>
         <PriceText
           amount={item.total}
+          currency={data.master.currency}
           size={10}
           color={theme.palette.pageText}
           tengeSize={9}

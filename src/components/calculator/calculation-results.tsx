@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Save, RotateCcw, ChevronDown, ChevronUp, Percent, Handshake } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
 import type { CalculationResult } from "@/lib/types";
 import { applyKpAdjustments, type MoneyInput, type MoneyMode } from "@/lib/kp-adjust";
 
@@ -22,7 +23,7 @@ interface CalculationResultsProps {
   onReset: () => void;
 }
 
-/** Поле «число + переключатель % / ₸» — одно для скидки и посредника. */
+/** Поле «число + переключатель % / сумма» — одно для скидки и посредника. */
 function MoneyField({
   icon,
   label,
@@ -34,6 +35,8 @@ function MoneyField({
   value: { mode: MoneyMode; str: string };
   onChange: (v: { mode: MoneyMode; str: string }) => void;
 }) {
+  // Знак валюты мастера вместо зашитого «₸» (07.10.2026).
+  const { symbol } = useCurrency();
   return (
     <div className="flex items-center gap-2 justify-center flex-wrap">
       {icon}
@@ -57,7 +60,7 @@ function MoneyField({
             onClick={() => onChange({ ...value, mode: m })}
             className={`px-2.5 py-1.5 ${value.mode === m ? "bg-[#1e3a5f] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
           >
-            {m === "percent" ? "%" : "₸"}
+            {m === "percent" ? "%" : symbol}
           </button>
         ))}
       </div>

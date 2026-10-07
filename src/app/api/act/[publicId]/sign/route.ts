@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 import { addClientEvent } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
+import { asCurrency } from "@/lib/currency";
 import { ownerBrandFor } from "@/lib/company";
 import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
 import type { CalculationResult } from "@/lib/types";
@@ -31,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
 
     const estimate = await prisma.estimate.findFirst({
       where: { actPublicId: publicId, deletedAt: null },
-      include: { master: { select: { ...ACT_MASTER_SELECT, telegramChatId: true, notifyDealWon: true } } },
+      include: { master: { select: { ...ACT_MASTER_SELECT, telegramChatId: true, notifyDealWon: true, currency: true } } },
     });
     if (!estimate) return NextResponse.json({ error: "Акт не найден" }, { status: 404 });
     if (estimate.actSignedAt) return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
@@ -80,16 +81,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
       }).catch(() => {});
     }
     const price = estimate.total || 0;
+    // Валюта — владельца компании, уже подтянута ownerBrandFor (07.10.2026)
+    const currency = asCurrency(master.currency);
     void sendPushToMaster(estimate.masterId, {
       title: `${signedName} принял работы`,
-      body: `Акт подписан${price ? ` · ${formatPrice(price)}` : ""}`,
+      body: `Акт подписан${price ? ` · ${formatPrice(price, currency)}` : ""}`,
       data: { screen: `/estimate/${estimate.id}` },
     });
     if (estimate.master?.telegramChatId && estimate.master.notifyDealWon !== false) {
       sendTelegramMessage(
         estimate.master.telegramChatId,
         `📝 <b>${signedName} подписал АКТ приёмки работ!</b>\n\n` +
-          (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
+          (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
           `📅 ${signedAt.toLocaleString("ru-RU")}\n` +
           `\n<i>С этой даты идёт гарантия. Подписанный акт — по той же ссылке.</i>`,
       );

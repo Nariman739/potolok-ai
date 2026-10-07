@@ -35,6 +35,7 @@ import {
   type EventTypeKey,
 } from "../constants";
 import { PhotoGallery, type ObjectPhoto, type PhotoCategoryKey } from "@/components/clients/photo-gallery";
+import { useCurrency } from "@/components/currency-provider";
 
 type Client = {
   id: string;
@@ -111,10 +112,6 @@ function formatDate(iso: string) {
   });
 }
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
-}
-
 const ESTIMATE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Черновик",
   SENT: "Отправлено",
@@ -140,6 +137,7 @@ export function ClientCard({
   contracts: Contract[];
 }) {
   const router = useRouter();
+  const { format: formatMoney } = useCurrency(); // валюта мастера вместо зашитого «₸» (07.10.2026)
   const [client, setClient] = useState<Client>(initialClient);
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [editing, setEditing] = useState(false);
@@ -471,7 +469,7 @@ export function ClientCard({
                 <span className="text-sm text-muted-foreground">
                   Сумма всех КП
                 </span>
-                <span className="text-lg font-bold">{formatMoney(totalSum)} ₸</span>
+                <span className="text-lg font-bold">{formatMoney(totalSum)}</span>
               </CardContent>
             </Card>
           )}
@@ -662,7 +660,7 @@ export function ClientCard({
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">
-                            {formatMoney(est.total)} ₸
+                            {formatMoney(est.total)}
                           </span>
                           <Badge variant="secondary" className="text-[10px]">
                             {ESTIMATE_STATUS_LABELS[est.status] ?? est.status}
@@ -715,7 +713,7 @@ export function ClientCard({
                           <div className="flex items-center gap-2 flex-wrap">
                             <FileSignature className="h-4 w-4 text-[#1e3a5f]" />
                             <span className="font-medium">
-                              {formatMoney(c.total)} ₸
+                              {formatMoney(c.total)}
                             </span>
                             {signed ? (
                               <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" variant="secondary">

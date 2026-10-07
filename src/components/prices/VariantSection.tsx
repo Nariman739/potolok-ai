@@ -30,6 +30,8 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 
 export interface PriceVariant {
   id: string;
@@ -78,10 +80,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CATEGORY_OPTIONS = ["canvas", "profile", "spot", "chandelier", "gardina", "podshtornik", "track", "lightline"] as const;
 
-function formatPrice(n: number): string {
-  return n.toLocaleString("ru-KZ") + " ₸";
-}
-
 export function VariantList({
   variants,
   onEdit,
@@ -91,6 +89,7 @@ export function VariantList({
   onEdit: (v: PriceVariant) => void;
   onPhotoClick: (url: string) => void;
 }) {
+  const { format: formatPrice, symbol } = useCurrency(); // валюта мастера (07.10.2026)
   if (variants.length === 0) return null;
 
   return (
@@ -128,7 +127,7 @@ export function VariantList({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{v.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formatPrice(v.price)} / {v.unit}
+                {formatPrice(v.price)} / {unitLabel(v.unit, symbol)}
               </p>
             </div>
             <Button
@@ -181,6 +180,7 @@ export function VariantDialog({
   onSaved: (variant: PriceVariant, mode: "create" | "edit") => void;
   onDeleted: (id: string) => void;
 }) {
+  const { symbol } = useCurrency(); // валюта мастера (07.10.2026)
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<string>("шт.");
   const [price, setPrice] = useState("");
@@ -443,7 +443,7 @@ export function VariantDialog({
           {/* Price + Unit */}
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="space-y-2">
-              <Label htmlFor="variantPrice">Цена (₸)</Label>
+              <Label htmlFor="variantPrice">Цена ({symbol})</Label>
               <Input
                 id="variantPrice"
                 type="number"

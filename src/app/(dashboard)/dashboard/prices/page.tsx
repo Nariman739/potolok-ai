@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { Save, Loader2, RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { CATEGORY_LABELS, type ProductCategory } from "@/lib/constants";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 import {
   VariantList,
   AddVariantButton,
@@ -46,6 +48,8 @@ interface PriceItem {
 }
 
 export default function PricesPage() {
+  // Знак валюты мастера; единица «₸» у min_order — код «фиксированная сумма» (07.10.2026).
+  const { symbol } = useCurrency();
   const [items, setItems] = useState<PriceItem[]>([]);
   const [variants, setVariants] = useState<PriceVariant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,11 +290,11 @@ export default function PricesPage() {
                       inputMode="numeric"
                     />
                     <span className="text-xs text-muted-foreground w-10">
-                      {item.unit}
+                      {unitLabel(item.unit, symbol)}
                     </span>
                     {item.isCustom && (
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        ({item.defaultPrice} ₸)
+                        ({item.defaultPrice} {symbol})
                       </span>
                     )}
                   </div>
@@ -360,7 +364,7 @@ export default function PricesPage() {
                       inputMode="numeric"
                     />
                     <span className="text-xs text-muted-foreground w-10">
-                      {item.unit}
+                      {unitLabel(item.unit, symbol)}
                     </span>
                     <Button
                       variant="ghost"
@@ -409,7 +413,7 @@ export default function PricesPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="itemPrice">Цена (₸)</Label>
+                <Label htmlFor="itemPrice">Цена ({symbol})</Label>
                 <Input
                   id="itemPrice"
                   type="number"

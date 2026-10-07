@@ -2,8 +2,11 @@ import type { CalculationResult, RoomResult } from "./types";
 import { asLang, tFor, formatDocDate, type Lang } from "./i18n";
 import "./i18n/contract";
 import { fillTemplate, type PlaceholderKey } from "./contract-template";
+import { asCurrency, currencySymbol, currencyWord, type CurrencyCode } from "./currency";
 
 export interface MasterData {
+  /** Валюта владельца компании (KZT/RUB); пусто — тенге (07.10.2026) */
+  currency?: string | null;
   firstName: string;
   lastName?: string | null;
   companyName?: string | null;
@@ -81,9 +84,9 @@ function esc(s: string | null | undefined): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function fmtPrice(n: number | undefined | null): string {
+function fmtPrice(n: number | undefined | null, currency: CurrencyCode): string {
   const val = Number(n) || 0;
-  return new Intl.NumberFormat("ru-RU").format(Math.round(val)) + " ₸";
+  return new Intl.NumberFormat("ru-RU").format(Math.round(val)) + " " + currencySymbol(currency);
 }
 
 /**
@@ -121,7 +124,7 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
-function buildWorksTable(roomResults: RoomResult[], t: T, calc?: CalculationResult | null): string {
+function buildWorksTable(roomResults: RoomResult[], t: T, calc: CalculationResult | null | undefined, cur: CurrencyCode): string {
   let rows = "";
   let num = 0;
   const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
@@ -144,8 +147,8 @@ function buildWorksTable(roomResults: RoomResult[], t: T, calc?: CalculationResu
         `${esc(item.itemName)} (${esc(rr.roomName)})`,
         String(item.quantity),
         esc(item.unit),
-        fmtPrice(item.unitPrice),
-        fmtPrice(item.total),
+        fmtPrice(item.unitPrice, cur),
+        fmtPrice(item.total, cur),
       );
     }
   }
@@ -157,7 +160,7 @@ function buildWorksTable(roomResults: RoomResult[], t: T, calc?: CalculationResu
     return acc + (after != null && before != null && after > before ? after - before : 0);
   }, 0);
   if (heightExtra > 0) {
-    rows += row(t("ct.heightExtra"), "1", t("ct.unitService"), fmtPrice(heightExtra), fmtPrice(heightExtra));
+    rows += row(t("ct.heightExtra"), "1", t("ct.unitService"), fmtPrice(heightExtra, cur), fmtPrice(heightExtra, cur));
   }
 
   for (const extra of (calc?.extraItems ?? [])) {
@@ -165,14 +168,14 @@ function buildWorksTable(roomResults: RoomResult[], t: T, calc?: CalculationResu
       esc(extra.itemName),
       String(extra.quantity ?? 1),
       esc(extra.unit ?? t("ct.unitService")),
-      fmtPrice(extra.unitPrice ?? extra.total ?? 0),
-      fmtPrice(extra.total ?? 0),
+      fmtPrice(extra.unitPrice ?? extra.total ?? 0, cur),
+      fmtPrice(extra.total ?? 0, cur),
     );
   }
 
   const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
   if (discount > 0) {
-    rows += row(t("ct.discount"), "1", t("ct.unitService"), `−${fmtPrice(discount)}`, `−${fmtPrice(discount)}`);
+    rows += row(t("ct.discount"), "1", t("ct.unitService"), `−${fmtPrice(discount, cur)}`, `−${fmtPrice(discount, cur)}`);
   }
   void roomsSum;
   return rows;
@@ -232,8 +235,9 @@ export function generateContractHtml(
   const date = fmtDate(estimate.createdAt, lang);
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
+  const cur = asCurrency(master.currency);
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, t, calc);
+  const worksRows = buildWorksTable(roomResults, t, calc, cur);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
@@ -340,11 +344,11 @@ export function generateContractHtml(
 
   <h2>${t("ct.h2")}</h2>
   <div class="section">
-    <p>${t(`ct.p21.${kind}`, { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
+    <p>${t(`ct.p21.${kind}`, { sum: fmtPrice(total, cur), words: numberToWordsKz(total, lang, cur) })}</p>
     <p>${t("ct.p22")}</p>
     ${schedule
       .map(
-        (s, i) => `<p>&nbsp;&nbsp;&nbsp;${String.fromCharCode(0x430 + i)}) ${esc(s.name)} — ${s.percent}% — <strong>${fmtPrice(Math.round((total * s.percent) / 100))}</strong> — ${whenLabel(s.when, t)};</p>`,
+        (s, i) => `<p>&nbsp;&nbsp;&nbsp;${String.fromCharCode(0x430 + i)}) ${esc(s.name)} — ${s.percent}% — <strong>${fmtPrice(Math.round((total * s.percent) / 100), cur)}</strong> — ${whenLabel(s.when, t)};</p>`,
       )
       .join("\n    ")}
     <p>${t(`ct.p23.${kind}`)}</p>
@@ -478,9 +482,10 @@ export function generateActHtml(
   const actDate = fmtDate(act.actDate, lang);
   const city = esc(master.contractCity) || "_______________";
   const total = act.total;
+  const cur = asCurrency(master.currency);
   const paid = Math.max(0, Math.min(total, Math.round(act.paid || 0)));
   const rest = Math.max(0, Math.round(total - paid));
-  const worksRows = buildWorksTable(getRoomResults(calc), t, calc);
+  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(act.clientName) || "___________________________";
@@ -566,14 +571,14 @@ export function generateActHtml(
         ${worksRows}
       </tbody>
     </table>
-    <p style="text-align:right;margin-top:8px;"><strong>${t("act.total", { sum: fmtPrice(total) })}</strong></p>
+    <p style="text-align:right;margin-top:8px;"><strong>${t("act.total", { sum: fmtPrice(total, cur) })}</strong></p>
   </div>
 
   ${h("act.h.money")}
   <div class="section">
-    <p>${t("act.money.total", { sum: fmtPrice(total), words: numberToWordsKz(total, lang) })}</p>
-    <p>${t("act.money.paid", { sum: fmtPrice(paid) })}</p>
-    <p>${rest > 0 ? t("act.money.rest", { sum: fmtPrice(rest) }) : t("act.money.settled")}</p>
+    <p>${t("act.money.total", { sum: fmtPrice(total, cur), words: numberToWordsKz(total, lang, cur) })}</p>
+    <p>${t("act.money.paid", { sum: fmtPrice(paid, cur) })}</p>
+    <p>${rest > 0 ? t("act.money.rest", { sum: fmtPrice(rest, cur) }) : t("act.money.settled")}</p>
   </div>
 
   ${h("act.h.accept")}
@@ -665,11 +670,13 @@ function workDayWord(n: number, lang: Lang = "ru"): string {
  * Сумма прописью. В договоре это то, по чему считают, если цифры оспаривают,
  * поэтому пишем на языке документа: по-русски «четыреста восемьдесят одна
  * тысяча тенге», по-казахски «төрт жүз сексен бір мың теңге».
+ * Слово валюты — по `currency`: «рубль/рубля/рублей» у российских мастеров.
+ * Экспортируется: ею же пользуются старые pdfkit-роуты договора и акта.
  */
-function numberToWordsKz(amount: number, lang: Lang = "ru"): string {
-  if (lang === "kk") return numberToWordsKazakh(amount);
+export function numberToWordsKz(amount: number, lang: Lang = "ru", currency: CurrencyCode | string = "KZT"): string {
+  if (lang === "kk") return numberToWordsKazakh(amount, currency);
   const n = Math.round(amount);
-  if (n === 0) return "ноль тенге";
+  if (n === 0) return `ноль ${currencyWord(0, currency, "ru")}`;
 
   const units = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
   const teens = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать",
@@ -726,7 +733,7 @@ function numberToWordsKz(amount: number, lang: Lang = "ru"): string {
     parts.push(threeDigits(rest));
   }
 
-  return parts.join(" ").trim() + " тенге";
+  return parts.join(" ").trim() + " " + currencyWord(n, currency, "ru");
 }
 
 /**
@@ -734,9 +741,10 @@ function numberToWordsKz(amount: number, lang: Lang = "ru"): string {
  * «екі мың», «бес жүз мың», «үш миллион» — форма слова одна, меняется только
  * множитель, поэтому склонений здесь нет.
  */
-function numberToWordsKazakh(amount: number): string {
+function numberToWordsKazakh(amount: number, currency: CurrencyCode | string): string {
   const n = Math.round(amount);
-  if (n === 0) return "нөл теңге";
+  const word = currencyWord(n, currency, "kk");
+  if (n === 0) return `нөл ${word}`;
 
   const units = ["", "бір", "екі", "үш", "төрт", "бес", "алты", "жеті", "сегіз", "тоғыз"];
   const tens = ["", "он", "жиырма", "отыз", "қырық", "елу", "алпыс", "жетпіс", "сексен", "тоқсан"];
@@ -764,7 +772,7 @@ function numberToWordsKazakh(amount: number): string {
   if (thousands > 0) parts.push(`${threeDigits(thousands)} мың`);
   if (rest > 0) parts.push(threeDigits(rest));
 
-  return parts.join(" ").trim() + " теңге";
+  return parts.join(" ").trim() + " " + word;
 }
 
 // ============================================
@@ -828,6 +836,7 @@ export function contractPlaceholderValues(
   const lang = asLang(language);
   const t = tFor(lang);
   const total = estimate.total;
+  const cur = asCurrency(master.currency);
   const schedule = scheduleOf(master, estimate, t);
   const first = schedule[0];
   return {
@@ -835,11 +844,11 @@ export function contractPlaceholderValues(
     телефон_клиента: esc(estimate.clientPhone) || "_______________",
     иин_клиента: esc(estimate.clientIin) || "_______________",
     адрес: esc(estimate.clientAddress) || "___________________________",
-    // В типовом тексте знак ₸ стоит после метки: «{сумма} ₸».
-    сумма: fmtPrice(total).replace(/\s*₸$/, ""),
-    сумма_прописью: numberToWordsKz(total, lang),
-    предоплата: fmtPrice(Math.round((total * (first?.percent ?? 50)) / 100)),
-    остаток: fmtPrice(Math.round((total * (100 - (first?.percent ?? 50))) / 100)),
+    // В типовом тексте знак валюты стоит после метки: «{сумма} ₸» / «{сумма} ₽».
+    сумма: fmtPrice(total, cur).replace(/\s*[₸₽]$/, ""),
+    сумма_прописью: numberToWordsKz(total, lang, cur),
+    предоплата: fmtPrice(Math.round((total * (first?.percent ?? 50)) / 100), cur),
+    остаток: fmtPrice(Math.round((total * (100 - (first?.percent ?? 50))) / 100), cur),
     срок: estimate.workDurationDays ? durationText(estimate.workDurationDays, lang) : t("ct.byAgreement"),
     дата_начала: estimate.workStartDate ? dateText(estimate.workStartDate, lang) : t("ct.byAgreement"),
     исполнитель: esc(getMasterName(master)),
@@ -848,7 +857,7 @@ export function contractPlaceholderValues(
     город: esc(master.contractCity) || "_______________",
     дата: dateText(estimate.createdAt, lang),
     номер: estimate.publicId.slice(0, 8).toUpperCase(),
-    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc),
+    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur),
     гарантия_материал: yearsText(master.warrantyMaterials, lang),
     гарантия_монтаж: yearsText(master.warrantyInstall, lang),
   };
@@ -857,8 +866,8 @@ export function contractPlaceholderValues(
 const PREPAY_TAG = /\{\s*предоплата\s*\}/gi;
 const REST_TAG = /\{\s*остаток\s*\}/gi;
 const SUM_TAG = /\{\s*сумма\s*\}/i;
-/** Сумма в тексте: «50 000 ₸», «50 000 тенге», «50 000 теңге». */
-const MONEY_RE = /(\d[\d\s\u00a0\u202f]{2,})\s?(?:₸|тенге|теңге)/g;
+/** Сумма в тексте: «50 000 ₸», «50 000 тенге», «50 000 теңге», «50 000 ₽», «50 000 руб.», «50 000 рублей». */
+const MONEY_RE = /(\d[\d\s\u00a0\u202f]{2,})\s?(?:₸|₽|тенге|теңге|рублей|рубля|рубль|руб\.?)/g;
 
 /**
  * Договор из шаблона мастера.
@@ -883,6 +892,7 @@ export function renderContractTemplate(
   const lang = asLang(language);
   const t = tFor(lang);
   const total = estimate.total;
+  const cur = asCurrency(master.currency);
   const schedule = scheduleOf(master, estimate, t);
   let stage = 0;
   const withStages = body.replace(PREPAY_TAG, (whole: string, offset: number) => {
@@ -894,7 +904,7 @@ export function renderContractTemplate(
     const percent = inLine ? Number(inLine[1]) : schedule[stage]?.percent;
     stage++;
     if (percent == null || !Number.isFinite(percent)) return whole;
-    return fmtPrice(Math.round((total * percent) / 100));
+    return fmtPrice(Math.round((total * percent) / 100), cur);
   });
   const sumAt = withStages.search(SUM_TAG);
   const withRest = withStages.replace(REST_TAG, (whole: string, offset: number) => {
@@ -904,7 +914,7 @@ export function renderContractTemplate(
       const n = Number(m[1].replace(/[\s\u00a0\u202f]/g, ""));
       if (Number.isFinite(n) && n > 0 && n < total) paid += n;
     }
-    return fmtPrice(Math.max(0, total - paid));
+    return fmtPrice(Math.max(0, total - paid), cur);
   });
   let filled = fillTemplate(withRest, contractPlaceholderValues(master, estimate, calc, lang));
   // Шаблоны, сохранённые до метки {иин_клиента} (30.09.2026), печатали ИИН

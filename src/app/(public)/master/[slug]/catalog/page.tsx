@@ -5,6 +5,7 @@ import { PRODUCT_ITEMS, DEFAULT_PRICES, CATEGORY_LABELS } from "@/lib/constants"
 import type { ProductCategory } from "@/lib/constants";
 import { CatalogConfigurator } from "./catalog-configurator";
 import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
+import { currencyFor } from "@/lib/company";
 
 export async function generateMetadata({
   params,
@@ -59,6 +60,8 @@ export default async function CatalogPage({
   // Load master's price overrides
   // Цены компании мастера (PriceItem, 01.10.2026)
   const priceOverrides = await priceMapFor(await priceBookCompanyIdForMaster(master.id));
+  // Валюта мастера-владельца каталога (07.10.2026)
+  const currency = await currencyFor(master.id);
 
   // Build catalog items with master's prices
   const catalogItems = PRODUCT_ITEMS
@@ -114,6 +117,7 @@ export default async function CatalogPage({
         brandColor={brandColor}
         contactPhone={contactPhone}
         slug={master.portfolioSlug || slug}
+        currency={currency}
       />
     </div>
   );

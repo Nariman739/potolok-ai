@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Pencil, Plus, Trash2, Check, X, Replace, Pen } from "lucide-react";
 import { toast } from "sonner";
-import { formatPrice } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 import { PRODUCT_ITEMS, PRODUCT_BY_CODE } from "@/lib/constants";
 import type { LineItem, RoomResult } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export function ItemsEditor({
   const withCoef = (price: number) =>
     partnerCoef === 1 ? price : Math.round((price * partnerCoef) / 10) * 10;
   const router = useRouter();
+  const { format: formatPrice } = useCurrency(); // валюта мастера (07.10.2026)
   const [editing, setEditing] = useState(false);
   const [rooms, setRooms] = useState<RoomResult[]>(initialRoomResults);
   const [extras, setExtras] = useState<LineItem[]>(initialExtraItems);
@@ -349,6 +351,7 @@ interface ItemRowProps {
 }
 
 function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProps) {
+  const { format: formatPrice, symbol } = useCurrency();
   const [showSwap, setShowSwap] = useState(false);
   // Локальные строковые значения — чтобы пользователь мог стереть всё
   // и набрать заново, без залипания на «0».
@@ -368,7 +371,7 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
         <span>
           {item.itemName}
           <span className="ml-1 text-muted-foreground/60">
-            {item.quantity} {item.unit} × {formatPrice(item.unitPrice)}
+            {item.quantity} {unitLabel(item.unit, symbol)} × {formatPrice(item.unitPrice)}
           </span>
         </span>
         <span className="font-medium text-foreground">
@@ -445,7 +448,7 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
               >
                 {alt.name}
                 <span className="text-muted-foreground/70 ml-1">
-                  ({formatPrice(alt.defaultPrice)}/{alt.unit})
+                  ({formatPrice(alt.defaultPrice)}/{unitLabel(alt.unit, symbol)})
                 </span>
               </button>
             ))}
@@ -455,7 +458,7 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
       <div className="grid grid-cols-3 gap-1.5 col-span-3">
         <div>
           <label className="block text-[10px] text-muted-foreground mb-0.5">
-            Кол-во ({item.unit})
+            Кол-во ({unitLabel(item.unit, symbol)})
           </label>
           <Input
             type="number"
@@ -512,6 +515,7 @@ interface ItemAdderProps {
 }
 
 function ItemAdder({ onAdd, onCancel }: ItemAdderProps) {
+  const { format: formatPrice, symbol } = useCurrency();
   const [mode, setMode] = useState<"catalog" | "custom">("catalog");
   const [selectedCode, setSelectedCode] = useState<string>(
     PRODUCT_ITEMS[0]?.code ?? ""
@@ -568,7 +572,7 @@ function ItemAdder({ onAdd, onCancel }: ItemAdderProps) {
           {PRODUCT_ITEMS.filter((p) => p.category !== "install" && p.category !== "special").map(
             (p) => (
               <option key={p.code} value={p.code}>
-                {p.name} — {formatPrice(p.defaultPrice)}/{p.unit}
+                {p.name} — {formatPrice(p.defaultPrice)}/{unitLabel(p.unit, symbol)}
               </option>
             )
           )}

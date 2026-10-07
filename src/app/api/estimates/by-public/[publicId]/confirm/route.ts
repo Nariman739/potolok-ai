@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 import { formatPrice } from "@/lib/format";
+import { currencyFor } from "@/lib/company";
 import { changeClientStatus, addClientEvent } from "@/lib/clients";
 
 /**
@@ -87,12 +88,14 @@ export async function POST(
     });
 
     const price = estimate.total || estimate.standardTotal || 0;
+    // Валюта владельца компании (07.10.2026)
+    const currency = await currencyFor(estimate.masterId);
 
     if (estimate.clientId) {
       addClientEvent({
         clientId: estimate.clientId,
         type: "KP_CONFIRMED",
-        content: price ? `Сумма: ${formatPrice(price)}` : null,
+        content: price ? `Сумма: ${formatPrice(price, currency)}` : null,
         metadata: { estimateId: estimate.id },
       }).catch(() => {});
       changeClientStatus(estimate.clientId, "WON", "КП подтверждено клиентом").catch(
@@ -108,7 +111,7 @@ export async function POST(
     ) {
       const text =
         `✅ <b>${clientStr} принял КП!</b>\n\n` +
-        (price ? `💰 Сумма: <b>${formatPrice(price)}</b>\n` : "") +
+        (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
         `\n<i>Откройте дашборд PotolokAI, чтобы посмотреть детали.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);
     }
@@ -123,7 +126,7 @@ export async function POST(
       after(async () => {
         await sendPushToMaster(estimate.masterId, {
           title: `${clientStr} принял КП!`,
-          body: price ? `Сумма ${formatPrice(price)}. Пора в цех.` : "Пора в цех.",
+          body: price ? `Сумма ${formatPrice(price, currency)}. Пора в цех.` : "Пора в цех.",
           data: { screen: `/estimate/${estimate.id}` },
         });
       });

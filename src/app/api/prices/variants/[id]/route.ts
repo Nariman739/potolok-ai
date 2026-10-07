@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
     }
 
     if (updates.price !== undefined && (!isFinite(updates.price) || updates.price < 0 || updates.price > 10_000_000)) {
-      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000 ₸" }, { status: 400 });
+      return NextResponse.json({ error: "Цена должна быть от 0 до 10 000 000" }, { status: 400 });
     }
     if (updates.name !== undefined && !updates.name) {
       return NextResponse.json({ error: "Название обязательно" }, { status: 400 });

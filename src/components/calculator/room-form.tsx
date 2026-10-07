@@ -26,6 +26,8 @@ import { getDefaultCorners, validateLShape, validateTShape, validateCustomDims, 
 import { RoomShapeSvg, CustomRoomSvg } from "./room-shape-svg";
 import type { RoomInput, RoomShape, CustomDimensions, OneOffItem } from "@/lib/types";
 import { Plus, Trash2 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 
 // Clear "0" on focus so user can type directly, restore "0" on blur if empty
 function zeroFieldProps(value: string, setter: (v: string) => void) {
@@ -76,6 +78,7 @@ const DEFAULT_CUSTOM_WALLS = [
 export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: customItemsProp }: RoomFormProps) {
   const router = useRouter();
   const prices = priceMap ?? DEFAULT_PRICES;
+  const { symbol } = useCurrency(); // знак валюты мастера вместо зашитого «₸» (07.10.2026)
   const er = editRoom; // shorthand
 
   const [name, setName] = useState(er?.name ?? "");
@@ -660,9 +663,9 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         {preview && (
           <p className="text-xs text-muted-foreground">
             Полотно подберётся автоматически по короткой стороне комнаты:
-            до 3.2 м — {formatPriceCompact(prices["canvas_320"] ?? 0)}₸/м²,
-            до 5.5 м — {formatPriceCompact(prices["canvas_550"] ?? 0)}₸/м²,
-            больше — {formatPriceCompact(prices["canvas_over"] ?? 0)}₸/м².
+            до 3.2 м — {formatPriceCompact(prices["canvas_320"] ?? 0)}{symbol}/м²,
+            до 5.5 м — {formatPriceCompact(prices["canvas_550"] ?? 0)}{symbol}/м²,
+            больше — {formatPriceCompact(prices["canvas_over"] ?? 0)}{symbol}/м².
           </p>
         )}
       </div>
@@ -798,7 +801,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 >
                   {p.label}
                   <span className={`ml-1 ${profileType === p.code ? "text-white/70" : "text-muted-foreground"}`}>
-                    {formatPriceCompact(displayPrice)}₸
+                    {formatPriceCompact(displayPrice)}{symbol}
                   </span>
                 </button>
               );
@@ -824,7 +827,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 >
                   {s.label}
                   <span className={`block ${spotType === s.code ? "text-white/70" : "text-muted-foreground"}`}>
-                    {formatPriceCompact(prices[s.code] ?? 0)}₸/шт
+                    {formatPriceCompact(prices[s.code] ?? 0)}{symbol}/шт
                   </span>
                 </button>
               ))}
@@ -840,7 +843,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
               <span>Углы: {isAluminum ? "алюминий" : "пластик"}</span>
               <span className="font-medium text-foreground">
-                {formatPriceCompact(prices[autoCorner] ?? 0)}₸/шт
+                {formatPriceCompact(prices[autoCorner] ?? 0)}{symbol}/шт
               </span>
               <span className="text-[10px]">
                 (по типу профиля)
@@ -867,7 +870,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 >
                   {ct.label}
                   <span className={`block ${curtainType === ct.code ? "text-white/70" : "text-muted-foreground"}`}>
-                    {formatPriceCompact(prices[ct.code] ?? 0)}₸/м.п.
+                    {formatPriceCompact(prices[ct.code] ?? 0)}{symbol}/м.п.
                   </span>
                 </button>
               ))}
@@ -893,7 +896,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 >
                   {g.label}
                   <span className={`block ${gardinaType === g.code ? "text-white/70" : "text-muted-foreground"}`}>
-                    {formatPriceCompact(prices[g.code] ?? 0)}₸/м.п.
+                    {formatPriceCompact(prices[g.code] ?? 0)}{symbol}/м.п.
                   </span>
                 </button>
               ))}
@@ -919,7 +922,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 >
                   {p.label}
                   <span className={`block ${podshtornikType === p.code ? "text-white/70" : "text-muted-foreground"}`}>
-                    {formatPriceCompact(prices[p.code] ?? 0)}₸/м.п.
+                    {formatPriceCompact(prices[p.code] ?? 0)}{symbol}/м.п.
                   </span>
                 </button>
               ))}
@@ -940,7 +943,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
               placeholder="0"
             />
             <span className="text-muted-foreground text-xs">
-              шт · {formatPriceCompact(prices["transformer"] ?? 0)}₸/шт
+              шт · {formatPriceCompact(prices["transformer"] ?? 0)}{symbol}/шт
             </span>
           </div>
         )}
@@ -962,7 +965,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                     <SelectContent>
                       {availableCustomItems.map((ci) => (
                         <SelectItem key={ci.code} value={ci.code}>
-                          {ci.name} ({ci.price}₸/{ci.unit})
+                          {ci.name} ({ci.price}{symbol}/{unitLabel(ci.unit, symbol)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1034,7 +1037,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
                 step="1"
                 value={oi.price}
                 onChange={(e) => updateOneOffItem(idx, "price", e.target.value)}
-                placeholder="Цена ₸"
+                placeholder={`Цена ${symbol}`}
                 className="h-9 text-xs"
                 inputMode="numeric"
               />

@@ -4,29 +4,33 @@
 import React from "react";
 import { StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { KpTheme, FontPair } from "../types";
+import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 
 export const PAGE_PADDING = 36; // pt вокруг страницы
 export const A4 = { width: 595, height: 842 };
 
-export function fmtPrice(n: number | null | undefined): string {
+// Валюта — из data.master.currency (07.10.2026): у российских мастеров рубли.
+// Глобала нет намеренно: PDF рендерятся на сервере параллельно для разных мастеров.
+export function fmtPrice(n: number | null | undefined, currency: CurrencyCode | string): string {
   const v = Number(n) || 0;
-  return new Intl.NumberFormat("ru-RU").format(Math.round(v)) + " ₸";
+  return new Intl.NumberFormat("ru-RU").format(Math.round(v)) + " " + currencySymbol(currency);
 }
 
-// fmtPriceNum — только число, без ₸. Используется когда нужно отрисовать
-// сумму крупным сериф-шрифтом (Playfair / Cormorant), а ₸ — отдельным шрифтом
+// fmtPriceNum — только число, без знака валюты. Используется когда нужно отрисовать
+// сумму крупным сериф-шрифтом (Playfair / Cormorant), а знак — отдельным шрифтом
 // который точно содержит этот глиф (Inter / Lora).
 export function fmtPriceNum(n: number | null | undefined): string {
   const v = Number(n) || 0;
   return new Intl.NumberFormat("ru-RU").format(Math.round(v));
 }
 
-// Универсальный price-компонент с двумя шрифтами: число — display (или body), ₸ — tenge font.
+// Универсальный price-компонент с двумя шрифтами: число — display (или body), знак валюты — безопасным шрифтом.
 // Темы где display не имеет ₸ глифа: premium-dark (Playfair), bold-color (Manrope).
 // Темы где body не имеет ₸: warm-handmade (Manrope), bold-color (Manrope).
-// Безопасный fallback для ₸: Inter (всегда содержит ₸ и зарегистрирован).
+// Безопасный fallback: Inter (содержит и ₸, и ₽, всегда зарегистрирован).
 export function PriceText({
   amount,
+  currency,
   size,
   color,
   fonts,
@@ -37,9 +41,11 @@ export function PriceText({
   weight,
 }: {
   amount: number | null | undefined;
+  currency: CurrencyCode | string;
   size: number;
   color: string;
   fonts: FontPair;
+  /** Размер/цвет знака валюты (имя историческое, работает и для ₽) */
   tengeSize?: number;
   tengeColor?: string;
   align?: "left" | "right" | "center";
@@ -76,26 +82,27 @@ export function PriceText({
           marginLeft: Math.max(4, Math.round(size * 0.1)),
         }}
       >
-        ₸
+        {currencySymbol(currency)}
       </Text>
     </View>
   );
 }
 
-// Какой шрифт использовать для ₸ в зависимости от шрифта числа.
-// Для шрифтов с ₸ глифом — используем сам шрифт (визуально консистентно).
-// Для остальных — Inter (всегда работает, имеет ₸).
+// Какой шрифт использовать для знака валюты в зависимости от шрифта числа.
+// Для шрифтов с глифом — используем сам шрифт (визуально консистентно).
+// Для остальных — Inter (всегда работает, имеет и ₸, и ₽).
 // Проверено через fonttools (см. CLAUDE.md):
 //   HAS ₸: Inter, Lora, Cormorant Garamond
 //   НЕТ ₸: Manrope, Playfair Display
+//   ₽ есть везде, кроме Playfair Display — таблица безопасна для обоих знаков.
 const TENGE_SAFE_FAMILY: Record<string, string> = {
   "Inter": "Inter",
-  "Playfair Display": "Inter",                // у Playfair нет ₸ → Inter (схож по характеру)
+  "Playfair Display": "Inter",                // у Playfair нет ₸ и ₽ → Inter (схож по характеру)
   "Lora": "Lora",                             // у Lora есть ₸
   "Manrope": "Inter",                         // у Manrope нет ₸ → Inter (близкий sans)
   "Cormorant Garamond": "Cormorant Garamond", // у Cormorant есть ₸
 };
-/** Шрифт, которым безопасно рисовать ₸ рядом с текстом семьи `family`. */
+/** Шрифт, которым безопасно рисовать знак валюты (₸/₽) рядом с текстом семьи `family`. Имя историческое. */
 export function tengeSafeFamily(family: string): string {
   return TENGE_SAFE_FAMILY[family] ?? "Inter";
 }
@@ -305,11 +312,12 @@ export function fmtQty(n: number): string {
 }
 
 /** «65,6 м² × 2 500 ₸» — сколько за единицу, чтобы клиент видел цену за м²/м.п./шт.
- *  ₸ — отдельным шрифтом: у Manrope/Playfair этого глифа нет. */
+ *  Знак валюты — отдельным шрифтом: у Manrope/Playfair этого глифа нет. */
 export function QtyPriceText({
   quantity,
   unit,
   unitPrice,
+  currency,
   fonts,
   size,
   color,
@@ -318,6 +326,7 @@ export function QtyPriceText({
   quantity: number;
   unit: string;
   unitPrice: number;
+  currency: CurrencyCode | string;
   fonts: FontPair;
   size: number;
   color: string;
@@ -328,7 +337,7 @@ export function QtyPriceText({
       {fmtQty(quantity)} {unit}
       {unitPrice > 0 ? ` × ${fmtPriceNum(unitPrice)} ` : ""}
       {unitPrice > 0 && (
-        <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>₸</Text>
+        <Text style={{ fontFamily: tengeSafeFamily(fonts.body.family) }}>{currencySymbol(currency)}</Text>
       )}
     </Text>
   );

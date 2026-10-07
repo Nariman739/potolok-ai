@@ -15,6 +15,7 @@ import {
   type EstimateData,
 } from "./contract-html";
 import { asLang, type Lang } from "./i18n";
+import { currencyFor } from "./company";
 import type { CalculationResult } from "./types";
 
 /**
@@ -63,6 +64,8 @@ export async function renderContract(
   const lang = asLang(language);
   try {
     const ownerId = await contractOwnerId(author.masterId, author.companyId);
+    // Валюта договора — владельца компании, если вызывающий её не передал (07.10.2026)
+    if (master.currency == null) master = { ...master, currency: await currencyFor(ownerId) };
     const tpl = await activeContractTemplate(ownerId, lang);
     if (tpl) {
       return { html: renderContractTemplate(tpl.body, master, estimate, calc, lang), templateVersion: tpl.version };

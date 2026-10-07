@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { formatPrice, formatDate, formatArea } from "@/lib/format";
+import { asCurrency } from "@/lib/currency";
+import { CurrencyProvider } from "@/components/currency-provider";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { ConfirmSection } from "./confirm-section";
@@ -91,6 +93,7 @@ export default async function PublicKpPage({
           phone: true,
           telegramChatId: true,
           language: true,
+          currency: true,
         },
       },
     },
@@ -99,6 +102,8 @@ export default async function PublicKpPage({
   if (!estimate) notFound();
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  // Валюта — тоже владельца компании (07.10.2026)
+  const currency = asCurrency(estimate.master.currency);
 
   // Mark as viewed + notify master (best-effort, non-blocking)
   // 21.09.2026: (1) предпросмотр ссылки в WhatsApp/Telegram — это робот, а не клиент:
@@ -127,7 +132,7 @@ export default async function PublicKpPage({
         if (estimate.master.telegramChatId) {
           const text = tm("notify.viewed.tg", {
             client: clientStr,
-            price: price ? tm("notify.price", { sum: formatPrice(price) }) : "",
+            price: price ? tm("notify.price", { sum: formatPrice(price, currency) }) : "",
           });
           await Promise.resolve(sendTelegramMessage(estimate.master.telegramChatId, text)).catch(() => {});
         }
@@ -136,7 +141,7 @@ export default async function PublicKpPage({
         await sendPushToMaster(estimate.masterId, {
           title: tm("notify.viewed.title", { client: clientStr }),
           body: price
-            ? tm("notify.viewed.body", { sum: formatPrice(price) })
+            ? tm("notify.viewed.body", { sum: formatPrice(price, currency) })
             : tm("notify.viewed.bodyNoPrice"),
           data: { screen: `/estimate/${estimate.id}` },
         }).catch(() => {});
@@ -292,17 +297,17 @@ export default async function PublicKpPage({
             <p className="text-white/50 text-xs mb-0.5">{t("kp.price")}</p>
             {estimate.discountAmount > 0 && (
               <p className="text-white/40 text-sm line-through mb-0.5">
-                {formatPrice(estimate.total + estimate.discountAmount)}
+                {formatPrice(estimate.total + estimate.discountAmount, currency)}
               </p>
             )}
             <p className="text-white font-bold text-2xl leading-none">
-              {formatPrice(estimate.total || estimate.standardTotal || 0)}
+              {formatPrice(estimate.total || estimate.standardTotal || 0, currency)}
             </p>
             {estimate.discountAmount > 0 && (
               <p className="text-emerald-300 text-xs mt-1">
                 {estimate.discountPercent > 0
-                  ? t("kp.discountPercent", { percent: estimate.discountPercent, sum: formatPrice(estimate.discountAmount) })
-                  : t("kp.discount", { sum: formatPrice(estimate.discountAmount) })}
+                  ? t("kp.discountPercent", { percent: estimate.discountPercent, sum: formatPrice(estimate.discountAmount, currency) })
+                  : t("kp.discount", { sum: formatPrice(estimate.discountAmount, currency) })}
               </p>
             )}
           </div>
@@ -362,16 +367,18 @@ export default async function PublicKpPage({
         <h2 className="text-lg font-bold text-gray-900 mb-4 px-4">
           Стоимость работ
         </h2>
-        <ConfirmSection
-          publicId={estimate.publicId}
-          calc={calc}
-          total={estimate.total || estimate.standardTotal || 0}
-          discountPercent={estimate.discountPercent}
-          discountAmount={estimate.discountAmount}
-          initialConfirmed={estimate.status === "CONFIRMED"}
-          isRevised={isRevised}
-          brandColor={brandColor}
-        />
+        <CurrencyProvider currency={currency}>
+          <ConfirmSection
+            publicId={estimate.publicId}
+            calc={calc}
+            total={estimate.total || estimate.standardTotal || 0}
+            discountPercent={estimate.discountPercent}
+            discountAmount={estimate.discountAmount}
+            initialConfirmed={estimate.status === "CONFIRMED"}
+            isRevised={isRevised}
+            brandColor={brandColor}
+          />
+        </CurrencyProvider>
       </section>
 
 

@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BILLING_ENABLED } from "@/lib/billing";
+import { CurrencyProvider } from "@/components/currency-provider";
 
 export default async function DashboardLayout({
   children,
@@ -57,7 +58,8 @@ export default async function DashboardLayout({
       */}
       <main className="flex-1 min-w-0 overflow-x-hidden md:overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
         <div className="container mx-auto max-w-5xl p-4 md:p-6">
-          {children}
+          {/* Валюта мастера (тенге/рубли) для всех цен в дашборде, 07.10.2026 */}
+          <CurrencyProvider currency={master?.currency}>{children}</CurrencyProvider>
         </div>
       </main>
       {!inOnboarding && <MobileNav />}

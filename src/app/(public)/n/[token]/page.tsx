@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
 import { asLang, tFor, localeOf, formatDocDate, type Lang } from "@/lib/i18n";
+import { currencyFor } from "@/lib/company";
+import { formatMoney } from "@/lib/currency";
 import "@/lib/i18n/work-order";
 
 /**
@@ -103,6 +105,8 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
   const lang = asLang(obj.master.language);
   const t = tFor(lang);
   const masterPhone = obj.master.whatsappPhone || obj.master.phone;
+  // Валюта — владельца компании, как цены (07.10.2026)
+  const currency = await currencyFor(obj.masterId);
   const when = obj.installAt
     ? `${formatDocDate(new Date(obj.installAt.toLocaleString("en-US", { timeZone: "Asia/Almaty" })), lang)}, ${obj.installAt.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty", hour: "2-digit", minute: "2-digit" })}`
     : null;
@@ -130,7 +134,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
             <p><span className="text-slate-500">{t("wo.questions")}:</span> <a className="text-blue-700 underline" href={`https://wa.me/${masterPhone.replace(/\D/g, "")}`}>{masterPhone}</a> ({company})</p>
           )}
           {obj.installerFee != null && (
-            <p className="pt-1 text-lg"><span className="text-slate-500">{t("wo.fee")}:</span> <b>{obj.installerFee.toLocaleString(localeOf(lang))} ₸</b></p>
+            <p className="pt-1 text-lg"><span className="text-slate-500">{t("wo.fee")}:</span> <b>{formatMoney(obj.installerFee, currency, localeOf(lang))}</b></p>
           )}
           {obj.workshopOrders[0] && (
             <p className="text-sm text-slate-500">

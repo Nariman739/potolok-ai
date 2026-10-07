@@ -17,6 +17,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useCurrency } from "@/components/currency-provider";
+import { unitLabel } from "@/lib/currency";
 
 interface OnboardingWizardProps {
   firstName: string;
@@ -29,11 +31,13 @@ const KEY_PRICES = [
   { code: "profile_plastic", name: "Пластиковый профиль", unit: "м.п.", default: 500 },
   { code: "spot_ours", name: "Споты GX53 (наши)", unit: "шт.", default: 5000 },
   { code: "chandelier", name: "Закладная под люстру", unit: "шт.", default: 2000 },
+  // unit "₸" — код единицы «фиксированная сумма» (как в базе), при показе подставляем знак валюты.
   { code: "min_order", name: "Минимальный заказ", unit: "₸", default: 90000 },
 ];
 
 export function OnboardingWizard({ firstName, phone }: OnboardingWizardProps) {
   const router = useRouter();
+  const { symbol } = useCurrency(); // валюта мастера (07.10.2026)
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -209,7 +213,7 @@ export function OnboardingWizard({ firstName, phone }: OnboardingWizardProps) {
                 <div key={item.code} className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.unit}</p>
+                    <p className="text-xs text-muted-foreground">{unitLabel(item.unit, symbol)}</p>
                   </div>
                   <div className="w-28">
                     <Input

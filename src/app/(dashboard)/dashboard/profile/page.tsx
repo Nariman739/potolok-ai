@@ -19,6 +19,7 @@ import { Save, Loader2, Send, CheckCircle2, Link2Off, RefreshCw, Sparkles, Trash
 import Image from "next/image";
 import type { MasterProfile } from "@/lib/types";
 import { LogoGeneratorDialog } from "@/components/logo/logo-generator-dialog";
+import { CURRENCIES, CURRENCY_CODES, asCurrency, type CurrencyCode } from "@/lib/currency";
 
 const BOT_USERNAME = "potolokaiBot";
 
@@ -43,6 +44,8 @@ export default function ProfilePage() {
   const [instagramUrl, setInstagramUrl] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [address, setAddress] = useState("");
+  // Валюта цен мастера: ₸ или ₽ (07.10.2026). Цифры не пересчитываются, меняется только знак.
+  const [currency, setCurrency] = useState<CurrencyCode>("KZT");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -78,6 +81,7 @@ export default function ProfilePage() {
         setInstagramUrl(data.instagramUrl || "");
         setWhatsappPhone(data.whatsappPhone || "");
         setAddress(data.address || "");
+        setCurrency(asCurrency(data.currency));
         setLogoUrl(data.logoUrl || null);
         // Contract
         setContractType(data.contractType || "");
@@ -181,6 +185,7 @@ export default function ProfilePage() {
           instagramUrl,
           whatsappPhone: whatsappPhone ? normKz(whatsappPhone) : whatsappPhone,
           address,
+          currency,
           contractType: contractType || null,
           bin: bin || null,
           iin: iin || null,
@@ -199,6 +204,8 @@ export default function ProfilePage() {
       });
       if (!res.ok) throw new Error();
       toast.success("Профиль сохранён");
+      // Валюта идёт в CurrencyProvider из серверного layout — перечитываем, чтобы знак обновился сразу (07.10.2026).
+      router.refresh();
     } catch {
       toast.error("Ошибка сохранения");
     } finally {
@@ -474,6 +481,23 @@ export default function ProfilePage() {
           <div className="space-y-2">
             <Label>Адрес</Label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="г. Астана" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Валюта цен</Label>
+            <Select value={currency} onValueChange={(v) => setCurrency(asCurrency(v))}>
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCY_CODES.map((code) => (
+                  <SelectItem key={code} value={code}>{CURRENCIES[code].nameRu}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Знак в прайсе, расчётах и КП. Суммы не пересчитываются. У участника компании действует валюта владельца.
+            </p>
           </div>
 
           <Separator />
