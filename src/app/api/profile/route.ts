@@ -50,6 +50,8 @@ export async function PUT(request: Request) {
       "language",
       // Валюта цен и документов (07.10.2026): KZT | RUB.
       "currency",
+      // Откуда узнал: instagram | friend | other (07.10.2026).
+      "source",
     ];
 
     const intFields = ["prepaymentPercent", "warrantyMaterials", "warrantyInstall"];
@@ -61,6 +63,9 @@ export async function PUT(request: Request) {
     }
     if ("currency" in body && !CURRENCY_CODES.includes(body.currency)) {
       return NextResponse.json({ error: "Неизвестная валюта" }, { status: 400 });
+    }
+    if ("source" in body && !["instagram", "friend", "other"].includes(body.source)) {
+      return NextResponse.json({ error: "Неизвестный источник" }, { status: 400 });
     }
     for (const field of allowedFields) {
       if (field in body && !boolFields.includes(field)) {

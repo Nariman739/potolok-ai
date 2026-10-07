@@ -20,7 +20,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { phone: rawPhone, password, firstName, companyName } = body;
+    const { phone: rawPhone, password, firstName, companyName, source: rawSource } = body;
+    // Откуда узнал (07.10.2026): приложение может прислать сразу при регистрации.
+    const source = ["instagram", "friend", "other"].includes(rawSource) ? rawSource : null;
 
     if (!rawPhone || !password || !firstName) {
       return NextResponse.json(
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
         portfolioSlug,
         // Российский номер → рубли, остальным тенге; потом меняется в профиле.
         currency: currencyForPhone(phone),
+        source,
         subscriptionTier: "PRO",
         paidUntil: BILLING_ENABLED ? trialEndsAt : null,
         billingNotes: BILLING_ENABLED ? "trial 7d" : null,
