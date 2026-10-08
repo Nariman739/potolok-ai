@@ -183,9 +183,11 @@ export async function runSceneRender(opts: {
 
   const tAi = Date.now();
   let result;
-  try {
-    result = hasReference
-      ? await generateVisualization({
+  // Gemini изредка отвечает текстом без картинки («Here's your image:» и пусто) —
+  // один автоматический повтор, прежде чем считать рендер неудачным.
+  const generateOnce = () =>
+    hasReference
+      ? generateVisualization({
           photoUrl: viz.referenceUrl!,
           photoBase64: referenceBase64,
           photoMime: referenceMime,
@@ -196,7 +198,7 @@ export async function runSceneRender(opts: {
           customPrompt,
           imageModel: opts.imageModel,
         })
-      : await generateVisualization({
+      : generateVisualization({
           photoUrl: viz.originalUrl,
           photoBase64: sceneBase64,
           photoMime: sceneMime,
@@ -205,8 +207,18 @@ export async function runSceneRender(opts: {
           customPrompt,
           imageModel: opts.imageModel,
         });
+  try {
+    try {
+      result = await generateOnce();
+    } catch (first) {
+      const m = first instanceof Error ? first.message : "";
+      if (!/не вернул картинку/i.test(m)) throw first;
+      console.warn("[scene render] no image from model — retrying once");
+      result = await generateOnce();
+    }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Неизвестная ошибка рендера";
+    const raw = err instanceof Error ? err.message : "Неизвестная ошибка рендера";
+    const msg = /не вернул картинку/i.test(raw) ? "AI не вернул картинку. Попробуйте ещё раз." : raw;
     console.error("[scene render] generation failed:", err);
     await markVisualizationFailed(viz.id, msg);
     throw new SceneRenderError(msg, 502);

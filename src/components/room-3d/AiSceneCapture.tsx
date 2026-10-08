@@ -74,6 +74,7 @@ export function AiSceneCapture({ trigger, hero, onCapture }: AiSceneCaptureProps
     const t0 = performance.now();
     // --- 1) BEAUTY: обычный рендер ---
     gl.render(scene, camera);
+    const tRendered = performance.now();
     const beauty = gl.domElement.toDataURL("image/png");
     const tMask = performance.now();
 
@@ -111,6 +112,7 @@ export function AiSceneCapture({ trigger, hero, onCapture }: AiSceneCaptureProps
     if (typeof window !== "undefined") {
       (window as unknown as { __CAPTURE_TIMING__?: unknown }).__CAPTURE_TIMING__ = {
         beautyMs: Math.round(tMask - t0),
+        beautyRenderMs: Math.round(tRendered - t0),
         masksMs: Math.round(performance.now() - tMask),
       };
     }

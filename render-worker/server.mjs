@@ -124,7 +124,20 @@ async function renderFrames({ appOrigin, snapshot, presets, visualizationId }) {
     }, { snapshot, presets });
 
     const tNav = Date.now();
-    const resp = await page.goto(`${appOrigin}${PAGE_PATH}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    // Сразу после старта машины Fly сеть ещё «переключается» (net::ERR_NETWORK_CHANGED
+    // у браузера, запущенного прогревом) — повторяем навигацию до 3 раз.
+    let resp = null;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        resp = await page.goto(`${appOrigin}${PAGE_PATH}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+        break;
+      } catch (e) {
+        const msg = String(e?.message ?? e);
+        if (attempt >= 3 || !/ERR_NETWORK_CHANGED|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED/.test(msg)) throw e;
+        log(`viz=${visualizationId} goto retry ${attempt}: ${msg.split("\n")[0]}`);
+        await new Promise((r) => setTimeout(r, 700 * attempt));
+      }
+    }
     if (!resp || !resp.ok()) throw new Error(`render page HTTP ${resp ? resp.status() : "?"}`);
     timings.pageLoadMs = Date.now() - tNav;
 
@@ -134,6 +147,10 @@ async function renderFrames({ appOrigin, snapshot, presets, visualizationId }) {
       polling: 200,
     });
     const sceneError = await page.evaluate(() => window.__SCENE_ERROR__ ?? null);
+    const stats = await page
+      .evaluate(() => ({ ...(window.__SCENE_STATS__ ?? {}), probe: window.__PROBE__ ?? null }))
+      .catch(() => null);
+    if (stats) timings.sceneStats = stats;
     if (sceneError) throw new Error(`scene: ${sceneError}`);
     timings.sceneReadyMs = Date.now() - tReady;
 
@@ -141,7 +158,7 @@ async function renderFrames({ appOrigin, snapshot, presets, visualizationId }) {
     const frames = await withTimeout(page.evaluate(() => window.__captureFrames()), CAPTURE_TIMEOUT_MS, "capture timeout");
     timings.captureMs = Date.now() - tCap;
     const ct = await page.evaluate(() => window.__CAPTURE_TIMING__ ?? null).catch(() => null);
-    if (ct) Object.assign(timings, { captureBeautyMs: ct.beautyMs, captureMasksMs: ct.masksMs });
+    if (ct) Object.assign(timings, { captureBeautyMs: ct.beautyMs, captureBeautyRenderMs: ct.beautyRenderMs, captureMasksMs: ct.masksMs });
     timings.chromiumTotalMs = Date.now() - t0;
     log(`viz=${visualizationId} frames ${frames.width}x${frames.height} beauty=${Math.round(frames.beauty.length / 1024)}KB`, timings);
     return { frames, timings, consoleErrors };

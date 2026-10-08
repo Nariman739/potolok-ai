@@ -776,7 +776,7 @@ export function Scene3D({
         // Серверный рендер: после готовности сцены цикл кадров останавливаем — AI-захват
         // рисует сам (gl.render), а swiftshader на слабом CPU иначе тратит всё время на
         // непрерывные кадры и захват ждёт десятки секунд.
-        frameloop={renderMode && sceneSettled ? "never" : "always"}
+        frameloop={renderMode ? (sceneSettled ? "never" : "demand") : "always"}
         dpr={renderMode ? 1 : isMobile ? [1, 1.5] : [1, 2]}
         shadows={quality === "high" ? "soft" : false}
         gl={{
@@ -1322,42 +1322,78 @@ const CanvasGrabber = forwardRef<CanvasGrabberHandle>(function CanvasGrabber(_pr
 
 
 /**
- * Готовность сцены для серверного рендера: все загрузчики THREE.DefaultLoadingManager
- * (HDRI, текстуры пола/стен, GLB мебели/растения) завершены, и после этого прошло
- * ≥1.2 с и ≥4 кадра без новых загрузок (тени/шейдеры успели скомпилироваться).
- * Вызывает onReady ровно один раз.
+ * Готовность сцены для серверного рендера (renderMode, frameloop="demand").
+ * Пока грузятся HDRI/текстуры/GLB, кадры НЕ рисуем (на swiftshader кадр 1536×1024 —
+ * секунды CPU, и непрерывный цикл душил загрузку). Когда все загрузчики
+ * THREE.DefaultLoadingManager закончили и ~0.8 с ничего нового не началось, рисуем
+ * 2 кадра (компиляция шейдеров, тени) с синхронизацией GPU (readPixels 1px — иначе
+ * кадры копятся в очереди GPU-процесса) и вызываем onReady ровно один раз.
+ * Страховка: через 30 с от монтирования — готово с тем, что есть.
  */
 function SceneReadyProbe({ onReady }: { onReady: () => void }) {
   const { active, loaded, total } = useProgress();
-  const idleSince = useRef<number | null>(null);
-  const frames = useRef(0);
+  const gl = useThree((st) => st.gl);
+  const invalidate = useThree((st) => st.invalidate);
+  const state = useRef({ active, loaded, total });
+  useEffect(() => {
+    state.current = { active, loaded, total };
+  }, [active, loaded, total]);
   const fired = useRef(false);
-  const idle = !active && loaded >= total;
-  const mountedAt = useRef<number | null>(null);
-  useFrame(() => {
+  const warmFrames = useRef(-1); // -1 = ещё ждём загрузку; ≥0 = считаем прогревочные кадры
+  const px = useRef(new Uint8Array(4));
+  const t0 = useRef(0);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+
+  const fire = useCallback((forced: boolean, frames: number) => {
     if (fired.current) return;
-    const t = performance.now();
-    if (mountedAt.current === null) mountedAt.current = t;
-    // Страховка: если какой-то ресурс так и не догрузился (сеть/CSP) — через 30 с
-    // снимаем с тем, что есть, а не висим до таймаута воркера.
-    if (t - mountedAt.current > 30_000 && frames.current >= 0) {
-      fired.current = true;
-      console.warn("[SceneReadyProbe] loaders still active after 30s — capturing anyway");
-      onReady();
-      return;
-    }
-    if (!idle) {
-      idleSince.current = null;
-      frames.current = 0;
-      return;
-    }
-    const now = performance.now();
-    if (idleSince.current === null) idleSince.current = now;
-    frames.current += 1;
-    if (frames.current >= 4 && now - idleSince.current >= 1200) {
-      fired.current = true;
-      onReady();
-    }
+    fired.current = true;
+    const { loaded: l, total: t } = state.current;
+    (window as unknown as { __PROBE__?: unknown }).__PROBE__ = {
+      frames,
+      forced,
+      sinceMountMs: Math.round(performance.now() - t0.current),
+      loaded: l,
+      total: t,
+    };
+    onReadyRef.current();
+  }, []);
+
+  useEffect(() => {
+    t0.current = performance.now();
+    let idleSince: number | null = null;
+    const iv = window.setInterval(() => {
+      if (fired.current) return;
+      const now = performance.now();
+      if (now - t0.current > 30_000) {
+        console.warn("[SceneReadyProbe] loaders still active after 30s — capturing anyway");
+        fire(true, Math.max(warmFrames.current, 0));
+        return;
+      }
+      if (warmFrames.current >= 0) return; // уже прогреваем
+      const { active: a, loaded: l, total: t } = state.current;
+      if (a || l < t) {
+        idleSince = null;
+        return;
+      }
+      if (idleSince === null) idleSince = now;
+      if (now - idleSince >= 800) {
+        warmFrames.current = 0;
+        invalidate();
+      }
+    }, 100);
+    return () => window.clearInterval(iv);
+  }, [invalidate, fire]);
+
+  useFrame(() => {
+    if (fired.current || warmFrames.current < 0) return;
+    const ctx = gl.getContext();
+    ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, px.current);
+    warmFrames.current += 1;
+    if (warmFrames.current >= 3) fire(false, warmFrames.current);
+    else invalidate();
   });
   return null;
 }
