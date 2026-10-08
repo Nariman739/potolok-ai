@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, PerformanceMonitor, Sky } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { ContactShadows, Environment, PerformanceMonitor, Sky, useProgress } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO, BrightnessContrast, HueSaturation } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -63,14 +63,31 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
-export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot, readOnly, devCapture, devAutoCaptureMs }: Scene3DProps) {
+export function Scene3D({
+  vertices,
+  walls,
+  ceilingHeight,
+  elements,
+  onScreenshot,
+  readOnly: readOnlyProp,
+  devCapture,
+  devAutoCaptureMs,
+  renderMode = false,
+  initialLook,
+  onSceneReady,
+  captureTrigger,
+  shadowGapWalls,
+}: Scene3DProps) {
+  // Серверный рендер — всегда без мастер-кнопок.
+  const readOnly = readOnlyProp || renderMode;
   const [spot, setSpot] = useState<ViewSpot>("center");
   const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
   const [ceilingFinish, setCeilingFinish] = useState<CeilingFinish>(() => {
-    if (typeof window === "undefined") return "matte";
+    if (initialLook?.finish) return initialLook.finish;
+    if (renderMode || typeof window === "undefined") return "matte";
     const v = window.localStorage.getItem("potolok3d.finish");
     // Sanity: матовый — единственный показываемый сейчас (Нариман 2026-06-27).
     // 80% клиентов выбирают матовый, фокусируемся на нём. Глянец/сатин вернём
@@ -78,21 +95,25 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return v === "matte" ? v : "matte";
   });
   const [ceilingColorId, setCeilingColorId] = useState<string>(() => {
-    if (typeof window === "undefined") return "white";
+    if (initialLook?.colorId && CEILING_COLORS.some((c) => c.id === initialLook.colorId)) return initialLook.colorId;
+    if (renderMode || typeof window === "undefined") return "white";
     return window.localStorage.getItem("potolok3d.color") ?? "white";
   });
   const [lightTempKey, setLightTempKey] = useState<LightTempKey>(() => {
-    if (typeof window === "undefined") return DEFAULT_LIGHT_TEMP;
+    if (initialLook?.lightTempKey) return initialLook.lightTempKey;
+    if (renderMode || typeof window === "undefined") return DEFAULT_LIGHT_TEMP;
     const v = window.localStorage.getItem("potolok3d.kelvin");
     return v === "warm" || v === "neutral" || v === "cool" ? v : DEFAULT_LIGHT_TEMP;
   });
   const [floorId, setFloorId] = useState<FloorPresetId>(() => {
-    if (typeof window === "undefined") return DEFAULT_FLOOR;
+    if (initialLook?.floorId && FLOOR_PRESETS.some((f) => f.id === initialLook.floorId)) return initialLook.floorId as FloorPresetId;
+    if (renderMode || typeof window === "undefined") return DEFAULT_FLOOR;
     const v = window.localStorage.getItem("potolok3d.floor");
     return FLOOR_PRESETS.some((f) => f.id === v) ? (v as FloorPresetId) : DEFAULT_FLOOR;
   });
   const [wallId, setWallId] = useState<WallPresetId>(() => {
-    if (typeof window === "undefined") return DEFAULT_WALL;
+    if (initialLook?.wallId && WALL_PRESETS.some((w) => w.id === initialLook.wallId)) return initialLook.wallId as WallPresetId;
+    if (renderMode || typeof window === "undefined") return DEFAULT_WALL;
     const v = window.localStorage.getItem("potolok3d.wall");
     return WALL_PRESETS.some((w) => w.id === v) ? (v as WallPresetId) : DEFAULT_WALL;
   });
@@ -134,26 +155,26 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || renderMode) return;
     window.localStorage.setItem("potolok3d.finish", ceilingFinish);
-  }, [ceilingFinish]);
+  }, [ceilingFinish, renderMode]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || renderMode) return;
     window.localStorage.setItem("potolok3d.color", ceilingColorId);
-  }, [ceilingColorId]);
+  }, [ceilingColorId, renderMode]);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || renderMode) return;
     window.localStorage.setItem("potolok3d.kelvin", lightTempKey);
-  }, [lightTempKey]);
+  }, [lightTempKey, renderMode]);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || renderMode) return;
     window.localStorage.setItem("potolok3d.floor", floorId);
-  }, [floorId]);
+  }, [floorId, renderMode]);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || renderMode) return;
     window.localStorage.setItem("potolok3d.wall", wallId);
-  }, [wallId]);
+  }, [wallId, renderMode]);
   const lookRef = useRef<LookAroundHandle | null>(null);
 
   const ceilingColor = useMemo(
@@ -360,6 +381,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return () => window.clearTimeout(t);
   }, [devCapture, devAutoCaptureMs]);
 
+  // Внешний триггер захвата (серверный рендер /render-scene: страница сама решает
+  // КОГДА снимать — после onSceneReady).
+  useEffect(() => {
+    if (!captureTrigger) return;
+    setAiTrigger((n) => n + 1);
+  }, [captureTrigger]);
+
   const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
     const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
     if (!el || el.wallIndex === undefined) return undefined;
@@ -444,14 +472,20 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     const frac = lerp3(roomMax, 0.93, 0.86, 0.82);
     const lookYf = lerp3(roomMax, 0.52, 0.6, 0.62);
     const eye = HUMAN_EYE_HEIGHT - 0.05;
+    // Камера: прежний угол (minX,minY)·frac; в renderMode — лучший из выпуклых углов
+    // комнаты (см. pickHeroCorner). Взгляд — чуть за центр, в сторону дальнего угла.
+    const [cx, cz] = renderMode
+      ? pickHeroCorner(vertices, elements, centerOffset, halfX, halfZ, frac, fov)
+      : [-halfX * frac, -halfZ * frac];
+    const lookK = 0.15 / frac;
     return {
-      pos: [-halfX * frac, eye, -halfZ * frac],
+      pos: [cx, eye, cz],
       // смотрим чуть за центр к дальнему углу, целясь в верхнюю треть стены —
       // потолок ложится в верх кадра, перспектива уходит вглубь комнаты.
-      look: [halfX * 0.15, ceilingM * lookYf, halfZ * 0.15],
+      look: [-cx * lookK, ceilingM * lookYf, -cz * lookK],
       fov,
     };
-  }, [halfX, halfZ, ceilingM]);
+  }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, centerOffset]);
 
   useEffect(() => {
     // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
@@ -495,6 +529,12 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     return result;
   }, [elements, vertices]);
 
+  // Контур комнаты в координатах сцены (м, от центра bbox) — для проверки «внутрь».
+  const roomPoly = useMemo<Array<[number, number]>>(
+    () => vertices.map((v) => [cm2m(v.x) - centerOffset.x, cm2m(v.y) - centerOffset.z]),
+    [vertices, centerOffset.x, centerOffset.z],
+  );
+
   const wallElements = useMemo(() => {
     const items: Array<{
       id: string;
@@ -523,17 +563,25 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       const cz = az + dz * t;
       const defaultLen = DEFAULT_LENGTH_CM[el.type] ?? wallLengthM * 100;
       const lengthCm = el.length ?? defaultLen;
+      // WallElement3D кладёт шторы/парящий/подшторник в сторону ЛОКАЛЬНОГО −z. При
+      // rotationY = −atan2(dz,dx) это (dz,−dx)/L в мире — внутрь комнаты только при
+      // одном направлении обхода контура. У контура (0,0)→(W,0)→… (так строят и веб
+      // getVertices, и мобилка) это НАРУЖУ: шторы/свечение парящего оказывались за
+      // стеной. Проверяем точкой и при необходимости разворачиваем элемент на 180°.
+      const inX = cx + (dz / wallLengthM) * 0.2;
+      const inZ = cz + (-dx / wallLengthM) * 0.2;
+      const flip = roomPoly.length >= 3 && !pointInPolygon(inX, inZ, roomPoly);
       items.push({
         id: el.id,
         pos: [cx, 0, cz],
-        rotationY: -Math.atan2(dz, dx),
+        rotationY: -Math.atan2(dz, dx) + (flip ? Math.PI : 0),
         lengthM: Math.min(cm2m(lengthCm), wallLengthM),
         type: el.type,
         variant: el.variant,
       });
     }
     return items;
-  }, [elements, vertices, centerOffset.x, centerOffset.z]);
+  }, [elements, vertices, centerOffset.x, centerOffset.z, roomPoly]);
 
   // Свободные элементы внутри комнаты (не привязаны к стене):
   // магнитный трек / световая линия / парящий — могут лежать поперёк потолка
@@ -562,26 +610,32 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
       ];
       if (!supportedFreeTypes.includes(el.type)) continue;
 
-      // Вариант А: points[] из 2D-конструктора (линия start→end)
+      // Вариант А: points[] из 2D-конструктора — ЛОМАНАЯ из N точек = N−1 отрезков
+      // (+ замыкающий, если closed). Раньше брались только points[0..1], и трек
+      // «буквой П» (Ришад, 08.10.2026) превращался в одну линию.
       if (el.points && el.points.length >= 2) {
-        const a = el.points[0];
-        const b = el.points[1];
-        const ax = cm2m(a.x) - centerOffset.x;
-        const az = cm2m(a.y) - centerOffset.z;
-        const bx = cm2m(b.x) - centerOffset.x;
-        const bz = cm2m(b.y) - centerOffset.z;
-        const dx = bx - ax;
-        const dz = bz - az;
-        const lengthM = Math.hypot(dx, dz);
-        if (lengthM < 0.05) continue;
-        items.push({
-          id: el.id,
-          type: el.type,
-          pos: [(ax + bx) / 2, 0, (az + bz) / 2],
-          rotationY: -Math.atan2(dz, dx),
-          lengthM,
-          variant: el.variant,
-        });
+        const pts = el.points;
+        const segCount = el.closed && pts.length >= 3 ? pts.length : pts.length - 1;
+        for (let i = 0; i < segCount; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const ax = cm2m(a.x) - centerOffset.x;
+          const az = cm2m(a.y) - centerOffset.z;
+          const bx = cm2m(b.x) - centerOffset.x;
+          const bz = cm2m(b.y) - centerOffset.z;
+          const dx = bx - ax;
+          const dz = bz - az;
+          const lengthM = Math.hypot(dx, dz);
+          if (lengthM < 0.05) continue;
+          items.push({
+            id: i === 0 ? el.id : `${el.id}-seg${i}`,
+            type: el.type,
+            pos: [(ax + bx) / 2, 0, (az + bz) / 2],
+            rotationY: -Math.atan2(dz, dx),
+            lengthM,
+            variant: el.variant,
+          });
+        }
         continue;
       }
 
@@ -601,6 +655,27 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
     }
     return items;
   }, [elements, centerOffset.x, centerOffset.z]);
+
+  // Теневой профиль (из wallProfiles мобилки): тёмный зазор ~1 см по периметру
+  // у примыкания потолка к стене. Рисуем тонкой чёрной полосой чуть ниже потолка.
+  const shadowGaps = useMemo(() => {
+    const out: Array<{ key: string; pos: [number, number, number]; rotationY: number; lengthM: number }> = [];
+    for (const wi of shadowGapWalls ?? []) {
+      const a = vertices[wi];
+      const b = vertices[wi + 1];
+      if (!a || !b) continue;
+      const ax = cm2m(a.x) - centerOffset.x;
+      const az = cm2m(a.y) - centerOffset.z;
+      const bx = cm2m(b.x) - centerOffset.x;
+      const bz = cm2m(b.y) - centerOffset.z;
+      const dx = bx - ax;
+      const dz = bz - az;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.05) continue;
+      out.push({ key: `sg-${wi}`, pos: [(ax + bx) / 2, 0, (az + bz) / 2], rotationY: -Math.atan2(dz, dx), lengthM: len });
+    }
+    return out;
+  }, [shadowGapWalls, vertices, centerOffset.x, centerOffset.z]);
 
   const furnitureItems = useMemo(() => {
     const items: Array<{
@@ -697,7 +772,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
       <Canvas
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        dpr={renderMode ? 1 : isMobile ? [1, 1.5] : [1, 2]}
         shadows={quality === "high" ? "soft" : false}
         gl={{
           preserveDrawingBuffer: true,
@@ -727,10 +802,13 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         )}
 
         {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
-        <PerformanceMonitor
-          onDecline={() => setQuality("low")}
-          onIncline={() => setQuality((q) => (q === "low" ? "high" : q))}
-        />
+        {/* В renderMode (swiftshader, 2-5 fps) монитор FPS снял бы тени/декор → не включаем. */}
+        {!renderMode && (
+          <PerformanceMonitor
+            onDecline={() => setQuality("low")}
+            onIncline={() => setQuality((q) => (q === "low" ? "high" : q))}
+          />
+        )}
 
         {/* Дневное освещение в стиле «день за окном»:
             - ambient: чуть холодноватый общий свет, как от рассеянного неба
@@ -901,7 +979,17 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           />
         ))}
 
+        {shadowGaps.map((g) => (
+          <group key={g.key} position={g.pos} rotation={[0, g.rotationY, 0]}>
+            <mesh position={[0, ceilingM - 0.012, 0]}>
+              <boxGeometry args={[g.lengthM, 0.024, 0.03]} />
+              <meshStandardMaterial color="#0b0b0c" roughness={0.9} />
+            </mesh>
+          </group>
+        ))}
+
         <LookAroundControls ref={lookRef} />
+        {onSceneReady && <SceneReadyProbe onReady={onSceneReady} />}
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
         <AiSceneCapture trigger={aiTrigger} hero={heroCam} onCapture={handleAiCapture} />
@@ -910,7 +998,7 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
         {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
         {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader,
             и не включается на первом кадре (heavyFxReady) — даём сцене встать. */}
-        {quality === "high" && heavyFxReady && (
+        {quality === "high" && heavyFxReady && !renderMode && (
           <EffectComposer>
             {/* N8AO = ambient occlusion. Добавляет тени в углах где сходятся
                 стены/пол/потолок, под мебелью, в нишах. Даёт ощущение
@@ -1055,14 +1143,14 @@ export function Scene3D({ vertices, walls, ceilingHeight, elements, onScreenshot
           а AI-кадр снимается с фиксированного «геройского» ракурса (heroCam). */}
 
       {/* Подсказка сама исчезает через 4с чтобы не мешать картинке. */}
-      {showHint && (
+      {showHint && !renderMode && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 bg-black/35 text-white text-[11px] rounded-full pointer-events-none backdrop-blur transition-opacity">
           Проведите пальцем, чтобы осмотреться
         </div>
       )}
 
       {/* Debug overlay — только в разработке, в проде убран (выглядел «дёшево»). */}
-      {process.env.NODE_ENV === "development" && (
+      {process.env.NODE_ENV === "development" && !renderMode && (
         <div className="absolute bottom-1 right-1 z-10 text-[9px] text-gray-500/70 font-mono pointer-events-none select-none">
           v={vertices.length} h={(ceilingHeight / 100).toFixed(1)}m sz={roomSize.toFixed(1)}m el={elements.length}
         </div>
@@ -1217,3 +1305,177 @@ const CanvasGrabber = forwardRef<CanvasGrabberHandle>(function CanvasGrabber(_pr
   return null;
 });
 
+
+/**
+ * Готовность сцены для серверного рендера: все загрузчики THREE.DefaultLoadingManager
+ * (HDRI, текстуры пола/стен, GLB мебели/растения) завершены, и после этого прошло
+ * ≥1.2 с и ≥4 кадра без новых загрузок (тени/шейдеры успели скомпилироваться).
+ * Вызывает onReady ровно один раз.
+ */
+function SceneReadyProbe({ onReady }: { onReady: () => void }) {
+  const { active, loaded, total } = useProgress();
+  const idleSince = useRef<number | null>(null);
+  const frames = useRef(0);
+  const fired = useRef(false);
+  const idle = !active && loaded >= total;
+  const mountedAt = useRef<number | null>(null);
+  useFrame(() => {
+    if (fired.current) return;
+    const t = performance.now();
+    if (mountedAt.current === null) mountedAt.current = t;
+    // Страховка: если какой-то ресурс так и не догрузился (сеть/CSP) — через 30 с
+    // снимаем с тем, что есть, а не висим до таймаута воркера.
+    if (t - mountedAt.current > 30_000 && frames.current >= 0) {
+      fired.current = true;
+      console.warn("[SceneReadyProbe] loaders still active after 30s — capturing anyway");
+      onReady();
+      return;
+    }
+    if (!idle) {
+      idleSince.current = null;
+      frames.current = 0;
+      return;
+    }
+    const now = performance.now();
+    if (idleSince.current === null) idleSince.current = now;
+    frames.current += 1;
+    if (frames.current >= 4 && now - idleSince.current >= 1200) {
+      fired.current = true;
+      onReady();
+    }
+  });
+  return null;
+}
+
+// Вес «показать клиенту» для элементов на стенах: шторы/окно/парящий должны попасть
+// в кадр, иначе AI-фото теряет то, что мастер продаёт.
+const HERO_INTEREST: Partial<Record<ElementType, number>> = {
+  curtain: 3,
+  builtin_gardina: 3,
+  subcurtain: 2,
+  floating: 2.5,
+  window: 2,
+  door: 0.3,
+  lightline: 1,
+};
+
+function pointInPolygon(x: number, z: number, poly: Array<[number, number]>): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i];
+    const [xj, zj] = poly[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Серверный рендер: из какого угла снимать геройский кадр. Раньше всегда из угла
+ * (minX,minY) — стены 0 и последняя оказывались ЗА камерой, и шторы/окно/парящий на
+ * них не попадали в фото. Кандидаты — выпуклые углы контура (для прямоугольника это
+ * те же 4 угла bbox), камера = угол·frac к центру bbox (как раньше), если она внутри
+ * комнаты (Г-образные). Берём угол, из которого в горизонтальный FOV попадает больше
+ * «продающих» элементов; при равенстве — ближайший к прежнему углу (minX,minY).
+ * Возвращает [x, z] камеры в координатах сцены (м, от центра bbox).
+ */
+function pickHeroCorner(
+  vertices: Array<{ x: number; y: number }>,
+  elements: Scene3DProps["elements"],
+  center: { x: number; z: number },
+  halfX: number,
+  halfZ: number,
+  frac: number,
+  fovDeg: number,
+): [number, number] {
+  const fallback: [number, number] = [-halfX * frac, -halfZ * frac];
+  let poly: Array<[number, number]> = vertices.map((v) => [cm2m(v.x) - center.x, cm2m(v.y) - center.z]);
+  if (poly.length < 3) return fallback;
+  const points: Array<{ x: number; z: number; w: number }> = [];
+  for (const el of elements) {
+    const w = HERO_INTEREST[el.type];
+    if (!w) continue;
+    if (el.wallIndex !== undefined) {
+      const a = poly[el.wallIndex];
+      const b = poly[el.wallIndex + 1];
+      if (!a || !b) continue;
+      // Длинные элементы (парящий/штора на всю стену) — 3 пробные точки с долей веса,
+      // чтобы частично видимая стена тоже засчитывалась.
+      const wallLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const lenM = el.length ? Math.min(cm2m(el.length), wallLen) : el.type === "window" || el.type === "door" ? 1 : wallLen;
+      const t = el.wallPosition ?? 0.5;
+      const span = lenM / wallLen;
+      const ts = span > 0.5 ? [t - span * 0.35, t, t + span * 0.35] : [t];
+      for (const tt of ts) {
+        points.push({ x: a[0] + (b[0] - a[0]) * tt, z: a[1] + (b[1] - a[1]) * tt, w: w / ts.length });
+      }
+    } else if (el.points && el.points.length >= 2) {
+      const n = el.points.length;
+      const px = el.points.reduce((acc, p) => acc + cm2m(p.x), 0) / n - center.x;
+      const pz = el.points.reduce((acc, p) => acc + cm2m(p.y), 0) / n - center.z;
+      points.push({ x: px, z: pz, w: w * 0.5 });
+    }
+  }
+  // Контур без повтора первой точки + ориентация (знак площади) для выпуклости.
+  const last = poly[poly.length - 1];
+  if (Math.hypot(last[0] - poly[0][0], last[1] - poly[0][1]) < 1e-3) poly = poly.slice(0, -1);
+  const n = poly.length;
+  let area2 = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, z1] = poly[i];
+    const [x2, z2] = poly[(i + 1) % n];
+    area2 += x1 * z2 - x2 * z1;
+  }
+  const halfH = Math.atan(Math.tan(((fovDeg / 2) * Math.PI) / 180) * 1.5) * 0.92; // аспект кадра 3:2
+  const cands: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = poly[(i - 1 + n) % n];
+    const p1 = poly[i];
+    const p2 = poly[(i + 1) % n];
+    const cross = (p1[0] - p0[0]) * (p2[1] - p1[1]) - (p1[1] - p0[1]) * (p2[0] - p1[0]);
+    if (cross * area2 <= 0) continue; // вогнутый (внутренний) угол — снимать оттуда нечего
+    let cam: [number, number] = [p1[0] * frac, p1[1] * frac];
+    if (!pointInPolygon(cam[0], cam[1], poly)) {
+      cam = [p1[0] * frac * 0.5, p1[1] * frac * 0.5];
+      if (!pointInPolygon(cam[0], cam[1], poly)) continue;
+    }
+    cands.push(cam);
+  }
+  if (cands.length === 0) return fallback;
+  cands.sort((a, b) => Math.hypot(a[0] - fallback[0], a[1] - fallback[1]) - Math.hypot(b[0] - fallback[0], b[1] - fallback[1]));
+  let best = cands[0];
+  let bestScore = -1;
+  for (const [camX, camZ] of cands) {
+    const fx = -camX * (1 + 0.15 / frac);
+    const fz = -camZ * (1 + 0.15 / frac);
+    const fl = Math.hypot(fx, fz) || 1;
+    let score = 0;
+    for (const p of points) {
+      const dx = p.x - camX;
+      const dz = p.z - camZ;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.8) continue;
+      const cos = (dx * fx + dz * fz) / (d * fl);
+      if (Math.acos(Math.max(-1, Math.min(1, cos))) >= halfH) continue;
+      // Заслонено выступом стены (Г-образная)? Отрезок камера→точка (чуть не доходя до
+      // стены) не должен пересекать контур.
+      const ex = camX + dx * 0.97;
+      const ez = camZ + dz * 0.97;
+      let blocked = false;
+      for (let i = 0; i < n && !blocked; i++) {
+        const [ax, az] = poly[i];
+        const [bx, bz] = poly[(i + 1) % n];
+        const d1 = (bx - ax) * (camZ - az) - (bz - az) * (camX - ax);
+        const d2 = (bx - ax) * (ez - az) - (bz - az) * (ex - ax);
+        const d3 = (ex - camX) * (az - camZ) - (ez - camZ) * (ax - camX);
+        const d4 = (ex - camX) * (bz - camZ) - (ez - camZ) * (bx - camX);
+        if (d1 * d2 < 0 && d3 * d4 < 0) blocked = true;
+      }
+      if (!blocked) score += p.w;
+    }
+    if (score > bestScore + 1e-6) {
+      bestScore = score;
+      best = [camX, camZ];
+    }
+  }
+  return best;
+}

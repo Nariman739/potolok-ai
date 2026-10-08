@@ -15,6 +15,25 @@ export interface Scene3DProps {
   devCapture?: (sceneDataUrl: string, ceilingMaskDataUrl: string, floatingMaskDataUrl: string) => void;
   /** DEV-конвейер: авто-запустить AI-захват через N мс после монтирования сцены. */
   devAutoCaptureMs?: number;
+  /** Серверный рендер (headless Chromium, /render-scene): без UI, без деградации качества
+   * по FPS (swiftshader медленный), без постпроцессинга (AI-кадр всё равно снимается
+   * сырым gl.render), без localStorage. */
+  renderMode?: boolean;
+  /** Начальные настройки сцены (перебивают localStorage). В renderMode — единственный источник. */
+  initialLook?: {
+    finish?: "matte" | "satin" | "glossy";
+    colorId?: string;
+    lightTempKey?: "warm" | "neutral" | "cool";
+    floorId?: string;
+    wallId?: string;
+  };
+  /** Вызывается один раз, когда все загрузчики (HDRI/текстуры/GLB) закончили и сцена
+   * отрисовала несколько стабильных кадров — можно снимать. */
+  onSceneReady?: () => void;
+  /** Внешний триггер AI-захвата (каждое изменение >0 = один снимок beauty+маски). */
+  captureTrigger?: number;
+  /** Индексы стен с теневым профилем (тёмный зазор по периметру). Из wallProfiles мобилки. */
+  shadowGapWalls?: number[];
 }
 
 export const cm2m = (cm: number) => cm / 100;

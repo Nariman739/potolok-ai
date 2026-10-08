@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { cm2m, type Vertex2D } from "./types";
-import { CEILING_MASK_LAYER } from "./constants";
+import { CEILING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
 import { R3FErrorBoundary } from "./R3FErrorBoundary";
 
 // Обёртка над текстурой: Suspense показывает plain-цвет ПОКА грузится, а
@@ -350,7 +350,16 @@ export function Room3D({
 
       {wallMeshes.map((w) => (
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
-          <mesh geometry={w.geometry} castShadow receiveShadow>
+          <mesh
+            geometry={w.geometry}
+            castShadow
+            receiveShadow
+            // Стены — «заслонки» для масок AI-кадра: потолок/свечение ЗА выступом стены
+            // (Г-образная комната) не должны попадать в маску заморозки.
+            ref={(m) => {
+              if (m) m.layers.enable(OCCLUDER_MASK_LAYER);
+            }}
+          >
             {wallTextureUrl && wallNormalUrl && wallRoughUrl ? (
               <PBRSurface
                 colorUrl={wallTextureUrl}

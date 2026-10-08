@@ -14,10 +14,12 @@ export const PLANT_MODELS = [
   "/models/decor/calathea_orbifolia_01/model.gltf",
   "/models/decor/anthurium_botany_01/model.gltf",
 ];
-PLANT_MODELS.forEach((u) => useGLTF.preload(u));
+// Локальный Draco-декодер (/public/draco/), как у мебели: дефолтный gstatic CDN режется
+// CSP connect-src → декодер не грузится, растение не появляется, а загрузчик «висит».
+PLANT_MODELS.forEach((u) => useGLTF.preload(u, "/draco/"));
 
 function PlantModel({ url, targetHeightM }: { url: string; targetHeightM: number }) {
-  const { scene } = useGLTF(url);
+  const { scene } = useGLTF(url, "/draco/");
   const cloned = useMemo(() => scene.clone(true), [scene]);
   useEffect(() => {
     const box = new THREE.Box3().setFromObject(cloned);

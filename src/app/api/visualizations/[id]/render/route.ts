@@ -30,10 +30,8 @@ import {
   getImageDimensions,
   compositeWithMask,
   generateMarkupOverlay,
-  addPerimeterGlow,
 } from "@/lib/visualization-mask";
-import { buildScenePrompt, buildHybridScenePrompt, buildFrozenCeilingScenePrompt } from "@/lib/ai-scene-prompt";
-import type { RoomElement } from "@/lib/room-types";
+import { runSceneRender, SceneRenderError, type SceneRenderViz } from "@/lib/scene-render";
 import {
   loadBillingState,
   checkBilling,
@@ -491,293 +489,27 @@ function buildBillingUpdate(decision: BillingCheckResult, masterId: string) {
 }
 
 // === scene3d/scene2d рендер ===
-// Отдельный path без mask/overlay/preparedElements — геометрия передаётся через snapshot.
-// При наличии referenceUrl используется гибридный multi-image flow (фото комнаты + сцена).
+// Логика вынесена в src/lib/scene-render.ts (её же использует серверный рендер
+// «Фото клиенту» через /api/visualizations/[id]/frames). Ответ — прежний.
 async function renderFromScene(
-  viz: {
-    id: string;
-    sourceType: string;
-    originalUrl: string;
-    referenceUrl: string | null;
-    markup: unknown;
-    publicHash: string | null;
-  },
+  viz: SceneRenderViz,
   decision: BillingCheckResult,
   masterId: string,
   providerOverride?: VisualizationProvider,
 ): Promise<NextResponse> {
-  // --- parse markup ---
-  const markup = (viz.markup ?? {}) as {
-    elements?: RoomElement[];
-    finish?: CeilingFinish;
-    ceilingMaskUrl?: string | null;
-    floatingMaskUrl?: string | null;
-    colorHex?: string;
-    colorName?: string;
-    extraPrompt?: string;
-    kelvin?: number;
-    lightTempKey?: "warm" | "neutral" | "cool";
-    lightTempPromptHint?: string;
-    linkedVariants?: Array<{
-      id: string;
-      name: string;
-      category: string;
-      photoUrl?: string | null;
-      physicalWidthMm?: number | null;
-      physicalHeightMm?: number | null;
-      colorHex?: string | null;
-      mountingType?: string | null;
-    }>;
-    floorPresetId?: string;
-    floorPromptDesc?: string;
-    wallPresetId?: string;
-    wallPromptDesc?: string;
-  };
-  const elements = Array.isArray(markup.elements) ? markup.elements : [];
-  const finish: CeilingFinish = (markup.finish as CeilingFinish) ?? "matte";
-
-  // --- fetch scene snapshot (PNG из R3F или 2D-плана) как base64 ---
-  const sceneRes = await fetch(viz.originalUrl);
-  if (!sceneRes.ok) {
-    return NextResponse.json({ error: "Не удалось загрузить снимок сцены" }, { status: 500 });
-  }
-  const sceneMime = sceneRes.headers.get("content-type") || "image/png";
-  const sceneBase64 = Buffer.from(await sceneRes.arrayBuffer()).toString("base64");
-
-  // --- (optional) reference: фото реальной комнаты для гибридного режима ---
-  let referenceBase64: string | undefined;
-  let referenceMime: string | undefined;
-  let referenceDescription: string | undefined;
-  if (viz.referenceUrl) {
-    const refRes = await fetch(viz.referenceUrl);
-    if (refRes.ok) {
-      referenceMime = refRes.headers.get("content-type") || "image/jpeg";
-      referenceBase64 = Buffer.from(await refRes.arrayBuffer()).toString("base64");
-      try {
-        const refResult = await describeReferenceCeiling(referenceBase64, referenceMime);
-        referenceDescription = refResult.description;
-        await recordAiUsage(masterId, refResult.costUsd);
-      } catch (e) {
-        console.warn("[scene render] reference description failed:", e);
-      }
-    }
-  }
-
-  const hasReference = Boolean(referenceBase64 && referenceMime);
-  const sourceType = viz.sourceType as "scene3d" | "scene2d";
-
-  const lightTempPromptHint = typeof markup.lightTempPromptHint === "string" ? markup.lightTempPromptHint : undefined;
-  const linkedVariants = Array.isArray(markup.linkedVariants) ? markup.linkedVariants : undefined;
-  const floorPromptDesc = typeof markup.floorPromptDesc === "string" ? markup.floorPromptDesc : undefined;
-  const wallPromptDesc = typeof markup.wallPromptDesc === "string" ? markup.wallPromptDesc : undefined;
-
-  // Путь «заморозка потолка» (scene3d + маска, без reference-фото): точный потолок
-  // вернём из 3D → промпту не надо беречь фикстуры, гоним максимум фотореализма комнаты.
-  const useFrozenPath = !hasReference && sourceType === "scene3d" && Boolean(markup.ceilingMaskUrl);
-
-  const customPrompt = hasReference
-    ? buildHybridScenePrompt({
-        elements,
-        finish,
-        colorHex: markup.colorHex,
-        colorName: markup.colorName,
-        extraPrompt: markup.extraPrompt,
-        sourceType,
-        referenceDescription,
-        lightTempPromptHint,
-        linkedVariants,
-        floorPromptDesc,
-        wallPromptDesc,
-      })
-    : useFrozenPath
-    ? buildFrozenCeilingScenePrompt({
-        elements,
-        finish,
-        colorHex: markup.colorHex,
-        colorName: markup.colorName,
-        extraPrompt: markup.extraPrompt,
-        sourceType,
-        lightTempPromptHint,
-        kelvin: typeof markup.kelvin === "number" ? markup.kelvin : undefined,
-        linkedVariants,
-        floorPromptDesc,
-        wallPromptDesc,
-      })
-    : buildScenePrompt({
-        elements,
-        finish,
-        colorHex: markup.colorHex,
-        colorName: markup.colorName,
-        extraPrompt: markup.extraPrompt,
-        sourceType,
-        lightTempPromptHint,
-        linkedVariants,
-        floorPromptDesc,
-        wallPromptDesc,
-      });
-
-  // Провайдер = nano-banana (Gemini 2.5 Flash Image) — он реально фотореалит комнату
-  // (flux-kontext держал геометрию, но оставлял «CG-вид»). Раньше боялись, что nano
-  // «уплывёт» по потолку — теперь это не важно: точный потолок мы ВОЗВРАЩАЕМ заморозкой
-  // по маске из 3D (см. compositeWithMask ниже). Значит nano свободно делает красоту
-  // комнаты, а потолок остаётся 1:1.
-  const provider: VisualizationProvider =
-    providerOverride ?? "nano-banana";
-
-  // Заглушка options — реально используется только customPrompt + photo/reference.
-  const options: VisualizationOptions = {
-    attachmentType: "regular",
-    finish,
-    colorName: markup.colorName,
-    spotsCount: 6,
-    chandelierType: "minimalist",
-  };
-
-  await prisma.visualization.update({
-    where: { id: viz.id },
-    data: { status: "rendering" },
-  });
-
-  let result;
   try {
-    // ВАЖНО: для гибрида фото комнаты передаётся как ПЕРВОЕ изображение (photo*),
-    // снимок 3D-сцены — как ВТОРОЕ (overlay*). Промпт описывает image-1 как
-    // реальную комнату, image-2 как схему потолка.
-    if (hasReference) {
-      result = await generateVisualization({
-        photoUrl: viz.referenceUrl!,
-        photoBase64: referenceBase64,
-        photoMime: referenceMime,
-        overlayBase64: sceneBase64,
-        overlayMime: sceneMime,
-        options,
-        provider,
-        customPrompt,
-      });
-    } else {
-      result = await generateVisualization({
-        photoUrl: viz.originalUrl,
-        photoBase64: sceneBase64,
-        photoMime: sceneMime,
-        options,
-        provider,
-        customPrompt,
-      });
-    }
-  } catch (err) {
-    await prisma.visualization.update({
-      where: { id: viz.id },
-      data: { status: "failed" },
+    const r = await runSceneRender({ viz, decision, masterId, provider: providerOverride });
+    return NextResponse.json({
+      render: r.render,
+      publicHash: r.publicHash,
+      elapsedMs: r.elapsedMs,
+      remaining: decision.remaining,
+      bucket: decision.bucket,
     });
-    const msg = err instanceof Error ? err.message : "Неизвестная ошибка рендера";
-    console.error("[scene render] generation failed:", err);
-    return NextResponse.json({ error: msg }, { status: 502 });
-  }
-
-  let renderBuf: Buffer = Buffer.from(result.imageBase64, "base64");
-  let renderMime = result.imageMime;
-
-  // === ЗАМОРОЗКА ПОТОЛКА ===
-  // Для чистого scene3d (без reference-фото клиента) держим потолок ТОЧНО из 3D:
-  // AI фотореалит комнату, а зону потолка (по маске из Three.js) возвращаем
-  // пиксель-в-пиксель из 3D-снимка. Гарантия: клиент видит ровно тот потолок,
-  // что мастер напроектировал — AI его не «переизобретает».
-  // compositeWithMask(original, rendered, mask): белое в маске → rendered, чёрное → original.
-  // Маска = белый потолок на чёрном → берём original=AI-рендер, rendered=3D-снимок.
-  if (!hasReference && markup.ceilingMaskUrl) {
-    try {
-      const maskRes = await fetch(markup.ceilingMaskUrl);
-      if (maskRes.ok) {
-        const maskBuf = Buffer.from(await maskRes.arrayBuffer());
-        const sceneBuf = Buffer.from(sceneBase64, "base64");
-        // Композитим в РОДНОМ разрешении 3D-снимка (потолок/софиты остаются чёткими),
-        // а AI-рендер комнаты подтягиваем вверх до него. Иначе 3D ужимался под меньший
-        // AI-кадр → софиты замыливались и сплющивались (разные аспекты).
-        const sceneMeta = await (await import("sharp")).default(sceneBuf).metadata();
-        const upscaledAi = await (await import("sharp")).default(renderBuf)
-          .resize(sceneMeta.width, sceneMeta.height, { fit: "fill" })
-          .jpeg({ quality: 95 })
-          .toBuffer();
-        renderBuf = upscaledAi;
-        renderBuf = await compositeWithMask(renderBuf, sceneBuf, maskBuf);
-        renderMime = "image/jpeg";
-        console.log("[scene render] ceiling frozen from 3D via mask");
-      } else {
-        console.warn(`[scene render] mask fetch failed HTTP ${maskRes.status} — skip freeze`);
-      }
-    } catch (e) {
-      console.warn("[scene render] ceiling freeze failed, using raw AI render:", e);
+  } catch (e) {
+    if (e instanceof SceneRenderError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
     }
+    throw e;
   }
-
-  // === ДЕТЕРМИНИРОВАННОЕ СВЕЧЕНИЕ ПАРЯЩЕГО ===
-  // Свечение LED-периметра живёт на кромке/верху стены (ВНЕ маски потолка) → его AI
-  // рисует по промпту, но НЕточно. Поверх добавляем мягкий тёплый glow по РЕАЛЬНОЙ
-  // маске периметра из 3D (цвет по Кельвину) → парящий гарантированно светится там,
-  // где мастер его поставил, независимо от seed модели.
-  if (!hasReference && markup.floatingMaskUrl) {
-    try {
-      const glowRes = await fetch(markup.floatingMaskUrl);
-      if (glowRes.ok) {
-        const glowMaskBuf = Buffer.from(await glowRes.arrayBuffer());
-        renderBuf = await addPerimeterGlow(
-          renderBuf,
-          glowMaskBuf,
-          typeof markup.kelvin === "number" ? markup.kelvin : undefined,
-        );
-        renderMime = "image/jpeg";
-        console.log("[scene render] floating perimeter glow applied");
-      } else {
-        console.warn(`[scene render] floating mask fetch failed HTTP ${glowRes.status} — skip glow`);
-      }
-    } catch (e) {
-      console.warn("[scene render] floating glow failed, continuing:", e);
-    }
-  }
-
-  const renderExt = renderMime.includes("png") ? "png" : "jpg";
-  const renderBlob = await put(
-    `visualization/${masterId}/renders/${Date.now()}.${renderExt}`,
-    renderBuf,
-    { access: "public", contentType: renderMime, addRandomSuffix: true },
-  );
-
-  const [render] = await prisma.$transaction([
-    prisma.visualizationRender.create({
-      data: {
-        visualizationId: viz.id,
-        url: renderBlob.url,
-        prompt: result.prompt,
-        modelUsed: result.modelUsed,
-        costUsd: result.costUsd,
-      },
-    }),
-    prisma.visualization.update({
-      where: { id: viz.id },
-      data: {
-        status: "ready",
-        ...(viz.publicHash ? {} : { publicHash: generatePublicHash() }),
-      },
-    }),
-    ...buildBillingUpdate(decision, masterId),
-  ]);
-
-  const finalViz = await prisma.visualization.findUnique({
-    where: { id: viz.id },
-    select: { publicHash: true },
-  });
-
-  return NextResponse.json({
-    render: {
-      id: render.id,
-      url: render.url,
-      modelUsed: render.modelUsed,
-      costUsd: render.costUsd,
-      createdAt: render.createdAt,
-    },
-    publicHash: finalViz?.publicHash ?? null,
-    elapsedMs: result.elapsedMs,
-    remaining: decision.remaining,
-    bucket: decision.bucket,
-  });
 }

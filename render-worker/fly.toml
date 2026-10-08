@@ -1,0 +1,35 @@
+# Fly.io: рендер-воркер «Фото клиенту». Деплой: cd render-worker && flyctl deploy
+# Секрет: flyctl secrets set RENDER_WORKER_SECRET=... (тот же, что в Vercel env).
+app = "potolok-render"
+primary_region = "fra"
+
+[build]
+
+[env]
+  PORT = "8080"
+  ALLOWED_APP_ORIGINS = "https://potolok.ai,https://www.potolok.ai"
+  DEFAULT_APP_ORIGIN = "https://potolok.ai"
+  MAX_CONCURRENCY = "2"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Машина спит, когда нет запросов, и просыпается на первый (холодный старт ~2-4 с + Chromium).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 2
+    hard_limit = 6
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-4x"
+  memory = "2gb"
