@@ -15,6 +15,12 @@ export const CEILING_MASK_LAYER = 3;
 // пост-свечение по РЕАЛЬНОМУ месту (не «на глаз» от AI). См. AiSceneCapture + addGlow.
 export const FLOATING_MASK_LAYER = 4;
 
+// Слой «заслонок» для масок: стены комнаты. Перед проходом маски их рисуем чёрным
+// (пишут глубину), чтобы потолок/свечение, скрытые за выступом стены (Г-образная
+// комната), не попадали в маску. Светильники в этот слой НЕ входят — софиты/треки
+// перед потолком должны оставаться внутри маски заморозки.
+export const OCCLUDER_MASK_LAYER = 5;
+
 export const CEILING_COLORS: Array<{ id: string; label: string; hex: string }> = [
   { id: "white",  label: "Белый",   hex: "#F8FAFC" },
   { id: "ivory",  label: "Слоновая кость", hex: "#F4ECD8" },

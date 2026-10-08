@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { CEILING_MASK_LAYER, FLOATING_MASK_LAYER } from "./constants";
+import { CEILING_MASK_LAYER, FLOATING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
 
 export interface HeroCam {
   /** Позиция камеры в мировых координатах [x,y,z]. */
@@ -31,6 +31,7 @@ interface AiSceneCaptureProps {
 
 // Один материал на все проходы — не плодим GC.
 const WHITE_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const BLACK_MAT = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 const BLACK_BG = new THREE.Color(0x000000);
 
 /**
@@ -70,21 +71,51 @@ export function AiSceneCapture({ trigger, hero, onCapture }: AiSceneCaptureProps
       cam.updateProjectionMatrix();
     }
 
+    const t0 = performance.now();
     // --- 1) BEAUTY: обычный рендер ---
     gl.render(scene, camera);
+    const tRendered = performance.now();
     const beauty = gl.domElement.toDataURL("image/png");
+    const tMask = performance.now();
 
-    // --- 2) CEILING MASK: только слой потолка, белым, на чёрном фоне ---
-    scene.background = BLACK_BG;
-    scene.overrideMaterial = WHITE_MAT;
-    cam.layers.set(CEILING_MASK_LAYER); // камера видит ТОЛЬКО потолок
-    gl.render(scene, camera);
-    const mask = gl.domElement.toDataURL("image/png");
+    // Проход маски: сначала стены-заслонки ЧЁРНЫМ (очищаем кадр и пишем глубину),
+    // потом нужный слой БЕЛЫМ поверх без очистки — с тестом глубины. Так в маску
+    // попадает только ВИДИМАЯ часть потолка/свечения (Г-образные комнаты: потолок за
+    // выступом стены раньше «замораживался» поверх AI-кадра призрачным куском стены).
+    const savedAutoClear = gl.autoClear;
+    // Тени для масок не нужны: не пересчитываем shadow map в каждом проходе маски
+    // (на слабом CPU / swiftshader это заметная часть времени захвата).
+    const savedShadowAuto = gl.shadowMap.autoUpdate;
+    gl.shadowMap.autoUpdate = false;
+    const maskPass = (layer: number): string => {
+      gl.autoClear = true;
+      scene.background = BLACK_BG;
+      scene.overrideMaterial = BLACK_MAT;
+      cam.layers.set(OCCLUDER_MASK_LAYER);
+      gl.render(scene, camera);
+      gl.autoClear = false;
+      scene.background = null;
+      scene.overrideMaterial = WHITE_MAT;
+      cam.layers.set(layer);
+      gl.render(scene, camera);
+      gl.autoClear = savedAutoClear;
+      return gl.domElement.toDataURL("image/png");
+    };
 
-    // --- 3) FLOATING MASK: только слой свечения парящего (периметр) ---
-    cam.layers.set(FLOATING_MASK_LAYER);
-    gl.render(scene, camera);
-    const floatingMask = gl.domElement.toDataURL("image/png");
+    // --- 2) CEILING MASK: видимая часть потолка, белым на чёрном ---
+    const mask = maskPass(CEILING_MASK_LAYER);
+
+    // --- 3) FLOATING MASK: видимая часть свечения парящего (периметр) ---
+    const floatingMask = maskPass(FLOATING_MASK_LAYER);
+
+    gl.shadowMap.autoUpdate = savedShadowAuto;
+    if (typeof window !== "undefined") {
+      (window as unknown as { __CAPTURE_TIMING__?: unknown }).__CAPTURE_TIMING__ = {
+        beautyMs: Math.round(tMask - t0),
+        beautyRenderMs: Math.round(tRendered - t0),
+        masksMs: Math.round(performance.now() - tMask),
+      };
+    }
 
     // --- восстанавливаем всё как было ---
     scene.overrideMaterial = savedOverride;

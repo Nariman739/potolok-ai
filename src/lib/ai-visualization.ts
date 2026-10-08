@@ -70,6 +70,8 @@ export interface VisualizationInput {
   provider?: VisualizationProvider; // default: nano-banana
   /** Если задан — перебивает buildVisualizationPrompt (используется для sourceType=scene3d/scene2d). */
   customPrompt?: string;
+  /** Явная модель картинок для nano-banana-провайдера (иначе env AI_IMAGE_MODEL / дефолт). */
+  imageModel?: string;
 }
 
 export interface VisualizationResult {
@@ -86,7 +88,15 @@ const COST_FLUX_KONTEXT = 0.04;
 const COST_FAL_FLUX_FILL = 0.05;
 const COST_REFERENCE_ANALYSIS = 0.005; // Claude vision на 1 фото
 const FLUX_KONTEXT_MODEL = "black-forest-labs/flux-kontext-pro";
-const NANO_BANANA_MODEL = "google/gemini-2.5-flash-image";
+// Модель картинок конфигурируется через env AI_IMAGE_MODEL (Vercel/локально).
+// gemini-2.5-flash-image отключается 15.03.2027 — замена: google/gemini-3.1-flash-lite-image
+// (тот же прайс $0.03/картинка на выходе). Дефолт пока прежний, чтобы прод не менялся
+// без явного решения: переключение = одна env-переменная, без деплоя кода.
+const DEFAULT_NANO_BANANA_MODEL = "google/gemini-2.5-flash-image";
+export function getImageModel(override?: string): string {
+  const m = (override || process.env.AI_IMAGE_MODEL || "").trim();
+  return m || DEFAULT_NANO_BANANA_MODEL;
+}
 
 // ============================================
 // REFERENCE ANALYZER (Claude vision → детальное описание светильников)
@@ -528,10 +538,13 @@ async function generateNanoBanana(input: VisualizationInput): Promise<Visualizat
     });
   }
 
+  const model = getImageModel(input.imageModel);
   const res = await client.chat.completions.create({
-    model: NANO_BANANA_MODEL,
+    model,
     // @ts-expect-error: OpenRouter supports `modalities` to return image content
     modalities: ["image", "text"],
+    // OpenRouter вернёт фактическую стоимость запроса в usage.cost
+    usage: { include: true },
     messages: [{ role: "user", content }],
   });
   const elapsedMs = Date.now() - t0;
@@ -560,8 +573,12 @@ async function generateNanoBanana(input: VisualizationInput): Promise<Visualizat
     imageBase64: m[2],
     imageMime: m[1],
     prompt,
-    modelUsed: `openrouter:${NANO_BANANA_MODEL}`,
-    costUsd: COST_NANO_BANANA,
+    modelUsed: `openrouter:${model}`,
+    // Фактическая цена от OpenRouter (usage.cost), иначе — оценка.
+    costUsd:
+      typeof (res.usage as unknown as { cost?: number } | undefined)?.cost === "number"
+        ? (res.usage as unknown as { cost: number }).cost
+        : COST_NANO_BANANA,
     elapsedMs,
   };
 }

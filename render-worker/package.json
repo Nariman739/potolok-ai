@@ -1,0 +1,15 @@
+{
+  "name": "potolok-render",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Headless 3D render worker for potolok.ai «Фото клиенту»",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": {
+    "playwright-core": "1.61.1"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}
