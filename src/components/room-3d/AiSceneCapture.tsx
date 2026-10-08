@@ -71,15 +71,21 @@ export function AiSceneCapture({ trigger, hero, onCapture }: AiSceneCaptureProps
       cam.updateProjectionMatrix();
     }
 
+    const t0 = performance.now();
     // --- 1) BEAUTY: обычный рендер ---
     gl.render(scene, camera);
     const beauty = gl.domElement.toDataURL("image/png");
+    const tMask = performance.now();
 
     // Проход маски: сначала стены-заслонки ЧЁРНЫМ (очищаем кадр и пишем глубину),
     // потом нужный слой БЕЛЫМ поверх без очистки — с тестом глубины. Так в маску
     // попадает только ВИДИМАЯ часть потолка/свечения (Г-образные комнаты: потолок за
     // выступом стены раньше «замораживался» поверх AI-кадра призрачным куском стены).
     const savedAutoClear = gl.autoClear;
+    // Тени для масок не нужны: не пересчитываем shadow map в каждом проходе маски
+    // (на слабом CPU / swiftshader это заметная часть времени захвата).
+    const savedShadowAuto = gl.shadowMap.autoUpdate;
+    gl.shadowMap.autoUpdate = false;
     const maskPass = (layer: number): string => {
       gl.autoClear = true;
       scene.background = BLACK_BG;
@@ -100,6 +106,14 @@ export function AiSceneCapture({ trigger, hero, onCapture }: AiSceneCaptureProps
 
     // --- 3) FLOATING MASK: видимая часть свечения парящего (периметр) ---
     const floatingMask = maskPass(FLOATING_MASK_LAYER);
+
+    gl.shadowMap.autoUpdate = savedShadowAuto;
+    if (typeof window !== "undefined") {
+      (window as unknown as { __CAPTURE_TIMING__?: unknown }).__CAPTURE_TIMING__ = {
+        beautyMs: Math.round(tMask - t0),
+        masksMs: Math.round(performance.now() - tMask),
+      };
+    }
 
     // --- восстанавливаем всё как было ---
     scene.overrideMaterial = savedOverride;

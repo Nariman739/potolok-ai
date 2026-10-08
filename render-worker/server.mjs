@@ -31,7 +31,19 @@ const VIEW_H = Number(process.env.VIEW_H || 1024);
 const MAX_CONCURRENCY = Number(process.env.MAX_CONCURRENCY || 2);
 const SCENE_TIMEOUT_MS = Number(process.env.SCENE_TIMEOUT_MS || 90_000);
 const CALLBACK_TIMEOUT_MS = Number(process.env.CALLBACK_TIMEOUT_MS || 150_000);
+const CAPTURE_TIMEOUT_MS = Number(process.env.CAPTURE_TIMEOUT_MS || 60_000);
+const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS || 150_000);
 const MAX_BODY = 1_000_000;
+
+function withTimeout(promise, ms, label) {
+  let t;
+  return Promise.race([
+    promise.finally(() => clearTimeout(t)),
+    new Promise((_, reject) => {
+      t = setTimeout(() => reject(new Error(label)), ms);
+    }),
+  ]);
+}
 
 const CHROMIUM_ARGS = [
   "--use-gl=angle",
@@ -105,6 +117,7 @@ async function renderFrames({ appOrigin, snapshot, presets, visualizationId }) {
     if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300));
   });
   page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 300)));
+  page.on("crash", () => log(`viz=${visualizationId} PAGE CRASHED (OOM?)`));
   try {
     await page.addInitScript((payload) => {
       window.__SNAPSHOT__ = payload;
@@ -125,8 +138,10 @@ async function renderFrames({ appOrigin, snapshot, presets, visualizationId }) {
     timings.sceneReadyMs = Date.now() - tReady;
 
     const tCap = Date.now();
-    const frames = await page.evaluate(() => window.__captureFrames());
+    const frames = await withTimeout(page.evaluate(() => window.__captureFrames()), CAPTURE_TIMEOUT_MS, "capture timeout");
     timings.captureMs = Date.now() - tCap;
+    const ct = await page.evaluate(() => window.__CAPTURE_TIMING__ ?? null).catch(() => null);
+    if (ct) Object.assign(timings, { captureBeautyMs: ct.beautyMs, captureMasksMs: ct.masksMs });
     timings.chromiumTotalMs = Date.now() - t0;
     log(`viz=${visualizationId} frames ${frames.width}x${frames.height} beauty=${Math.round(frames.beauty.length / 1024)}KB`, timings);
     return { frames, timings, consoleErrors };
@@ -218,7 +233,11 @@ const server = http.createServer(async (req, res) => {
       let frames;
       let timings;
       try {
-        const r = await renderFrames({ appOrigin, snapshot, presets: presets ?? {}, visualizationId });
+        const r = await withTimeout(
+          renderFrames({ appOrigin, snapshot, presets: presets ?? {}, visualizationId }),
+          JOB_TIMEOUT_MS,
+          "render job timeout",
+        );
         frames = r.frames;
         timings = { queueMs, ...r.timings };
       } catch (e) {

@@ -80,6 +80,7 @@ export function Scene3D({
 }: Scene3DProps) {
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
+  const [sceneSettled, setSceneSettled] = useState(false);
   const [spot, setSpot] = useState<ViewSpot>("center");
   const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
@@ -772,6 +773,10 @@ export function Scene3D({
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
       <Canvas
+        // Серверный рендер: после готовности сцены цикл кадров останавливаем — AI-захват
+        // рисует сам (gl.render), а swiftshader на слабом CPU иначе тратит всё время на
+        // непрерывные кадры и захват ждёт десятки секунд.
+        frameloop={renderMode && sceneSettled ? "never" : "always"}
         dpr={renderMode ? 1 : isMobile ? [1, 1.5] : [1, 2]}
         shadows={quality === "high" ? "soft" : false}
         gl={{
@@ -988,8 +993,18 @@ export function Scene3D({
           </group>
         ))}
 
-        <LookAroundControls ref={lookRef} />
-        {onSceneReady && <SceneReadyProbe onReady={onSceneReady} />}
+        {/* В renderMode живая камера сразу стоит в геройском ракурсе: прогревочные кадры
+            компилируют шейдеры/грузят всё, что попадёт в AI-кадр, и захват не платит
+            за первую отрисовку (на swiftshader это было ~9 с). */}
+        {renderMode ? <HeroCameraSync hero={heroCam} /> : <LookAroundControls ref={lookRef} />}
+        {onSceneReady && (
+          <SceneReadyProbe
+            onReady={() => {
+              setSceneSettled(true);
+              onSceneReady();
+            }}
+          />
+        )}
 
         <ScreenshotCapture trigger={screenshotTrigger} onCapture={handleCapture} />
         <AiSceneCapture trigger={aiTrigger} hero={heroCam} onCapture={handleAiCapture} />
@@ -1478,4 +1493,17 @@ function pickHeroCorner(
     }
   }
   return best;
+}
+
+function HeroCameraSync({ hero }: { hero: HeroCam }) {
+  const camera = useThree((st) => st.camera) as THREE.PerspectiveCamera;
+  useEffect(() => {
+    camera.position.set(hero.pos[0], hero.pos[1], hero.pos[2]);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(hero.look[0], hero.look[1], hero.look[2]);
+    // Императивная настройка three-камеры (мутабельна по природе), как в AiSceneCapture.
+    Object.assign(camera, { fov: hero.fov });
+    camera.updateProjectionMatrix();
+  }, [camera, hero]);
+  return null;
 }
