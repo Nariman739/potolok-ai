@@ -1391,6 +1391,22 @@ enum ContentPlanStatus {
 
 // Лендинг /app (трафик из рекламы): просмотры страницы и нажатия на кнопку стора.
 // Пишется из /api/app-click без авторизации — только обезличенные поля.
+// События приложения (09.10.2026): «открыл 3D», итог 3D-сессии и т.п.
+// Первый вопрос, на который отвечает таблица: сколько мастеров реально
+// открывают 3D и повторно ли — до этого открытие 3D не считалось нигде.
+model AppEvent {
+  id         String   @id @default(uuid())
+  masterId   String
+  name       String   // "3d_open" | "3d_session" | ...
+  props      Json?
+  platform   String?  // "ios" | "android"
+  appVersion String?
+  createdAt  DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([masterId, createdAt])
+}
+
 model AppLinkClick {
   id        String   @id @default(uuid())
   event     String   // "view" | "click"
