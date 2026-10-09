@@ -7,6 +7,7 @@ import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
 import { asLang } from "@/lib/i18n";
+import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 
 /**
  * Правка договора словами мастера (26.09.2026).
@@ -76,18 +77,35 @@ ${tags}
    сумма договора минус всё, что названо выше. Никогда не пиши «остальная
    сумма» без метки — клиент должен видеть цифру.`;
 
-    const completion = await getOpenRouter().chat.completions.create({
+    // Анонимный журнал: какие условия договора мастера хотят менять (09.10.2026).
+    // Сам договор не пишем — там шаблон с метками, боль мастера в просьбе.
+    const logId = await aiLogStart({
+      feature: "contract-rewrite",
+      input: ask,
+      lang: language,
+      currency: sym === "₽" ? "RUB" : "KZT",
       model: AI_MODEL,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: `Текущий договор:\n\n${current}\n\n---\nЧто поменять: ${ask}` },
-      ],
-      max_tokens: 8000,
-      temperature: 0.2,
     });
+
+    let completion;
+    try {
+      completion = await getOpenRouter().chat.completions.create({
+        model: AI_MODEL,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: `Текущий договор:\n\n${current}\n\n---\nЧто поменять: ${ask}` },
+        ],
+        max_tokens: 8000,
+        temperature: 0.2,
+      });
+    } catch (e) {
+      await aiLogFinish(logId, { ok: false, error: e });
+      throw e;
+    }
 
     let text = completion.choices[0]?.message?.content?.trim() ?? "";
     if (!text) {
+      await aiLogFinish(logId, { ok: false, error: "empty answer" });
       return NextResponse.json({ error: "Не получилось переписать. Попробуйте сказать иначе." }, { status: 502 });
     }
     // Модель иногда всё же оборачивает ответ в тройные кавычки.
@@ -146,6 +164,11 @@ ${tags}
     if (completion.usage) {
       await recordAiUsage(master.id, computeCostFromUsage(completion.usage, AI_MODEL)).catch(() => {});
     }
+    await aiLogFinish(logId, {
+      ok: true,
+      output: [warning ? `ВНИМАНИЕ: ${warning}` : "", problem ? `Проверка: ${problem}` : "", text].filter(Boolean).join("\n\n"),
+      costUsd: computeCostFromUsage(completion.usage, AI_MODEL),
+    });
     // Что просили менять — храним у последней версии, чтобы в истории было
     // видно не только «версия 4», но и зачем она появилась.
     await prisma.masterContract

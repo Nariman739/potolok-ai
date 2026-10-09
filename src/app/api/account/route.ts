@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, deleteSession, verifyPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { archiveMasterGeometry } from "@/lib/geometry-archive";
 
 // DELETE /api/account
 // Body: { password: string, confirmPhrase: string }
@@ -62,6 +63,14 @@ export async function DELETE(request: Request) {
     const valid = await verifyPassword(password, fresh.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "Неверный пароль" }, { status: 401 });
+    }
+
+    // Анонимная копия замеров и КП ДО каскадного удаления (09.10.2026):
+    // персональное уходит, геометрия и цены остаются в базе подсказок.
+    try {
+      await archiveMasterGeometry(master.id);
+    } catch (e) {
+      console.error("[geometry-archive] account-delete:", e instanceof Error ? e.message : e);
     }
 
     await prisma.master.delete({ where: { id: master.id } });

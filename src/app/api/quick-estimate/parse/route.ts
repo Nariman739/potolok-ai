@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getOpenRouter } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { CURRENCIES, asCurrency, type CurrencyCode } from "@/lib/currency";
+import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 
 const PARSE_MODEL = "anthropic/claude-sonnet-4";
 
@@ -42,18 +43,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Введите описание работ" }, { status: 400 });
     }
 
-    const openrouter = getOpenRouter();
-    const completion = await openrouter.chat.completions.create({
+    // Анонимный журнал: что мастера надиктовывают голосом (09.10.2026)
+    const logId = await aiLogStart({
+      feature: "quick-estimate",
+      input: text.trim(),
+      currency: master.currency,
       model: PARSE_MODEL,
-      messages: [
-        { role: "system", content: buildSystemPrompt(master.currency) },
-        { role: "user", content: text.trim() },
-      ],
-      max_tokens: 1000,
-      temperature: 0.1,
     });
 
+    const openrouter = getOpenRouter();
+    let completion;
+    try {
+      completion = await openrouter.chat.completions.create({
+        model: PARSE_MODEL,
+        messages: [
+          { role: "system", content: buildSystemPrompt(master.currency) },
+          { role: "user", content: text.trim() },
+        ],
+        max_tokens: 1000,
+        temperature: 0.1,
+      });
+    } catch (e) {
+      await aiLogFinish(logId, { ok: false, error: e });
+      throw e;
+    }
+
     const raw = completion.choices[0]?.message?.content?.trim() || "[]";
+    await aiLogFinish(logId, { ok: true, output: raw, costUsd: computeCostFromUsage(completion.usage, PARSE_MODEL) });
 
     // Parse JSON — strip markdown fences if present
     const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");

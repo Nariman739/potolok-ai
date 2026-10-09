@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { runTechpassportVision } from "@/lib/techpassport-vision";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
+import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 
 /**
  * POST /api/assistant/parse-techpassport
@@ -44,8 +45,29 @@ export async function POST(request: Request) {
     const mimeType = file.type || "image/jpeg";
     const imageBase64Url = `data:${mimeType};base64,${base64}`;
 
+    // Анонимный журнал: сколько техпаспортов распознаётся, а сколько нет (09.10.2026)
+    const logId = await aiLogStart({
+      feature: "techpassport",
+      input: `[фото техпаспорта ${Math.round(file.size / 1024)} КБ]`,
+      imageCount: 1,
+      lang: master.language,
+      currency: master.currency,
+    });
+
     // Специализированный pipeline для тех.паспортов (печатных планов)
-    const result = await runTechpassportVision(imageBase64Url);
+    let result;
+    try {
+      result = await runTechpassportVision(imageBase64Url);
+    } catch (e) {
+      await aiLogFinish(logId, { ok: false, error: e });
+      throw e;
+    }
+    await aiLogFinish(logId, {
+      ok: result.rooms.length > 0,
+      error: result.rooms.length === 0 ? "rooms not recognized" : undefined,
+      output: { rooms: result.rooms, totalArea: result.totalArea, totalPerimeter: result.totalPerimeter },
+      costUsd: result.__costUsd ?? 0,
+    });
 
     if (result.rooms.length === 0) {
       return NextResponse.json(

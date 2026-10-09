@@ -8,6 +8,7 @@ import {
 } from "@/lib/kp/ai-onboarding";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
+import { aiLogOnce } from "@/lib/ai-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,14 +88,32 @@ export async function POST(req: NextRequest) {
     // подобранной без модели, и честно говорим, что тексты пока стандартные.
     let aiUnavailable = false;
     let result;
+    let aiError: unknown = undefined;
     try {
       result = await generateKpConfigFromBrief(brief);
     } catch (aiErr) {
       console.error("[kp-onboarding] AI недоступен:", safeAiErrorLog(aiErr));
       result = buildFallbackConfigFromBrief(brief);
       aiUnavailable = true;
+      aiError = aiErr;
     }
     await recordAiUsage(master.id, result.__costUsd ?? 0);
+
+    // Анонимный журнал: ответы анкеты без имён (сегмент, город, отличие,
+    // частые вопросы клиентов) → слоган и обоснование (09.10.2026)
+    const { companyName: _cn, ownerName: _on, ...anonBrief } = brief;
+    void _cn;
+    void _on;
+    await aiLogOnce({
+      feature: "kp-onboarding",
+      input: anonBrief,
+      output: { tagline: result.tagline, rationale: result.rationale, template: result.template },
+      lang: master.language,
+      currency: master.currency,
+      ok: !aiUnavailable,
+      error: aiError,
+      costUsd: result.__costUsd ?? 0,
+    });
 
     // Результат сразу применяем к КП мастера. Раньше конфиг жил только в брифе,
     // а КП оставалось дефолтным, пока мастер не доскроллит пятиметровую страницу

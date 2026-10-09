@@ -10,6 +10,7 @@ import { calculate } from "@/lib/calculate";
 import type { ChatMessage, RoomInput } from "@/lib/types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
+import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 
 export const maxDuration = 60;
 
@@ -129,6 +130,18 @@ export async function POST(request: Request) {
       { platform, lang, currency: master.currency }
     );
 
+    // Анонимный журнал (09.10.2026): вопрос пишем ДО ответа модели — если
+    // модель упадёт, вопрос не пропадёт (в августе так потерялись 59 сессий).
+    const logId = await aiLogStart({
+      feature: "assistant",
+      input: message || "[фото без текста]",
+      imageCount: imageUrl ? 1 : 0,
+      lang,
+      platform,
+      currency: master.currency,
+      model: AI_MODEL,
+    });
+
     let fullContent = "";
 
     const encoder = new TextEncoder();
@@ -162,6 +175,7 @@ export async function POST(request: Request) {
               where: { id: sessionId },
               data: { messages: JSON.parse(JSON.stringify([...allMessages, quickMsg])) },
             });
+            await aiLogFinish(logId, { ok: true, output: quick.answer, costUsd: 0, model: "quick-answer" });
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
             controller.close();
             return;
@@ -430,6 +444,7 @@ export async function POST(request: Request) {
           });
 
           await recordAiUsage(master.id, totalCostUsd);
+          await aiLogFinish(logId, { ok: true, output: fullContent, costUsd: totalCostUsd });
 
           // Send done
           controller.enqueue(
@@ -438,6 +453,7 @@ export async function POST(request: Request) {
           controller.close();
         } catch (error) {
           console.error("Stream error:", error);
+          await aiLogFinish(logId, { ok: false, error });
           // Мастеру нужен понятный текст и знание, что делать (22.09.2026).
           // Раньше любая причина схлопывалась в «Ошибка AI»: когда на счету
           // модели кончились деньги (402), это выглядело как поломка приложения.

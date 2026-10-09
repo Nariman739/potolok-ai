@@ -3,6 +3,7 @@ import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
 import { requireAuth } from "@/lib/auth";
 import { suggestCopy, type CopyFieldKind, type CopyContext } from "@/lib/kp/ai-copy";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
+import { aiLogOnce } from "@/lib/ai-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,8 +77,21 @@ export async function POST(req: NextRequest) {
       city: body.context?.city || master.address || undefined,
     };
 
-    const { suggestions, costUsd } = await suggestCopy(field, context, n);
+    // Анонимный журнал: без имени владельца и названия компании (09.10.2026)
+    const { companyName: _c, ownerName: _o, ...anonContext } = context;
+    void _c;
+    void _o;
+    const logInput = `${field}\n${JSON.stringify(anonContext)}`;
+
+    let suggestions, costUsd;
+    try {
+      ({ suggestions, costUsd } = await suggestCopy(field, context, n));
+    } catch (e) {
+      await aiLogOnce({ feature: "copy-suggest", input: logInput, lang: master.language, currency: master.currency, ok: false, error: e });
+      throw e;
+    }
     await recordAiUsage(master.id, costUsd);
+    await aiLogOnce({ feature: "copy-suggest", input: logInput, output: suggestions, lang: master.language, currency: master.currency, ok: true, costUsd });
 
     return NextResponse.json({ suggestions });
   } catch (err) {

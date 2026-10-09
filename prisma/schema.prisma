@@ -1420,3 +1420,46 @@ model AppLinkClick {
   @@index([createdAt])
   @@index([campaign, event])
 }
+
+/// Анонимный журнал ИИ (09.10.2026, решение Наримана): что спрашивают мастера
+/// и что ответил ИИ — база вопросов и болей. НАМЕРЕННО без masterId/companyId:
+/// кто спросил, не храним. Телефоны и почты в тексте вырезаются при записи.
+/// Вопрос пишется ДО ответа модели (ok=false), ответ дописывается после —
+/// если модель упала, вопрос не теряется.
+model AiLog {
+  id         String   @id @default(uuid())
+  feature    String   // assistant | quick-estimate | contract-rewrite | copy-suggest | techpassport | logo-chat | kp-onboarding
+  input      String   @db.Text
+  output     String?  @db.Text
+  imageCount Int      @default(0)
+  ok         Boolean  @default(false)
+  error      String?
+  model      String?
+  costUsd    Float?
+  lang       String?  // ru | kk
+  platform   String?  // web | mobile
+  currency   String?  // KZT | RUB — грубо страна
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([feature, createdAt])
+  @@index([createdAt])
+}
+
+/// Анонимный архив геометрии (09.10.2026): перед ОКОНЧАТЕЛЬНЫМ удалением объекта
+/// или аккаунта копируем только размеры/элементы/цены — без адреса, клиента,
+/// мастера, фото и координат. Это не персональные данные; нужен для базы
+/// (средние цены, типовые комнаты, расстановка света).
+model GeometryArchive {
+  id            String   @id @default(uuid())
+  reason        String   // object-permanent-delete | account-delete
+  currency      String?  // KZT | RUB
+  measuredMonth String?  // YYYY-MM, без точной даты
+  roomCount     Int
+  totalArea     Float
+  rooms         Json     // [{name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles}]
+  estimates     Json?    // [{status, totalArea, total, discountPercent, roomsData}]
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}

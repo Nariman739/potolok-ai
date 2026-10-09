@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, inScope } from "@/lib/company";
+import { getScope, inScope, currencyFor } from "@/lib/company";
+import { archiveObjectGeometry } from "@/lib/geometry-archive";
 
 // POST /api/measurements/[id]/permanent-delete
 // Жёсткое удаление soft-deleted замера. Доступно только из корзины.
@@ -28,6 +29,15 @@ export async function POST(
     });
     if (!existing) {
       return NextResponse.json({ error: "Замер не найден в корзине" }, { status: 404 });
+    }
+
+    // Анонимная копия геометрии ДО удаления (09.10.2026): размеры и свет —
+    // в базу подсказок, адрес/клиент/мастер/фото — нет. Сбой архива не
+    // должен мешать мастеру удалить своё.
+    try {
+      await archiveObjectGeometry(id, "object-permanent-delete", await currencyFor(scope.ownerId));
+    } catch (e) {
+      console.error("[geometry-archive] permanent-delete:", e instanceof Error ? e.message : e);
     }
 
     await prisma.measurementObject.delete({ where: { id } });
