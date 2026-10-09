@@ -6,7 +6,7 @@
 // передаётся через PNG. Из RoomElement[] выводим ТИПЫ и КОЛИЧЕСТВО элементов,
 // чтобы AI понимал что должно появиться на потолке.
 
-import type { RoomElement, ElementType } from "./room-types";
+import type { RoomElement, ElementType, FurnitureType } from "./room-types";
 import type { CeilingFinish } from "./ai-visualization";
 
 interface SceneGroupedElements {
@@ -251,8 +251,38 @@ function resolveLightTempHint(input: SceneSourcePromptInput): string {
   return "warm interior light";
 }
 
+/** Как назвать болванку мебели в промпте (тип → реальный предмет того же типа). */
+const FURNITURE_PHRASES: Record<FurnitureType, [string, string]> = {
+  bed: ["bed", "beds"],
+  sofa: ["sofa", "sofas"],
+  table: ["table", "tables"],
+  wardrobe: ["wardrobe / tall cabinet", "wardrobes / tall cabinets"],
+  tv: ["wall-mounted TV", "wall-mounted TVs"],
+  nightstand: ["nightstand", "nightstands"],
+  chair: ["chair", "chairs"],
+  desk: ["desk", "desks"],
+  radiator: ["radiator", "radiators"],
+  kitchen: ["kitchen unit", "kitchen units"],
+  wall_panel: ["wall panel", "wall panels"],
+};
+
+/** «1 table, 2 chairs» — точный состав мебели со сцены (чтобы AI не добавлял своё). */
+function describeFurniture(elements: RoomElement[]): string[] {
+  const counts = new Map<FurnitureType, number>();
+  for (const el of elements) {
+    if (el.type !== "furniture") continue;
+    const t = (el.furnitureType ?? "table") as FurnitureType;
+    counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([t, n]) => {
+    const [one, many] = FURNITURE_PHRASES[t] ?? [t, t + "s"];
+    return `${n} ${n > 1 ? many : one}`;
+  });
+}
+
 export function buildFrozenCeilingScenePrompt(input: SceneSourcePromptInput): string {
   const g = groupElements(input.elements);
+  const furniture = describeFurniture(input.elements);
   const surfaces: string[] = [];
   if (input.floorPromptDesc) surfaces.push(`real ${input.floorPromptDesc} with visible grain and soft natural reflections`);
   if (input.wallPromptDesc) surfaces.push(`real matte ${input.wallPromptDesc} with subtle plaster texture and soft light gradients`);
@@ -273,9 +303,14 @@ export function buildFrozenCeilingScenePrompt(input: SceneSourcePromptInput): st
   // ПЕРИМЕТРЕ / верху стены, ВНЕ маски заморозки → его обязан нарисовать AI, иначе
   // потолок выходит плоско-белым (проверено 08.08). Описываем периметр как ПЕРВИЧНЫЙ
   // источник света. Для остального ПЛОСКОГО потолка поле отдаём заморозке.
+  // 09.10: парящий почти всегда стоит НЕ по всему периметру, а на 1-2 стенах (wallProfiles
+  // мобилки) — старая формулировка «around the ENTIRE perimeter» заставляла AI светить
+  // везде, а на нужной стене выходила бледная нитка. Теперь: только размеченные стены
+  // (в 3D-превью на них видна светящаяся полоска у потолка), яркое ядро + wash вниз.
+  const floatingWalls = g.floating;
   const ceilingLine =
-    g.floating > 0
-      ? `CEILING — THIS IS THE HERO, render it precisely: a modern FLOATING stretch ceiling («парящий потолок»). Around the ENTIRE perimeter, where the flat ceiling meets the walls, a HIDDEN LED cove strip sits in a recessed reveal gap and acts as the PRIMARY light source of the room: render a continuous, even ${tempHint} glow tracing the whole ceiling edge, spilling softly into the wall recess and onto the ceiling edge, with a clear halo/gradient fading down the upper walls. The ceiling field itself stays clean flat and appears to «float», detached from the walls by the glowing reveal. This perimeter LED glow must be clearly visible and beautiful — it is the main selling feature.`
+    floatingWalls > 0
+      ? `CEILING — THIS IS THE HERO: a flat stretch ceiling with a FLOATING profile («парящий потолок») on ${floatingWalls === 1 ? "ONE wall only" : `${floatingWalls} walls only`} — exactly the wall${floatingWalls > 1 ? "s" : ""} where the 3D preview shows a thin glowing strip at the ceiling edge. Along ${floatingWalls === 1 ? "that wall" : "those walls"} render a continuous recessed LED cove: a crisp 2-3 cm glowing slot between the ceiling and the wall, with a BRIGHT ${tempHint} core along its full length, and a soft warm wash of light grazing down the wall about 40 cm, fading smoothly to the normal wall tone — like real photos of floating stretch ceilings. The ceiling appears to float, detached from that wall by the glowing gap. On ALL OTHER walls the ceiling meets the wall in a plain clean corner — NO glow, NO strip, NO cornice there. ${finishLine}`
       : `The ceiling is a flat stretch ceiling; its surface is composited back separately afterward, so keep it a clean plain light surface and spend the effort on the ROOM. ${finishLine}`;
 
   // Фикстуры НА плоскости потолка (споты/трек/линия/люстра/подвес) точный вид держит
@@ -296,19 +331,43 @@ export function buildFrozenCeilingScenePrompt(input: SceneSourcePromptInput): st
   if (g.subcurtains > 0) archNotes.push(`a slim recessed curtain pocket where the ceiling meets the window wall`);
   if (g.showerCurtains > 0) archNotes.push(`a glass shower partition in that spot`);
 
+  // 09.10 фидбек владельца: «чересчур много растений и лишнего» — AI ставил диван+кресло+
+  // журнальный столик+шкафы+4 растения на месте ОДНОГО стола. Теперь мебель — строго по
+  // составу сцены (тип и количество), без примеров «sofa → …», которые сами провоцировали
+  // появление дивана; пустая сцена → пустая комната.
+  const furnitureBlock =
+    furniture.length > 0
+      ? [
+          `FURNITURE: the flat grey/CG objects in the preview are crude 3D PLACEHOLDERS — REPLACE each with a real, beautifully made piece of the SAME type, at the SAME spot and roughly the SAME size (solid wood, real fabric, brushed metal, visible texture). The room contains EXACTLY ${furniture.join(", ")} — nothing more: no extra sofa, armchair, coffee table, chairs, shelves, cabinets or wardrobes.`,
+        ]
+      : [
+          "FURNITURE: the scene has NO furniture — keep the room EMPTY (a freshly renovated, unfurnished room). Do NOT add any furniture at all.",
+        ];
+  // Количество окон/дверей в текст НЕ выводим: дверь часто за спиной камеры, а «1 door»
+  // заставлял AI дорисовать её на видимой стене (прогон 09.10). Только «как на превью».
+  const openingsLine = `OPENINGS: windows and doors ONLY exactly where the preview shows them${g.windows + g.doors === 0 ? " (this room shows none)" : ""}. Do NOT add any window or door that is not visible in the preview — openings behind the camera stay unseen${g.windows > 0 ? "; windows → real glass with a soft hint of view outside" : ""}${g.doors > 0 ? "; doors → real painted/veneer door with frame & handle" : ""}.`;
+  const wallLine = input.wallPromptDesc
+    ? null
+    : "Walls: plain, solid, light neutral painted walls (one calm color), no wallpaper pattern, no panels, no slats.";
+  const lightingFull =
+    floatingWalls > 0
+      ? `${lighting}. Moderate ambient light — the walls must NOT be overexposed, so that the LED cove glow stands out clearly against the wall.`
+      : `${lighting}.`;
+
   const parts: string[] = [
-    "Turn this 3D CAD room preview into a REAL, professionally photographed interior — high-end magazine quality, indistinguishable from a real full-frame DSLR photo. The 3D furniture pieces are only PLACEHOLDERS.",
+    "Generate a NEW image: a REAL photograph of this exact room, as if shot by a professional interior photographer on a full-frame DSLR — high-end magazine quality. The input is only a rough 3D CAD preview with flat CG shading; the output must look nothing like a render. The stretch ceiling is the HERO of the shot; the room is a calm, clean, minimal backdrop for it.",
+    "Re-photograph EVERY surface outside the ceiling: real floor with visible material texture (wood grain and plank joints, or tile joints — matching the floor in the preview) and soft natural reflections; real matte painted walls with subtle texture and gentle light gradients; real materials on every object; natural photographic contrast. Remove CG artifacts (blown-out white patches on the floor, flat shading, plastic look). Minimal means FEW objects, not CG — every one photographed for real.",
     "",
-    "You MAY replace each placeholder object with a REAL, photorealistic furniture piece of the SAME type and roughly the SAME position & size, styled beautifully and consistently:",
-    "  • grey placeholder sofa → real fabric sofa (weave, folds, cushions) in that spot;",
-    "  • placeholder chair → real designer chair (wood/metal/upholstery);",
-    "  • placeholder table → real wood or marble table, lightly styled (a book, a vase);",
-    "  • placeholder wardrobe/cabinets → real matte or wood furniture with realistic edges & handles;",
-    "  • door → real painted/veneer door with realistic frame & handle; windows → real glass with a soft hint of view outside.",
-    ...(surfaces.length ? ["", "Room surfaces: " + surfaces.join("; ") + "."] : []),
+    ...furnitureBlock,
+    "",
+    "NO EXTRA DECOR: no plants (at most ONE small plant in the whole frame, or none), no vases, no flowers, no rugs or carpets, no artwork or pictures, no books, no cushion piles, no floor or table lamps, no shelves with objects, no clutter. Keep the room clean and minimal.",
+    "",
+    openingsLine,
+    ...(wallLine ? [wallLine] : []),
+    ...(surfaces.length ? ["Room surfaces: " + surfaces.join("; ") + "."] : []),
     ...(archNotes.length ? ["", "Also render these room elements (they belong to this project): " + archNotes.join("; ") + "."] : []),
     "",
-    `LIGHTING: ${lighting}. Real soft shadows cast by furniture, gentle ambient occlusion in corners and under objects, warm indirect bounce light, subtle highlights — photographic depth, NOT flat even CG shading.`,
+    `LIGHTING: ${lightingFull} Real soft shadows, gentle ambient occlusion in corners and under objects, subtle indirect bounce light — photographic depth, NOT flat even CG shading.`,
     ...(ceilingFixtures.length
       ? ["", `The ceiling has ONLY these fixtures (do not invent extra lights): ${ceilingFixtures.join("; ")}.`]
       : []),
@@ -328,9 +387,9 @@ export function buildFrozenCeilingScenePrompt(input: SceneSourcePromptInput): st
         ]
       : []),
     "",
-    "PALETTE: calm, cohesive, warm-minimalist — a tight neutral designer palette (warm whites, greige, natural oak, one soft muted accent). Tasteful and uncluttered, serene editorial mood. No garish colors, no busy patterns, no visual noise.",
+    "PALETTE: calm, cohesive, warm-minimalist — a tight neutral palette (warm whites, greige, natural oak). Serene, uncluttered, editorial. No garish colors, no busy patterns, no visual noise.",
     "",
-    "KEEP THE SAME: overall room layout & proportions, wall positions, window & door positions, and the CAMERA angle & perspective. Do NOT add extra rooms or change the architecture. No people, no pets, no text, no watermark, no UI.",
+    "KEEP THE SAME: overall room layout & proportions, wall positions, window & door positions, the ceiling fixtures, and the CAMERA angle & perspective. Do NOT add extra rooms, niches, columns or change the architecture. No people, no pets, no text, no watermark, no UI.",
     "",
     ceilingLine,
     "Ultra photorealistic, sharp focus, natural photographic lighting, 4K.",

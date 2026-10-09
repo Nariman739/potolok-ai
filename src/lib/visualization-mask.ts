@@ -158,67 +158,161 @@ export async function generateMarkupOverlay(
     .toBuffer();
 }
 
-/** Приблизительный цвет свечения по цветовой температуре (Кельвины) — тёплый→холодный. */
-function kelvinToGlowRGB(kelvin?: number): { r: number; g: number; b: number } {
-  const k = typeof kelvin === "number" ? kelvin : 2850;
-  if (k <= 3300) return { r: 255, g: 200, b: 142 }; // тёплый янтарь 2700-3000K
-  if (k >= 5000) return { r: 214, g: 228, b: 255 }; // холодный дневной 6000-6500K
-  return { r: 255, g: 244, b: 232 };                // нейтральный 4000K
+/** Цвет свечения по цветовой температуре (Кельвины), приближение Таннера Хелланда
+ * (чёрнотельный цвет). 2700K → янтарный, 4000K → тёплый белый, 6500K → почти белый. */
+export function kelvinToGlowRGB(kelvin?: number): { r: number; g: number; b: number } {
+  const t = Math.max(1000, Math.min(12000, typeof kelvin === "number" ? kelvin : 3000)) / 100;
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const r = t <= 66 ? 255 : clamp(329.698727446 * Math.pow(t - 60, -0.1332047592));
+  const g = t <= 66 ? clamp(99.4708025861 * Math.log(t) - 161.1195681661) : clamp(288.1221695283 * Math.pow(t - 60, -0.0755148492));
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : clamp(138.5177312231 * Math.log(t - 10) - 305.0447927307);
+  return { r, g, b };
 }
 
-/** Один тонированный слой glow: маска периметра → blur → тон по Кельвину × интенсивность.
- * Возвращает RGB (чёрный фон + тёплое ядро), готов к screen-композиту. */
-async function tintedGlowLayer(
-  maskBuffer: Buffer,
-  width: number,
-  height: number,
-  blurRadius: number,
-  intensity: number,
-  tint: { r: number; g: number; b: number },
-): Promise<Buffer> {
-  const gray = await sharp(maskBuffer)
-    .resize(width, height, { fit: "fill" })
-    .greyscale()
-    .blur(blurRadius)
-    .toColourspace("srgb") // 1 канал → 3 одинаковых канала
-    .toBuffer();
-  // Пер-канальный множитель = интенсивность × доля тона. Чёрный фон остаётся чёрным
-  // (под screen ничего не добавляет), периметр приобретает тёплый цвет нужной яркости.
-  return sharp(gray)
-    .linear([(intensity * tint.r) / 255, (intensity * tint.g) / 255, (intensity * tint.b) / 255], [0, 0, 0])
-    .toBuffer();
-}
+/** Параметры детерминированного свечения парящего. Подобраны 09.10 по реальным фото
+ * парящих потолков (яркая щель + мягкий wash по стене) на кадрах «Фото клиенту». */
+export const PERIMETER_GLOW = {
+  /** Видимая высота полосы маски в см (WallElement3D: помощник ceiling-4…-20 см). */
+  maskBandCm: 16,
+  /** На сколько см верх маски ниже линии потолка. */
+  maskTopBelowCeilingCm: 1,
+  /** Светящаяся щель (ядро): ширина в см и мягкий край. */
+  coreCm: 3,
+  coreFeatherCm: 0.8,
+  /** Ядро: насколько подтягиваем пиксель к цвету ядра (0..1). */
+  coreStrength: 1,
+  /** Ореол вокруг ядра (узкий, яркий) — см и сила. */
+  haloCm: 7,
+  haloStrength: 0.55,
+  /** Wash вниз по стене: длина в см и сила (screen) у верха. */
+  washCm: 45,
+  washStrength: 0.85,
+  /** Показатель затухания wash: (1 - t)^falloff, t = 0 у щели → 1 через washCm. */
+  washFalloff: 1.3,
+  /** Тёплый «окрас» стены в зоне wash (умножение к тону Кельвина). */
+  washTint: 0.6,
+  /** Тонкая тень кромки полотна прямо над щелью (см, доля затемнения) — даёт щели
+   * чёткий верхний край, как на фото (полотно «отрывается» от стены). */
+  edgeShadeCm: 1.2,
+  edgeShadeStrength: 0.14,
+  /** Насыщенность тона Кельвина (0 — белый, 1 — чёрнотельный цвет): камера с балансом белого
+   * видит 4000K почти белым, 2700K — янтарным, поэтому тон смягчаем. */
+  tintAmount: 0.5,
+};
 
-/** Детерминированное свечение парящего: по маске периметра из 3D добавляем мягкий тёплый
- * glow (два слоя — широкий ореол + яркое ядро) поверх картинки через blend "screen".
- * Не зависит от seed модели → парящий гарантированно светится в ПРАВИЛЬНОМ месте.
- * Если маска пустая (парящего нет) — возвращает исходник без изменений. */
+/** Детерминированное свечение парящего по маске периметра из 3D.
+ *
+ * Маска — полоса верха стены под парящим профилем (WallElement3D, слой FLOATING_MASK_LAYER).
+ * Раньше маску просто размывали и клали через screen — на светлой стене это давало бледную
+ * симметричную дымку, «периметр не понятно какой» (фидбек 09.10). Теперь по каждой колонке
+ * находим верх полосы (≈ линия потолка) и строим ФИЗИЧНЫЙ профиль, масштабируя см по высоте
+ * полосы (перспектива учитывается сама): яркая щель 2–3 см у потолка, узкий ореол, длинный
+ * мягкий wash вниз по стене (~45 см, квадратичное затухание) с тёплым тоном по Кельвину и
+ * тонкую тень кромки полотна над щелью. Стены без парящего не трогаем (маска там чёрная).
+ * Пустая маска → исходник без изменений. */
 export async function addPerimeterGlow(
   baseBuffer: Buffer,
   floatingMaskBuffer: Buffer,
   kelvin?: number,
+  params: Partial<typeof PERIMETER_GLOW> = {},
 ): Promise<Buffer> {
+  const P = { ...PERIMETER_GLOW, ...params };
   const meta = await sharp(baseBuffer).metadata();
   const width = meta.width ?? 1024;
   const height = meta.height ?? 1024;
 
-  // Пустая маска (парящего нет) → пропускаем.
   const stats = await sharp(floatingMaskBuffer).greyscale().stats();
-  const maxVal = stats.channels[0]?.max ?? 0;
-  if (maxVal < 20) return baseBuffer;
+  if ((stats.channels[0]?.max ?? 0) < 20) return baseBuffer;
 
-  const tint = kelvinToGlowRGB(kelvin);
-  const minDim = Math.min(width, height);
-  const halo = await tintedGlowLayer(floatingMaskBuffer, width, height, Math.max(8, Math.round(minDim * 0.03)), 0.65, tint);
-  const core = await tintedGlowLayer(floatingMaskBuffer, width, height, Math.max(3, Math.round(minDim * 0.008)), 0.9, tint);
-
-  return await sharp(baseBuffer)
-    .composite([
-      { input: halo, blend: "screen" },
-      { input: core, blend: "screen" },
-    ])
-    .jpeg({ quality: 92 })
+  const mask = await sharp(floatingMaskBuffer)
+    .resize(width, height, { fit: "fill" })
+    .greyscale()
+    .raw()
     .toBuffer();
+
+  // Карты интенсивности 0..255: core (щель+ореол → цвет ядра), wash (свет по стене),
+  // shade (тень кромки полотна над щелью).
+  const coreMap = new Uint8Array(width * height);
+  const washMap = new Uint8Array(width * height);
+  const shadeMap = new Uint8Array(width * height);
+  const put = (map: Uint8Array, x: number, y: number, v: number) => {
+    if (y < 0 || y >= height || v <= 0) return;
+    const i = y * width + x;
+    const b = Math.min(255, Math.round(v * 255));
+    if (b > map[i]) map[i] = b;
+  };
+
+  for (let x = 0; x < width; x++) {
+    let y = 0;
+    while (y < height) {
+      if (mask[y * width + x] < 100) {
+        y++;
+        continue;
+      }
+      const y0 = y;
+      while (y < height && mask[y * width + x] >= 100) y++;
+      const bandPx = y - y0;
+      if (bandPx < 2) continue;
+      const pxPerCm = bandPx / P.maskBandCm;
+      const yc = y0 - P.maskTopBelowCeilingCm * pxPerCm; // линия потолка
+      const coreHalf = Math.max(0.8, (P.coreCm * pxPerCm) / 2);
+      const coreCenter = yc + coreHalf;
+      const feather = Math.max(1, P.coreFeatherCm * pxPerCm);
+      const halo = Math.max(2, P.haloCm * pxPerCm);
+      const wash = Math.max(4, P.washCm * pxPerCm);
+      const shade = Math.max(1, P.edgeShadeCm * pxPerCm);
+      const yTop = Math.floor(yc - shade - feather);
+      const yBot = Math.ceil(coreCenter + wash);
+      for (let yy = Math.max(0, yTop); yy <= Math.min(height - 1, yBot); yy++) {
+        const d = Math.abs(yy - coreCenter);
+        // Ядро: плато + мягкий край.
+        const core = d <= coreHalf ? 1 : Math.max(0, 1 - (d - coreHalf) / feather);
+        // Узкий ореол (экспонента от края ядра).
+        const haloV = d <= coreHalf ? 1 : Math.exp(-(d - coreHalf) / (halo / 2.5));
+        put(coreMap, x, yy, Math.max(core * P.coreStrength, haloV * P.haloStrength * 0.6));
+        if (yy >= coreCenter) {
+          const t = (yy - coreCenter) / wash;
+          put(washMap, x, yy, t < 1 ? Math.pow(1 - t, P.washFalloff) : 0);
+        }
+        if (yy < yc - feather * 0.5 && yy >= yc - feather * 0.5 - shade) put(shadeMap, x, yy, 1);
+      }
+    }
+  }
+
+  // Сглаживаем ступеньки на концах полос и по колонкам.
+  const blurMap = (m: Uint8Array, sigma: number) =>
+    // extractChannel(0): sharp на выходе raw-blur отдаёт 3 канала даже для 1-канального входа.
+    sharp(Buffer.from(m.buffer), { raw: { width, height, channels: 1 } }).blur(sigma).extractChannel(0).raw().toBuffer();
+  const minDim = Math.min(width, height);
+  const [coreB, washB, shadeB] = await Promise.all([
+    blurMap(coreMap, Math.max(0.6, minDim * 0.0008)),
+    blurMap(washMap, Math.max(1.5, minDim * 0.004)),
+    blurMap(shadeMap, Math.max(0.5, minDim * 0.0006)),
+  ]);
+
+  const base = await sharp(baseBuffer).removeAlpha().raw().toBuffer();
+  const tint = kelvinToGlowRGB(kelvin);
+  const tn = [tint.r / 255, tint.g / 255, tint.b / 255].map((c) => 1 - P.tintAmount * (1 - c));
+  // Цвет ядра: почти белый с лёгким оттенком температуры (ядро LED на фото пересвечено).
+  const coreC = tn.map((c) => 1 - 0.1 * (1 - c));
+  const out = Buffer.alloc(width * height * 3);
+  for (let i = 0, p = 0; i < width * height; i++, p += 3) {
+    const w = (washB[i] / 255) * P.washStrength;
+    const c = coreB[i] / 255;
+    const sh = (shadeB[i] / 255) * P.edgeShadeStrength * (1 - c);
+    for (let ch = 0; ch < 3; ch++) {
+      let v = base[p + ch] / 255;
+      if (sh > 0) v *= 1 - sh;
+      if (w > 0) {
+        v = 1 - (1 - v) * (1 - w * tn[ch]); // screen светом нужного тона
+        v *= 1 - w * P.washTint * (1 - tn[ch]); // тёплый окрас стены
+      }
+      if (c > 0 && coreC[ch] > v) v = v + (coreC[ch] - v) * c; // ядро только осветляет
+      out[p + ch] = Math.max(0, Math.min(255, Math.round(v * 255)));
+    }
+  }
+
+  return await sharp(out, { raw: { width, height, channels: 3 } }).jpeg({ quality: 92 }).toBuffer();
 }
 
 /** Composite: где маска БЕЛАЯ → пиксели из rendered, где ЧЁРНАЯ → пиксели из original.
