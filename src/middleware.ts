@@ -75,6 +75,18 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Короткая ссылка для шапки Instagram (там показывается голый URL) → лендинг с метками.
+  if (pathname === "/ig") {
+    const igUrl = request.nextUrl.clone();
+    igUrl.pathname = "/app";
+    igUrl.search = "?utm_source=instagram&utm_medium=bio";
+    const igResponse = NextResponse.redirect(igUrl, 307);
+    for (const [key, value] of Object.entries(securityHeaders)) {
+      igResponse.headers.set(key, value);
+    }
+    return igResponse;
+  }
+
   // Apply security headers to all responses + expose pathname for server components
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
