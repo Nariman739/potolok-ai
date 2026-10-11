@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getLongLivedToken } from "@/lib/instagram";
+import { getLongLivedToken, igAppId, igAppSecret } from "@/lib/instagram";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { verifyOAuthState } from "@/lib/instagram-state";
 
@@ -30,8 +30,8 @@ export async function GET(request: Request) {
   }
   const masterId = verified.masterId;
 
-  const appId = process.env.INSTAGRAM_APP_ID;
-  const appSecret = process.env.INSTAGRAM_APP_SECRET;
+  const appId = igAppId();
+  const appSecret = igAppSecret();
   if (!appId || !appSecret) {
     return NextResponse.redirect(new URL("/instagram-connected?status=error&msg=config", getBaseUrl(request)));
   }

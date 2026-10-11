@@ -8,13 +8,17 @@ const GRAPH_FB_API = "https://graph.facebook.com/v21.0";
 // Token management
 // ─────────────────────────────────────────────────────
 
+// В Vercel значения env пришли с переводом строки (client_id=…%0A → «Недействительный идентификатор приложения»).
+export const igAppId = (): string => (process.env.INSTAGRAM_APP_ID || "").trim();
+export const igAppSecret = (): string => (process.env.INSTAGRAM_APP_SECRET || "").trim();
+
 /** Exchange short-lived token for a 60-day long-lived token */
 export async function getLongLivedToken(shortToken: string): Promise<{
   token: string;
   expiresIn: number;
 }> {
-  const appId = process.env.INSTAGRAM_APP_ID;
-  const appSecret = process.env.INSTAGRAM_APP_SECRET;
+  const appId = igAppId();
+  const appSecret = igAppSecret();
   if (!appId || !appSecret) throw new Error("INSTAGRAM_APP_ID/SECRET not set");
 
   const url = new URL(`${GRAPH_FB_API}/oauth/access_token`);
@@ -43,8 +47,8 @@ export async function refreshToken(token: string): Promise<{
 }> {
   const url = new URL(`${GRAPH_FB_API}/oauth/access_token`);
   url.searchParams.set("grant_type", "fb_exchange_token");
-  url.searchParams.set("client_id", process.env.INSTAGRAM_APP_ID || "");
-  url.searchParams.set("client_secret", process.env.INSTAGRAM_APP_SECRET || "");
+  url.searchParams.set("client_id", igAppId());
+  url.searchParams.set("client_secret", igAppSecret());
   url.searchParams.set("fb_exchange_token", token);
 
   const res = await fetch(url.toString());

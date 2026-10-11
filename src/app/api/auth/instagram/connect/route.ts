@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentMaster } from "@/lib/auth";
+import { igAppId } from "@/lib/instagram";
 import { verifyTelegramConnectToken, signOAuthState } from "@/lib/instagram-state";
 
 // GET /api/auth/instagram/connect
@@ -10,7 +11,7 @@ import { verifyTelegramConnectToken, signOAuthState } from "@/lib/instagram-stat
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  const appId = process.env.INSTAGRAM_APP_ID;
+  const appId = igAppId();
   if (!appId) {
     return NextResponse.json({ error: "INSTAGRAM_APP_ID not configured" }, { status: 500 });
   }
