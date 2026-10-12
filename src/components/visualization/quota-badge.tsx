@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { BILLING_ENABLED_CLIENT } from "@/lib/billing";
+import { BILLING_ENABLED_CLIENT } from "@/lib/billing-client";
 import type { BillingInfo } from "@/hooks/use-billing";
 
 interface QuotaBadgeProps {

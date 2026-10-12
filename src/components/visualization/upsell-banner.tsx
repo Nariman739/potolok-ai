@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BILLING_ENABLED_CLIENT } from "@/lib/billing";
+import { BILLING_ENABLED_CLIENT } from "@/lib/billing-client";
 import type { BillingInfo } from "@/hooks/use-billing";
 
 interface UpsellBannerProps {

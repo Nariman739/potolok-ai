@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import type { BillingStatus } from "@/lib/billing";
+import type { BillingStatus } from "@/lib/billing-client";
 
 type PaymentStatus = "PENDING" | "APPROVED" | "REJECTED";
 type Period = "month" | "year";

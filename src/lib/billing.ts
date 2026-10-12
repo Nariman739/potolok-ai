@@ -22,13 +22,9 @@ import { prisma } from "@/lib/prisma";
 
 export const BILLING_ENABLED = process.env.BILLING_ENABLED === "true";
 
-/**
- * То же самое для клиентских компонентов: в браузер попадают только
- * NEXT_PUBLIC_*-переменные, поэтому флага два. Держать их в одном значении —
- * в Vercel задаём обе (BILLING_ENABLED и NEXT_PUBLIC_BILLING_ENABLED).
- */
-export const BILLING_ENABLED_CLIENT =
-  process.env.NEXT_PUBLIC_BILLING_ENABLED === "true";
+export { BILLING_ENABLED_CLIENT } from "@/lib/billing-client";
+export type { BillingPeriod, BillingStatus } from "@/lib/billing-client";
+import type { BillingStatus } from "@/lib/billing-client";
 
 // ── Цены (₸). Через env, чтобы менять без деплоя кода ────────────────────
 export const PRICE_MONTH = Number(process.env.STANDARD_PRICE ?? 4990);
@@ -52,37 +48,6 @@ export const FOUNDER_DEADLINE = new Date(process.env.FOUNDER_DEADLINE ?? "2026-1
 
 /** Бесплатный тариф: первые N объектов за всё время. */
 export const FREE_OBJECTS_LIMIT = Number(process.env.FREE_OBJECTS_LIMIT ?? 10);
-
-export type BillingPeriod = "month" | "year";
-
-export type BillingStatus = {
-  /** Платные правила действуют для этого мастера (новый — сразу, старый — после FREE_UNTIL). */
-  enforced: boolean;
-  /** Старый мастер в бесплатном периоде: показываем плашку «до 23 ноября бесплатно». */
-  freePeriod: boolean;
-  /** Сейчас есть полный доступ (PRO): оплачено, owner или бесплатный период. */
-  isPro: boolean;
-  /** Почему PRO: "owner" | "paid" | "free_period" | null (бесплатный тариф). */
-  proReason: "owner" | "paid" | "free_period" | null;
-  paidUntil: string | null;
-  /** Дней до конца оплаты (отрицательное = просрочено). null — нет даты. */
-  daysLeft: number | null;
-  isFounder: boolean;
-  /** Ещё можно стать основателем (до дедлайна, ещё не основатель). */
-  founderOffer: boolean;
-  founderDeadline: string;
-  freeUntil: string;
-  objectsUsed: number;
-  objectsLimit: number;
-  /** Можно ли создать новый объект прямо сейчас. */
-  canCreateObject: boolean;
-  prices: {
-    month: number;
-    year: number;
-    founderMonth: number;
-    founderYear: number;
-  };
-};
 
 export function daysUntil(date: Date | null | undefined, now = new Date()): number | null {
   if (!date) return null;
