@@ -37,18 +37,18 @@ export function UpsellBanner({ billing }: UpsellBannerProps) {
     );
   }
 
+  // PRO+ не продаём (12.10.2026): один тариф PRO. Исчерпал лимит PRO —
+  // честно говорим «в следующем месяце», без апселла на несуществующий тариф.
   const isProUpgrade = billing.tier === "PRO";
   const headline = isProUpgrade
-    ? "Месячный лимит PRO исчерпан"
-    : billing.reason === "trial_exhausted_and_monthly_used"
-      ? "Триал и месячный лимит исчерпаны"
-      : "AI-визуализация — функция PRO";
+    ? "Месячный лимит рендеров исчерпан"
+    : "AI-визуализация — функция PRO";
 
   const sub = isProUpgrade
-    ? "Перейдите на PRO+ за ~10 000 ₸/мес — 100 рендеров в месяц и приоритет в очереди."
-    : "Закрывайте больше сделок прямо на замере. PRO за ~5 000 ₸/мес — 30 AI-рендеров в месяц.";
+    ? "Лимит обновится в начале месяца. Нужно больше прямо сейчас — напишите нам, добавим."
+    : "Закрывайте больше сделок прямо на замере. PRO за 4 990 ₸/мес — 30 AI-рендеров в месяц.";
 
-  const ctaLabel = isProUpgrade ? "Перейти на PRO+" : "Открыть PRO";
+  const ctaLabel = isProUpgrade ? null : "Открыть PRO";
 
   return (
     <div className="rounded-xl border border-amber-300/50 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 shadow-sm">
@@ -73,11 +73,13 @@ export function UpsellBanner({ billing }: UpsellBannerProps) {
               Шеринг клиенту по ссылке + интеграция с КП
             </li>
           </ul>
-          <div className="pt-2">
-            <Button asChild className="bg-amber-600 hover:bg-amber-700">
-              <Link href="/pricing">{ctaLabel}</Link>
-            </Button>
-          </div>
+          {ctaLabel && (
+            <div className="pt-2">
+              <Button asChild className="bg-amber-600 hover:bg-amber-700">
+                <Link href="/pricing">{ctaLabel}</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

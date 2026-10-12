@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     }
 
     await issueSessionCookie(master.id);
+    await setPlatformCookie(request);
     return NextResponse.redirect(new URL(safeRedirect, request.url));
   }
 
@@ -105,7 +106,28 @@ export async function GET(request: Request) {
     path: "/",
     expires: session.expiresAt,
   });
+  await setPlatformCookie(request);
   return NextResponse.redirect(new URL(safeRedirect, request.url));
+}
+
+/**
+ * Откуда открыли сайт: из iOS-приложения, Android или обычного браузера.
+ * По куке `app_platform=ios` сайт прячет цены и кнопку оплаты — Apple
+ * запрещает вести на внешнюю оплату из приложения (App Store 3.1.1), а
+ * встроенный браузер мобилки для ревьюера — часть приложения.
+ */
+async function setPlatformCookie(request: Request) {
+  const ua = request.headers.get("user-agent") ?? "";
+  const platform = /iPhone|iPad|iPod/i.test(ua) ? "ios" : /Android/i.test(ua) ? "android" : null;
+  if (!platform) return;
+  const cookieStore = await cookies();
+  cookieStore.set("app_platform", platform, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24,
+  });
 }
 
 async function issueSessionCookie(masterId: string) {

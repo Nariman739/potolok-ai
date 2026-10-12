@@ -158,10 +158,17 @@ export default function MarketingLayout({
               <a href="/auth/login" className="hover:text-[#94A3B8] transition-colors">Войти</a>
             </div>
           </div>
-          <div className="mt-8 border-t border-[#334155]/30 pt-6 text-center">
+          <div className="mt-8 border-t border-[#334155]/30 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
             <p className="text-xs text-[#475569]">
               &copy; {new Date().getFullYear()} PotolokAI. Все права защищены.
             </p>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-[#475569]">
+              <Link href="/pricing" className="hover:text-[#94A3B8] transition-colors">Тарифы</Link>
+              <Link href="/terms" className="hover:text-[#94A3B8] transition-colors">Договор-оферта</Link>
+              <Link href="/refund" className="hover:text-[#94A3B8] transition-colors">Возврат</Link>
+              <Link href="/privacy" className="hover:text-[#94A3B8] transition-colors">Конфиденциальность</Link>
+              <Link href="/contacts" className="hover:text-[#94A3B8] transition-colors">Контакты</Link>
+            </div>
           </div>
         </div>
       </footer>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope, type Scope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
+import { checkObjectLimit } from "@/lib/billing";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
+    // Бесплатный тариф: первые N объектов. Старое не трогаем, новый — 402.
+    const limit = await checkObjectLimit(master.id);
+    if (limit) return NextResponse.json(limit.body, { status: limit.status });
     // Повтор с тем же X-Op-Id (оффлайн-очередь мобилки) → тот же объект, не дубль.
     return await withIdempotency(request, master.id, "POST /measurements", () => createMeasurement(request, master.id, scope));
   } catch (error) {

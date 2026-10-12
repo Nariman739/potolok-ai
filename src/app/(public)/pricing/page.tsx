@@ -1,100 +1,74 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPaymentConfig, getMasterPriceForNextPayment, FOUNDER_DISCOUNT_MONTHS } from "@/lib/payment";
-import { BILLING_ENABLED } from "@/lib/billing";
+import { getPaymentConfig, getMasterPriceForNextPayment } from "@/lib/payment";
+import { BILLING_ENABLED, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
   title: "Тарифы — PotolokAI",
-  description: "Подписка PotolokAI: расчёт по фото, КП, договоры, AI-помощник для мастеров натяжных потолков",
+  description:
+    "PotolokAI для мастеров натяжных потолков: первые объекты бесплатно, PRO 4 990 ₸ в месяц — замер, КП, договор, 3D, ИИ-помощник.",
 };
 
-export default async function PricingPage() {
-  const me = await getCurrentMaster();
+export const dynamic = "force-dynamic";
 
-  // Монетизация выключена — тарифов не существует. Кто попал по старой ссылке
-  // (или из закладки), просто идёт работать дальше.
-  if (!BILLING_ENABLED) {
-    redirect(me ? "/dashboard" : "/");
+/**
+ * Страница тарифов. Открыта всегда (её смотрит платёжка при подключении),
+ * но кнопка «Оплатить» появляется только при BILLING_ENABLED — до этого
+ * страница информационная: «пока бесплатно».
+ *
+ * Из iOS-приложения (кука app_platform=ios) страницу не показываем вовсе —
+ * App Store 3.1.1: цены и внешняя оплата из приложения запрещены.
+ */
+export default async function PricingPage() {
+  const cookieStore = await cookies();
+  if (cookieStore.get("app_platform")?.value === "ios") {
+    redirect("/dashboard");
   }
 
-  // Без логина — показываем публичные карточки
+  const me = await getCurrentMaster();
+  const config = { ...getPaymentConfig(), freeObjects: FREE_OBJECTS_LIMIT, billingEnabled: BILLING_ENABLED };
+
   if (!me) {
-    const cfg = getPaymentConfig();
-    return (
-      <PricingClient
-        mode="public"
-        config={cfg}
-        master={null}
-      />
-    );
+    return <PricingClient mode="public" config={config} master={null} />;
   }
 
   const master = await prisma.master.findUnique({
     where: { id: me.id },
-    select: {
-      id: true,
-      firstName: true,
-      email: true,
-      phone: true,
-      paidUntil: true,
-      subscriptionTier: true,
-      isOwner: true,
-      monthlyPrice: true,
-      isFounder: true,
-      founderActivatedAt: true,
-      founderMonthsPaid: true,
-      welcomeSent: true,
-    },
+    select: { id: true, firstName: true, isOwner: true, isFounder: true, founderMonthsPaid: true },
   });
+  if (!master) redirect("/auth/login");
 
-  if (!master) {
-    redirect("/auth/login");
-  }
-
-  const recent = await prisma.pendingPayment.findMany({
-    where: { masterId: master.id },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: {
-      id: true,
-      amount: true,
-      status: true,
-      createdAt: true,
-      reviewedAt: true,
-    },
-  });
-
-  const nextAmount = getMasterPriceForNextPayment(master);
-  const founderRemaining = master.isFounder
-    ? Math.max(0, FOUNDER_DISCOUNT_MONTHS - master.founderMonthsPaid)
-    : 0;
+  const [status, recent] = await Promise.all([
+    getBillingStatus(master.id),
+    prisma.pendingPayment.findMany({
+      where: { masterId: master.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { id: true, amount: true, status: true, createdAt: true, activatedDays: true },
+    }),
+  ]);
 
   return (
     <PricingClient
       mode="authed"
-      config={getPaymentConfig()}
+      config={config}
       master={{
         id: master.id,
         firstName: master.firstName,
-        email: master.email,
-        phone: master.phone,
-        paidUntil: master.paidUntil ? master.paidUntil.toISOString() : null,
-        subscriptionTier: master.subscriptionTier,
-        isFounder: master.isFounder,
-        founderMonthsPaid: master.founderMonthsPaid,
-        founderRemaining,
-        monthlyPrice: master.monthlyPrice,
-        nextAmount,
         isOwner: master.isOwner,
+        status,
+        priceMonth: getMasterPriceForNextPayment(master, "month"),
+        priceYear: getMasterPriceForNextPayment(master, "year"),
       }}
       recentPayments={recent.map((p) => ({
         id: p.id,
         amount: p.amount,
         status: p.status,
         createdAt: p.createdAt.toISOString(),
-        reviewedAt: p.reviewedAt ? p.reviewedAt.toISOString() : null,
+        days: p.activatedDays ?? 30,
       }))}
     />
   );

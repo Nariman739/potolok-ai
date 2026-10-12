@@ -5,7 +5,7 @@ import { hashPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
 import { currencyForPhone } from "@/lib/currency";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { BILLING_ENABLED } from "@/lib/billing";
+import { PRICE_MONTH } from "@/lib/billing";
 import { seedTemplateItems } from "@/lib/price-items";
 
 export async function POST(request: Request) {
@@ -88,13 +88,10 @@ export async function POST(request: Request) {
       suffix++;
     }
 
-    // Пока монетизация выключена — доступ бессрочный, без триала и без
-    // счётчика дней (paidUntil = null). Иначе через 7 дней мастера упирались
-    // в «оформите подписку» и уходили — так мы теряли почти всех новичков.
-    // Когда включим оплату (BILLING_ENABLED=true), снова выдаём trial 7 дней.
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
-
+    // Триала по дням больше нет (12.10.2026): через 7 дней мастера упирались
+    // в «оформите подписку» и уходили. Теперь новичок получает первые
+    // FREE_OBJECTS_LIMIT объектов бесплатно без срока (см. lib/billing.ts),
+    // paidUntil = null — PRO появится после оплаты.
     const master = await prisma.master.create({
       data: {
         phone,
@@ -106,9 +103,8 @@ export async function POST(request: Request) {
         currency: currencyForPhone(phone),
         source,
         subscriptionTier: "PRO",
-        paidUntil: BILLING_ENABLED ? trialEndsAt : null,
-        billingNotes: BILLING_ENABLED ? "trial 7d" : null,
-        hasUsedTrial: BILLING_ENABLED,
+        paidUntil: null,
+        monthlyPrice: PRICE_MONTH,
       },
     });
     // Компания есть у всех с первого дня (Этап 3): пока мастер один, он её не видит.

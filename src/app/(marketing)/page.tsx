@@ -1,3 +1,4 @@
+import { PRICE_MONTH, PRICE_YEAR, FREE_OBJECTS_LIMIT } from "@/lib/billing";
 import {
   Calculator,
   FileText,
@@ -15,7 +16,6 @@ import {
   Ruler,
   Smartphone,
   Camera,
-  Star,
 } from "lucide-react";
 import { FaqList } from "./faq-list";
 
@@ -23,6 +23,10 @@ import { FaqList } from "./faq-list";
 const IOS_APP_URL = "https://apps.apple.com/kz/app/potolok-ai/id6766588501";
 const ANDROID_APP_URL =
   "https://play.google.com/store/apps/details?id=ai.potolok.app";
+
+function formatLandingPrice(n: number): string {
+  return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
+}
 
 export default function HomePage() {
   return (
@@ -73,7 +77,7 @@ export default function HomePage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#334155] bg-[#1A2332] px-4 py-1.5 text-sm text-[#94A3B8] mb-6">
                 <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
-                Бесплатно для мастеров
+                Первые {FREE_OBJECTS_LIMIT} объектов бесплатно
               </div>
 
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-5 leading-[1.1]">
@@ -519,117 +523,85 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pricing — пока сервис бесплатный, тарифов нет */}
+      {/* Pricing — бесплатно первые объекты, дальше PRO (12.10.2026) */}
       <section id="pricing" className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
         {/* Orange glow */}
         <div className="orb-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
 
-        <div className="container mx-auto max-w-2xl relative z-10">
+        <div className="container mx-auto max-w-4xl relative z-10">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
             Сколько стоит
           </h2>
           <p className="text-center text-[#94A3B8] mb-12">
-            Сейчас — нисколько. Мы развиваем сервис вместе с мастерами.
+            Первые {FREE_OBJECTS_LIMIT} объектов бесплатно, без карты. Дальше — меньше 3% одного заказа.
           </p>
 
-          <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-8 relative overflow-hidden text-center">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
-
-            <p className="text-4xl md:text-5xl font-bold text-[#F1F5F9] mb-2 relative z-10">
-              0 ₸
-            </p>
-            <p className="text-sm text-[#94A3B8] mb-8 relative z-10">
-              Все функции открыты. Без карты и без ограничений по количеству КП.
-            </p>
-
-            <ul className="grid sm:grid-cols-2 gap-3 text-sm text-[#94A3B8] mb-8 text-left relative z-10">
-              {[
-                "Замер по фото и с телефона",
-                "Безлимит КП с вашим брендом",
-                "Свои цены + свои позиции",
-                "Договор и акт с подписью",
-                "3D-конструктор потолка",
-                "AI-ассистент и Telegram",
-              ].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-[#10B981] shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <a
-              href="/auth/register"
-              className="relative z-10 inline-block w-full sm:w-auto rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-10 py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.35)] transition-all"
-            >
-              Начать бесплатно
-            </a>
-
-            <p className="text-xs text-[#64748B] mt-6 relative z-10">
-              Когда сервис станет платным — предупредим заранее, а не поставим
-              перед фактом. Всё, что вы успели сделать, останется вашим.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="relative py-20 px-4 border-t border-[#334155]/30 overflow-hidden">
-        <div className="orb-2 absolute right-0 top-1/3 w-72 h-72 rounded-full bg-blue-500/8 blur-[100px] pointer-events-none" />
-
-        <div className="container mx-auto max-w-4xl relative z-10">
-          <h2 className="text-2xl md:text-4xl font-bold text-center mb-4">
-            Мастера уже используют
-          </h2>
-          <p className="text-center text-[#94A3B8] mb-14">
-            Отзывы от мастеров натяжных потолков Казахстана
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              {
-                name: "Арман",
-                city: "Астана",
-                text: "Раньше считал в Excel — терял по часу на каждого клиента. Теперь отправляю КП прямо с объекта за 2 минуты. Клиенты удивляются скорости.",
-                rating: 5,
-              },
-              {
-                name: "Бауыржан",
-                city: "Алматы",
-                text: "AI ассистент — это огонь. Скинул фото чертежа — он сам всё посчитал. Договор генерируется автоматом. Экономлю кучу времени.",
-                rating: 5,
-              },
-              {
-                name: "Дмитрий",
-                city: "Караганда",
-                text: "Замеры на телефоне — то что не хватало. Приехал на объект, замерил все комнаты, сфоткал, нажал кнопку — КП готово. Клиент подтвердил по ссылке.",
-                rating: 5,
-              },
-            ].map((review) => (
-              <div
-                key={review.name}
-                className="rounded-2xl border border-[#334155] bg-[#1A2332] p-5 hover:border-blue-500/40 transition-all"
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Бесплатно */}
+            <div className="rounded-2xl border border-[#334155] bg-[#1A2332] p-8 flex flex-col">
+              <p className="text-sm font-medium text-[#94A3B8] mb-2">Бесплатно</p>
+              <p className="text-4xl font-bold text-[#F1F5F9] mb-1">0 ₸</p>
+              <p className="text-sm text-[#64748B] mb-6">первые {FREE_OBJECTS_LIMIT} объектов, без срока</p>
+              <ul className="space-y-3 text-sm text-[#94A3B8] mb-8 flex-1">
+                {[
+                  "Замер с телефона и лазерной рулеткой",
+                  "Чертёж, расчёт, КП в PDF",
+                  "Готовые объекты и КП открыты всегда",
+                  "Учёт денег по объектам",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-[#10B981] shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/auth/register"
+                className="inline-block w-full text-center rounded-xl border border-[#334155] px-8 py-3 text-sm font-semibold text-[#F1F5F9] hover:border-[#F97316] transition-colors"
               >
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: review.rating }).map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-[#F97316] text-[#F97316]" />
-                  ))}
-                </div>
-                <p className="text-sm text-[#94A3B8] leading-relaxed mb-4">
-                  &ldquo;{review.text}&rdquo;
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#1e3a5f] flex items-center justify-center text-white text-xs font-bold">
-                    {review.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-[#F1F5F9]">{review.name}</p>
-                    <p className="text-[10px] text-[#64748B]">{review.city}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+                Начать бесплатно
+              </a>
+            </div>
+
+            {/* PRO */}
+            <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-8 relative overflow-hidden flex flex-col">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
+              <p className="text-sm font-medium text-[#F97316] mb-2 relative z-10">PRO</p>
+              <p className="text-4xl font-bold text-[#F1F5F9] mb-1 relative z-10">
+                {formatLandingPrice(PRICE_MONTH)}
+                <span className="text-base font-medium text-[#94A3B8]"> / мес</span>
+              </p>
+              <p className="text-sm text-[#64748B] mb-6 relative z-10">
+                или {formatLandingPrice(PRICE_YEAR)} в год — {formatLandingPrice(Math.round(PRICE_YEAR / 12))} в месяц
+              </p>
+              <ul className="space-y-3 text-sm text-[#94A3B8] mb-8 flex-1 relative z-10">
+                {[
+                  "Объекты без ограничений",
+                  "Договор и акт с подписью клиента",
+                  "КП ссылкой с вашим брендом",
+                  "3D-потолок и фото клиенту",
+                  "ИИ-помощник и ИИ-логотип",
+                  "Отправка в цех, клиенты, напоминания",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-[#10B981] shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/pricing"
+                className="relative z-10 inline-block w-full text-center rounded-xl bg-gradient-to-r from-[#F97316] to-[#FB923C] px-8 py-3 text-sm font-semibold text-white hover:shadow-[0_0_30px_rgba(249,115,22,0.35)] transition-all"
+              >
+                Подробнее о тарифах
+              </a>
+            </div>
           </div>
+
+          <p className="text-xs text-[#64748B] mt-8 text-center max-w-2xl mx-auto">
+            Что бы ни случилось с подпиской, ваши замеры, КП и договоры остаются открытыми:
+            посмотреть, скачать, отправить клиенту. Ограничивается только создание новых объектов.
+          </p>
         </div>
       </section>
 
@@ -672,7 +644,7 @@ export default function HomePage() {
             </a>
           </div>
           <p className="text-xs text-[#64748B] mt-4">
-            Регистрация за 30 секунд. Без карты. 5 КП бесплатно каждый месяц.
+            Регистрация за 30 секунд. Без карты. Первые объекты бесплатно.
           </p>
         </div>
       </section>

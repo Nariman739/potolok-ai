@@ -1,10 +1,8 @@
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { BILLING_ENABLED } from "@/lib/billing";
 import { CurrencyProvider } from "@/components/currency-provider";
 
 export default async function DashboardLayout({
@@ -29,15 +27,9 @@ export default async function DashboardLayout({
     // Визард живёт только на самой /dashboard — на остальных страницах меню нужно.
     inOnboarding = !m?.onboardingCompleted && path === "/dashboard";
 
-    // Гейт подписки: если paidUntil истёк и юзер не owner → /pricing
-    // Исключение: страница /dashboard/profile (чтобы юзер мог обновить данные перед оплатой)
-    // Пока BILLING_ENABLED=false гейта нет вообще — сервис бесплатный для всех.
-    if (BILLING_ENABLED && !isOwner && m?.paidUntil && m.paidUntil < new Date()) {
-      const isProfile = path.startsWith("/dashboard/profile");
-      if (!isProfile) {
-        redirect("/pricing");
-      }
-    }
+    // Гейта «подписка истекла → /pricing» больше нет (12.10.2026): старые
+    // замеры, КП и договоры открыты всегда, ограничиваем только создание новых
+    // объектов сверх бесплатного лимита (lib/billing.ts, checkObjectLimit).
   }
 
   return (

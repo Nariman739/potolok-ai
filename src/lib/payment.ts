@@ -4,17 +4,21 @@ import {
   sendTelegramMessageWithButtons,
   sendTelegramPhoto,
 } from "@/lib/telegram";
+import { sendPushToMaster } from "@/lib/push";
+import {
+  PRICE_MONTH,
+  PRICE_YEAR,
+  FOUNDER_PRICE_MONTH,
+  FOUNDER_PRICE_YEAR,
+  FOUNDER_MONTHS,
+  FOUNDER_DEADLINE,
+  type BillingPeriod,
+} from "@/lib/billing";
 import type { Master, PendingPayment } from "@/generated/prisma/client";
 
-export const FOUNDER_PROMOCODE = (process.env.FOUNDER_PROMOCODE ?? "POTOLOKFEST").toUpperCase();
-export const FOUNDER_DISCOUNT_PRICE = Number(process.env.FOUNDER_PRICE ?? 3000);
-export const FOUNDER_DISCOUNT_MONTHS = Number(process.env.FOUNDER_DISCOUNT_MONTHS ?? 3);
-export const STANDARD_PRICE = Number(process.env.STANDARD_PRICE ?? 9999);
-export const SUBSCRIPTION_DAYS_PER_PAYMENT = 30;
-
-// FEST2026 — фестивальный промокод: 3 месяца Pro бесплатно
-export const FEST_TRIAL_PROMOCODE = (process.env.FEST_TRIAL_PROMOCODE ?? "FEST2026").toUpperCase();
-export const FEST_TRIAL_MONTHS = Number(process.env.FEST_TRIAL_MONTHS ?? 3);
+/** Сколько дней подписки даёт одна оплата. */
+export const DAYS_MONTH = 30;
+export const DAYS_YEAR = 365;
 
 function getAdminChatId(): string | null {
   return process.env.ADMIN_TG_CHAT_ID ?? null;
@@ -40,29 +44,41 @@ export function getPaymentConfig() {
   return {
     kaspiPhone: getKaspiPhone(),
     kaspiReceiverName: getKaspiReceiverName(),
-    founderPromocode: FOUNDER_PROMOCODE,
-    founderPrice: FOUNDER_DISCOUNT_PRICE,
-    founderMonths: FOUNDER_DISCOUNT_MONTHS,
-    standardPrice: STANDARD_PRICE,
+    priceMonth: PRICE_MONTH,
+    priceYear: PRICE_YEAR,
+    founderPriceMonth: FOUNDER_PRICE_MONTH,
+    founderPriceYear: FOUNDER_PRICE_YEAR,
+    founderMonths: FOUNDER_MONTHS,
+    founderDeadline: FOUNDER_DEADLINE.toISOString(),
   };
 }
 
 /**
- * Возвращает цену для следующей оплаты этого мастера.
- * Founder за первые 3 оплаты платит 3000₸, потом 9999₸.
+ * Мастер платит по цене основателя, если он уже основатель и первый год
+ * (12 оплаченных месяцев) не кончился — или если ещё можно им стать
+ * (сейчас раньше дедлайна). Поле Master.monthlyPrice больше не участвует:
+ * у 505 мастеров там 9 999 с прошлой эпохи.
  */
-export function getMasterPriceForNextPayment(master: {
-  monthlyPrice: number;
-  isFounder: boolean;
-  founderMonthsPaid: number;
-}): number {
-  if (master.isFounder && master.founderMonthsPaid < FOUNDER_DISCOUNT_MONTHS) {
-    return FOUNDER_DISCOUNT_PRICE;
-  }
-  // Floor: даже если в БД у мастера записано меньше STANDARD_PRICE
-  // (баг, ручная правка, миграция) — берём не ниже STANDARD_PRICE.
-  // Founder обрабатывается выше отдельным return.
-  return Math.max(master.monthlyPrice, STANDARD_PRICE);
+export function isFounderPrice(
+  master: { isFounder: boolean; founderMonthsPaid: number },
+  now = new Date(),
+): boolean {
+  if (master.isFounder) return master.founderMonthsPaid < FOUNDER_MONTHS;
+  return now < FOUNDER_DEADLINE;
+}
+
+export function getMasterPriceForNextPayment(
+  master: { isFounder: boolean; founderMonthsPaid: number },
+  period: BillingPeriod = "month",
+  now = new Date(),
+): number {
+  const founder = isFounderPrice(master, now);
+  if (period === "year") return founder ? FOUNDER_PRICE_YEAR : PRICE_YEAR;
+  return founder ? FOUNDER_PRICE_MONTH : PRICE_MONTH;
+}
+
+export function periodDays(period: BillingPeriod): number {
+  return period === "year" ? DAYS_YEAR : DAYS_MONTH;
 }
 
 function formatTenge(amount: number): string {
@@ -74,11 +90,20 @@ function formatDate(d: Date | null | undefined): string {
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+/** transfer — мастер перевёл сам и прислал чек; invoice — просит счёт в Kaspi Pay. */
+export type PaymentMethod = "transfer" | "invoice";
+
 /**
  * Уведомляем админа о новой заявке на оплату.
- * Отправляем фото чека (если есть) + текст с inline-кнопками approve/reject.
+ * transfer: фото чека + кнопки approve/reject.
+ * invoice: «выставь счёт в Kaspi Pay на номер … сумма …» + те же кнопки —
+ * Нариман выставляет счёт в приложении Kaspi Pay (20 секунд), мастер платит
+ * из своего Kaspi одной кнопкой, чек фискальный делает сам Kaspi.
  */
-export async function notifyAdminAboutPayment(payment: PendingPayment & { master: Master }): Promise<void> {
+export async function notifyAdminAboutPayment(
+  payment: PendingPayment & { master: Master },
+  method: PaymentMethod = "transfer",
+): Promise<void> {
   const adminChatId = getAdminChatId();
   if (!adminChatId) {
     console.warn("ADMIN_TG_CHAT_ID не задан — пропускаю уведомление админа");
@@ -86,20 +111,20 @@ export async function notifyAdminAboutPayment(payment: PendingPayment & { master
   }
 
   const m = payment.master;
-  const founderInfo = m.isFounder
-    ? ` (Founder, ${m.founderMonthsPaid + 1}/${FOUNDER_DISCOUNT_MONTHS} месяц)`
-    : "";
+  const days = payment.activatedDays ?? DAYS_MONTH;
+  const founderInfo = isFounderPrice(m) ? " · цена основателя" : "";
 
   const lines = [
-    `💰 <b>Новая оплата</b>`,
+    method === "invoice"
+      ? `🧾 <b>Выставь счёт в Kaspi Pay</b>\nНомер: <code>${m.phone}</code>, сумма: <b>${formatTenge(payment.amount)}</b>. Оплатит — жми ✅.`
+      : `💰 <b>Новая оплата</b>`,
     ``,
     `<b>От:</b> ${m.firstName ?? ""} ${m.lastName ?? ""}`.trim(),
     `<b>Телефон:</b> <code>${m.phone}</code>`,
     m.email ? `<b>Email:</b> ${m.email}` : null,
     m.companyName ? `<b>Компания:</b> ${m.companyName}` : null,
-    `<b>Сумма:</b> ${formatTenge(payment.amount)}${founderInfo}`,
-    `<b>Тариф:</b> ${m.subscriptionTier}, до ${formatDate(m.paidUntil)}`,
-    payment.promocode ? `<b>Промокод:</b> ${payment.promocode}` : null,
+    `<b>Сумма:</b> ${formatTenge(payment.amount)} за ${days === DAYS_YEAR ? "год" : "месяц"}${founderInfo}`,
+    `<b>Сейчас:</b> ${m.paidUntil ? `оплачено до ${formatDate(m.paidUntil)}` : "без подписки"}`,
     payment.comment ? `<b>Комментарий:</b> ${payment.comment}` : null,
   ].filter(Boolean) as string[];
 
@@ -115,7 +140,7 @@ export async function notifyAdminAboutPayment(payment: PendingPayment & { master
 
   await sendTelegramMessageWithButtons(adminChatId, text, [
     [
-      { text: "✅ Активировать 30 дней", callback_data: `pay:approve:${payment.id}` },
+      { text: `✅ Активировать ${days} дней`, callback_data: `pay:approve:${payment.id}` },
     ],
     [
       { text: "❌ Отклонить", callback_data: `pay:reject:${payment.id}` },
@@ -124,19 +149,17 @@ export async function notifyAdminAboutPayment(payment: PendingPayment & { master
 }
 
 /**
- * Активирует подписку юзеру: продлевает paidUntil, обновляет founderMonthsPaid,
- * переключает monthlyPrice если фест-скидка закончилась.
+ * Активирует подписку: продлевает paidUntil на срок заявки (30 или 365 дней),
+ * делает мастера основателем, если оплата успела до дедлайна, ведёт счётчик
+ * оплаченных месяцев по цене основателя.
  * Транзакционно: обновляет PendingPayment.status + Master.
- *
- * Возвращает обновлённого Master.
  */
 export async function activateSubscription(params: {
   paymentId: string;
   adminId: string;
+  /** Переопределить срок (админка). По умолчанию — срок из заявки. */
   days?: number;
 }): Promise<{ master: Master; payment: PendingPayment; firstApproved: boolean }> {
-  const days = params.days ?? SUBSCRIPTION_DAYS_PER_PAYMENT;
-
   const payment = await prisma.pendingPayment.findUnique({
     where: { id: params.paymentId },
     include: { master: true },
@@ -146,14 +169,16 @@ export async function activateSubscription(params: {
     return { master: payment.master, payment, firstApproved: false };
   }
 
+  const days = params.days ?? payment.activatedDays ?? DAYS_MONTH;
   const now = new Date();
-  const isFestPayment = (payment.promocode ?? "").toUpperCase() === FOUNDER_PROMOCODE;
+  // Основатель — по дате заявки, а не одобрения: мастер не должен терять
+  // цену из-за того, что чек проверили на день позже дедлайна.
+  const becomesFounder = payment.createdAt < FOUNDER_DEADLINE;
 
   // Interactive transaction решает race condition: если два админа
   // одновременно нажмут «✅ Активировать», updateMany с условием
   // status: { not: "APPROVED" } делает atomic claim — вторая транзакция
-  // ничего не обновит. founderMonthsPaid читается ВНУТРИ tx из свежих
-  // данных, не из payment.master (который был прочитан до tx).
+  // ничего не обновит. founderMonthsPaid читается ВНУТРИ tx из свежих данных.
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.pendingPayment.updateMany({
       where: { id: payment.id, status: { not: "APPROVED" } },
@@ -166,23 +191,18 @@ export async function activateSubscription(params: {
     });
     if (claimed.count === 0) return null; // already approved by concurrent tx
 
-    const master = await tx.master.findUnique({
-      where: { id: payment.masterId },
-    });
+    const master = await tx.master.findUnique({ where: { id: payment.masterId } });
     if (!master) throw new Error("Master not found");
 
     const currentPaidUntil = master.paidUntil && master.paidUntil > now ? master.paidUntil : now;
     const newPaidUntil = new Date(currentPaidUntil.getTime() + days * 24 * 60 * 60 * 1000);
-    const wasFounder = master.isFounder;
-    const newFounderMonthsPaid = (wasFounder || isFestPayment)
-      ? master.founderMonthsPaid + 1
-      : master.founderMonthsPaid;
 
-    // Founder-скидка истекла → новая цена = STANDARD_PRICE
-    let newMonthlyPrice = master.monthlyPrice;
-    if (wasFounder && newFounderMonthsPaid >= FOUNDER_DISCOUNT_MONTHS) {
-      newMonthlyPrice = STANDARD_PRICE;
-    }
+    const isFounder = master.isFounder || becomesFounder;
+    const paidByFounderPrice = isFounder && master.founderMonthsPaid < FOUNDER_MONTHS;
+    const monthsPaid = days >= DAYS_YEAR ? 12 : 1;
+    const newFounderMonthsPaid = paidByFounderPrice
+      ? master.founderMonthsPaid + monthsPaid
+      : master.founderMonthsPaid;
 
     const prevApproved = await tx.pendingPayment.count({
       where: { masterId: payment.masterId, status: "APPROVED", id: { not: payment.id } },
@@ -194,16 +214,16 @@ export async function activateSubscription(params: {
       data: {
         paidUntil: newPaidUntil,
         subscriptionTier: "PRO",
+        isFounder,
+        founderActivatedAt: isFounder && !master.isFounder ? now : master.founderActivatedAt,
         founderMonthsPaid: newFounderMonthsPaid,
-        monthlyPrice: newMonthlyPrice,
+        // Legacy-поле: держим актуальную цену, чтобы админка не путала.
+        monthlyPrice: newFounderMonthsPaid < FOUNDER_MONTHS && isFounder ? FOUNDER_PRICE_MONTH : PRICE_MONTH,
         welcomeSent: firstApproved ? true : master.welcomeSent,
       },
     });
 
-    const updatedPayment = await tx.pendingPayment.findUniqueOrThrow({
-      where: { id: payment.id },
-    });
-
+    const updatedPayment = await tx.pendingPayment.findUniqueOrThrow({ where: { id: payment.id } });
     return { master: updatedMaster, payment: updatedPayment, firstApproved };
   });
 
@@ -243,8 +263,9 @@ export async function rejectPayment(params: {
 }
 
 /**
- * Сообщаем юзеру о решении по его оплате.
- * Если оплата APPROVED и это первый платёж — шлём welcome с инвайтами в группы.
+ * Сообщаем мастеру о решении по его оплате: пуш в приложение (есть у
+ * большинства) + Telegram, если привязан. Первая оплата — welcome с
+ * приглашениями в группы.
  */
 export async function notifyUserAboutPaymentDecision(params: {
   master: Master;
@@ -254,30 +275,47 @@ export async function notifyUserAboutPaymentDecision(params: {
 }): Promise<void> {
   const { master, payment, approved, firstApproved } = params;
   const chatId = master.telegramChatId;
-  if (!chatId) return; // нет привязанного Telegram — пушим в mobile через отдельный поток (TODO)
 
   if (!approved) {
-    await sendTelegramMessage(
-      chatId,
-      `❌ <b>Оплата не подтверждена</b>\n\n` +
-      `Сумма: ${formatTenge(payment.amount)}\n` +
-      (payment.reviewNotes ? `Причина: ${payment.reviewNotes}\n` : ``) +
-      `\nСвяжитесь с поддержкой: ${getKaspiPhone()}`,
-    );
+    await sendPushToMaster(master.id, {
+      title: "Оплата не подтверждена",
+      body: payment.reviewNotes
+        ? `Причина: ${payment.reviewNotes}. Напишите нам, разберёмся.`
+        : "Не нашли перевод. Напишите нам, разберёмся.",
+      data: { screen: "/(tabs)/profile" },
+    });
+    if (chatId) {
+      await sendTelegramMessage(
+        chatId,
+        `❌ <b>Оплата не подтверждена</b>\n\n` +
+        `Сумма: ${formatTenge(payment.amount)}\n` +
+        (payment.reviewNotes ? `Причина: ${payment.reviewNotes}\n` : ``) +
+        `\nСвяжитесь с поддержкой: ${getKaspiPhone()}`,
+      );
+    }
     return;
   }
+
+  const until = formatDate(master.paidUntil);
+  await sendPushToMaster(master.id, {
+    title: "Оплата принята ✅",
+    body: `PRO активен до ${until}. Спасибо, что с нами!`,
+    data: { screen: "/(tabs)/profile" },
+  });
+
+  if (!chatId) return;
 
   const lines = [
     `✅ <b>Оплата принята!</b>`,
     ``,
     `Сумма: ${formatTenge(payment.amount)}`,
-    `Подписка активна до: <b>${formatDate(master.paidUntil)}</b>`,
+    `PRO активен до: <b>${until}</b>`,
   ];
-  if (master.isFounder && master.founderMonthsPaid < FOUNDER_DISCOUNT_MONTHS) {
-    const remaining = FOUNDER_DISCOUNT_MONTHS - master.founderMonthsPaid;
-    lines.push(``, `🏆 Скидка Founder: осталось ${remaining} мес по ${formatTenge(FOUNDER_DISCOUNT_PRICE)}`);
+  if (master.isFounder && master.founderMonthsPaid < FOUNDER_MONTHS) {
+    const remaining = FOUNDER_MONTHS - master.founderMonthsPaid;
+    lines.push(``, `🏆 Цена основателя: ещё ${remaining} мес по ${formatTenge(FOUNDER_PRICE_MONTH)}`);
   } else if (master.isFounder) {
-    lines.push(``, `Скидка Founder закончилась. Следующий платёж — ${formatTenge(master.monthlyPrice)}`);
+    lines.push(``, `Год по цене основателя закончился. Дальше — ${formatTenge(PRICE_MONTH)}/мес`);
   }
 
   await sendTelegramMessage(chatId, lines.join("\n"));

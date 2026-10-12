@@ -19,7 +19,8 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const days = Number(body?.days ?? 30);
+    // Срок по умолчанию — из заявки (30 или 365), админ может переопределить.
+    const days = body?.days ? Number(body.days) : undefined;
 
     const result = await activateSubscription({ paymentId: id, adminId: me.id, days });
 

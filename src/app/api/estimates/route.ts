@@ -11,6 +11,7 @@ import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { priceBookCompanyId } from "@/lib/price-items";
 import { formatMoney } from "@/lib/currency";
+import { checkObjectLimit } from "@/lib/billing";
 
 export async function GET() {
   try {
@@ -312,6 +313,10 @@ async function createEstimate(request: Request): Promise<NextResponse> {
           if (same) linkedMeasurementId = same.id;
         }
         if (!linkedMeasurementId && rooms.length > 0) {
+          // Быстрое КП заводит новый объект — считается в бесплатный лимит
+          // так же, как замер. КП к существующему объекту лимит не трогает.
+          const limit = await checkObjectLimit(master.id);
+          if (limit) return NextResponse.json(limit.body, { status: limit.status });
           const created = await prisma.measurementObject.create({
             data: {
               masterId: master.id,
