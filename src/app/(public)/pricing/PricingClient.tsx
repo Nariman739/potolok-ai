@@ -55,8 +55,10 @@ function fmt(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
 }
 
+// Явная зона: сервер Vercel живёт в UTC, и «23 ноября 00:00 Алматы» там ещё
+// 22-е — без timeZone сервер и браузер рисуют разные даты (hydration #418).
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Almaty" });
 }
 
 function statusBadge(s: PaymentStatus) {

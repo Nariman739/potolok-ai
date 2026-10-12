@@ -87,7 +87,7 @@ function formatTenge(amount: number): string {
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Almaty" });
 }
 
 /** transfer — мастер перевёл сам и прислал чек; invoice — просит счёт в Kaspi Pay. */
