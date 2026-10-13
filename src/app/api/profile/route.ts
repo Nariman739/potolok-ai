@@ -57,7 +57,19 @@ export async function PUT(request: Request) {
     const intFields = ["prepaymentPercent", "warrantyMaterials", "warrantyInstall"];
     const boolFields = ["onboardingCompleted"];
 
-    const updateData: Record<string, string | number | boolean> = {};
+    const updateData: Record<string, string | number | boolean | object> = {};
+    // Настройки дизайнера мобилки (13.10.2026): { hiddenPalette: string[] }.
+    // Храним на сервере, чтобы скрытые карточки не терялись при переустановке.
+    if ("designerPrefs" in body) {
+      const dp = body.designerPrefs;
+      if (!dp || typeof dp !== "object" || Array.isArray(dp)) {
+        return NextResponse.json({ error: "designerPrefs должен быть объектом" }, { status: 400 });
+      }
+      const hidden = Array.isArray(dp.hiddenPalette)
+        ? dp.hiddenPalette.filter((k: unknown) => typeof k === "string" && k.length <= 120).slice(0, 300)
+        : [];
+      updateData.designerPrefs = { hiddenPalette: hidden };
+    }
     if ("language" in body && body.language !== "ru" && body.language !== "kk") {
       return NextResponse.json({ error: "Неизвестный язык" }, { status: 400 });
     }

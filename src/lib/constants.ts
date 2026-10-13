@@ -81,6 +81,8 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Гардины (за м.п.)
   { code: "gardina_plastic", name: "Пластиковая гардина на потолок", unit: "м.п.", defaultPrice: 5000, category: "gardina" },
   { code: "gardina_aluminum", name: "Встроенная гардина в потолок", unit: "м.п.", defaultPrice: 10000, category: "gardina" },
+  // Нариман 13.10.2026: однорядная гардина (ванная) — в мобилке гардина с «1 ряд».
+  { code: "gardina_single", name: "Гардина однорядная (ванная)", unit: "м.п.", defaultPrice: 15000, category: "gardina" },
   // Аудит 01.10.2026: ПК-14 мастера заводили вариантом 90 раз — каталог его не знал.
   { code: "pk14", name: "Карниз ПК-14", unit: "м.п.", defaultPrice: 15000, category: "gardina", description: "Алюминиевый потолочный карниз под шторы" },
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { compressPhoto } from "@/lib/compress-photo";
 import { requireAuth } from "@/lib/auth";
 import { getScope } from "@/lib/company";
 import {
@@ -97,10 +98,10 @@ export async function POST(request: NextRequest) {
         if (file.size > 5 * 1024 * 1024) {
           return NextResponse.json({ error: "Фото максимум 5MB" }, { status: 400 });
         }
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `price-variants/${master.id}/${Date.now()}.${ext === "heic" || ext === "heif" ? "jpg" : ext}`;
-        const ct = file.type === "image/heic" || file.type === "image/heif" ? "image/jpeg" : file.type || "image/jpeg";
-        const blob = await put(path, file, { access: "public", contentType: ct, addRandomSuffix: true });
+        // Сжатие до 1600px / JPEG 82% (13.10.2026) — фото с телефона 3–6 МБ, в прайсе столько не нужно.
+        const photo = await compressPhoto(file);
+        const path = `price-variants/${master.id}/${Date.now()}.${photo.ext}`;
+        const blob = await put(path, photo.body, { access: "public", contentType: photo.contentType, addRandomSuffix: true });
         photoUrl = blob.url;
       }
     } else {

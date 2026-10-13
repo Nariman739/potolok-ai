@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
+import { compressPhoto } from "@/lib/compress-photo";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
@@ -65,10 +66,10 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type)) {
           return NextResponse.json({ error: "Фото: JPG, PNG или WebP" }, { status: 400 });
         }
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `price-items/${companyId}/${Date.now()}.${ext === "heic" || ext === "heif" ? "jpg" : ext}`;
-        const ct = file.type === "image/heic" || file.type === "image/heif" ? "image/jpeg" : file.type;
-        const blob = await put(path, file, { access: "public", contentType: ct, addRandomSuffix: true });
+        // Сжатие до 1600px / JPEG 82% (13.10.2026) — фото с телефона 3–6 МБ, в прайсе столько не нужно.
+        const photo = await compressPhoto(file);
+        const path = `price-items/${companyId}/${Date.now()}.${photo.ext}`;
+        const blob = await put(path, photo.body, { access: "public", contentType: photo.contentType, addRandomSuffix: true });
         data.photoUrl = blob.url;
         if (existing.photoUrl) { try { await del(existing.photoUrl); } catch { /* best effort */ } }
       } else if (form.get("removePhoto") === "true" || form.get("removePhoto") === "1") {

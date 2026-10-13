@@ -251,4 +251,6 @@ export interface MasterProfile {
   warrantyInstall: number;
   contractCity?: string | null;
   onboardingCompleted: boolean;
+  /** Настройки дизайнера мобилки (13.10.2026): скрытые карточки палитры. */
+  designerPrefs?: { hiddenPalette?: string[] } | null;
 }

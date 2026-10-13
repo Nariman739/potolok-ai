@@ -133,6 +133,8 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     onboardingCompleted: m.onboardingCompleted,
     // Этап 3: в какой компании работает сейчас (null = в своей)
     activeCompanyId: m.activeCompanyId ?? null,
+    // Скрытые карточки палитры дизайнера (13.10.2026) — мобилка читает из /auth/me.
+    designerPrefs: (m.designerPrefs as { hiddenPalette?: string[] } | null) ?? null,
   };
 }
 
