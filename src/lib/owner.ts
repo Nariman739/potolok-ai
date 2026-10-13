@@ -27,8 +27,14 @@ const DEFAULTS = {
  * Тянутся из Master с isOwner=true. Если такого нет — возвращаем дефолты-плейсхолдеры.
  */
 export async function getOwnerLegalInfo(): Promise<OwnerLegalInfo> {
-  const owner = await prisma.master.findFirst({
-    where: { isOwner: true },
+  // В проде два владельца: тестовый «Dev Admin» и Нариман. Без сортировки
+  // findFirst отдавал тестового, и в оферте/контактах светился «Developer»
+  // (13.10.2026, заметила проверка TipTopPay). Берём того, у кого заполнены
+  // реквизиты (ИИН/БИН), либо явно указанного через OWNER_MASTER_ID.
+  const owners = await prisma.master.findMany({
+    where: process.env.OWNER_MASTER_ID
+      ? { id: process.env.OWNER_MASTER_ID }
+      : { isOwner: true },
     select: {
       firstName: true,
       lastName: true,
@@ -46,6 +52,11 @@ export async function getOwnerLegalInfo(): Promise<OwnerLegalInfo> {
       contractCity: true,
     },
   });
+  // Реальный владелец — у кого есть ИИН/БИН; тестовый аккаунт их не заполнял.
+  const owner =
+    owners.find((o) => o.iin || o.bin) ??
+    owners.find((o) => o.legalName) ??
+    owners[0];
 
   if (!owner) {
     return {
