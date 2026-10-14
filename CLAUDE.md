@@ -42,4 +42,5 @@ npx prisma db push   # Push schema to Neon
 - Серверные замеры с фото комнат
 - Каталог мастеров
 - Telegram-бот — только уведомления (привязка по телефону/коду, сброс пароля, «клиент открыл КП / подписал договор / акт», напоминания, кнопки ✅/❌ оплат для владельца). Instagram-постинг из бота удалён 14.10.2026 (никто не пользовался с апреля). Модели InstagramAccount/InstagramPost/InstagramSession/ContentPlan в схеме остались пустыми — можно дропать.
+- Пуши мастеру: `src/lib/push.ts` (Expo Push; устройства в PushDevice). Кроны (vercel.json, UTC): `kp-unsent` 04:00 «посчитал, но не отправил КП» (вчерашние DRAFT), `tg-followups` 04:00 «кому позвонить» (пуш всем + Telegram), `tg-reminders` каждые 5 мин «за час до события» (пуш + Telegram), `act-reminders`, `billing-reminders` 05:00, `backup-data` 23:00. Пуш открывает экран по `data.screen` (например `/estimate/{id}`).
 - Оплата: `src/lib/billing.ts` (цены/даты/лимит), `src/lib/payment.ts` (Kaspi вручную, активация), `src/lib/tiptop.ts` + `/api/payment/tiptop/*` (карта через TipTop Pay)
