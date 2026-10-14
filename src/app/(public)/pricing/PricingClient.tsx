@@ -25,7 +25,41 @@ type Config = {
   launchPriceUntil: string;
   freeObjects: number;
   billingEnabled: boolean;
+  /** Кнопки оплаты показываем (может быть раньше включения лимитов). */
+  paymentsOpen: boolean;
+  /** Оплата картой через виджет TipTop настроена. */
+  cardEnabled: boolean;
 };
+
+// Виджет TipTop Pay: скрипт грузим только с их домена и только когда нажали «картой».
+// status: success | fail | cancel…; номер транзакции — в data.transactionId.
+type TiptopResult = { type: string; status: string; data?: { transactionId?: number } };
+declare global {
+  interface Window {
+    tiptop?: {
+      Widget: new () => {
+        start: (params: Record<string, unknown>) => Promise<TiptopResult>;
+        oncomplete?: (result: TiptopResult) => void;
+      };
+    };
+  }
+}
+
+let tiptopScript: Promise<void> | null = null;
+function loadTiptopWidget(): Promise<void> {
+  if (window.tiptop) return Promise.resolve();
+  if (!tiptopScript) {
+    tiptopScript = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://widget.tiptoppay.kz/bundles/widget.js";
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => { tiptopScript = null; reject(new Error("widget load failed")); };
+      document.head.appendChild(s);
+    });
+  }
+  return tiptopScript;
+}
 
 type AuthedMaster = {
   id: string;
@@ -40,6 +74,7 @@ type RecentPayment = {
   status: PaymentStatus;
   createdAt: string;
   days: number;
+  card: boolean;
 };
 
 type Props =
@@ -61,10 +96,10 @@ function fmtLastDay(iso: string): string {
   return new Date(new Date(iso).getTime() - 1).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "Asia/Almaty" });
 }
 
-function statusBadge(s: PaymentStatus) {
+function statusBadge(s: PaymentStatus, card = false) {
   if (s === "APPROVED") return <Badge className="bg-green-600 hover:bg-green-600">Активирована</Badge>;
   if (s === "REJECTED") return <Badge variant="destructive">Отклонена</Badge>;
-  return <Badge variant="secondary">На проверке</Badge>;
+  return <Badge variant="secondary">{card ? "Не оплачена" : "На проверке"}</Badge>;
 }
 
 const FREE_FEATURES = [
@@ -104,7 +139,8 @@ export function PricingClient(props: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
-  const [method, setMethod] = useState<"transfer" | "invoice">("transfer");
+  const [method, setMethod] = useState<"transfer" | "invoice" | "card">("transfer");
+  const [cardPaidUntil, setCardPaidUntil] = useState<string | null>(null);
 
   const amountToPay = period === "year" && !launchOpen ? priceYear : priceMonth;
 
@@ -154,8 +190,87 @@ export function PricingClient(props: Props) {
     }
   }
 
+  /**
+   * Картой: заявка на сервере → виджет TipTop → сервер сам проверяет
+   * транзакцию у TipTop и включает PRO. Карту видит только TipTop.
+   */
+  async function payByCard() {
+    setError(null);
+    setSubmitting(true);
+    setMethod("card");
+    try {
+      const res = await fetch("/api/payment/tiptop/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Не удалось начать оплату");
+        return;
+      }
+      await loadTiptopWidget();
+      if (!window.tiptop) throw new Error("widget missing");
+      const widget = new window.tiptop.Widget();
+
+      // Подтверждаем у нашего сервера один раз: oncomplete приходит сразу по
+      // итогу транзакции, а промис start() — только когда мастер закроет
+      // виджет (после успеха TipTop показывает свой экран «бонус»).
+      let confirmed = false;
+      const confirm = async (result: TiptopResult) => {
+        if (confirmed) return;
+        confirmed = true;
+        const conf = await fetch("/api/payment/tiptop/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentId: data.paymentId, transactionId: result.data?.transactionId }),
+        });
+        const confData = await conf.json();
+        if (!conf.ok || !confData.ok) {
+          // Деньги могли списаться, а подтверждение задержаться — PRO включит уведомление TipTop.
+          setError(confData.error || "Оплата прошла, но подтверждение задерживается. PRO включится в течение нескольких минут.");
+          return;
+        }
+        setCardPaidUntil(confData.paidUntil ?? null);
+        setSubmittedId(data.paymentId);
+        startTransition(() => router.refresh());
+      };
+      widget.oncomplete = (result) => {
+        if (result.status === "success") void confirm(result).catch(() => {});
+      };
+
+      const result = await widget.start({
+        publicTerminalId: data.publicId,
+        amount: data.amount,
+        currency: "KZT",
+        paymentSchema: "Single",
+        description: data.description,
+        externalId: data.paymentId,
+        culture: "ru-RU",
+        skin: "modern",
+        emailBehavior: "Optional",
+        // Секунды до автозакрытия после успеха (3–10), иначе виджет висит с экраном «бонус».
+        autoClose: 3,
+        receiptEmail: data.email ?? undefined,
+        userInfo: { accountId: data.accountId, email: data.email ?? undefined },
+        metadata: { paymentId: data.paymentId, masterId: data.accountId },
+      });
+      if (result.type === "cancel" || result.status === "cancel") return;
+      if (result.status !== "success") {
+        setError("Банк не пропустил оплату. Попробуйте другую карту или перевод Kaspi.");
+        return;
+      }
+      await confirm(result);
+    } catch (err) {
+      console.error("payByCard failed:", err);
+      setError("Не удалось открыть оплату картой. Можно оплатить переводом Kaspi ниже.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const s = master?.status;
-  const canPay = cfg.billingEnabled && !!master && !master.isOwner;
+  const canPay = cfg.paymentsOpen && !!master && !master.isOwner;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:py-12">
@@ -167,7 +282,9 @@ export function PricingClient(props: Props) {
         </p>
         {!cfg.billingEnabled && (
           <p className="mt-3 inline-block rounded-full bg-sky-100 text-sky-900 text-sm px-4 py-1">
-            Сейчас всё бесплатно. Цены ниже начнут действовать позже — предупредим заранее.
+            {cfg.paymentsOpen
+              ? "Лимиты пока не включены — работайте свободно. Оплатить PRO уже можно."
+              : "Сейчас всё бесплатно. Цены ниже начнут действовать позже — предупредим заранее."}
           </p>
         )}
       </div>
@@ -302,7 +419,7 @@ export function PricingClient(props: Props) {
                   <div className="font-medium">{fmt(p.amount)} · {p.days >= 365 ? "год" : "месяц"}</div>
                   <div className="text-xs text-muted-foreground">{fmtDate(p.createdAt)}</div>
                 </div>
-                {statusBadge(p.status)}
+                {statusBadge(p.status, p.card)}
               </div>
             ))}
           </div>
@@ -321,11 +438,13 @@ export function PricingClient(props: Props) {
           {submittedId ? (
             <div className="py-4">
               <DialogHeader>
-                <DialogTitle>✅ Заявка отправлена</DialogTitle>
+                <DialogTitle>{method === "card" ? "✅ Оплата прошла" : "✅ Заявка отправлена"}</DialogTitle>
                 <DialogDescription>
-                  {method === "invoice"
-                    ? "Счёт придёт в ваш Kaspi в ближайшее время, обычно в течение часа. Оплатите его — и PRO включится, придёт уведомление в приложение."
-                    : "Проверим перевод и включим PRO — обычно в течение часа. Придёт уведомление в приложение."}
+                  {method === "card"
+                    ? `PRO включён${cardPaidUntil ? ` до ${fmtDate(cardPaidUntil)}` : ""} Спасибо, что с нами!`
+                    : method === "invoice"
+                      ? "Счёт придёт в ваш Kaspi в ближайшее время, обычно в течение часа. Оплатите его — и PRO включится, придёт уведомление в приложение."
+                      : "Проверим перевод и включим PRO — обычно в течение часа. Придёт уведомление в приложение."}
                 </DialogDescription>
               </DialogHeader>
               <Button className="w-full mt-4" onClick={() => setPayOpen(false)}>Понятно</Button>
@@ -335,10 +454,17 @@ export function PricingClient(props: Props) {
               <DialogHeader>
                 <DialogTitle>PRO на {period === "year" && !launchOpen ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
                 <DialogDescription>
-                  Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi.
+                  {cfg.cardEnabled
+                    ? "Картой — PRO включится сразу. Или переводом Kaspi: переведите на номер ниже и загрузите чек, либо попросите счёт."
+                    : "Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
+                {cfg.cardEnabled && (
+                  <Button className="w-full" size="lg" disabled={submitting} onClick={payByCard}>
+                    {submitting && method === "card" ? "Открываем оплату…" : `💳 Оплатить картой ${fmt(amountToPay)}`}
+                  </Button>
+                )}
                 <div className="rounded-lg bg-muted p-4 space-y-2">
                   <div>
                     <div className="text-xs text-muted-foreground">Сумма</div>
@@ -360,7 +486,7 @@ export function PricingClient(props: Props) {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <DialogFooter className="flex-col sm:flex-col gap-2">
-                <Button className="w-full" onClick={() => setStep("form")}>Я перевёл → загрузить чек</Button>
+                <Button className="w-full" variant={cfg.cardEnabled ? "outline" : "default"} onClick={() => setStep("form")}>Я перевёл → загрузить чек</Button>
                 <Button className="w-full" variant="secondary" disabled={submitting} onClick={() => handleSubmit("invoice")}>
                   {submitting ? "Отправляем…" : "Пришлите мне счёт в Kaspi"}
                 </Button>

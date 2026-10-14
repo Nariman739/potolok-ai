@@ -22,6 +22,12 @@
 import { prisma } from "@/lib/prisma";
 
 export const BILLING_ENABLED = process.env.BILLING_ENABLED === "true";
+/**
+ * Принимаем ли оплату (кнопки «Оплатить» на /pricing). Отдельно от лимитов:
+ * Нариман хочет видеть первые оплаты раньше, чем включит ограничение в 10
+ * объектов (14.10.2026). BILLING_ENABLED подразумевает PAYMENTS_OPEN.
+ */
+export const PAYMENTS_OPEN = BILLING_ENABLED || process.env.PAYMENTS_OPEN === "true";
 
 export { BILLING_ENABLED_CLIENT } from "@/lib/billing-client";
 export type { BillingPeriod, BillingStatus } from "@/lib/billing-client";

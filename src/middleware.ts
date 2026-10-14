@@ -13,15 +13,17 @@ const securityHeaders = {
     "default-src 'self'",
     // blob: — воркер Draco-декодера (3D-мебель) создаётся через createObjectURL;
     // Safari проверяет worker по script-src.
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+    // widget.tiptoppay.kz — платёжный виджет TipTop Pay (/pricing, оплата картой):
+    // скрипт с их домена, форма карты в их iframe, запросы к их API.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://widget.tiptoppay.kz",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com",
+    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com https://*.tiptoppay.kz",
     "font-src 'self' data:",
     // blob: — three грузит встроенные текстуры GLB как blob:-URL через fetch.
-    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com",
+    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com https://*.tiptoppay.kz",
     // worker-src — DRACOLoader запускает Web Worker из blob:.
     "worker-src 'self' blob:",
-    "frame-src 'none'",
+    "frame-src https://*.tiptoppay.kz",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

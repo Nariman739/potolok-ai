@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaymentConfig } from "@/lib/payment";
-import { BILLING_ENABLED, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
+import { BILLING_ENABLED, PAYMENTS_OPEN, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
+import { TIPTOP_ENABLED } from "@/lib/tiptop";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
@@ -16,8 +17,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Страница тарифов. Открыта всегда (её смотрит платёжка при подключении),
- * но кнопка «Оплатить» появляется только при BILLING_ENABLED — до этого
- * страница информационная: «пока бесплатно».
+ * но кнопка «Оплатить» появляется только при PAYMENTS_OPEN (или
+ * BILLING_ENABLED) — до этого страница информационная: «пока бесплатно».
+ * Картой (виджет TipTop) — когда заданы ключи TIPTOP_*.
  *
  * Из iOS-приложения (кука app_platform=ios) страницу не показываем вовсе —
  * App Store 3.1.1: цены и внешняя оплата из приложения запрещены.
@@ -29,7 +31,13 @@ export default async function PricingPage() {
   }
 
   const me = await getCurrentMaster();
-  const config = { ...getPaymentConfig(), freeObjects: FREE_OBJECTS_LIMIT, billingEnabled: BILLING_ENABLED };
+  const config = {
+    ...getPaymentConfig(),
+    freeObjects: FREE_OBJECTS_LIMIT,
+    billingEnabled: BILLING_ENABLED,
+    paymentsOpen: PAYMENTS_OPEN,
+    cardEnabled: PAYMENTS_OPEN && TIPTOP_ENABLED,
+  };
 
   if (!me) {
     return <PricingClient mode="public" config={config} master={null} />;
@@ -47,7 +55,7 @@ export default async function PricingPage() {
       where: { masterId: master.id },
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, amount: true, status: true, createdAt: true, activatedDays: true },
+      select: { id: true, amount: true, status: true, createdAt: true, activatedDays: true, comment: true },
     }),
   ]);
 
@@ -67,6 +75,8 @@ export default async function PricingPage() {
         status: p.status,
         createdAt: p.createdAt.toISOString(),
         days: p.activatedDays ?? 30,
+        // Заявка картой: PENDING = виджет открыли, но не оплатили (не «на проверке»).
+        card: p.comment === "Оплата картой (TipTop)",
       }))}
     />
   );
