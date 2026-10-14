@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import {
   activateSubscription,
+  notifyOwnerPush,
   notifyUserAboutPaymentDecision,
   rejectPayment,
 } from "@/lib/payment";
@@ -175,6 +176,10 @@ export async function settleTransaction(tx: TiptopTransaction): Promise<
       `💳 <b>Оплата картой${tx.TestMode ? " (ТЕСТ)" : ""}</b>\n${name} · <code>${m.phone}</code>\n` +
         `${new Intl.NumberFormat("ru-RU").format(payment.amount)}₸ за ${(result.payment.activatedDays ?? 30) >= 365 ? "год" : "месяц"} · PRO до ${result.master.paidUntil?.toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" })}\nTipTop #${tx.TransactionId}`,
     ).catch((err) => console.error("tiptop notifyAdmin failed:", err));
+    await notifyOwnerPush(
+      `💳 Оплата картой${tx.TestMode ? " (тест)" : ""}: ${new Intl.NumberFormat("ru-RU").format(payment.amount)}₸`,
+      `${name}. PRO включён автоматически, делать ничего не нужно.`,
+    ).catch((err) => console.error("tiptop notifyOwnerPush failed:", err));
   }
 
   return { ok: true, paymentId: payment.id, alreadyApproved: false, paidUntil: result.master.paidUntil };

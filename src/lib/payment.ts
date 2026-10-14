@@ -23,6 +23,20 @@ function getAdminChatId(): string | null {
   return process.env.ADMIN_TG_CHAT_ID ?? null;
 }
 
+/**
+ * Дублируем сообщение о деньгах Нариману пушем в его приложение potolok.ai:
+ * Telegram у него «не очень доходит» (14.10.2026). Владельца находим по
+ * тому же ADMIN_TG_CHAT_ID — это его аккаунт мастера. Пуш уйдёт, когда в
+ * приложении он залогинен под своим номером и разрешил уведомления.
+ */
+export async function notifyOwnerPush(title: string, body: string): Promise<void> {
+  const chatId = getAdminChatId();
+  if (!chatId) return;
+  const owner = await prisma.master.findUnique({ where: { telegramChatId: chatId }, select: { id: true } });
+  if (!owner) return;
+  await sendPushToMaster(owner.id, { title, body, data: { screen: "/(tabs)/profile" } });
+}
+
 function getKaspiPhone(): string {
   return process.env.KASPI_PHONE ?? "+7 700 000 0000";
 }
@@ -132,6 +146,12 @@ export async function notifyAdminAboutPayment(
       { text: "❌ Отклонить", callback_data: `pay:reject:${payment.id}` },
     ],
   ]);
+
+  const who = [m.firstName, m.lastName].filter(Boolean).join(" ").trim() || m.phone;
+  await notifyOwnerPush(
+    method === "invoice" ? "🧾 Выставь счёт в Kaspi Pay" : "💰 Чек об оплате — проверь",
+    `${who} · ${formatTenge(payment.amount)}. Подтверди в Telegram-боте.`,
+  ).catch((err) => console.error("notifyOwnerPush failed:", err));
 }
 
 /**
