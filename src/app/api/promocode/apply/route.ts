@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
     await request.json().catch(() => ({}));
     return NextResponse.json(
-      { error: "Промокоды больше не действуют. Цена основателя доступна всем, кто оплатит до 23 ноября." },
+      { error: "Промокоды больше не действуют. Стартовая цена и так доступна всем до 31 декабря." },
       { status: 410 },
     );
   } catch (error) {

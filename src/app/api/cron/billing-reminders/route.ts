@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPushToMaster } from "@/lib/push";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { BILLING_ENABLED, FREE_UNTIL, FOUNDER_DEADLINE, daysUntil } from "@/lib/billing";
+import { BILLING_ENABLED, FREE_UNTIL, isLaunchPriceOpen, daysUntil } from "@/lib/billing";
 
 /**
  * Напоминания об оплате (12.10.2026). Раз в сутки, 10:00 по Алматы.
@@ -11,7 +11,7 @@ import { BILLING_ENABLED, FREE_UNTIL, FOUNDER_DEADLINE, daysUntil } from "@/lib/
  *   −7, −3, 0  — «PRO заканчивается», мягко;
  *   +3         — «PRO закончился, старое открыто, новые объекты — на PRO».
  * Плюс старым мастерам за 7 и 1 день до FREE_UNTIL — «бесплатный период
- * заканчивается, успейте зафиксировать цену».
+ * заканчивается» (+ про стартовую цену, пока она действует).
  *
  * Без отдельного поля «напоминали»: запускаемся раз в сутки и бьём только в
  * точные дни, поэтому дублей нет. Текст без цен и ссылок — пуш виден в iOS
@@ -65,17 +65,17 @@ export async function GET(request: NextRequest) {
       select: { id: true, telegramChatId: true },
       take: 2000,
     });
-    const founderStillOpen = now < FOUNDER_DEADLINE;
+    const launchOpen = isLaunchPriceOpen(now);
     for (const m of olds) {
       await sendPushToMaster(m.id, {
         title: dFree === 1 ? "Завтра заканчивается бесплатный период" : "Через неделю заканчивается бесплатный период",
-        body: founderStillOpen
-          ? "Потом — тариф PRO или первые 10 объектов бесплатно. Успейте зафиксировать цену основателя на сайте potolok.ai."
+        body: launchOpen
+          ? "Потом — тариф PRO или первые 10 объектов бесплатно. До 31 декабря PRO по стартовой цене — на сайте potolok.ai."
           : "Потом — тариф PRO или первые 10 объектов бесплатно. Всё, что вы сделали, останется открытым.",
         data: { screen: "/(tabs)/profile" },
       });
       if (m.telegramChatId) {
-        await sendTelegramMessage(m.telegramChatId, `Бесплатный период заканчивается ${dFree === 1 ? "завтра" : "через неделю"}. Зафиксировать цену основателя: https://potolok.ai/pricing`).catch(() => {});
+        await sendTelegramMessage(m.telegramChatId, `Бесплатный период заканчивается ${dFree === 1 ? "завтра" : "через неделю"}. Тарифы: https://potolok.ai/pricing`).catch(() => {});
       }
       sent++;
     }

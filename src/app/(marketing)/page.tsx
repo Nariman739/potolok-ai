@@ -1,4 +1,4 @@
-import { PRICE_MONTH, PRICE_YEAR, FREE_OBJECTS_LIMIT } from "@/lib/billing";
+import { PRICE_MONTH, PRICE_YEAR, FREE_OBJECTS_LIMIT, LAUNCH_PRICE_MONTH, LAUNCH_PRICE_UNTIL, isLaunchPriceOpen } from "@/lib/billing";
 import {
   Calculator,
   FileText,
@@ -26,6 +26,11 @@ const ANDROID_APP_URL =
 
 function formatLandingPrice(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
+}
+
+// Граница «до 1 января 00:00» → показываем «31 декабря». Зона явно — сервер в UTC.
+function formatLandingDate(d: Date): string {
+  return new Date(d.getTime() - 1).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "Asia/Almaty" });
 }
 
 export default function HomePage() {
@@ -567,13 +572,28 @@ export default function HomePage() {
             <div className="rounded-2xl border-2 border-[#F97316] bg-[#1A2332] p-8 relative overflow-hidden flex flex-col">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1)_0%,transparent_65%)] pointer-events-none" />
               <p className="text-sm font-medium text-[#F97316] mb-2 relative z-10">PRO</p>
-              <p className="text-4xl font-bold text-[#F1F5F9] mb-1 relative z-10">
-                {formatLandingPrice(PRICE_MONTH)}
-                <span className="text-base font-medium text-[#94A3B8]"> / мес</span>
-              </p>
-              <p className="text-sm text-[#64748B] mb-6 relative z-10">
-                или {formatLandingPrice(PRICE_YEAR)} в год — {formatLandingPrice(Math.round(PRICE_YEAR / 12))} в месяц
-              </p>
+              {isLaunchPriceOpen() ? (
+                // Стартовая цена до 31.12.2026 — честно, без зачёркнутой «старой» цены (решение 14.10)
+                <>
+                  <p className="text-4xl font-bold text-[#F1F5F9] mb-1 relative z-10">
+                    {formatLandingPrice(LAUNCH_PRICE_MONTH)}
+                    <span className="text-base font-medium text-[#94A3B8]"> / мес</span>
+                  </p>
+                  <p className="text-sm text-[#64748B] mb-6 relative z-10">
+                    стартовая цена для первых мастеров — до {formatLandingDate(LAUNCH_PRICE_UNTIL)}. Дальше — {formatLandingPrice(PRICE_MONTH)} в месяц
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-4xl font-bold text-[#F1F5F9] mb-1 relative z-10">
+                    {formatLandingPrice(PRICE_MONTH)}
+                    <span className="text-base font-medium text-[#94A3B8]"> / мес</span>
+                  </p>
+                  <p className="text-sm text-[#64748B] mb-6 relative z-10">
+                    или {formatLandingPrice(PRICE_YEAR)} в год — {formatLandingPrice(Math.round(PRICE_YEAR / 12))} в месяц
+                  </p>
+                </>
+              )}
               <ul className="space-y-3 text-sm text-[#94A3B8] mb-8 flex-1 relative z-10">
                 {[
                   "Объекты без ограничений",

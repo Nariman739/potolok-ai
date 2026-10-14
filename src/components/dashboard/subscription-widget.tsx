@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { BILLING_ENABLED, getBillingStatus } from "@/lib/billing";
@@ -14,9 +13,14 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "Asia/Almaty" });
 }
 
+// Граница «1 января 00:00» → людям показываем «31 декабря».
+function fmtLastDay(iso: string): string {
+  return fmtDate(new Date(new Date(iso).getTime() - 1).toISOString());
+}
+
 /**
  * Плашка подписки на главной дашборда (12.10.2026):
- *  - старому мастеру до 23 ноября: «бесплатно до…, зафиксируй 2 990 на год»;
+ *  - старому мастеру до 23 ноября: «бесплатно до…, до 31 декабря PRO по стартовой цене»;
  *  - на бесплатном тарифе: «объектов N из 10», кнопка PRO;
  *  - PRO: «до даты», за 7 дней — жёлтая, просрочено — красная, но без
  *    блокировки: старое открыто, новые объекты только после оплаты.
@@ -26,7 +30,7 @@ function fmtDate(iso: string): string {
 export async function SubscriptionWidget({ masterId }: { masterId: string }) {
   const m = await prisma.master.findUnique({
     where: { id: masterId },
-    select: { isOwner: true, isFounder: true, welcomeSent: true },
+    select: { isOwner: true, welcomeSent: true },
   });
   if (!m) return null;
 
@@ -60,10 +64,12 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
               <p className="text-xs text-sky-800">
                 {fromIos
                   ? `Потом — тариф PRO или первые ${s.objectsLimit} объектов бесплатно. Всё, что вы сделали, останется открытым.`
-                  : `Потом — PRO ${fmtTenge(s.prices.month)}/мес или первые ${s.objectsLimit} объектов бесплатно. Оплатите сейчас — и весь год по ${fmtTenge(s.prices.founderMonth)}/мес.`}
+                  : s.launchPrice
+                    ? `Потом — PRO или первые ${s.objectsLimit} объектов бесплатно. До ${fmtLastDay(s.launchPriceUntil)} PRO стоит ${fmtTenge(s.prices.launchMonth)}/мес, дальше — ${fmtTenge(s.prices.month)}.`
+                    : `Потом — PRO ${fmtTenge(s.prices.month)}/мес или первые ${s.objectsLimit} объектов бесплатно.`}
               </p>
             </div>
-            {payBtn("Зафиксировать цену")}
+            {payBtn("Оплатить PRO")}
           </CardContent>
         </Card>
       );
@@ -101,7 +107,7 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
                 {left === 0 || expired
                   ? "Всё старое открыто: смотреть, скачать, отправить. Новые объекты — на тарифе PRO."
                   : `Ещё ${left} бесплатно. Потом — тариф PRO, старое останется открытым.`}
-                {s.founderOffer && !fromIos && ` До ${fmtDate(s.founderDeadline)} — ${fmtTenge(s.prices.founderMonth)}/мес на год.`}
+                {s.launchPrice && !fromIos && ` До ${fmtLastDay(s.launchPriceUntil)} — ${fmtTenge(s.prices.launchMonth)}/мес.`}
               </p>
             </div>
             {payBtn(left === 0 || expired ? "Открыть PRO" : "PRO")}
@@ -120,10 +126,7 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
       {showCommunity && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-medium text-sm">Сообщество мастеров</p>
-              {m.isFounder && <Badge className="bg-amber-500 hover:bg-amber-500">🏆 Основатель</Badge>}
-            </div>
+            <p className="font-medium text-sm mb-2">Сообщество мастеров</p>
             <p className="text-xs text-muted-foreground mb-3">
               Закрытый чат: обмен опытом, ответы на вопросы, анонсы обновлений.
             </p>

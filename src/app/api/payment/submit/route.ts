@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import {
-  getMasterPriceForNextPayment,
-  notifyAdminAboutPayment,
-  periodDays,
-} from "@/lib/payment";
+import { quotePayment, notifyAdminAboutPayment } from "@/lib/payment";
 import type { BillingPeriod } from "@/lib/billing";
 import type { PaymentMethod } from "@/lib/payment";
 
@@ -39,19 +35,20 @@ export async function POST(request: Request) {
 
     const master = await prisma.master.findUnique({
       where: { id: me.id },
-      select: { id: true, isFounder: true, founderMonthsPaid: true },
+      select: { id: true },
     });
     if (!master) {
       return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
     }
 
-    const amount = getMasterPriceForNextPayment(master, period);
+    // Пока стартовая цена — всегда месяц, даже если клиент прислал "year".
+    const quote = quotePayment(period);
 
     const payment = await prisma.pendingPayment.create({
       data: {
         masterId: master.id,
-        amount,
-        activatedDays: periodDays(period),
+        amount: quote.amount,
+        activatedDays: quote.days,
         screenshotUrl: screenshotUrl?.trim() || null,
         comment: (comment ?? "").trim() || null,
       },

@@ -8,10 +8,9 @@ import { sendPushToMaster } from "@/lib/push";
 import {
   PRICE_MONTH,
   PRICE_YEAR,
-  FOUNDER_PRICE_MONTH,
-  FOUNDER_PRICE_YEAR,
-  FOUNDER_MONTHS,
-  FOUNDER_DEADLINE,
+  LAUNCH_PRICE_MONTH,
+  LAUNCH_PRICE_UNTIL,
+  isLaunchPriceOpen,
   type BillingPeriod,
 } from "@/lib/billing";
 import type { Master, PendingPayment } from "@/generated/prisma/client";
@@ -46,39 +45,26 @@ export function getPaymentConfig() {
     kaspiReceiverName: getKaspiReceiverName(),
     priceMonth: PRICE_MONTH,
     priceYear: PRICE_YEAR,
-    founderPriceMonth: FOUNDER_PRICE_MONTH,
-    founderPriceYear: FOUNDER_PRICE_YEAR,
-    founderMonths: FOUNDER_MONTHS,
-    founderDeadline: FOUNDER_DEADLINE.toISOString(),
+    launchPriceMonth: LAUNCH_PRICE_MONTH,
+    launchPriceUntil: LAUNCH_PRICE_UNTIL.toISOString(),
   };
 }
 
 /**
- * Мастер платит по цене основателя, если он уже основатель и первый год
- * (12 оплаченных месяцев) не кончился — или если ещё можно им стать
- * (сейчас раньше дедлайна). Поле Master.monthlyPrice больше не участвует:
- * у 505 мастеров там 9 999 с прошлой эпохи.
+ * Сумма и срок одной оплаты. Зависит только от даты, не от мастера
+ * (Master.monthlyPrice не участвует: у 505 мастеров там 9 999 с прошлой эпохи).
+ * Пока открыта стартовая цена — только месяц по LAUNCH_PRICE_MONTH: годовой
+ * оплаты нет, чтобы не фиксировать низкую цену на год (решение 14.10).
  */
-export function isFounderPrice(
-  master: { isFounder: boolean; founderMonthsPaid: number },
-  now = new Date(),
-): boolean {
-  if (master.isFounder) return master.founderMonthsPaid < FOUNDER_MONTHS;
-  return now < FOUNDER_DEADLINE;
-}
-
-export function getMasterPriceForNextPayment(
-  master: { isFounder: boolean; founderMonthsPaid: number },
+export function quotePayment(
   period: BillingPeriod = "month",
   now = new Date(),
-): number {
-  const founder = isFounderPrice(master, now);
-  if (period === "year") return founder ? FOUNDER_PRICE_YEAR : PRICE_YEAR;
-  return founder ? FOUNDER_PRICE_MONTH : PRICE_MONTH;
-}
-
-export function periodDays(period: BillingPeriod): number {
-  return period === "year" ? DAYS_YEAR : DAYS_MONTH;
+): { amount: number; days: number; period: BillingPeriod; launch: boolean } {
+  if (isLaunchPriceOpen(now)) {
+    return { amount: LAUNCH_PRICE_MONTH, days: DAYS_MONTH, period: "month", launch: true };
+  }
+  if (period === "year") return { amount: PRICE_YEAR, days: DAYS_YEAR, period, launch: false };
+  return { amount: PRICE_MONTH, days: DAYS_MONTH, period, launch: false };
 }
 
 function formatTenge(amount: number): string {
@@ -112,7 +98,7 @@ export async function notifyAdminAboutPayment(
 
   const m = payment.master;
   const days = payment.activatedDays ?? DAYS_MONTH;
-  const founderInfo = isFounderPrice(m) ? " · цена основателя" : "";
+  const founderInfo = payment.createdAt < LAUNCH_PRICE_UNTIL ? " · стартовая цена" : "";
 
   const lines = [
     method === "invoice"
@@ -149,10 +135,9 @@ export async function notifyAdminAboutPayment(
 }
 
 /**
- * Активирует подписку: продлевает paidUntil на срок заявки (30 или 365 дней),
- * делает мастера основателем, если оплата успела до дедлайна, ведёт счётчик
- * оплаченных месяцев по цене основателя.
- * Транзакционно: обновляет PendingPayment.status + Master.
+ * Активирует подписку: продлевает paidUntil на срок заявки (30 или 365 дней).
+ * Кто оплатил по стартовой цене — помечаем isFounder (значок «первые», на цену
+ * дальше не влияет). Транзакционно: обновляет PendingPayment.status + Master.
  */
 export async function activateSubscription(params: {
   paymentId: string;
@@ -171,14 +156,13 @@ export async function activateSubscription(params: {
 
   const days = params.days ?? payment.activatedDays ?? DAYS_MONTH;
   const now = new Date();
-  // Основатель — по дате заявки, а не одобрения: мастер не должен терять
-  // цену из-за того, что чек проверили на день позже дедлайна.
-  const becomesFounder = payment.createdAt < FOUNDER_DEADLINE;
+  // По дате заявки, а не одобрения: сумму мастер уже заплатил по той цене.
+  const becomesFounder = payment.createdAt < LAUNCH_PRICE_UNTIL;
 
   // Interactive transaction решает race condition: если два админа
   // одновременно нажмут «✅ Активировать», updateMany с условием
   // status: { not: "APPROVED" } делает atomic claim — вторая транзакция
-  // ничего не обновит. founderMonthsPaid читается ВНУТРИ tx из свежих данных.
+  // ничего не обновит.
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.pendingPayment.updateMany({
       where: { id: payment.id, status: { not: "APPROVED" } },
@@ -198,11 +182,6 @@ export async function activateSubscription(params: {
     const newPaidUntil = new Date(currentPaidUntil.getTime() + days * 24 * 60 * 60 * 1000);
 
     const isFounder = master.isFounder || becomesFounder;
-    const paidByFounderPrice = isFounder && master.founderMonthsPaid < FOUNDER_MONTHS;
-    const monthsPaid = days >= DAYS_YEAR ? 12 : 1;
-    const newFounderMonthsPaid = paidByFounderPrice
-      ? master.founderMonthsPaid + monthsPaid
-      : master.founderMonthsPaid;
 
     const prevApproved = await tx.pendingPayment.count({
       where: { masterId: payment.masterId, status: "APPROVED", id: { not: payment.id } },
@@ -216,9 +195,8 @@ export async function activateSubscription(params: {
         subscriptionTier: "PRO",
         isFounder,
         founderActivatedAt: isFounder && !master.isFounder ? now : master.founderActivatedAt,
-        founderMonthsPaid: newFounderMonthsPaid,
         // Legacy-поле: держим актуальную цену, чтобы админка не путала.
-        monthlyPrice: newFounderMonthsPaid < FOUNDER_MONTHS && isFounder ? FOUNDER_PRICE_MONTH : PRICE_MONTH,
+        monthlyPrice: PRICE_MONTH,
         welcomeSent: firstApproved ? true : master.welcomeSent,
       },
     });
@@ -311,11 +289,8 @@ export async function notifyUserAboutPaymentDecision(params: {
     `Сумма: ${formatTenge(payment.amount)}`,
     `PRO активен до: <b>${until}</b>`,
   ];
-  if (master.isFounder && master.founderMonthsPaid < FOUNDER_MONTHS) {
-    const remaining = FOUNDER_MONTHS - master.founderMonthsPaid;
-    lines.push(``, `🏆 Цена основателя: ещё ${remaining} мес по ${formatTenge(FOUNDER_PRICE_MONTH)}`);
-  } else if (master.isFounder) {
-    lines.push(``, `Год по цене основателя закончился. Дальше — ${formatTenge(PRICE_MONTH)}/мес`);
+  if (isLaunchPriceOpen()) {
+    lines.push(``, `До ${formatDate(LAUNCH_PRICE_UNTIL)} продление — тоже ${formatTenge(LAUNCH_PRICE_MONTH)}/мес.`);
   }
 
   await sendTelegramMessage(chatId, lines.join("\n"));

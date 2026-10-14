@@ -1,5 +1,5 @@
 import { getOwnerLegalInfo } from "@/lib/owner";
-import { PRICE_MONTH, PRICE_YEAR, FREE_OBJECTS_LIMIT } from "@/lib/billing";
+import { PRICE_MONTH, PRICE_YEAR, FREE_OBJECTS_LIMIT, LAUNCH_PRICE_MONTH, LAUNCH_PRICE_UNTIL } from "@/lib/billing";
 import { LegalArticle } from "../legal-article";
 
 export const metadata = {
@@ -11,6 +11,11 @@ export const dynamic = "force-dynamic";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
+}
+
+// «До 1 января» в оферте читается как «по 31 декабря включительно» — показываем последний день.
+function fmtDate(d: Date) {
+  return new Date(d.getTime() - 1).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Almaty" });
 }
 
 export default async function TermsPage() {
@@ -49,7 +54,7 @@ export default async function TermsPage() {
 
       <h2>4. Тарифы и оплата</h2>
       <ul>
-        <li>Актуальные тарифы публикуются на странице <a href="/pricing">potolok.ai/pricing</a>. Базовая стоимость Подписки — {fmt(PRICE_MONTH)} за 30 дней или {fmt(PRICE_YEAR)} за 365 дней. Для Пользователей, оплативших Подписку в объявленный период, действует цена основателя на первый год, указанная на странице тарифов.</li>
+        <li>Актуальные тарифы публикуются на странице <a href="/pricing">potolok.ai/pricing</a>. Базовая стоимость Подписки — {fmt(PRICE_MONTH)} за 30 дней или {fmt(PRICE_YEAR)} за 365 дней. По {fmtDate(LAUNCH_PRICE_UNTIL)} включительно действует стартовая цена {fmt(LAUNCH_PRICE_MONTH)} за 30 дней; она применяется к каждой оплате, совершённой до этой даты, и не распространяется на последующие оплаты.</li>
         <li>Оплата производится в тенге переводом Kaspi либо банковской картой через платёжного оператора. Подписка активируется после подтверждения оплаты и продлевается на оплаченный срок от даты окончания текущего периода.</li>
         <li>Автоматического списания нет: Пользователь продлевает Подписку самостоятельно. Если Исполнитель подключит автосписание, оно будет включаться только по явному согласию Пользователя, с возможностью отключить его в личном кабинете.</li>
         <li>Исполнитель применяет специальный налоговый режим и не является плательщиком НДС; цены указаны без НДС. По каждой оплате формируется фискальный чек.</li>

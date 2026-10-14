@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPaymentConfig, getMasterPriceForNextPayment } from "@/lib/payment";
+import { getPaymentConfig } from "@/lib/payment";
 import { BILLING_ENABLED, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
   title: "Тарифы — PotolokAI",
   description:
-    "PotolokAI для мастеров натяжных потолков: первые объекты бесплатно, PRO 4 990 ₸ в месяц — замер, КП, договор, 3D, ИИ-помощник.",
+    "PotolokAI для мастеров натяжных потолков: первые объекты бесплатно, PRO — стартовая цена 1 990 ₸ в месяц до 31 декабря: замер, КП, договор, 3D, ИИ-помощник.",
 };
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ export default async function PricingPage() {
 
   const master = await prisma.master.findUnique({
     where: { id: me.id },
-    select: { id: true, firstName: true, isOwner: true, isFounder: true, founderMonthsPaid: true },
+    select: { id: true, firstName: true, isOwner: true },
   });
   if (!master) redirect("/auth/login");
 
@@ -60,8 +60,6 @@ export default async function PricingPage() {
         firstName: master.firstName,
         isOwner: master.isOwner,
         status,
-        priceMonth: getMasterPriceForNextPayment(master, "month"),
-        priceYear: getMasterPriceForNextPayment(master, "year"),
       }}
       recentPayments={recent.map((p) => ({
         id: p.id,

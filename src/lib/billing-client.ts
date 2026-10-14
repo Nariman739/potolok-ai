@@ -23,10 +23,9 @@ export type BillingStatus = {
   paidUntil: string | null;
   /** Дней до конца оплаты (отрицательное = просрочено). null — нет даты. */
   daysLeft: number | null;
-  isFounder: boolean;
-  /** Ещё можно стать основателем (до дедлайна, ещё не основатель). */
-  founderOffer: boolean;
-  founderDeadline: string;
+  /** Сейчас действует стартовая цена (оплата до launchPriceUntil — по prices.launchMonth). */
+  launchPrice: boolean;
+  launchPriceUntil: string;
   freeUntil: string;
   objectsUsed: number;
   objectsLimit: number;
@@ -35,7 +34,6 @@ export type BillingStatus = {
   prices: {
     month: number;
     year: number;
-    founderMonth: number;
-    founderYear: number;
+    launchMonth: number;
   };
 };

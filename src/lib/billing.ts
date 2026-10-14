@@ -15,8 +15,9 @@
  *  - бесплатный тариф: первые FREE_OBJECTS_LIMIT объектов за всё время (считаем
  *    созданные, включая удалённые — иначе удалением можно обнулять счётчик),
  *    старые объекты/КП/договоры открыты всегда;
- *  - цена основателя (2 990 вместо 4 990) — тем, кто оплатил до FOUNDER_DEADLINE,
- *    действует первый год (12 оплаченных месяцев), «навсегда» не обещаем.
+ *  - стартовая цена (1 990 вместо 4 990) — на каждую оплату до LAUNCH_PRICE_UNTIL
+ *    (31 декабря 2026), только помесячно. Ничего на год не фиксируем
+ *    (решение Наримана 14.10): после даты — обычная цена для всех.
  */
 import { prisma } from "@/lib/prisma";
 
@@ -29,10 +30,8 @@ import type { BillingStatus } from "@/lib/billing-client";
 // ── Цены (₸). Через env, чтобы менять без деплоя кода ────────────────────
 export const PRICE_MONTH = Number(process.env.STANDARD_PRICE ?? 4990);
 export const PRICE_YEAR = Number(process.env.YEAR_PRICE ?? 39900);
-export const FOUNDER_PRICE_MONTH = Number(process.env.FOUNDER_PRICE ?? 2990);
-export const FOUNDER_PRICE_YEAR = Number(process.env.FOUNDER_YEAR_PRICE ?? 29900);
-/** Сколько оплаченных месяцев действует цена основателя (первый год). */
-export const FOUNDER_MONTHS = Number(process.env.FOUNDER_DISCOUNT_MONTHS ?? 12);
+/** Стартовая цена за месяц — действует на оплаты до LAUNCH_PRICE_UNTIL. */
+export const LAUNCH_PRICE_MONTH = Number(process.env.LAUNCH_PRICE ?? 1990);
 
 // ── Даты ─────────────────────────────────────────────────────────────────
 /**
@@ -43,8 +42,12 @@ export const FOUNDER_MONTHS = Number(process.env.FOUNDER_DISCOUNT_MONTHS ?? 12);
 export const BILLING_LAUNCH_AT = new Date(process.env.BILLING_LAUNCH_AT ?? "2026-10-20T00:00:00+05:00");
 /** До этой даты старым мастерам бесплатно (пишем в плашке). */
 export const FREE_UNTIL = new Date(process.env.FREE_UNTIL ?? "2026-11-23T00:00:00+05:00");
-/** Кто оплатил до этой даты — основатель (2 990 на первый год). */
-export const FOUNDER_DEADLINE = new Date(process.env.FOUNDER_DEADLINE ?? "2026-11-23T00:00:00+05:00");
+/** До этой даты (не включая) каждая оплата — по стартовой цене. */
+export const LAUNCH_PRICE_UNTIL = new Date(process.env.LAUNCH_PRICE_UNTIL ?? "2027-01-01T00:00:00+05:00");
+
+export function isLaunchPriceOpen(now = new Date()): boolean {
+  return now < LAUNCH_PRICE_UNTIL;
+}
 
 /** Бесплатный тариф: первые N объектов за всё время. */
 export const FREE_OBJECTS_LIMIT = Number(process.env.FREE_OBJECTS_LIMIT ?? 10);
@@ -68,11 +71,11 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
   const prices = {
     month: PRICE_MONTH,
     year: PRICE_YEAR,
-    founderMonth: FOUNDER_PRICE_MONTH,
-    founderYear: FOUNDER_PRICE_YEAR,
+    launchMonth: LAUNCH_PRICE_MONTH,
   };
   const base = {
-    founderDeadline: FOUNDER_DEADLINE.toISOString(),
+    launchPrice: isLaunchPriceOpen(now),
+    launchPriceUntil: LAUNCH_PRICE_UNTIL.toISOString(),
     freeUntil: FREE_UNTIL.toISOString(),
     objectsLimit: FREE_OBJECTS_LIMIT,
     prices,
@@ -82,7 +85,7 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
     const [m, objectsUsed] = await Promise.all([
       prisma.master.findUnique({
         where: { id: masterId },
-        select: { isOwner: true, paidUntil: true, isFounder: true, createdAt: true },
+        select: { isOwner: true, paidUntil: true, createdAt: true },
       }),
       countObjectsEver(masterId),
     ]);
@@ -105,8 +108,6 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
       proReason,
       paidUntil: paidUntil ? paidUntil.toISOString() : null,
       daysLeft: daysUntil(paidUntil, now),
-      isFounder: !!m?.isFounder,
-      founderOffer: !m?.isFounder && now < FOUNDER_DEADLINE,
       objectsUsed,
       canCreateObject: isPro || objectsUsed < FREE_OBJECTS_LIMIT,
     };
@@ -120,8 +121,6 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
       proReason: "free_period",
       paidUntil: null,
       daysLeft: null,
-      isFounder: false,
-      founderOffer: false,
       objectsUsed: 0,
       canCreateObject: true,
     };

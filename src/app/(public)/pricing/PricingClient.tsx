@@ -21,10 +21,8 @@ type Config = {
   kaspiReceiverName: string;
   priceMonth: number;
   priceYear: number;
-  founderPriceMonth: number;
-  founderPriceYear: number;
-  founderMonths: number;
-  founderDeadline: string;
+  launchPriceMonth: number;
+  launchPriceUntil: string;
   freeObjects: number;
   billingEnabled: boolean;
 };
@@ -34,9 +32,6 @@ type AuthedMaster = {
   firstName: string;
   isOwner: boolean;
   status: BillingStatus;
-  /** Цена для этого мастера с учётом основателя. */
-  priceMonth: number;
-  priceYear: number;
 };
 
 type RecentPayment = {
@@ -59,6 +54,11 @@ function fmt(n: number): string {
 // 22-е — без timeZone сервер и браузер рисуют разные даты (hydration #418).
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Almaty" });
+}
+
+// Граница «1 января 00:00» → людям показываем «31 декабря».
+function fmtLastDay(iso: string): string {
+  return new Date(new Date(iso).getTime() - 1).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "Asia/Almaty" });
 }
 
 function statusBadge(s: PaymentStatus) {
@@ -90,14 +90,13 @@ export function PricingClient(props: Props) {
   const master = props.mode === "authed" ? props.master : null;
   const recentPayments = props.mode === "authed" ? props.recentPayments : [];
 
-  const now = Date.now();
-  const founderOpen = now < new Date(cfg.founderDeadline).getTime();
-  // Для гостя показываем цену основателя, пока окно открыто; для мастера — его цену.
-  const priceMonth = master ? master.priceMonth : founderOpen ? cfg.founderPriceMonth : cfg.priceMonth;
-  const priceYear = master ? master.priceYear : founderOpen ? cfg.founderPriceYear : cfg.priceYear;
-  const founderApplies = master ? priceMonth < cfg.priceMonth : founderOpen;
+  // Стартовая цена (до 31.12.2026) — одна для всех и только помесячно:
+  // ничего на год не фиксируем (решение 14.10). После — месяц/год по обычной.
+  const launchOpen = Date.now() < new Date(cfg.launchPriceUntil).getTime();
+  const priceMonth = launchOpen ? cfg.launchPriceMonth : cfg.priceMonth;
+  const priceYear = cfg.priceYear;
 
-  const [period, setPeriod] = useState<Period>("year");
+  const [period, setPeriod] = useState<Period>(launchOpen ? "month" : "year");
   const [payOpen, setPayOpen] = useState(false);
   const [step, setStep] = useState<"instruction" | "form">("instruction");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -107,7 +106,7 @@ export function PricingClient(props: Props) {
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [method, setMethod] = useState<"transfer" | "invoice">("transfer");
 
-  const amountToPay = period === "year" ? priceYear : priceMonth;
+  const amountToPay = period === "year" && !launchOpen ? priceYear : priceMonth;
 
   function openPay(p: Period) {
     setPeriod(p);
@@ -164,7 +163,7 @@ export function PricingClient(props: Props) {
         <h1 className="text-3xl md:text-4xl font-bold">Сколько стоит PotolokAI</h1>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
           Первые {cfg.freeObjects} объектов — бесплатно, без карты и без срока. Дальше — PRO за{" "}
-          {fmt(cfg.priceMonth)} в месяц: меньше 3% одного заказа.
+          {fmt(priceMonth)} в месяц{launchOpen ? ` — стартовая цена до ${fmtLastDay(cfg.launchPriceUntil)}` : ": меньше 3% одного заказа"}.
         </p>
         {!cfg.billingEnabled && (
           <p className="mt-3 inline-block rounded-full bg-sky-100 text-sky-900 text-sm px-4 py-1">
@@ -180,7 +179,6 @@ export function PricingClient(props: Props) {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-medium">Ваш тариф</span>
-                {s.isFounder && <Badge className="bg-amber-500 hover:bg-amber-500">🏆 Основатель</Badge>}
                 {master.isOwner && <Badge>Owner</Badge>}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -195,11 +193,9 @@ export function PricingClient(props: Props) {
                 )}
               </div>
             </div>
-            {founderApplies && !master.isOwner && (
+            {launchOpen && !master.isOwner && (
               <div className="text-sm rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-900">
-                {s.isFounder
-                  ? `Цена основателя: ${fmt(cfg.founderPriceMonth)}/мес весь первый год`
-                  : `Оплатите до ${fmtDate(cfg.founderDeadline)} — и весь год по ${fmt(cfg.founderPriceMonth)}/мес вместо ${fmt(cfg.priceMonth)}`}
+                До {fmtLastDay(cfg.launchPriceUntil)} — {fmt(cfg.launchPriceMonth)}/мес. Дальше — {fmt(cfg.priceMonth)}.
               </div>
             )}
           </div>
@@ -228,9 +224,9 @@ export function PricingClient(props: Props) {
         </Card>
 
         <Card className="p-6 border-2 border-primary relative">
-          {founderApplies && (
+          {launchOpen && (
             <span className="absolute -top-3 left-5 rounded-full bg-amber-500 text-black text-xs font-semibold px-3 py-1">
-              Цена основателя до {fmtDate(cfg.founderDeadline)}
+              Стартовая цена до {fmtLastDay(cfg.launchPriceUntil)}
             </span>
           )}
           <div className="flex items-center justify-between mb-2">
@@ -238,37 +234,33 @@ export function PricingClient(props: Props) {
             <Badge>Для работы</Badge>
           </div>
 
-          {/* Переключатель периода */}
-          <div className="inline-flex rounded-lg border p-1 mb-3 text-sm">
-            <button
-              type="button"
-              onClick={() => setPeriod("month")}
-              className={`px-3 py-1 rounded-md ${period === "month" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              Месяц
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod("year")}
-              className={`px-3 py-1 rounded-md ${period === "year" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              Год · −33%
-            </button>
-          </div>
+          {/* Переключатель периода — только после стартовой цены: на год не фиксируем */}
+          {!launchOpen && (
+            <div className="inline-flex rounded-lg border p-1 mb-3 text-sm">
+              <button
+                type="button"
+                onClick={() => setPeriod("month")}
+                className={`px-3 py-1 rounded-md ${period === "month" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              >
+                Месяц
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod("year")}
+                className={`px-3 py-1 rounded-md ${period === "year" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              >
+                Год · −33%
+              </button>
+            </div>
+          )}
 
-          <div className="flex items-baseline gap-2">
-            <div className="text-3xl font-bold">{fmt(period === "year" ? priceYear : priceMonth)}</div>
-            {founderApplies && (
-              <div className="text-base text-muted-foreground line-through">
-                {fmt(period === "year" ? cfg.priceYear : cfg.priceMonth)}
-              </div>
-            )}
-          </div>
+          <div className="text-3xl font-bold">{fmt(amountToPay)}</div>
           <div className="text-sm text-muted-foreground mb-4">
-            {period === "year"
-              ? `за год — это ${fmt(Math.round(priceYear / 12))} в месяц`
-              : "в месяц"}
-            {founderApplies && period === "month" && ` · первый год, потом ${fmt(cfg.priceMonth)}`}
+            {launchOpen
+              ? `в месяц — для первых мастеров до ${fmtLastDay(cfg.launchPriceUntil)}. Дальше — ${fmt(cfg.priceMonth)} в месяц`
+              : period === "year"
+                ? `за год — это ${fmt(Math.round(priceYear / 12))} в месяц`
+                : "в месяц"}
           </div>
           <ul className="text-sm space-y-2 mb-6">
             {PRO_FEATURES.map((f) => (
@@ -341,7 +333,7 @@ export function PricingClient(props: Props) {
           ) : step === "instruction" ? (
             <>
               <DialogHeader>
-                <DialogTitle>PRO на {period === "year" ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
+                <DialogTitle>PRO на {period === "year" && !launchOpen ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
                 <DialogDescription>
                   Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi.
                 </DialogDescription>
