@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendPushToMaster } from "@/lib/push";
 
 // Vercel Cron (каждые 5 минут): напоминания за час до scheduledAt
 // Окно [now+60min .. now+65min], чтобы попадать ровно один раз.
+//
+// 14.10.2026: в vercel.json стояло «0 9 * * *» (раз в сутки, со времён Hobby)
+// — окно в 5 минут проверялось один раз в день, напоминания почти никогда не
+// уходили. Теперь на Pro расписание снова */5, и напоминание дублируется
+// пушем в приложение (Telegram привязан у 51 мастера из 568).
 export const maxDuration = 60;
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -37,7 +43,6 @@ export async function GET(request: NextRequest) {
   let sent = 0;
   for (const ev of events) {
     const master = ev.client.master;
-    if (!master.telegramChatId) continue;
     const eventTypeLabel = EVENT_TYPE_LABELS[ev.type] ?? ev.type;
     const dateStr = ev.scheduledAt!.toLocaleString("ru-RU", {
       day: "numeric",
@@ -55,7 +60,13 @@ export async function GET(request: NextRequest) {
     if (ev.client.phone) lines.push(`📞 ${ev.client.phone}`);
     const text = lines.join("\n");
     try {
-      await sendTelegramMessage(master.telegramChatId, text);
+      // Пуш без адреса и телефона — он виден на заблокированном экране.
+      await sendPushToMaster(master.id, {
+        title: `Через час: ${eventTypeLabel.toLowerCase()}`,
+        body: `${ev.client.name ?? "Клиент"}, ${dateStr}`,
+        data: { screen: `/client/${ev.client.id}` },
+      });
+      if (master.telegramChatId) await sendTelegramMessage(master.telegramChatId, text);
       await prisma.clientEvent.update({
         where: { id: ev.id },
         data: { reminderSentAt: new Date() },

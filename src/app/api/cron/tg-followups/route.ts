@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendPushToMaster } from "@/lib/push";
 import type { DealStatus } from "@/generated/prisma/client";
 
 // Vercel Cron (раз в сутки, 9:00 Asia/Almaty = 4:00 UTC):
@@ -10,6 +11,10 @@ import type { DealStatus } from "@/generated/prisma/client";
 // Дубликатов не боимся: каждое утро перечисляем актуальное состояние.
 // Если мастер закрыл клиента (WON/LOST) или поставил nextContactAt в будущее —
 // на следующий день он уже не попадёт в дайджест.
+//
+// 14.10.2026: дайджест уходит и пушем в приложение — Telegram привязан у 51
+// мастера из 568, остальные его не видели. В пуше только имена (без
+// телефонов): он виден на заблокированном экране.
 //
 // Не путать с /api/cron/tg-reminders — тот шлёт за час до ClientEvent.scheduledAt
 // (замеры, встречи, монтажи).
@@ -31,60 +36,72 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Prisma groupBy не умеет relation filter — берём мастеров, потом по каждому.
-  const masters = await prisma.master.findMany({
-    where: { telegramChatId: { not: null } },
-    select: { id: true, telegramChatId: true },
-  });
-
   const todayEnd = endOfTodayAlmaty();
   const now = new Date();
-  let sentCount = 0;
 
-  for (const m of masters) {
-    if (!m.telegramChatId) continue;
+  // Одним запросом по всем мастерам: раньше перебирали только привязанных к
+  // Telegram, по запросу на каждого.
+  const clients = await prisma.client.findMany({
+    where: {
+      deletedAt: null,
+      nextContactAt: { lte: todayEnd },
+      status: { notIn: EXCLUDED_STATUSES },
+    },
+    orderBy: { nextContactAt: "asc" },
+    select: {
+      masterId: true,
+      name: true,
+      phone: true,
+      nextContactAt: true,
+      master: { select: { telegramChatId: true } },
+    },
+    take: 5000,
+  });
 
-    const clients = await prisma.client.findMany({
-      where: {
-        masterId: m.id,
-        deletedAt: null,
-        nextContactAt: { lte: todayEnd },
-        status: { notIn: EXCLUDED_STATUSES },
-      },
-      orderBy: { nextContactAt: "asc" },
-      take: 20,
-      select: { name: true, phone: true, nextContactAt: true },
-    });
-    if (clients.length === 0) continue;
-
-    const overdue = clients.filter((c) => c.nextContactAt! < now);
-    const today = clients.filter((c) => c.nextContactAt! >= now);
-
-    const parts: string[] = [];
-    if (overdue.length) {
-      parts.push(
-        `🔴 <b>Просрочено (${overdue.length})</b>:\n` +
-          overdue
-            .map((c) => `• ${c.name}${c.phone ? " — " + c.phone : ""}`)
-            .join("\n"),
-      );
-    }
-    if (today.length) {
-      parts.push(
-        `🟡 <b>Сегодня (${today.length})</b>:\n` +
-          today
-            .map((c) => `• ${c.name}${c.phone ? " — " + c.phone : ""}`)
-            .join("\n"),
-      );
-    }
-
-    try {
-      await sendTelegramMessage(m.telegramChatId, parts.join("\n\n"));
-      sentCount++;
-    } catch (e) {
-      console.warn("[tg-followups] failed for master", m.id, e);
-    }
+  const byMaster = new Map<string, typeof clients>();
+  for (const c of clients) {
+    const list = byMaster.get(c.masterId) ?? [];
+    if (list.length < 20) list.push(c);
+    byMaster.set(c.masterId, list);
   }
 
-  return NextResponse.json({ masters: masters.length, sent: sentCount });
+  let sentCount = 0;
+  for (const [masterId, list] of byMaster) {
+    const overdue = list.filter((c) => c.nextContactAt! < now);
+    const today = list.filter((c) => c.nextContactAt! >= now);
+
+    const names = list.slice(0, 3).map((c) => c.name).join(", ");
+    await sendPushToMaster(masterId, {
+      title: overdue.length
+        ? `Позвонить: ${today.length} сегодня, ${overdue.length} просрочено`
+        : `Позвонить сегодня: ${today.length}`,
+      body: `${names}${list.length > 3 ? " и ещё" : ""}`,
+      data: { screen: "/(tabs)/clients" },
+    });
+
+    const telegramChatId = list[0].master.telegramChatId;
+    if (telegramChatId) {
+      const parts: string[] = [];
+      if (overdue.length) {
+        parts.push(
+          `🔴 <b>Просрочено (${overdue.length})</b>:\n` +
+            overdue.map((c) => `• ${c.name}${c.phone ? " — " + c.phone : ""}`).join("\n"),
+        );
+      }
+      if (today.length) {
+        parts.push(
+          `🟡 <b>Сегодня (${today.length})</b>:\n` +
+            today.map((c) => `• ${c.name}${c.phone ? " — " + c.phone : ""}`).join("\n"),
+        );
+      }
+      try {
+        await sendTelegramMessage(telegramChatId, parts.join("\n\n"));
+      } catch (e) {
+        console.warn("[tg-followups] failed for master", masterId, e);
+      }
+    }
+    sentCount++;
+  }
+
+  return NextResponse.json({ masters: byMaster.size, sent: sentCount });
 }
