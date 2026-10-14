@@ -33,7 +33,7 @@ npx prisma db push   # Push schema to Neon
 - **prisma.config.ts**: загружает `.env.local`
 - **pdfkit**: в `next.config.ts` как serverExternalPackages
 - **AI model**: менять только в `src/lib/openrouter.ts`
-- **Env vars**: DATABASE_URL, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, BLOB_READ_WRITE_TOKEN, INSTAGRAM_* (4 vars), CRON_SECRET
+- **Env vars**: DATABASE_URL, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, BLOB_READ_WRITE_TOKEN, CRON_SECRET, TIPTOP_PUBLIC_ID/TIPTOP_API_SECRET (оплата картой), PAYMENTS_OPEN, BILLING_ENABLED, ADMIN_TG_CHAT_ID, KASPI_PHONE/KASPI_RECEIVER_NAME
 
 ## Features
 - Расчёт потолка по фото (AI vision)
@@ -41,14 +41,5 @@ npx prisma db push   # Push schema to Neon
 - Визуальный конструктор потолка
 - Серверные замеры с фото комнат
 - Каталог мастеров
-- Telegram-бот с 3 параллельными агентами
-- **Instagram автопостинг** — /post в Telegram → 5 AI-агентов → превью → публикация
-
-## Instagram Auto-Posting
-- `src/lib/instagram.ts` — Instagram Graph API client
-- `src/lib/instagram-agents.ts` — 5 AI agents pipeline (Analyzer, Strategist, Copywriter, Visual Editor, Scheduler)
-- `src/lib/instagram-publisher.ts` — Orchestrator (pipeline → preview → publish)
-- `src/app/api/cron/instagram-publish/route.ts` — Cron for scheduled posts
-- Telegram: `/post` command → collect photos → run pipeline → inline buttons
-- Instagram User ID: stored in DB (InstagramAccount model)
-- Token expires in 60 days — needs refresh
+- Telegram-бот — только уведомления (привязка по телефону/коду, сброс пароля, «клиент открыл КП / подписал договор / акт», напоминания, кнопки ✅/❌ оплат для владельца). Instagram-постинг из бота удалён 14.10.2026 (никто не пользовался с апреля). Модели InstagramAccount/InstagramPost/InstagramSession/ContentPlan в схеме остались пустыми — можно дропать.
+- Оплата: `src/lib/billing.ts` (цены/даты/лимит), `src/lib/payment.ts` (Kaspi вручную, активация), `src/lib/tiptop.ts` + `/api/payment/tiptop/*` (карта через TipTop Pay)
