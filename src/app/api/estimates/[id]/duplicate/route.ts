@@ -4,13 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
     const { id } = await params;
+    // «Ещё вариант» с объекта (15.10.2026): копия — это вариант того же
+    // предложения тому же клиенту, « (копия)» в имени клиенту не нужно.
+    const body = await request.json().catch(() => ({}));
+    const keepName = body && typeof body === "object" && (body as { keepName?: boolean }).keepName === true;
 
     const existing = await prisma.estimate.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
@@ -25,7 +29,7 @@ export async function POST(
       data: {
         masterId: master.id,
         companyId: scope.companyId,
-        clientName: existing.clientName ? `${existing.clientName} (копия)` : null,
+        clientName: existing.clientName ? (keepName ? existing.clientName : `${existing.clientName} (копия)`) : null,
         clientPhone: existing.clientPhone,
         clientAddress: existing.clientAddress,
         // Копия остаётся вариантом того же объекта и того же клиента (21.09.2026):
