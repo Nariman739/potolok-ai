@@ -93,7 +93,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
         estimate.master.telegramChatId,
         `📝 <b>${signedName} подписал АКТ приёмки работ!</b>\n\n` +
           (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
-          `📅 ${signedAt.toLocaleString("ru-RU")}\n` +
+          `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
           `\n<i>С этой даты идёт гарантия. Подписанный акт — по той же ссылке.</i>`,
       );
     }

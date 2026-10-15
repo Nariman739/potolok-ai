@@ -136,6 +136,8 @@ export async function POST(
     }
 
     const contractPublicId = crypto.randomUUID();
+    // Одна дата и в шапке договора, и в базе — иначе в тексте стояла дата КП (15.10.2026).
+    const contractCreatedAt = new Date();
     // Данные для замороженного текста — ровно те, что уходят в живой рендер.
     const contractData = {
       publicId: estimate.publicId,
@@ -145,6 +147,7 @@ export async function POST(
       clientIin: estimate.clientIin,
       total: estimate.total,
       createdAt: estimate.createdAt,
+      contractCreatedAt,
       workStartDate: startDate,
       workDurationDays: duration,
       paymentSchedule: validatedSchedule,
@@ -186,7 +189,7 @@ export async function POST(
       where: { id },
       data: {
         contractPublicId,
-        contractCreatedAt: new Date(),
+        contractCreatedAt,
         contractTextSnapshot: snapshot as unknown as object,
         ...(sent === true && { contractSentAt: new Date() }),
         ...(startDate && { workStartDate: startDate }),
@@ -209,7 +212,7 @@ export async function POST(
 
     return NextResponse.json({
       contractPublicId,
-      contractCreatedAt: new Date().toISOString(),
+      contractCreatedAt: contractCreatedAt.toISOString(),
       contractSignedAt: null,
     });
   } catch (error) {

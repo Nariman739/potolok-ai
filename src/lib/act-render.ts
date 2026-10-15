@@ -17,6 +17,7 @@ export type ActEstimate = {
   clientAddress: string | null;
   total: number;
   createdAt: Date;
+  contractCreatedAt?: Date | null;
   measurementObjectId: string | null;
   actCompletionDate: Date | null;
   actSignedAt: Date | null;
@@ -58,7 +59,8 @@ export async function buildActData(e: ActEstimate): Promise<ActData> {
     clientAddress: e.clientAddress,
     total: e.total,
     paid,
-    contractDate: e.createdAt,
+    // Дата договора — дата его создания; у старых КП без договора — дата КП.
+    contractDate: e.contractCreatedAt ?? e.createdAt,
     actDate: e.actSignedAt ?? e.actCompletionDate ?? new Date(),
     remarks: stringList(e.actRemarks),
     remarksDueDays: e.actRemarksDueDays,

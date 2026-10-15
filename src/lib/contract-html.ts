@@ -40,6 +40,8 @@ export interface EstimateData {
   clientIin?: string | null;
   total: number;
   createdAt: Date;
+  /** Дата создания договора; раньше в шапке стояла дата КП (15.10.2026). */
+  contractCreatedAt?: Date | null;
   workStartDate?: Date | string | null;
   workDurationDays?: number | null;
   paymentSchedule?: PaymentStage[] | null;
@@ -244,7 +246,7 @@ export function generateContractHtml(
   const isIp = master.contractType === "ip";
   const kind = isIp ? "ip" : "ind";
   const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
-  const date = fmtDate(estimate.createdAt, lang);
+  const date = fmtDate(estimate.contractCreatedAt ?? estimate.createdAt, lang);
   const city = esc(master.contractCity) || "_______________";
   const total = estimate.total;
   const cur = asCurrency(master.currency);
@@ -869,7 +871,7 @@ export function contractPlaceholderValues(
     реквизиты_исполнителя: executorRequisites(master, t),
     телефон_исполнителя: esc(getMasterPhone(master)),
     город: esc(master.contractCity) || "_______________",
-    дата: dateText(estimate.createdAt, lang),
+    дата: dateText(estimate.contractCreatedAt ?? estimate.createdAt, lang),
     номер: estimate.publicId.slice(0, 8).toUpperCase(),
     таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur),
     гарантия_материал: yearsText(master.warrantyMaterials, lang),

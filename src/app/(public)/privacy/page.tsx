@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function PrivacyPage() {
   const o = await getOwnerLegalInfo();
   const today = new Date().toLocaleDateString("ru-RU", {
+    timeZone: "Asia/Almaty",
     day: "2-digit",
     month: "long",
     year: "numeric",

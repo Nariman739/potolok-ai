@@ -96,6 +96,7 @@ export default async function ContractPublicPage({
       clientIin: estimate.clientIin,
       total: estimate.total,
       createdAt: estimate.createdAt,
+      contractCreatedAt: estimate.contractCreatedAt,
       // Сроки и схему оплаты мастер задаёт при создании договора, они лежат
       // в базе — но сюда не передавались, и каждый клиент видел «по
       // согласованию Сторон» и жёсткие 50/50 (аудит 24.09.2026).
@@ -119,7 +120,7 @@ export default async function ContractPublicPage({
               <span className="font-semibold">{t("page.ct.signed")}</span>
               {" — "}
               {estimate.contractSignerName} ·{" "}
-              {estimate.contractSignedAt?.toLocaleString(localeOf(lang))}
+              {estimate.contractSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </div>
           </div>
         </div>
@@ -154,7 +155,7 @@ export default async function ContractPublicPage({
                 ? t("page.idDoc", { v: estimate.contractSignerPassport })
                 : ""}
               <br />
-              {estimate.contractSignedAt?.toLocaleString(localeOf(lang))}
+              {estimate.contractSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </p>
           </div>
         ) : (

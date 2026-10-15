@@ -71,7 +71,7 @@ export default async function ActPublicPage({
               <span className="font-semibold">{t("page.act.signed")}</span>
               {" — "}
               {estimate.actSignerName} ·{" "}
-              {estimate.actSignedAt?.toLocaleString(localeOf(lang))}
+              {estimate.actSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </div>
           </div>
         </div>
@@ -103,14 +103,14 @@ export default async function ActPublicPage({
             <p className="text-sm text-muted-foreground">
               <strong>{estimate.actSignerName}</strong>
               <br />
-              {estimate.actSignedAt?.toLocaleString(localeOf(lang))}
+              {estimate.actSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </p>
           </div>
         ) : (
           <ActSignSection
             publicId={publicId}
             lang={lang}
-            remarksSentAt={clientRemarksAt ? clientRemarksAt.toLocaleString(localeOf(lang)) : null}
+            remarksSentAt={clientRemarksAt ? clientRemarksAt.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" }) : null}
             method={onDevice ? "device" : "link"}
           />
         )}

@@ -104,7 +104,7 @@ export async function POST(
       const text =
         `📝 <b>${signedName} подписал договор электронно!</b>\n\n` +
         (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
-        `📅 ${signedAt.toLocaleString("ru-RU")}\n` +
+        `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
         `\n<i>Скачайте подписанный PDF из дашборда.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);
     }
