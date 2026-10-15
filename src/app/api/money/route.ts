@@ -84,6 +84,9 @@ export async function GET() {
     // определена, но человек уже заплатил и ждёт.
     const prepaid: object[] = [];
     let receivedMonth = 0, receivedPrev = 0, profitMonth = 0, closedMonth = 0, profitEstimated = false;
+    // Оборот по закрытым: сумма цен клиенту (15.10.2026). Прибыль с оценкой
+    // материала «по 40%» Нариман убрал с экранов — пока материал не считается.
+    let closedTotalMonth = 0;
     for (const p of monthPayments) {
       if (p.paidAt >= start && p.paidAt < end) receivedMonth += p.amount;
       else if (p.paidAt >= prev.start && p.paidAt < prev.end) receivedPrev += p.amount;
@@ -130,6 +133,7 @@ export async function GET() {
       const lastPay = o.payments.reduce<Date | null>((m, p) => (!m || p.paidAt > m ? p.paidAt : m), null);
       if (stage === "closed" && lastPay && lastPay >= start && lastPay < end && money.profit != null) {
         closedMonth++;
+        closedTotalMonth += money.price ?? 0;
         profitMonth += money.profit;
         if (money.profitIsEstimate) profitEstimated = true;
       }
@@ -154,7 +158,7 @@ export async function GET() {
     (owedToMe as { due: number }[]).sort((a, b) => b.due - a.due);
 
     return NextResponse.json({
-      month: { received: receivedMonth, receivedPrev, profit: profitMonth, profitIsEstimate: profitEstimated, closed: closedMonth },
+      month: { received: receivedMonth, receivedPrev, profit: profitMonth, profitIsEstimate: profitEstimated, closed: closedMonth, closedTotal: closedTotalMonth },
       owedToMe,
       owedToMeTotal: (owedToMe as { due: number }[]).reduce((s, x) => s + x.due, 0),
       prepaid,
