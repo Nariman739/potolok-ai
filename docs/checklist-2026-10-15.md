@@ -19,9 +19,9 @@
 
 ## 2. Пуши — через день (16.10)
 
-- [ ] Нариман: `node scratchpad/push-stats.mjs` (или SQL) — в `PushDevice` появились реальные устройства (iOS).
-- [ ] `AppEvent` name=`push_register_failed` — если есть записи с iOS 1.0.75, смотреть `props.message`: это и есть причина.
-- [ ] Отправить себе тестовый пуш: с сайта принять КП по ссылке или дождаться утреннего крона.
+- [x] 15.10 12:48 — причина найдена по `push_register_failed` («Некорректный токен»: сервер ждал `ExpoPushToken[`, Expo даёт `ExponentPushToken[`), починено, iPhone Наримана зарегистрирован, тестовый пуш доставлен (квитанция APNs ok).
+- [ ] 16.10: в `PushDevice` растёт число устройств (не только Нариман) — `select platform, count(*) from "PushDevice" where "disabledAt" is null group by 1`.
+- [ ] `AppEvent` name=`push_register_failed` — новых записей с 1.0.75 быть не должно.
 - [ ] Android после одобрения Google Play (versionCode 68): поставить, включить уведомления, проверить, что устройство появилось с platform=android.
 
 ## 3. Кроны (веб, Vercel → Settings → Cron Jobs)
