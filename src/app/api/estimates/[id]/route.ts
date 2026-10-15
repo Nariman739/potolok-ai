@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { syncClientStatusForObject } from "@/lib/clients";
+import { syncClientStatusForObject, addClientEvent, changeClientStatus } from "@/lib/clients";
+import { formatPrice } from "@/lib/format";
+import { currencyFor } from "@/lib/company";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
@@ -121,12 +123,93 @@ export async function PUT(
     }
 
     // Validate status transitions that master can do
-    const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED"];
+    const allowedMasterStatuses = ["DRAFT", "SENT", "REVISED", "REJECTED", "CONFIRMED"];
     if (status !== undefined && !allowedMasterStatuses.includes(status)) {
       return NextResponse.json(
         { error: "Недопустимый статус" },
         { status: 400 }
       );
+    }
+
+    // «Выбрал клиент» руками мастера (15.10.2026). Клиент получает PDF в
+    // WhatsApp и по ссылке почти не ходит, поэтому «Принято» ставил бы некому.
+    // Мастер отмечает выбранный вариант сам; остальные отправленные варианты
+    // объекта становятся «пересмотренными», чтобы деньги и этап объекта
+    // считались по одной цене.
+    if (status === "CONFIRMED") {
+      if (!["SENT", "VIEWED", "REVISED"].includes(existing.status)) {
+        return NextResponse.json({ error: "Это КП нельзя отметить выбранным" }, { status: 400 });
+      }
+      const confirmed = await prisma.estimate.update({
+        where: { id },
+        data: { status: "CONFIRMED" },
+        include: { partner: { select: { amount: true, percent: true, coef: true } } },
+      });
+      if (existing.measurementObjectId) {
+        await prisma.estimate.updateMany({
+          where: {
+            measurementObjectId: existing.measurementObjectId,
+            id: { not: id },
+            deletedAt: null,
+            status: { in: ["SENT", "VIEWED"] },
+          },
+          data: { status: "REVISED" },
+        });
+        syncClientStatusForObject(existing.measurementObjectId).catch(() => {});
+      }
+      if (existing.clientId) {
+        const currency = await currencyFor(existing.masterId);
+        addClientEvent({
+          clientId: existing.clientId,
+          type: "KP_CONFIRMED",
+          content: existing.total ? `Сумма: ${formatPrice(existing.total, currency)} · отметил мастер` : "Отметил мастер",
+          metadata: { estimateId: id },
+        }).catch(() => {});
+        changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+      }
+      return NextResponse.json(confirmed);
+    }
+
+    // Версии КП (15.10.2026). Мастер отправляет клиенту PDF, потом меняет
+    // скидку/наценку в том же КП и отправляет снова — у клиента три разных
+    // предложения, а в базе одно, последнее: какое он выбрал, отметить негде
+    // (Нариман, 14.10). Поэтому перед правкой уже отправленного КП сохраняем
+    // его прежнее состояние отдельной записью на том же объекте, а живая
+    // запись становится новым предложением (createdAt — сейчас).
+    if (touchesContent && ["SENT", "VIEWED"].includes(existing.status)) {
+      // Только расчёт и клиент: договор/акт у отправленного-но-не-подписанного
+      // КП пусты, а их уникальные ссылки копировать нельзя.
+      const copy = await prisma.estimate.create({
+        data: {
+          masterId: existing.masterId,
+          companyId: existing.companyId,
+          clientName: existing.clientName,
+          clientPhone: existing.clientPhone,
+          clientAddress: existing.clientAddress,
+          clientId: existing.clientId,
+          measurementObjectId: existing.measurementObjectId,
+          roomsData: existing.roomsData ?? {},
+          calculationData: existing.calculationData ?? {},
+          totalArea: existing.totalArea,
+          total: existing.total,
+          discountPercent: existing.discountPercent,
+          discountAmount: existing.discountAmount,
+          economyTotal: existing.economyTotal,
+          standardTotal: existing.standardTotal,
+          premiumTotal: existing.premiumTotal,
+          recommendedVariant: existing.recommendedVariant,
+          room3dPreviewUrl: existing.room3dPreviewUrl,
+          validUntil: existing.validUntil,
+          status: existing.status,
+          createdAt: existing.createdAt,
+        },
+      });
+      if (existing.partner) {
+        await prisma.estimatePartner.create({
+          data: { estimateId: copy.id, amount: existing.partner.amount, percent: existing.partner.percent, coef: existing.partner.coef },
+        });
+      }
+      await prisma.estimate.update({ where: { id }, data: { createdAt: new Date() } });
     }
     // Назад по воронке статус сам не едет (24.09.2026). Приложение помечает КП
     // отправленным, когда мастер делится PDF, — а поделиться можно и тем КП,

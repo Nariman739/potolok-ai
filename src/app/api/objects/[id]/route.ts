@@ -51,6 +51,9 @@ export async function GET(
             status: true,
             confirmedVariant: true,
             recommendedVariant: true,
+            // Чем варианты отличаются — мастеру нужно видеть в списке (15.10.2026)
+            discountPercent: true,
+            discountAmount: true,
             contractSignedAt: true,
             actSignedAt: true,
             createdAt: true,
