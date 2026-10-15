@@ -12,7 +12,11 @@ export async function POST(request: Request) {
     const master = await requireAuth();
     const { token, platform } = await request.json();
 
-    if (typeof token !== "string" || !token.startsWith("ExpoPushToken[")) {
+    // Expo выдаёт токены вида ExponentPushToken[…] (а иногда ExpoPushToken[…]).
+    // До 15.10.2026 принимали только второй вариант — и КАЖДЫЙ реальный
+    // телефон получал 400 «Некорректный токен», ошибка глоталась в приложении.
+    // Поэтому за месяц в PushDevice не появилось ни одного устройства.
+    if (typeof token !== "string" || !/^Expo(nent)?PushToken\[.+\]$/.test(token)) {
       return NextResponse.json({ error: "Некорректный токен" }, { status: 400 });
     }
     const plat = platform === "android" ? "android" : "ios";
