@@ -10,6 +10,10 @@
  * приложении строит вершины от (0,0) по walls + angles — как getVertices здесь),
  * поэтому точки переносятся один в один. Формулы для элементов на стене
  * (отступ, длина, позиция) повторяют app/room-designer.tsx мобилки.
+ *
+ * План строится как список фигур (`buildRoomPlan`), а рисуется двумя
+ * рендерерами: `RoomPlanSvg` — HTML для страницы /n/[token], и work-order-pdf —
+ * те же фигуры примитивами @react-pdf для PDF монтажнику.
  */
 import React from "react";
 import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
@@ -27,7 +31,19 @@ export type PlanRoom = {
   wallProfiles?: unknown;
 };
 
-type Pt = { x: number; y: number };
+export type Pt = { x: number; y: number };
+
+export type Shape =
+  | { k: "path"; d: string; fill: string; stroke: string; sw: number }
+  | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number }
+  | { k: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash?: string; round?: boolean }
+  | { k: "polyline"; points: Pt[]; stroke: string; sw: number }
+  | { k: "circle"; cx: number; cy: number; r: number; fill: string; stroke: string; sw: number }
+  | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean };
+
+export type Legend = { key: string; color: string; kind: "dot" | "ring" | "line" | "dash" };
+
+export type RoomPlan = { size: number; shapes: Shape[]; legend: Legend[] };
 
 const COLORS = {
   spot: "#F59E0B",
@@ -39,6 +55,8 @@ const COLORS = {
   subcurtain: "#0F172A",
   floating: "#F97316",
   wall: "#1e3a5f",
+  roomFill: "#eff6ff",
+  label: "#334155",
 } as const;
 
 /** Профили стен: цвет и пунктир как в дизайнере (src/lib/wall-profiles.ts мобилки). */
@@ -138,6 +156,10 @@ function lineColor(type: string): string {
   return COLORS.curtain;
 }
 
+function legendKey(type: string): string {
+  return type === "subcurtain" ? "subcurtain" : CURTAIN_TYPES.has(type) ? "curtain" : type;
+}
+
 // ============================================
 // Сводка по комнате и объекту
 // ============================================
@@ -160,12 +182,16 @@ export type RoomSummary = {
   profileWalls: Record<string, string[]>;
 };
 
-export function summarizeRoom(room: PlanRoom): RoomSummary {
-  const els = elementsOf(room);
-  const s: RoomSummary = {
+function emptySummary(): RoomSummary {
+  return {
     spots: 0, pendants: 0, chandeliers: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
     curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {},
   };
+}
+
+export function summarizeRoom(room: PlanRoom): RoomSummary {
+  const els = elementsOf(room);
+  const s = emptySummary();
   for (const e of els) {
     const t = String(e.type);
     if (t === "spot") s.spots++;
@@ -187,10 +213,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
 }
 
 export function mergeSummaries(list: RoomSummary[]): RoomSummary {
-  const out: RoomSummary = {
-    spots: 0, pendants: 0, chandeliers: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
-    curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {},
-  };
+  const out = emptySummary();
   for (const s of list) {
     out.spots += s.spots; out.pendants += s.pendants; out.chandeliers += s.chandeliers;
     out.trackCm += s.trackCm; out.trackCount += s.trackCount;
@@ -227,12 +250,10 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
 }
 
 // ============================================
-// SVG-план
+// Построение плана (фигуры)
 // ============================================
 
-export type Legend = { key: string; color: string; kind: "dot" | "ring" | "line" | "dash" };
-
-export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): React.ReactElement | null {
+export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320): RoomPlan | null {
   const v = verticesOf(room);
   if (!v) return null;
   const t = tFor(lang);
@@ -251,7 +272,7 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
   const w = Math.max(maxX - minX, 1), h = Math.max(maxY - minY, 1);
   const roomSize = Math.max(w, h);
-  const size = 320, pad = 30;
+  const pad = size * 0.095;
   const scale = (size - pad * 2) / Math.max(w, h);
   const ox = pad + ((size - pad * 2) - w * scale) / 2 - minX * scale;
   const oy = pad + ((size - pad * 2) - h * scale) / 2 - minY * scale;
@@ -259,12 +280,18 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
   const sy = (y: number) => y * scale + oy;
   const S = (p: Pt): Pt => ({ x: sx(p.x), y: sy(p.y) });
   const sv = v.map(S);
+  // Масштаб толщин и шрифтов от размера плана (320 — страница, 220 — PDF)
+  const u = size / 320;
+  const strokeW = 2 * u;
+  const fs = 10 * u;
 
+  const shapes: Shape[] = [];
   const outline = roomOutlinePath(sv, {
     bulges: room.bulges?.map((b) => (b || 0) * scale),
     cornerRadii: room.cornerRadii?.map((r) => (r || 0) * scale),
   });
-  const pts = sv.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  if (outline) shapes.push({ k: "path", d: outline, fill: COLORS.roomFill, stroke: COLORS.wall, sw: strokeW });
+  else shapes.push({ k: "polygon", points: sv, fill: COLORS.roomFill, stroke: COLORS.wall, sw: strokeW });
 
   // Внутренняя сторона стены: центроид комнаты подсказывает знак перпендикуляра.
   const cx0 = sv.reduce((s, p) => s + p.x, 0) / n, cy0 = sv.reduce((s, p) => s + p.y, 0) / n;
@@ -280,32 +307,26 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
   };
 
   const used = new Set<string>();
-  const nodes: React.ReactNode[] = [];
-  const strokeW = 2;
-  const fs = 10;
 
   // 1. Стены с профилем (цвет/пунктир по типу), поверх контура
   walls.forEach((_, i) => {
     const p = prof[i];
-    const st = PROFILE_STYLE[p] ?? { color: "#7c3aed", dashed: true, mul: 1.2 };
     if (p === "pvc_insert") return; // обычный пластик — просто контур
+    const st = PROFILE_STYLE[p] ?? { color: "#7c3aed", dashed: true, mul: 1.2 };
     const { a, b } = wallFrame(i);
     used.add(`prof:${p}`);
-    nodes.push(
-      <line key={`w${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={st.color} strokeWidth={strokeW * st.mul + 1}
-        strokeDasharray={st.dashed ? "6 4" : undefined} strokeLinecap="butt" />,
-    );
+    shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: st.color, sw: strokeW * st.mul + u, dash: st.dashed ? `${6 * u} ${4 * u}` : undefined });
   });
 
   // 2. Элементы на стене (прямые гардины, подшторники, треки, свет.линии по стене)
-  els.forEach((el, idx) => {
+  for (const el of els) {
     const type = String(el.type);
-    if (typeof el.wallIndex !== "number" || !LINE_TYPES.has(type)) return;
+    if (typeof el.wallIndex !== "number" || !LINE_TYPES.has(type)) continue;
     // «circle» есть только в типах мобилки — сравниваем как строку
     const shape = String(el.shape ?? "straight");
-    if (shape === "freeform" || shape === "circle") return;
+    if (shape === "freeform" || shape === "circle") continue;
     const wi = el.wallIndex;
-    if (wi < 0 || wi >= n) return;
+    if (wi < 0 || wi >= n) continue;
     const { a, nx, ny, px, py, len } = wallFrame(wi);
     const wallCm = walls[wi] || 1;
     const elLen = Math.min((el.length ?? wallCm) * scale, len);
@@ -317,128 +338,119 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
     const x1 = a.x + nx * startT + px * off, y1 = a.y + ny * startT + py * off;
     const x2 = a.x + nx * (startT + elLen) + px * off, y2 = a.y + ny * (startT + elLen) + py * off;
     const color = lineColor(type);
-    const key = type === "subcurtain" ? "subcurtain" : CURTAIN_TYPES.has(type) ? "curtain" : type;
-    used.add(`el:${key}`);
-    const parts: React.ReactNode[] = [
-      <line key="l" x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={type === "subcurtain" ? strokeW * 1.3 : strokeW} strokeLinecap="round" />,
-    ];
+    used.add(`el:${legendKey(type)}`);
+    const sw = type === "subcurtain" ? strokeW * 1.3 : strokeW;
+    shapes.push({ k: "line", x1, y1, x2, y2, stroke: color, sw, round: true });
     // П-ниша / Г-загиб подшторника: возвраты к стене
-    if (type === "subcurtain" && (el.shape === "u-niche" || el.shape === "l-bend")) {
-      const back = (x: number, y: number, k: string) => (
-        <line key={k} x1={x} y1={y} x2={x - px * off} y2={y - py * off} stroke={color} strokeWidth={strokeW * 1.3} />
-      );
-      if (el.shape === "u-niche" || el.side !== "left") parts.push(back(x1, y1, "b1"));
-      if (el.shape === "u-niche" || el.side === "left") parts.push(back(x2, y2, "b2"));
+    if (type === "subcurtain" && (shape === "u-niche" || shape === "l-bend")) {
+      if (shape === "u-niche" || el.side !== "left") shapes.push({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw });
+      if (shape === "u-niche" || el.side === "left") shapes.push({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw });
     }
     const cm = Math.round(el.length ?? wallCm);
-    parts.push(
-      <text key="t" x={(x1 + x2) / 2 + px * (fs + 2)} y={(y1 + y2) / 2 + py * (fs + 2)} fontSize={fs} fontWeight={600}
-        textAnchor="middle" dominantBaseline="middle" fill={color} stroke="#fff" strokeWidth={3} paintOrder="stroke">{cm}</text>,
-    );
-    nodes.push(<g key={`we${idx}`}>{parts}</g>);
-  });
+    shapes.push({ k: "text", x: (x1 + x2) / 2 + px * (fs + 2 * u), y: (y1 + y2) / 2 + py * (fs + 2 * u), text: String(cm), size: fs, weight: 600, fill: color, halo: true });
+  }
 
   // 3. Свободные ломаные (трек, свет.линия, гардина по точкам) и круги
-  els.forEach((el, idx) => {
+  for (const el of els) {
     const type = String(el.type);
     if (String(el.shape) === "circle" && typeof (el as { cx?: number }).cx === "number") {
       const c = el as unknown as { cx: number; cy: number; radius: number };
-      const color = lineColor(type);
-      used.add(`el:${type === "subcurtain" ? "subcurtain" : CURTAIN_TYPES.has(type) ? "curtain" : type}`);
-      nodes.push(<circle key={`c${idx}`} cx={sx(c.cx)} cy={sy(c.cy)} r={Math.max(2, c.radius * scale)} fill="none" stroke={color} strokeWidth={strokeW} />);
-      return;
+      used.add(`el:${legendKey(type)}`);
+      shapes.push({ k: "circle", cx: sx(c.cx), cy: sy(c.cy), r: Math.max(2 * u, c.radius * scale), fill: "none", stroke: lineColor(type), sw: strokeW });
+      continue;
     }
-    if (el.shape !== "freeform" || !el.points || el.points.length < 2) return;
+    if (el.shape !== "freeform" || !el.points || el.points.length < 2) continue;
     const p = freeformPoints(el).map(S);
     const color = lineColor(type);
-    const key = type === "subcurtain" ? "subcurtain" : CURTAIN_TYPES.has(type) ? "curtain" : type;
-    used.add(`el:${key}`);
-    const mid = p[Math.floor(p.length / 2)];
+    used.add(`el:${legendKey(type)}`);
+    shapes.push({ k: "polyline", points: p, stroke: color, sw: strokeW });
     const cm = Math.round(elementLength(el));
-    nodes.push(
-      <g key={`f${idx}`}>
-        <polyline points={p.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")} fill="none" stroke={color} strokeWidth={strokeW} strokeLinecap="round" strokeLinejoin="round" />
-        {cm > 0 && (
-          <text x={mid.x} y={mid.y - fs} fontSize={fs} fontWeight={600} textAnchor="middle" dominantBaseline="middle" fill={color}
-            stroke="#fff" strokeWidth={3} paintOrder="stroke">{cm}</text>
-        )}
-      </g>,
-    );
-  });
-
-  // 4. Точечные: софиты, подвесы, люстры
-  els.forEach((el, idx) => {
-    const type = String(el.type);
-    if (typeof el.x !== "number" || typeof el.y !== "number") return;
-    if (type !== "spot" && type !== "pendant" && type !== "chandelier") return;
-    const x = sx(el.x), y = sy(el.y);
-    used.add(`el:${type}`);
-    if (type === "spot") {
-      nodes.push(<circle key={`s${idx}`} cx={x} cy={y} r={4.5} fill="#fff" stroke={COLORS.spot} strokeWidth={2} />);
-    } else if (type === "pendant") {
-      nodes.push(
-        <g key={`p${idx}`}>
-          <circle cx={x} cy={y} r={6.5} fill="#fff" stroke={COLORS.pendant} strokeWidth={2} />
-          <circle cx={x} cy={y} r={2.2} fill={COLORS.pendant} />
-        </g>,
-      );
-    } else {
-      nodes.push(
-        <g key={`ch${idx}`}>
-          <circle cx={x} cy={y} r={8.5} fill="#fff" stroke={COLORS.chandelier} strokeWidth={2} />
-          <circle cx={x} cy={y} r={2.6} fill={COLORS.chandelier} />
-        </g>,
-      );
-    }
-  });
-
-  // Подписи длин стен (см) на серединах + буквы углов снаружи
-  const labels = walls.map((len, i) => {
-    const { a, b, px, py } = wallFrame(i);
-    // Снаружи стены, с запасом под толстую линию профиля (теневой/парящий)
-    return { x: (a.x + b.x) / 2 - px * 14, y: (a.y + b.y) / 2 - py * 14, len };
-  });
-  const letters = sv.map((p, i) => {
-    const prev = sv[(i - 1 + n) % n], next = sv[(i + 1) % n];
-    // Наружу — против биссектрисы к соседям
-    let dx = (prev.x - p.x) + (next.x - p.x), dy = (prev.y - p.y) + (next.y - p.y);
-    const l = Math.hypot(dx, dy) || 1;
-    dx /= l; dy /= l;
-    return { x: p.x - dx * 11, y: p.y - dy * 11, letter: cornerLetter(i) };
-  });
-
-  const legend: Legend[] = [];
-  const addLegend = (key: string, color: string, kind: Legend["kind"]) => legend.push({ key, color, kind });
-  for (const u of used) {
-    const [kind, name] = u.split(":");
-    if (kind === "el") {
-      if (name === "spot") addLegend(t("wo.el.spot"), COLORS.spot, "ring");
-      else if (name === "pendant") addLegend(t("wo.el.pendant"), COLORS.pendant, "dot");
-      else if (name === "chandelier") addLegend(t("wo.el.chandelier"), COLORS.chandelier, "dot");
-      else if (name === "track") addLegend(t("wo.el.track"), COLORS.track, "line");
-      else if (name === "lightline") addLegend(t("wo.el.lightline"), COLORS.lightline, "line");
-      else if (name === "curtain") addLegend(t("wo.el.curtainOnly"), COLORS.curtain, "line");
-      else if (name === "subcurtain") addLegend(t("wo.el.subcurtainEl"), COLORS.subcurtain, "line");
-    } else {
-      const st = PROFILE_STYLE[name];
-      addLegend(`${t("wo.profile")} ${PROFILE_TYPES.includes(name) ? t(`wo.prof.${name}`) : t("wo.prof.custom")}`, st?.color ?? "#7c3aed", st?.dashed === false ? "line" : "dash");
+    if (cm > 0) {
+      const mid = p[Math.floor(p.length / 2)];
+      shapes.push({ k: "text", x: mid.x, y: mid.y - fs, text: String(cm), size: fs, weight: 600, fill: color, halo: true });
     }
   }
 
+  // 4. Точечные: софиты, подвесы, люстры
+  for (const el of els) {
+    const type = String(el.type);
+    if (typeof el.x !== "number" || typeof el.y !== "number") continue;
+    if (type !== "spot" && type !== "pendant" && type !== "chandelier") continue;
+    const x = sx(el.x), y = sy(el.y);
+    used.add(`el:${type}`);
+    if (type === "spot") {
+      shapes.push({ k: "circle", cx: x, cy: y, r: 4.5 * u, fill: "#fff", stroke: COLORS.spot, sw: 2 * u });
+    } else if (type === "pendant") {
+      shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: COLORS.pendant, sw: 2 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: COLORS.pendant, stroke: "none", sw: 0 });
+    } else {
+      shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: COLORS.chandelier, sw: 2 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: COLORS.chandelier, stroke: "none", sw: 0 });
+    }
+  }
+
+  // Подписи длин стен (см) снаружи, с запасом под толстую линию профиля
+  walls.forEach((len, i) => {
+    const { a, b, px, py } = wallFrame(i);
+    shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text: String(len), size: 11 * u, weight: 400, fill: COLORS.label, halo: true });
+  });
+  // Буквы углов — наружу, против биссектрисы к соседям
+  sv.forEach((p, i) => {
+    const prev = sv[(i - 1 + n) % n], next = sv[(i + 1) % n];
+    let dx = (prev.x - p.x) + (next.x - p.x), dy = (prev.y - p.y) + (next.y - p.y);
+    const l = Math.hypot(dx, dy) || 1;
+    dx /= l; dy /= l;
+    shapes.push({ k: "text", x: p.x - dx * 11 * u, y: p.y - dy * 11 * u, text: cornerLetter(i), size: 10 * u, weight: 700, fill: COLORS.wall, halo: false });
+  });
+
+  const legend: Legend[] = [];
+  for (const key of used) {
+    const [kind, name] = key.split(":");
+    if (kind === "el") {
+      if (name === "spot") legend.push({ key: t("wo.el.spot"), color: COLORS.spot, kind: "ring" });
+      else if (name === "pendant") legend.push({ key: t("wo.el.pendant"), color: COLORS.pendant, kind: "dot" });
+      else if (name === "chandelier") legend.push({ key: t("wo.el.chandelier"), color: COLORS.chandelier, kind: "dot" });
+      else if (name === "track") legend.push({ key: t("wo.el.track"), color: COLORS.track, kind: "line" });
+      else if (name === "lightline") legend.push({ key: t("wo.el.lightline"), color: COLORS.lightline, kind: "line" });
+      else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: COLORS.curtain, kind: "line" });
+      else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: COLORS.subcurtain, kind: "line" });
+    } else {
+      const st = PROFILE_STYLE[name];
+      legend.push({
+        key: `${t("wo.profile")} ${PROFILE_TYPES.includes(name) ? t(`wo.prof.${name}`) : t("wo.prof.custom")}`,
+        color: st?.color ?? "#7c3aed",
+        kind: st?.dashed === false ? "line" : "dash",
+      });
+    }
+  }
+
+  return { size, shapes, legend };
+}
+
+// ============================================
+// HTML-рендер для страницы наряда
+// ============================================
+
+export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): React.ReactElement | null {
+  const plan = buildRoomPlan(room, lang, 320);
+  if (!plan) return null;
+  const { size, shapes, legend } = plan;
   return (
     <div className="w-full sm:w-[320px] shrink-0">
       <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="bg-white rounded-lg border border-slate-200 block">
-        {outline
-          ? <path d={outline} fill="#eff6ff" stroke={COLORS.wall} strokeWidth={2} />
-          : <polygon points={pts} fill="#eff6ff" stroke={COLORS.wall} strokeWidth={2} />}
-        {nodes}
-        {labels.map((l, i) => (
-          <text key={`len${i}`} x={l.x} y={l.y} fontSize={11} textAnchor="middle" dominantBaseline="middle" fill="#334155"
-            stroke="#ffffff" strokeWidth={3} paintOrder="stroke">{l.len}</text>
-        ))}
-        {letters.map((l, i) => (
-          <text key={`lt${i}`} x={l.x} y={l.y} fontSize={10} fontWeight={700} textAnchor="middle" dominantBaseline="middle" fill={COLORS.wall}>{l.letter}</text>
-        ))}
+        {shapes.map((s, i) => {
+          switch (s.k) {
+            case "path": return <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
+            case "polygon": return <polygon key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
+            case "line": return <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap={s.round ? "round" : "butt"} />;
+            case "polyline": return <polyline key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={s.stroke} strokeWidth={s.sw} strokeLinecap="round" strokeLinejoin="round" />;
+            case "circle": return <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
+            case "text": return (
+              <text key={i} x={s.x} y={s.y} fontSize={s.size} fontWeight={s.weight} textAnchor="middle" dominantBaseline="middle" fill={s.fill}
+                stroke={s.halo ? "#ffffff" : undefined} strokeWidth={s.halo ? 3 : undefined} paintOrder={s.halo ? "stroke" : undefined}>{s.text}</text>
+            );
+          }
+        })}
       </svg>
       {legend.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">
