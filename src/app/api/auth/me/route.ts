@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentMaster } from "@/lib/auth";
+import { headers } from "next/headers";
 import { getBillingStatus } from "@/lib/billing";
 
 /**
@@ -9,7 +10,12 @@ import { getBillingStatus } from "@/lib/billing";
  */
 export async function GET() {
   try {
-    const master = await getCurrentMaster();
+    // Мобилка шлёт Bearer, а роут смотрел только cookie: на телефоне выручала
+    // cookie, которую React Native сохраняет после логина, но без неё /auth/me
+    // отвечал 401 и выкидывал мастера на вход (16.10.2026).
+    const auth = (await headers()).get("authorization");
+    const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+    const master = (await getCurrentMaster()) ?? (bearer ? await getCurrentMaster(bearer) : null);
     if (!master) {
       return NextResponse.json(
         { error: "Не авторизован" },
