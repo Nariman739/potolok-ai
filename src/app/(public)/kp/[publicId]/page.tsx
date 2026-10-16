@@ -93,6 +93,8 @@ function stripUnitPrices(calc: CalculationResult): { calc: CalculationResult; ex
     extrasTotal,
     calc: {
       ...calc,
+      // Старый формат (variants[].rooms с ценами) — в базе таких КП нет, но на всякий случай не отдаём
+      ...({ variants: undefined } as object),
       pricePerM2: 0,
       // Геометрия комнат (стены, площадь и периметр по комнатам) — наружу не уходит
       rooms: [],

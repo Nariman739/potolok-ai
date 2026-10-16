@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CURRENCY_CODES } from "@/lib/currency";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
+import { DEFAULT_KP_CONFIG } from "@/lib/kp/templates";
 
 export async function GET() {
   try {
@@ -78,7 +79,12 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: "Неизвестный вид КП" }, { status: 400 });
       }
       const current = await prisma.master.findUnique({ where: { id: master.id }, select: { kpConfig: true } });
-      const cfg = (current?.kpConfig && typeof current.kpConfig === "object" ? current.kpConfig : {}) as Record<string, unknown>;
+      const raw = current?.kpConfig && typeof current.kpConfig === "object" ? (current.kpConfig as Record<string, unknown>) : null;
+      // У мастера, который брендинг на сайте не открывал, kpConfig пуст: кладём
+      // дефолт шаблона целиком, иначе редактор брендинга получит объект без секций.
+      const cfg = raw && Array.isArray(raw.sections) && raw.sections.length > 0
+        ? raw
+        : { ...(JSON.parse(JSON.stringify(DEFAULT_KP_CONFIG)) as Record<string, unknown>), ...(raw ?? {}) };
       updateData.kpConfig = { ...cfg, priceView: body.kpPriceView };
     }
     if ("language" in body && body.language !== "ru" && body.language !== "kk") {

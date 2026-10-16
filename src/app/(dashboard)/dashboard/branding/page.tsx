@@ -42,10 +42,15 @@ export default async function BrandingPage() {
   // (у тех, кто прошёл конструктор до автосохранения, конфиг лежит только в брифе),
   // и лишь потом дефолт. Иначе мастер возвращался на страницу, видел дефолтную
   // тему вместо подобранной и, сохранив, затирал работу AI.
-  const initialConfig: KpConfig =
-    (master.kpConfig as unknown as KpConfig) ??
+  // kpConfig без секций (например, только priceView из профиля мобилки) —
+  // не конфиг для редактора: берём бриф/дефолт, но вид цен из него сохраняем.
+  const saved = (master.kpConfig as unknown as Partial<KpConfig> | null) ?? null;
+  const savedFull = saved && Array.isArray(saved.sections) && saved.sections.length > 0 ? (saved as KpConfig) : null;
+  const base: KpConfig =
+    savedFull ??
     (master.kpBrief?.generatedConfig as unknown as KpConfig) ??
     DEFAULT_KP_CONFIG;
+  const initialConfig: KpConfig = saved?.priceView && !savedFull ? { ...base, priceView: saved.priceView } : base;
 
   return (
     <BrandingClient
