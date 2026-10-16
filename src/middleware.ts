@@ -20,7 +20,9 @@ const securityHeaders = {
     "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com https://*.tiptoppay.kz",
     "font-src 'self' data:",
     // blob: — three грузит встроенные текстуры GLB как blob:-URL через fetch.
-    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com https://*.tiptoppay.kz",
+    // *.ingest.de.sentry.io — браузерный Sentry сайта: без этого CSP молча
+    // блокировал отправку ошибок с клиента (замечено 16.10.2026 на /n/…).
+    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com https://*.tiptoppay.kz https://*.ingest.de.sentry.io https://*.ingest.sentry.io",
     // worker-src — DRACOLoader запускает Web Worker из blob:.
     "worker-src 'self' blob:",
     "frame-src https://*.tiptoppay.kz",
