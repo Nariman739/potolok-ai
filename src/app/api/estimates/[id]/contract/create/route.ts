@@ -148,6 +148,7 @@ export async function POST(
       total: estimate.total,
       createdAt: estimate.createdAt,
       contractCreatedAt,
+      priceView: estimate.priceView,
       workStartDate: startDate,
       workDurationDays: duration,
       paymentSchedule: validatedSchedule,

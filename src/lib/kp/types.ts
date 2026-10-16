@@ -49,12 +49,27 @@ export type QuickContentOverrides = {
   ctaLabel?: string | null;        // подпись над номером WhatsApp
 };
 
+/**
+ * Как клиент видит цены в КП (16.10.2026):
+ * - detailed — количество × цена по каждой позиции (как было всегда);
+ * - summary  — только названия позиций и итог по комнате, без количества и
+ *   цен за единицу: клиент не пересылает смету конкурентам «для кастинга».
+ * Хранится у каждого КП (Estimate.priceView); в kpConfig — дефолт мастера для новых.
+ */
+export type KpPriceView = "detailed" | "summary";
+export const KP_PRICE_VIEWS: KpPriceView[] = ["detailed", "summary"];
+export function asPriceView(v: unknown): KpPriceView {
+  return v === "summary" ? "summary" : "detailed";
+}
+
 export type KpConfig = {
   template: KpTemplateId;
   fontPair: KpFontPairId | null; // null = дефолт темы
   sections: KpSection[];
   format?: KpFormat; // дефолт "full"
   quick?: QuickContentOverrides | null;
+  /** Дефолтный вид цен для новых КП мастера; у самого КП своё поле. */
+  priceView?: KpPriceView;
 };
 
 // Шрифтовая пара (display + body), используется и в @react-pdf, и в HTML CSS

@@ -135,6 +135,8 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
     activeCompanyId: m.activeCompanyId ?? null,
     // Скрытые карточки палитры дизайнера (13.10.2026) — мобилка читает из /auth/me.
     designerPrefs: (m.designerPrefs as { hiddenPalette?: string[] } | null) ?? null,
+    // Дефолт вида цен для новых КП — мобилка показывает его в профиле (16.10.2026).
+    kpPriceView: (m.kpConfig as { priceView?: unknown } | null)?.priceView === "summary" ? "summary" : "detailed",
   };
 }
 

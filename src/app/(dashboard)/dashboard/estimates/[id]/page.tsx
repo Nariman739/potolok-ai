@@ -143,6 +143,7 @@ export default async function EstimateDetailPage({
           status={estimate.status}
           contractConfigured={isContractConfigured(master)}
           validUntil={estimate.validUntil}
+          priceView={estimate.priceView}
         />
       </div>
 

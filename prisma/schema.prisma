@@ -568,6 +568,12 @@ model Estimate {
   // PDF
   pdfUrl String?
 
+  // Вид цен для клиента (16.10.2026): "detailed" — количество × цена по каждой
+  // позиции (как было всегда); "summary" — только названия позиций и итог по
+  // комнате, без количества и цен за единицу (чтобы клиент не пересылал смету
+  // конкурентам «для кастинга»). Расчёт одинаковый, отличается только показ.
+  priceView String @default("detailed")
+
   // 3D preview (PNG snapshot of first room from Scene3D)
   room3dPreviewUrl String?
 

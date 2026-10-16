@@ -5,6 +5,18 @@ import { useCurrency } from "@/components/currency-provider";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import { ChevronDown } from "lucide-react";
 
+/** Подписи краткого вида — с сервера на языке страницы (ru/kk). */
+export type SummaryLabels = {
+  room: string;
+  name: string;
+  total: string;
+  extra: string;
+  heightExtra: string;
+  subtotal: string;
+  discount: string;
+  toPay: string;
+};
+
 interface ConfirmSectionProps {
   publicId: string;
   calc: CalculationResult;
@@ -14,6 +26,14 @@ interface ConfirmSectionProps {
   initialConfirmed: boolean;
   isRevised?: boolean;
   brandColor: string;
+  /**
+   * summary — таблица «Помещение | Наименование | Итого» без количества и цен
+   * за единицу (16.10.2026). Сервер в этом режиме уже вырезал числа из calc,
+   * поэтому итог «Дополнительно» приходит отдельно.
+   */
+  priceView?: "detailed" | "summary";
+  extrasTotal?: number;
+  summaryLabels?: SummaryLabels;
 }
 
 export function ConfirmSection({
@@ -25,7 +45,11 @@ export function ConfirmSection({
   initialConfirmed,
   isRevised,
   brandColor,
+  priceView = "detailed",
+  extrasTotal = 0,
+  summaryLabels,
 }: ConfirmSectionProps) {
+  const summary = priceView === "summary";
   // Валюта владельца КП приходит из CurrencyProvider на серверной странице (07.10.2026)
   const { format: formatPrice } = useCurrency();
   const [confirmed, setConfirmed] = useState(initialConfirmed);
@@ -128,13 +152,32 @@ export function ConfirmSection({
           )}
           {calc.totalArea > 0 && (
             <p className="text-xs text-gray-500 mt-0.5">
-              {calc.totalArea.toFixed(1)} м² · {formatPrice(Math.round(total / calc.totalArea))}/м²
+              {calc.totalArea.toFixed(1)} м²
+              {/* Цена за м² — тоже цена за единицу, в кратком виде её нет */}
+              {!summary && ` · ${formatPrice(Math.round(total / calc.totalArea))}/м²`}
             </p>
           )}
         </div>
 
+        {/* Кратко: таблица как в смете «от руки» — помещение, что входит, итог.
+            Без количества и цен за единицу, чтобы смету не пересылали
+            конкурентам «для кастинга» (16.10.2026). */}
+        {summary && roomResults.length > 0 && summaryLabels && (
+          <SummaryTable
+            roomResults={roomResults}
+            extraItems={calc.extraItems ?? []}
+            extrasTotal={extrasTotal}
+            total={total}
+            discountAmount={discountAmount}
+            discountPercent={discountPercent}
+            labels={summaryLabels}
+            brandColor={brandColor}
+            formatPrice={formatPrice}
+          />
+        )}
+
         {/* Rooms — each with subtotal + collapsible items */}
-        {roomResults.length > 0 && (
+        {!summary && roomResults.length > 0 && (
           <div className="divide-y divide-gray-100">
             {/* Доп. работы — отдельный блок «Дополнительно» */}
             {calc.extraItems && calc.extraItems.length > 0 && (() => {
@@ -269,7 +312,7 @@ export function ConfirmSection({
         )}
 
         {/* Hint to expand */}
-        {roomResults.length > 0 && expandedRooms.size === 0 && (
+        {!summary && roomResults.length > 0 && expandedRooms.size === 0 && (
           <p className="text-[11px] text-gray-400 text-center pb-3">
             Нажмите на раздел, чтобы увидеть детальный состав
           </p>
@@ -297,6 +340,104 @@ export function ConfirmSection({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryTable({
+  roomResults,
+  extraItems,
+  extrasTotal,
+  total,
+  discountAmount,
+  discountPercent,
+  labels,
+  brandColor,
+  formatPrice,
+}: {
+  roomResults: RoomResult[];
+  extraItems: NonNullable<CalculationResult["extraItems"]>;
+  extrasTotal: number;
+  total: number;
+  discountAmount: number;
+  discountPercent: number;
+  labels: SummaryLabels;
+  brandColor: string;
+  formatPrice: (n: number) => string;
+}) {
+  const rows: { title: string; names: string[]; sum: number }[] = roomResults.map((rr) => ({
+    title: rr.roomName,
+    names: [
+      ...rr.items.map((it) => it.itemName),
+      // Надбавка за высоту сидит в итоге комнаты, а в позициях её нет —
+      // без строки клиент не поймёт, откуда разница.
+      ...(rr.heightMultiplied ? [labels.heightExtra] : []),
+    ],
+    sum: rr.heightMultiplied ? rr.subtotalAfterHeight : rr.subtotal,
+  }));
+  if (extraItems.length > 0) {
+    rows.push({ title: labels.extra, names: extraItems.map((it) => it.itemName), sum: extrasTotal });
+  }
+  const subtotal = total + discountAmount;
+
+  return (
+    <div className="px-2 pt-3 pb-1">
+      {/* table-fixed: на ширине iPhone колонки иначе разъезжались за карточку */}
+      <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
+        <colgroup>
+          {/* 34%: «Дополнительно» на iPhone должно влезать целиком, не ломаясь посреди слова */}
+          <col className="w-[34%]" />
+          <col />
+          <col className="w-[28%]" />
+        </colgroup>
+        <thead>
+          <tr className="text-white text-[10px] uppercase tracking-wide" style={{ backgroundColor: brandColor }}>
+            <th className="text-left font-semibold px-2 py-2.5 rounded-l-lg">{labels.room}</th>
+            <th className="text-left font-semibold px-2 py-2.5">{labels.name}</th>
+            <th className="text-right font-semibold px-2 py-2.5 rounded-r-lg">{labels.total}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="align-top">
+              <td className="px-2 py-3 font-semibold text-gray-900 text-[12px] leading-snug break-words border-b border-gray-100">{r.title}</td>
+              <td className="px-2 py-3 text-gray-600 text-[13px] leading-snug break-words border-b border-gray-100">
+                <ul className="space-y-1">
+                  {r.names.map((n, j) => (
+                    <li key={j} className="flex gap-1.5">
+                      <span className="shrink-0" style={{ color: brandColor }}>•</span>
+                      <span className="min-w-0">{n}</span>
+                    </li>
+                  ))}
+                </ul>
+              </td>
+              <td className="px-2 py-3 text-right font-bold text-[13px] whitespace-nowrap border-b border-gray-100" style={{ color: brandColor }}>
+                {formatPrice(r.sum)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          {discountAmount > 0 && (
+            <>
+              <tr>
+                <td colSpan={2} className="px-2 pt-3 pb-1 text-right text-gray-500 text-[13px]">{labels.subtotal}</td>
+                <td className="px-2 pt-3 pb-1 text-right text-gray-500 text-[13px] whitespace-nowrap">{formatPrice(subtotal)}</td>
+              </tr>
+              <tr>
+                <td colSpan={2} className="px-2 py-1 text-right text-emerald-600 text-[13px]">
+                  {labels.discount}{discountPercent > 0 ? ` ${discountPercent}%` : ""}
+                </td>
+                <td className="px-2 py-1 text-right text-emerald-600 text-[13px] whitespace-nowrap">−{formatPrice(discountAmount)}</td>
+              </tr>
+            </>
+          )}
+          <tr>
+            <td colSpan={2} className="px-2 pt-2 pb-3 text-right font-semibold text-gray-900">{labels.toPay}</td>
+            <td className="px-2 pt-2 pb-3 text-right font-bold text-[15px] text-gray-900 whitespace-nowrap">{formatPrice(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }

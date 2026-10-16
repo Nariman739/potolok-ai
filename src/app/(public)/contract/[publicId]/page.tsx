@@ -97,6 +97,7 @@ export default async function ContractPublicPage({
       total: estimate.total,
       createdAt: estimate.createdAt,
       contractCreatedAt: estimate.contractCreatedAt,
+      priceView: estimate.priceView,
       // Сроки и схему оплаты мастер задаёт при создании договора, они лежат
       // в базе — но сюда не передавались, и каждый клиент видел «по
       // согласованию Сторон» и жёсткие 50/50 (аудит 24.09.2026).

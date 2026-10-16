@@ -24,7 +24,12 @@ export function QuickPage({ data }: { data: PdfData }) {
       .filter((r) => r.items.length > 0)
       .map((r) => ({ title: r.name, items: r.items, total: r.total })),
     ...(estimate.extraItems.length > 0
-      ? [{ title: "Дополнительно", items: estimate.extraItems, total: 0 }]
+      ? [{
+          title: "Дополнительно",
+          items: estimate.extraItems,
+          // В кратком виде сумм у позиций нет — итог блока нужен в шапке (16.10.2026)
+          total: estimate.priceView === "summary" ? estimate.extraItems.reduce((s, it) => s + (it.total || 0), 0) : 0,
+        }]
       : []),
   ];
   const hasItems = groups.length > 0;
@@ -453,6 +458,7 @@ function QuickItemRow({
   isDark: boolean;
 }) {
   const { fonts } = data;
+  const summary = data.estimate.priceView === "summary";
   return (
     <View wrap={false}>
     <View
@@ -463,11 +469,14 @@ function QuickItemRow({
         paddingBottom: 5,
       }}
     >
+      {summary && (
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: data.theme.palette.accent, width: 12 }}>•</Text>
+      )}
       <View style={{ flex: 1, paddingRight: 8 }}>
         <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMain, lineHeight: 1.3 }}>
           {item.name}
         </Text>
-        {item.itemCode !== "min_order" && (
+        {!summary && item.itemCode !== "min_order" && (
           <View style={{ marginTop: 1 }}>
             <QtyPriceText
               quantity={item.quantity}
@@ -481,9 +490,11 @@ function QuickItemRow({
           </View>
         )}
       </View>
-      <View style={{ width: 90 }}>
-        <PriceText amount={item.total} currency={data.master.currency} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />
-      </View>
+      {!summary && (
+        <View style={{ width: 90 }}>
+          <PriceText amount={item.total} currency={data.master.currency} size={10} tengeSize={9} color={textMain} fonts={fonts} align="right" use="body" weight={600} />
+        </View>
+      )}
     </View>
     {/* Разделитель полоской, не border: border с прозрачным цветом на тёмной
         теме react-pdf рисует зелёным. */}

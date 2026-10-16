@@ -21,6 +21,8 @@ export function BreakdownPage({
 }) {
   const { theme, fonts, estimate } = data;
   const styles = makeStyles(theme, fonts);
+  const summary = estimate.priceView === "summary";
+  const extrasTotal = estimate.extraItems.reduce((s, it) => s + (it.total || 0), 0);
 
   return (
     <Page size="A4" style={styles.page}>
@@ -43,6 +45,7 @@ export function BreakdownPage({
             style={{
               flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: 6,
               paddingTop: 8,
               borderTopWidth: theme.decor.hairlineWidth,
@@ -61,6 +64,19 @@ export function BreakdownPage({
             >
               + Дополнительные работы
             </Text>
+            {/* В кратком виде у позиций нет сумм — итог блока показываем в шапке. */}
+            {summary && extrasTotal > 0 && (
+              <PriceText
+                amount={extrasTotal}
+                currency={data.master.currency}
+                size={11}
+                color={theme.palette.accent}
+                tengeSize={9}
+                fonts={fonts}
+                use="body"
+                weight={600}
+              />
+            )}
           </View>
           {estimate.extraItems.map((item, i) => (
             <ItemRow key={i} data={data} item={item} />
@@ -269,6 +285,27 @@ function ItemRow({
   data: PdfData;
 }) {
   const { theme, fonts } = data;
+  // Кратко: только название маркером — без количества, цены и суммы позиции.
+  // Итог комнаты в её шапке уже есть, общий итог — внизу страницы.
+  if (data.estimate.priceView === "summary") {
+    return (
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-start",
+          paddingTop: 4,
+          paddingBottom: 4,
+          borderBottomWidth: theme.decor.hairlineWidth,
+          borderBottomColor: theme.palette.hairline,
+        }}
+      >
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: theme.palette.accent, width: 12 }}>•</Text>
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: theme.palette.pageText, lineHeight: 1.3, flex: 1 }}>
+          {item.name}
+        </Text>
+      </View>
+    );
+  }
   return (
     <View
       style={{

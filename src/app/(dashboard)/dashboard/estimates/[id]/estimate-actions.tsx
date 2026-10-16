@@ -13,6 +13,8 @@ interface EstimateActionsProps {
   status?: string;
   contractConfigured?: boolean;
   validUntil?: Date | null;
+  /** Вид цен для клиента: detailed | summary (16.10.2026) */
+  priceView?: string | null;
 }
 
 export function EstimateActions({
@@ -22,9 +24,36 @@ export function EstimateActions({
   status,
   contractConfigured,
   validUntil,
+  priceView,
 }: EstimateActionsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"detailed" | "summary">(priceView === "summary" ? "summary" : "detailed");
+  const [viewSaving, setViewSaving] = useState(false);
+
+  // «Подробно» — количество × цена по позициям; «Кратко» — только названия и
+  // итоги по комнатам, чтобы клиент не пересылал смету конкурентам.
+  const handlePriceView = async (next: "detailed" | "summary") => {
+    if (next === view || viewSaving) return;
+    const prev = view;
+    setView(next);
+    setViewSaving(true);
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceView: next }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(next === "summary" ? "Клиент увидит КП кратко, без цен за единицу" : "Клиент увидит КП подробно");
+      router.refresh();
+    } catch {
+      setView(prev);
+      toast.error("Не удалось сохранить вид КП");
+    } finally {
+      setViewSaving(false);
+    }
+  };
   const [deleting, setDeleting] = useState(false);
   const [revising, setRevising] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -203,6 +232,27 @@ export function EstimateActions({
           {revising ? "..." : "Пересмотреть"}
         </Button>
       )}
+
+      {/* Вид цен для клиента */}
+      <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
+        <label className="text-muted-foreground text-xs whitespace-nowrap">Клиент увидит:</label>
+        <div className="flex rounded-md bg-muted p-0.5">
+          {(["detailed", "summary"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => handlePriceView(v)}
+              disabled={viewSaving}
+              className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors ${
+                view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={v === "summary" ? "Только названия позиций и итог по комнате" : "Количество × цена по каждой позиции"}
+            >
+              {v === "detailed" ? "Подробно" : "Кратко"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Срок действия КП */}
       <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">

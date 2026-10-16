@@ -8,6 +8,7 @@ import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
+import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
 
 export async function GET(
@@ -96,7 +97,13 @@ export async function PUT(
       roomsData,
       calculationData,
       totalArea,
+      // Вид цен для клиента (16.10.2026). Не считается правкой содержания:
+      // версия КП не создаётся, принятое КП переключать можно.
+      priceView,
     } = body;
+    if (priceView !== undefined && !KP_PRICE_VIEWS.includes(priceView)) {
+      return NextResponse.json({ error: "Неизвестный вид КП" }, { status: 400 });
+    }
 
     // Скидка/посредник/позиции: любое из трёх → пересчитываем итог на сервере.
     // Пришедший calculationData считаем текущим состоянием (с уже размазанным
@@ -201,6 +208,7 @@ export async function PUT(
           room3dPreviewUrl: existing.room3dPreviewUrl,
           validUntil: existing.validUntil,
           status: existing.status,
+          priceView: existing.priceView,
           createdAt: existing.createdAt,
         },
       });
@@ -232,6 +240,7 @@ export async function PUT(
         ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
         ...(roomsData !== undefined && { roomsData }),
         ...(totalArea !== undefined && { totalArea: Number(totalArea) || 0 }),
+        ...(priceView !== undefined && { priceView }),
         ...(adjust && estimateAdjustData(adjust)),
       },
     });

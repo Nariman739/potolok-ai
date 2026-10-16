@@ -4,7 +4,7 @@ import { asCurrency, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
 import { DEFAULT_KP_CONFIG } from "./templates";
-import type { KpConfig, KpTheme, FontPair, KpSection } from "./types";
+import { asPriceView, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
 
 // ============================================
 // Структура данных, которую читают и PDF-рендерер, и HTML-превью
@@ -103,6 +103,8 @@ export type PdfEstimate = {
   extraItems: PdfLineItem[];
   subtotal: number;
   isQuick: boolean; // true когда мастер пометил calc.quickEstimate (быстрый расчёт без замера)
+  /** summary — без количества и цен за единицу, только названия и итоги (16.10.2026) */
+  priceView: KpPriceView;
 };
 
 export type PdfData = {
@@ -190,6 +192,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
       extraItems,
       subtotal,
       isQuick,
+      priceView: asPriceView(estimate.priceView),
     },
     portfolio: estimate.master.portfolioWorks.map(mapPortfolio),
     reviews: estimate.master.reviews.map(mapReview),
@@ -214,12 +217,16 @@ export function normalizeConfig(raw: unknown): KpConfig {
       ...JSON.parse(JSON.stringify(DEFAULT_KP_CONFIG)),
       template: obj.template ?? DEFAULT_KP_CONFIG.template,
       fontPair: obj.fontPair ?? null,
+      ...(obj.priceView ? { priceView: asPriceView(obj.priceView) } : {}),
     };
   }
   return {
     template: obj.template ?? DEFAULT_KP_CONFIG.template,
     fontPair: obj.fontPair ?? null,
     sections: obj.sections as KpSection[],
+    // Дефолт вида цен мастера (16.10.2026); остальные поля kpConfig здесь
+    // по-прежнему не прокидываются — format решает роут PDF.
+    ...(obj.priceView ? { priceView: asPriceView(obj.priceView) } : {}),
   };
 }
 

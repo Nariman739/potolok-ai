@@ -47,6 +47,7 @@ export async function POST(
         premiumTotal: existing.premiumTotal,
         recommendedVariant: existing.recommendedVariant,
         room3dPreviewUrl: existing.room3dPreviewUrl,
+        priceView: existing.priceView,
         status: "DRAFT",
       },
     });

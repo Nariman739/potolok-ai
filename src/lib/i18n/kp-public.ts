@@ -34,6 +34,15 @@ registerDict("ru", {
   "kp.lang.ru": "Русский",
   "kp.lang.kk": "Қазақша",
   "kp.plural.item": "позиция|позиции|позиций",
+  // Краткий вид сметы (16.10.2026)
+  "kp.extraShort": "Доп. работы",
+  "kp.th.room": "Помещение",
+  "kp.th.name": "Наименование",
+  "kp.th.total": "Итого",
+  "kp.heightExtra": "Надбавка за высоту потолка",
+  "kp.subtotal": "Сумма",
+  "kp.discountLabel": "Скидка",
+  "kp.toPay": "К оплате",
 });
 
 registerDict("kk", {
@@ -60,6 +69,14 @@ registerDict("kk", {
   "kp.lang.ru": "Русский",
   "kp.lang.kk": "Қазақша",
   "kp.plural.item": "позиция|позиция|позиция",
+  "kp.extraShort": "Қосымша",
+  "kp.th.room": "Бөлме",
+  "kp.th.name": "Атауы",
+  "kp.th.total": "Барлығы",
+  "kp.heightExtra": "Төбе биіктігі үшін үстеме",
+  "kp.subtotal": "Сомасы",
+  "kp.discountLabel": "Жеңілдік",
+  "kp.toPay": "Төлеуге",
 });
 
 /** Уведомления мастеру о том, что клиент открыл или принял КП. */

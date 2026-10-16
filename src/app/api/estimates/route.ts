@@ -12,6 +12,7 @@ import { withIdempotency } from "@/lib/idempotency";
 import { priceBookCompanyId } from "@/lib/price-items";
 import { formatMoney } from "@/lib/currency";
 import { checkObjectLimit } from "@/lib/billing";
+import { asPriceView } from "@/lib/kp/types";
 
 export async function GET() {
   try {
@@ -126,6 +127,9 @@ async function createEstimate(request: Request): Promise<NextResponse> {
       // потерялось 128 объектов из 478. С 19.09.2026 замер остаётся жить,
       // а КП просто помнит, из какого объекта посчитано.
       fromMeasurementId,
+      // Вид цен для клиента (16.10.2026): detailed | summary. Если приложение
+      // не прислало — дефолт мастера из kpConfig владельца компании.
+      priceView: requestedPriceView,
     } = body;
 
     if (!roomsData || !calculationData) {
@@ -361,10 +365,17 @@ async function createEstimate(request: Request): Promise<NextResponse> {
       console.warn("Failed to resolve/create measurement for estimate:", e);
     }
 
+    let priceView = asPriceView(requestedPriceView);
+    if (requestedPriceView === undefined) {
+      const owner = await prisma.master.findUnique({ where: { id: scope.ownerId }, select: { kpConfig: true } });
+      priceView = asPriceView((owner?.kpConfig as { priceView?: unknown } | null)?.priceView);
+    }
+
     const estimate = await prisma.estimate.create({
       data: {
         masterId: master.id,
         companyId: scope.companyId,
+        priceView,
         roomsData,
         ...estimateAdjustData(adjust),
         // Итог с поднятым минимальным заказом — пишем после спреда, иначе

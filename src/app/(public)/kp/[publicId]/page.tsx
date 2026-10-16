@@ -69,6 +69,34 @@ function stripInternalPrices(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Краткий вид (16.10.2026): клиенту уходят только названия позиций и итоги по
+ * комнатам. Количество, цена за единицу и сумма позиции вырезаются здесь, на
+ * сервере — иначе их видно в данных страницы («Просмотреть код»), и смысл
+ * краткого вида пропадает. Итог блока «Дополнительно» считаем до вырезания.
+ */
+function stripUnitPrices(calc: CalculationResult): { calc: CalculationResult; extrasTotal: number } {
+  const extrasTotal = (calc.extraItems ?? []).reduce((s, it) => s + (it.total || 0), 0);
+  const bare = (it: { itemCode: string; itemName: string; photoUrl?: string }) => ({
+    itemCode: it.itemCode,
+    itemName: it.itemName,
+    quantity: 0,
+    unit: "",
+    unitPrice: 0,
+    total: 0,
+    ...(it.photoUrl ? { photoUrl: it.photoUrl } : {}),
+  });
+  return {
+    extrasTotal,
+    calc: {
+      ...calc,
+      pricePerM2: 0,
+      roomResults: (calc.roomResults ?? []).map((rr) => ({ ...rr, items: (rr.items ?? []).map(bare) })),
+      extraItems: (calc.extraItems ?? []).map(bare),
+    },
+  };
+}
+
 export default async function PublicKpPage({
   params,
   searchParams,
@@ -168,7 +196,11 @@ export default async function PublicKpPage({
   // Клиенту уходит только клиентская часть расчёта. Раньше в данных страницы лежал
   // весь calculationData, включая цены работы монтажнику и его итоги по комнатам —
   // на экране их не видно, но «Просмотреть код» показывал (21.09.2026).
-  const calc = stripInternalPrices(estimate.calculationData) as unknown as CalculationResult & { quickEstimate?: boolean };
+  const calcFull = stripInternalPrices(estimate.calculationData) as unknown as CalculationResult & { quickEstimate?: boolean };
+  const priceView: "detailed" | "summary" = estimate.priceView === "summary" ? "summary" : "detailed";
+  const stripped = priceView === "summary" ? stripUnitPrices(calcFull) : null;
+  const calc = (stripped ? stripped.calc : calcFull) as CalculationResult & { quickEstimate?: boolean };
+  const extrasTotal = stripped?.extrasTotal ?? 0;
   const master = estimate.master;
   // Язык страницы: по умолчанию язык мастера, но заказчик может переключить
   // ссылкой ?lang= — у мастера-казаха бывает русскоязычный клиент и наоборот,
@@ -378,6 +410,19 @@ export default async function PublicKpPage({
             initialConfirmed={estimate.status === "CONFIRMED"}
             isRevised={isRevised}
             brandColor={brandColor}
+            priceView={priceView}
+            extrasTotal={extrasTotal}
+            summaryLabels={{
+              room: t("kp.th.room"),
+              name: t("kp.th.name"),
+              total: t("kp.th.total"),
+              // Короче, чем «Дополнительно»: в узкой колонке на iPhone длинное слово ломалось
+              extra: t("kp.extraShort"),
+              heightExtra: t("kp.heightExtra"),
+              subtotal: t("kp.subtotal"),
+              discount: t("kp.discountLabel"),
+              toPay: t("kp.toPay"),
+            }}
           />
         </CurrencyProvider>
       </section>

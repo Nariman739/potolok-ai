@@ -253,4 +253,6 @@ export interface MasterProfile {
   onboardingCompleted: boolean;
   /** Настройки дизайнера мобилки (13.10.2026): скрытые карточки палитры. */
   designerPrefs?: { hiddenPalette?: string[] } | null;
+  /** Дефолтный вид цен для новых КП: detailed | summary (из kpConfig, 16.10.2026) */
+  kpPriceView?: "detailed" | "summary";
 }

@@ -370,6 +370,26 @@ export function BrandingEditor({
           </div>
         </Card>
 
+        {/* Вид цен для клиента — дефолт для новых КП (16.10.2026) */}
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-1">Цены в КП</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            «Кратко» — клиент видит только названия позиций и итог по каждой
+            комнате, без количества и цен за единицу. Удобно, когда клиенты
+            пересылают смету конкурентам. У каждого КП вид можно поменять отдельно.
+          </p>
+          <div className="flex items-center justify-between py-2">
+            <Label htmlFor="price-view-summary" className="cursor-pointer">
+              Новые КП — кратко, без цен за единицу
+            </Label>
+            <Switch
+              id="price-view-summary"
+              checked={config.priceView === "summary"}
+              onCheckedChange={(v) => onConfigChange({ ...config, priceView: v ? "summary" : "detailed" })}
+            />
+          </div>
+        </Card>
+
         {/* Quick КП — контент */}
         <Card className="p-5 space-y-4">
           <h3 className="text-base font-semibold">Быстрое КП (одна страница)</h3>

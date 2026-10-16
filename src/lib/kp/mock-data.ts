@@ -187,6 +187,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
       extraItems,
       subtotal,
       isQuick: false,
+      priceView: config.priceView ?? "detailed",
     },
     portfolio,
     reviews,

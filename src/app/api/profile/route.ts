@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CURRENCY_CODES } from "@/lib/currency";
+import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 
 export async function GET() {
   try {
@@ -69,6 +70,16 @@ export async function PUT(request: Request) {
         ? dp.hiddenPalette.filter((k: unknown) => typeof k === "string" && k.length <= 120).slice(0, 300)
         : [];
       updateData.designerPrefs = { hiddenPalette: hidden };
+    }
+    // Дефолтный вид цен для новых КП (16.10.2026): detailed | summary. Живёт
+    // в kpConfig рядом с остальными настройками КП, остальное там не трогаем.
+    if ("kpPriceView" in body) {
+      if (!KP_PRICE_VIEWS.includes(body.kpPriceView)) {
+        return NextResponse.json({ error: "Неизвестный вид КП" }, { status: 400 });
+      }
+      const current = await prisma.master.findUnique({ where: { id: master.id }, select: { kpConfig: true } });
+      const cfg = (current?.kpConfig && typeof current.kpConfig === "object" ? current.kpConfig : {}) as Record<string, unknown>;
+      updateData.kpConfig = { ...cfg, priceView: body.kpPriceView };
     }
     if ("language" in body && body.language !== "ru" && body.language !== "kk") {
       return NextResponse.json({ error: "Неизвестный язык" }, { status: 400 });

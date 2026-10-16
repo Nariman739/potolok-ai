@@ -42,6 +42,8 @@ export interface EstimateData {
   createdAt: Date;
   /** Дата создания договора; раньше в шапке стояла дата КП (15.10.2026). */
   contractCreatedAt?: Date | null;
+  /** Вид цен КП: "summary" — таблица работ без колонки «Цена» (16.10.2026). */
+  priceView?: string | null;
   workStartDate?: Date | string | null;
   workDurationDays?: number | null;
   paymentSchedule?: PaymentStage[] | null;
@@ -136,7 +138,20 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
-function buildWorksTable(roomResults: RoomResult[], t: T, calc: CalculationResult | null | undefined, cur: CurrencyCode): string {
+/**
+ * Кратко (Estimate.priceView = "summary", 16.10.2026): колонка «Цена» за единицу
+ * не печатается — КП клиент получил без цен за единицу, и договор не должен их
+ * раскрывать. Количество и сумма остаются: объём работ нужен юридически, а
+ * таблица по-прежнему сходится с итогом.
+ */
+function buildWorksTable(
+  roomResults: RoomResult[],
+  t: T,
+  calc: CalculationResult | null | undefined,
+  cur: CurrencyCode,
+  priceView?: string | null,
+): string {
+  const hidePrice = priceView === "summary";
   let rows = "";
   let num = 0;
   const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
@@ -146,7 +161,7 @@ function buildWorksTable(roomResults: RoomResult[], t: T, calc: CalculationResul
         <td style="${tdStyle}">${name}</td>
         <td style="${tdStyle} text-align:center;">${qty}</td>
         <td style="${tdStyle} text-align:center;">${unit}</td>
-        <td style="${tdStyle} text-align:right;">${price}</td>
+        ${hidePrice ? "" : `<td style="${tdStyle} text-align:right;">${price}</td>`}
         <td style="${tdStyle} text-align:right;">${sum}</td>
       </tr>`;
   };
@@ -220,13 +235,14 @@ const pageStyle = `
 `;
 
 /** Шапка таблицы работ — одинаковая в договоре и акте. */
-function worksTableHead(t: T): string {
+function worksTableHead(t: T, priceView?: string | null): string {
+  const priceTh = priceView === "summary" ? "" : `<th style="${thStyle} width:80px;">${t("ct.th.price")}</th>`;
   return `<tr>
           <th style="${thStyle} width:30px;">${t("ct.th.num")}</th>
           <th style="${thStyle}">${t("ct.th.name")}</th>
           <th style="${thStyle} width:50px;">${t("ct.th.qty")}</th>
           <th style="${thStyle} width:50px;">${t("ct.th.unit")}</th>
-          <th style="${thStyle} width:80px;">${t("ct.th.price")}</th>
+          ${priceTh}
           <th style="${thStyle} width:90px;">${t("ct.th.sum")}</th>
         </tr>`;
 }
@@ -251,7 +267,7 @@ export function generateContractHtml(
   const total = estimate.total;
   const cur = asCurrency(master.currency);
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, t, calc, cur);
+  const worksRows = buildWorksTable(roomResults, t, calc, cur, estimate.priceView);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
@@ -349,7 +365,7 @@ export function generateContractHtml(
     <p>${t("ct.p12")}</p>
     <table>
       <thead>
-        ${worksTableHead(t)}
+        ${worksTableHead(t, estimate.priceView)}
       </thead>
       <tbody>
         ${worksRows}
@@ -460,6 +476,8 @@ export interface ActData {
   contractDate: Date;
   /** Дата акта: фактическое завершение работ, а после подписи — день подписи. */
   actDate: Date;
+  /** Вид цен КП: "summary" — таблица работ без колонки «Цена» (16.10.2026). */
+  priceView?: string | null;
   /** Замечания мастера при составлении; пусто — приёмка без замечаний. */
   remarks?: string[] | null;
   remarksDueDays?: number | null;
@@ -500,7 +518,7 @@ export function generateActHtml(
   const cur = asCurrency(master.currency);
   const paid = Math.max(0, Math.min(total, Math.round(act.paid || 0)));
   const rest = Math.max(0, Math.round(total - paid));
-  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur);
+  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur, act.priceView);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(act.clientName) || "___________________________";
@@ -581,7 +599,7 @@ export function generateActHtml(
     <p>${t("act.intro")}</p>
     <table>
       <thead>
-        ${worksTableHead(t)}
+        ${worksTableHead(t, act.priceView)}
       </thead>
       <tbody>
         ${worksRows}
@@ -873,7 +891,7 @@ export function contractPlaceholderValues(
     город: esc(master.contractCity) || "_______________",
     дата: dateText(estimate.contractCreatedAt ?? estimate.createdAt, lang),
     номер: estimate.publicId.slice(0, 8).toUpperCase(),
-    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur),
+    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur, estimate.priceView),
     гарантия_материал: yearsText(master.warrantyMaterials, lang),
     гарантия_монтаж: yearsText(master.warrantyInstall, lang),
   };

@@ -54,6 +54,7 @@ export async function GET(
             // Чем варианты отличаются — мастеру нужно видеть в списке (15.10.2026)
             discountPercent: true,
             discountAmount: true,
+            priceView: true,
             contractSignedAt: true,
             actSignedAt: true,
             createdAt: true,
