@@ -1,5 +1,6 @@
-// Sentry для браузерного кода (page.tsx client components, dashboard).
-// Конфиг загружается автоматически Next.js при наличии файла.
+// Sentry для браузерного кода (client components, dashboard).
+// Next 16 (Turbopack) подхватывает только src/instrumentation-client.ts —
+// старый sentry.client.config.ts в корне не загружался (перенесён 16.10.2026).
 //
 // Если NEXT_PUBLIC_SENTRY_DSN не задан — Sentry no-op'ит, build/dev работают.
 
@@ -20,3 +21,5 @@ if (dsn) {
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV || "development",
   });
 }
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

@@ -5,7 +5,7 @@ B2B SaaS для мастеров натяжных потолков в Казах
 ## Stack
 - Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui
 - Prisma 7 + Neon PostgreSQL (PrismaNeonHttp — HTTP адаптер)
-- AI: OpenRouter (openai SDK), model `anthropic/claude-sonnet-4`
+- AI: OpenRouter (openai SDK), model `anthropic/claude-sonnet-4.5` (claude-sonnet-4 снята с OpenRouter 15.10.2026)
 - PDF: @react-pdf/renderer + pdfkit
 - Storage: Vercel Blob
 - Telegram bot: webhook + multi-agent vision
