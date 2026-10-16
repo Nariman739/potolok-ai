@@ -38,7 +38,8 @@ export async function generateMetadata({
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const company = estimate.master.companyName || estimate.master.firstName;
-  const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
+  // Кратко: площадь в заголовок не ставим — по ней конкурент посчитает без замера
+  const areaStr = estimate.totalArea > 0 && estimate.priceView !== "summary" ? ` | ${formatArea(estimate.totalArea)}` : "";
   const title = `КП от ${company}${areaStr}`;
   const description = `Коммерческое предложение на натяжные потолки от ${company}`;
 
@@ -71,9 +72,11 @@ function stripInternalPrices(value: unknown): unknown {
 
 /**
  * Краткий вид (16.10.2026): клиенту уходят только названия позиций и итоги по
- * комнатам. Количество, цена за единицу и сумма позиции вырезаются здесь, на
- * сервере — иначе их видно в данных страницы («Просмотреть код»), и смысл
- * краткого вида пропадает. Итог блока «Дополнительно» считаем до вырезания.
+ * комнатам. Количество, цена за единицу, сумма позиции, а также площадь,
+ * периметр и размеры комнат вырезаются здесь, на сервере — иначе их видно в
+ * данных страницы («Просмотреть код»), и конкурент, которому клиент переслал
+ * смету, посчитает по своим ценам, не выезжая на замер. Итог блока
+ * «Дополнительно» считаем до вырезания.
  */
 function stripUnitPrices(calc: CalculationResult): { calc: CalculationResult; extrasTotal: number } {
   const extrasTotal = (calc.extraItems ?? []).reduce((s, it) => s + (it.total || 0), 0);
@@ -91,7 +94,18 @@ function stripUnitPrices(calc: CalculationResult): { calc: CalculationResult; ex
     calc: {
       ...calc,
       pricePerM2: 0,
-      roomResults: (calc.roomResults ?? []).map((rr) => ({ ...rr, items: (rr.items ?? []).map(bare) })),
+      // Геометрия комнат (стены, площадь, периметр) — наружу не уходит
+      rooms: [],
+      totalArea: 0,
+      totalPerimeter: 0,
+      totalSpots: 0,
+      totalChandeliers: 0,
+      roomResults: (calc.roomResults ?? []).map((rr) => ({
+        ...rr,
+        area: 0,
+        perimeter: 0,
+        items: (rr.items ?? []).map(bare),
+      })),
       extraItems: (calc.extraItems ?? []).map(bare),
     },
   };
@@ -214,7 +228,9 @@ export default async function PublicKpPage({
   const isQuick = !!(calc as { quickEstimate?: boolean }).quickEstimate;
 
   // 3D-просмотр доступен если в roomsData есть комната с walls/normalCorners
-  const has3DRoom = !!pickRoomForScene3D(estimate.roomsData);
+  // Кратко: 3D не предлагаем — страница 3D отдаёт клиенту точные длины стен из
+  // roomsData, по ним конкурент посчитает без замера.
+  const has3DRoom = priceView !== "summary" && !!pickRoomForScene3D(estimate.roomsData);
   const previewUrl = estimate.room3dPreviewUrl;
 
   const isExpired =
@@ -292,7 +308,7 @@ export default async function PublicKpPage({
                 👤 {estimate.clientName}
               </span>
             )}
-            {!isQuick && estimate.totalArea > 0 && (
+            {!isQuick && estimate.totalArea > 0 && priceView !== "summary" && (
               <span className="bg-white/10 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full border border-white/20">
                 📐 {formatArea(estimate.totalArea)}
               </span>

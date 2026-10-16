@@ -31,7 +31,10 @@ export function BreakdownPage({
         fonts={fonts}
         eyebrow="Состав проекта"
         title="Что входит в работу"
-        subtitle={`${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])} · ${fmtArea(estimate.totalArea)} общей площади`}
+        // Кратко: площадь не печатаем — по ней конкурент посчитает по своим ценам без замера
+        subtitle={summary
+          ? `${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])}`
+          : `${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])} · ${fmtArea(estimate.totalArea)} общей площади`}
         sectionNumber="01"
       />
 
@@ -243,18 +246,20 @@ function RoomCard({
             >
               {room.name}
             </Text>
-            <Text
-              style={{
-                fontFamily: fonts.body.family,
-                fontSize: 9,
-                color: theme.palette.pageMuted,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontWeight: 600,
-              }}
-            >
-              {fmtArea(room.area)}
-            </Text>
+            {data.estimate.priceView !== "summary" && (
+              <Text
+                style={{
+                  fontFamily: fonts.body.family,
+                  fontSize: 9,
+                  color: theme.palette.pageMuted,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                }}
+              >
+                {fmtArea(room.area)}
+              </Text>
+            )}
           </View>
           <PriceText
             amount={room.total}

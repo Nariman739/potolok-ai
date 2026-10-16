@@ -51,11 +51,15 @@ export default async function Public3DPage({
       masterId: true,
       roomsData: true,
       room3dPreviewUrl: true,
+      priceView: true,
       master: { select: { brandColor: true, companyName: true, firstName: true } },
     },
   });
 
   if (!estimate) notFound();
+  // Кратко (16.10.2026): 3D клиенту не отдаём — в данные страницы ушли бы точные
+  // длины стен, и конкурент посчитал бы по ним без замера.
+  if (estimate.priceView === "summary") redirect(`/kp/${publicId}`);
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 

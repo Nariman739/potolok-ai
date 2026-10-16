@@ -139,10 +139,10 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
 /**
- * Кратко (Estimate.priceView = "summary", 16.10.2026): колонка «Цена» за единицу
- * не печатается — КП клиент получил без цен за единицу, и договор не должен их
- * раскрывать. Количество и сумма остаются: объём работ нужен юридически, а
- * таблица по-прежнему сходится с итогом.
+ * Кратко (Estimate.priceView = "summary", 16.10.2026): колонки «Кол.», «Ед.» и
+ * «Цена» не печатаются — КП клиент получил без площади, периметра и цен за
+ * единицу, и договор не должен их раскрывать (по м² и м.п. конкурент считает
+ * без замера). Остаются наименование и сумма: таблица сходится с итогом.
  */
 function buildWorksTable(
   roomResults: RoomResult[],
@@ -159,9 +159,9 @@ function buildWorksTable(
     return `<tr>
         <td style="${tdStyle}">${num}</td>
         <td style="${tdStyle}">${name}</td>
-        <td style="${tdStyle} text-align:center;">${qty}</td>
+        ${hidePrice ? "" : `<td style="${tdStyle} text-align:center;">${qty}</td>
         <td style="${tdStyle} text-align:center;">${unit}</td>
-        ${hidePrice ? "" : `<td style="${tdStyle} text-align:right;">${price}</td>`}
+        <td style="${tdStyle} text-align:right;">${price}</td>`}
         <td style="${tdStyle} text-align:right;">${sum}</td>
       </tr>`;
   };
@@ -236,13 +236,15 @@ const pageStyle = `
 
 /** Шапка таблицы работ — одинаковая в договоре и акте. */
 function worksTableHead(t: T, priceView?: string | null): string {
-  const priceTh = priceView === "summary" ? "" : `<th style="${thStyle} width:80px;">${t("ct.th.price")}</th>`;
+  const detailTh = priceView === "summary"
+    ? ""
+    : `<th style="${thStyle} width:50px;">${t("ct.th.qty")}</th>
+          <th style="${thStyle} width:50px;">${t("ct.th.unit")}</th>
+          <th style="${thStyle} width:80px;">${t("ct.th.price")}</th>`;
   return `<tr>
           <th style="${thStyle} width:30px;">${t("ct.th.num")}</th>
           <th style="${thStyle}">${t("ct.th.name")}</th>
-          <th style="${thStyle} width:50px;">${t("ct.th.qty")}</th>
-          <th style="${thStyle} width:50px;">${t("ct.th.unit")}</th>
-          ${priceTh}
+          ${detailTh}
           <th style="${thStyle} width:90px;">${t("ct.th.sum")}</th>
         </tr>`;
 }
