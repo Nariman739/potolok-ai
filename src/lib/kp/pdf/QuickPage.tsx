@@ -194,7 +194,7 @@ export function QuickPage({ data }: { data: PdfData }) {
         <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: textMuted, lineHeight: 1.4 }}>
           {[
             estimate.clientAddress,
-            estimate.totalArea > 0 && estimate.priceView !== "summary"
+            estimate.totalArea > 0
               ? `${estimate.totalArea.toFixed(1).replace(".", ",")} м²`
               : null,
             estimate.rooms.length > 0

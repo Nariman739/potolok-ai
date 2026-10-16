@@ -371,9 +371,7 @@ function CoverMinimal({
         }}
       >
         <StatMinimal label="помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
-        {estimate.priceView !== "summary" && (
-          <StatMinimal label="м² площади" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
-        )}
+        <StatMinimal label="м² площади" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <StatMinimal label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
@@ -777,12 +775,8 @@ function CoverPremiumDark({
         }}
       >
         <StatPremium label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
-        {estimate.priceView !== "summary" && (
-          <>
-            <DotGold />
-            <StatPremium label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
-          </>
-        )}
+        <DotGold />
+        <StatPremium label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <>
             <DotGold />
@@ -1179,9 +1173,7 @@ function CoverWarmHandmade({
         }}
       >
         <StatWarm label="помещения" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
-        {estimate.priceView !== "summary" && (
-          <StatWarm label="м² общей" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
-        )}
+        <StatWarm label="м² общей" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <StatWarm label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
@@ -1570,9 +1562,7 @@ function CoverClassicArchitectural({
         }}
       >
         <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
-        {estimate.priceView !== "summary" && (
-          <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
-        )}
+        <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         <StatClassic label={spotsCount > 0 ? "Точек света" : "Дней работы"} value={spotsCount > 0 ? String(spotsCount) : "5–7"} theme={theme} fonts={fonts} />
         {/* Гарантия — из настроек мастера. Раньше обложка обещала 10 лет
             независимо от того, что стоит у мастера и что написано в
@@ -1912,9 +1902,7 @@ function CoverBoldColor({
         }}
       >
         <StatBold label="помещений" value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
-        {estimate.priceView !== "summary" && (
-          <StatBold label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
-        )}
+        <StatBold label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         {spotsCount > 0 && (
           <StatBold label="точек света" value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         )}

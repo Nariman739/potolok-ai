@@ -31,10 +31,7 @@ export function BreakdownPage({
         fonts={fonts}
         eyebrow="Состав проекта"
         title="Что входит в работу"
-        // Кратко: площадь не печатаем — по ней конкурент посчитает по своим ценам без замера
-        subtitle={summary
-          ? `${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])}`
-          : `${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])} · ${fmtArea(estimate.totalArea)} общей площади`}
+        subtitle={`${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])} · ${fmtArea(estimate.totalArea)} общей площади`}
         sectionNumber="01"
       />
 

@@ -38,8 +38,7 @@ export async function generateMetadata({
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
 
   const company = estimate.master.companyName || estimate.master.firstName;
-  // Кратко: площадь в заголовок не ставим — по ней конкурент посчитает без замера
-  const areaStr = estimate.totalArea > 0 && estimate.priceView !== "summary" ? ` | ${formatArea(estimate.totalArea)}` : "";
+  const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
   const title = `КП от ${company}${areaStr}`;
   const description = `Коммерческое предложение на натяжные потолки от ${company}`;
 
@@ -72,8 +71,9 @@ function stripInternalPrices(value: unknown): unknown {
 
 /**
  * Краткий вид (16.10.2026): клиенту уходят только названия позиций и итоги по
- * комнатам. Количество, цена за единицу, сумма позиции, а также площадь,
- * периметр и размеры комнат вырезаются здесь, на сервере — иначе их видно в
+ * комнатам и общая площадь (Нариман: «общая квадратура пусть будет»).
+ * Количество, цена за единицу, сумма позиции, площадь и периметр комнат,
+ * размеры стен, число софитов вырезаются здесь, на сервере — иначе их видно в
  * данных страницы («Просмотреть код»), и конкурент, которому клиент переслал
  * смету, посчитает по своим ценам, не выезжая на замер. Итог блока
  * «Дополнительно» считаем до вырезания.
@@ -94,9 +94,8 @@ function stripUnitPrices(calc: CalculationResult): { calc: CalculationResult; ex
     calc: {
       ...calc,
       pricePerM2: 0,
-      // Геометрия комнат (стены, площадь, периметр) — наружу не уходит
+      // Геометрия комнат (стены, площадь и периметр по комнатам) — наружу не уходит
       rooms: [],
-      totalArea: 0,
       totalPerimeter: 0,
       totalSpots: 0,
       totalChandeliers: 0,
@@ -308,7 +307,7 @@ export default async function PublicKpPage({
                 👤 {estimate.clientName}
               </span>
             )}
-            {!isQuick && estimate.totalArea > 0 && priceView !== "summary" && (
+            {!isQuick && estimate.totalArea > 0 && (
               <span className="bg-white/10 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full border border-white/20">
                 📐 {formatArea(estimate.totalArea)}
               </span>
