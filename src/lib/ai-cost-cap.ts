@@ -44,7 +44,7 @@ const ROLE_LIMITS_USD: Record<AiRole, number> = {
 // в списке, используется DEFAULT_PRICE (консервативно завышен).
 const DEFAULT_PRICE = { input: 3.0, output: 15.0 };
 const MODEL_PRICES_PER_M_TOKENS: Record<string, { input: number; output: number }> = {
-  "anthropic/claude-sonnet-4": { input: 3.0, output: 15.0 },
+  "anthropic/claude-sonnet-4.5": { input: 3.0, output: 15.0 },
   "anthropic/claude-opus-4": { input: 15.0, output: 75.0 },
   "anthropic/claude-haiku-4-5": { input: 1.0, output: 5.0 },
   "openai/gpt-4o": { input: 2.5, output: 10.0 },

@@ -23,5 +23,5 @@ export function getOpenRouter(): OpenAI {
   return client;
 }
 
-export const AI_MODEL = "anthropic/claude-sonnet-4";
-export const VISION_MODEL = "anthropic/claude-sonnet-4";
+export const AI_MODEL = "anthropic/claude-sonnet-4.5";
+export const VISION_MODEL = "anthropic/claude-sonnet-4.5";

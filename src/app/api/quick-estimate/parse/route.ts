@@ -5,7 +5,7 @@ import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "
 import { CURRENCIES, asCurrency, type CurrencyCode } from "@/lib/currency";
 import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 
-const PARSE_MODEL = "anthropic/claude-sonnet-4";
+const PARSE_MODEL = "anthropic/claude-sonnet-4.5";
 
 // Промпт собираем под валюту мастера: знак и как он её называет в речи (07.10.2026).
 function buildSystemPrompt(currency: CurrencyCode | string | null | undefined): string {
