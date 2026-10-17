@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
 import { generateContractHtml, dateText, durationText, yearsText } from "@/lib/contract-html";
 import { asLang } from "@/lib/i18n";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Типовой договор как отправная точка для правок (26.09.2026).
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract starter error:", error);
+    reportError(error, "contract/template/starter", "Contract starter error");
     return NextResponse.json({ error: "Не удалось собрать договор" }, { status: 500 });
   }
 }

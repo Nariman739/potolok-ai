@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { quotePayment } from "@/lib/payment";
 import { PAYMENTS_OPEN, type BillingPeriod } from "@/lib/billing";
 import { getTiptopConfig } from "@/lib/tiptop";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Шаг 1 оплаты картой: заявка в базе + данные для виджета TipTop.
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("tiptop create error:", error);
+    reportError(error, "payment/tiptop/create", "tiptop create error");
     return NextResponse.json({ error: "Не удалось начать оплату" }, { status: 500 });
   }
 }

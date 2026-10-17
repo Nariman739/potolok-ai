@@ -8,6 +8,7 @@ import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "
 import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
 import { asLang } from "@/lib/i18n";
 import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Правка договора словами мастера (26.09.2026).
@@ -183,7 +184,7 @@ ${tags}
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract rewrite error:", error);
+    reportError(error, "contract/rewrite", "Contract rewrite error");
     return NextResponse.json({ error: "Не получилось переписать договор" }, { status: 500 });
   }
 }

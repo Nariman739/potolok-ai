@@ -7,6 +7,7 @@ import { getScope, inScope } from "@/lib/company";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
+import { reportError } from "@/lib/report-error";
 
 /**
  * PATCH /api/estimates/[id]/items
@@ -71,7 +72,7 @@ export async function PATCH(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Patch estimate items error:", error);
+    reportError(error, "estimates/[id]/items", "Patch estimate items error");
     return NextResponse.json(
       { error: "Ошибка сохранения позиций" },
       { status: 500 }

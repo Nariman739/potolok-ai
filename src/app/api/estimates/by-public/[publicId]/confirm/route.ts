@@ -5,6 +5,7 @@ import { sendPushToMaster } from "@/lib/push";
 import { formatPrice } from "@/lib/format";
 import { currencyFor } from "@/lib/company";
 import { changeClientStatus, addClientEvent } from "@/lib/clients";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Ограничение частоты подтверждений.
@@ -134,7 +135,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Confirm estimate (by-public) error:", error);
+    reportError(error, "estimates/by-public/[publicId]/confirm", "Confirm estimate (by-public) error");
     return NextResponse.json({ error: "Ошибка подтверждения" }, { status: 500 });
   }
 }

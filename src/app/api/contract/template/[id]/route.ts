@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Одна версия своего договора целиком (26.09.2026). Список версий отдаёт
@@ -20,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract template version error:", error);
+    reportError(error, "contract/template/[id]", "Contract template version error");
     return NextResponse.json({ error: "Не удалось прочитать версию" }, { status: 500 });
   }
 }

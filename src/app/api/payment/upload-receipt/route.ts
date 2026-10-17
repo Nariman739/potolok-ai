@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Payment upload-receipt error:", error);
+    reportError(error, "payment/upload-receipt", "Payment upload-receipt error");
     return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
   }
 }

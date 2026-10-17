@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findTransactionByInvoice, getTransaction, settleTransaction } from "@/lib/tiptop";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Шаг 2 оплаты картой: виджет сказал «успех» — сервер сам проверяет у TipTop
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("tiptop confirm error:", error);
+    reportError(error, "payment/tiptop/confirm", "tiptop confirm error");
     return NextResponse.json({ error: "Не удалось проверить оплату" }, { status: 500 });
   }
 }

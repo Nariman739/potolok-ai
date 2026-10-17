@@ -7,6 +7,7 @@ import { currencyForPhone } from "@/lib/currency";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { PRICE_MONTH } from "@/lib/billing";
 import { seedTemplateItems } from "@/lib/price-items";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
       companyName: master.companyName,
     });
   } catch (error) {
-    console.error("Register error:", error instanceof Error ? error.message : error);
+    reportError(error, "auth/register", "Register error");
     return NextResponse.json(
       { error: "Ошибка регистрации" },
       { status: 500 }

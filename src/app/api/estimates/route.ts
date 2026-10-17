@@ -13,6 +13,7 @@ import { priceBookCompanyId } from "@/lib/price-items";
 import { formatMoney } from "@/lib/currency";
 import { checkObjectLimit } from "@/lib/billing";
 import { asPriceView } from "@/lib/kp/types";
+import { reportError } from "@/lib/report-error";
 
 export async function GET() {
   try {
@@ -54,7 +55,7 @@ export async function GET() {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Get estimates error:", error);
+    reportError(error, "estimates", "Get estimates error");
     return NextResponse.json(
       { error: "Ошибка получения расчётов" },
       { status: 500 }
@@ -422,7 +423,7 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Create estimate error:", error);
+    reportError(error, "estimates", "Create estimate error");
     return NextResponse.json(
       { error: "Ошибка сохранения расчёта" },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { gzipSync } from "node:zlib";
 import { put, list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
+import { reportError } from "@/lib/report-error";
 
 // Vercel Cron (раз в сутки, 04:00 Asia/Almaty = 23:00 UTC предыдущего дня):
 // дамп критичных бизнес-данных в Vercel Blob под /backups/.
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (err) {
-    console.error("[backup-data] retention cleanup failed (continuing):", err);
+    reportError(err, "cron/backup-data", "[backup-data] retention cleanup failed (continuing)");
   }
 
   return NextResponse.json({

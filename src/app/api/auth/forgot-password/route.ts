@@ -4,6 +4,7 @@ import { normalizePhone } from "@/lib/phone";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendWhatsappOtp, whatsappConfigured } from "@/lib/whatsapp";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, channel: "telegram" });
   } catch (error) {
-    console.error("Forgot password error:", error);
+    reportError(error, "auth/forgot-password", "Forgot password error");
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }
 }

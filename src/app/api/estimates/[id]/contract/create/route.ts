@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ownerBrandFor, getScope, inScope } from "@/lib/company";
 import { addClientEvent } from "@/lib/clients";
 import crypto from "crypto";
+import { reportError } from "@/lib/report-error";
 
 type PaymentStage = {
   name: string;
@@ -220,7 +221,7 @@ export async function POST(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Create contract error:", error);
+    reportError(error, "estimates/[id]/contract/create", "Create contract error");
     return NextResponse.json(
       { error: "Ошибка создания договора" },
       { status: 500 },

@@ -19,6 +19,10 @@ if (dsn) {
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV || "development",
+    // Мусор встроенного браузера Instagram на Android (с рекламы на /app заходят
+    // именно оттуда): внутренний логгер app://navigation_performance_logger_android,
+    // не наш код — иначе квота уйдёт на него (17.10.2026).
+    ignoreErrors: ["Java object is gone", /navigation_performance_logger/],
   });
 }
 

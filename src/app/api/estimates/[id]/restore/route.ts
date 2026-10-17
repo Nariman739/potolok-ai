@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { reportError } from "@/lib/report-error";
 
 // POST /api/estimates/[id]/restore
 // Восстанавливает soft-deleted КП. Используется /dashboard/trash.
@@ -38,7 +39,7 @@ export async function POST(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Restore estimate error:", error);
+    reportError(error, "estimates/[id]/restore", "Restore estimate error");
     return NextResponse.json({ error: "Ошибка восстановления" }, { status: 500 });
   }
 }

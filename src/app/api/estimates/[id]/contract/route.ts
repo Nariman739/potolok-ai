@@ -7,6 +7,7 @@ import { numberToWordsKz } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
+import { reportError } from "@/lib/report-error";
 
 function fmtPrice(n: number | undefined | null, cur: CurrencyCode): string {
   return new Intl.NumberFormat("ru-RU").format(Math.round(Number(n) || 0)) + " " + currencySymbol(cur);
@@ -282,7 +283,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract PDF error:", error);
+    reportError(error, "estimates/[id]/contract", "Contract PDF error");
     return NextResponse.json({ error: "Ошибка генерации договора" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope, type Scope } from "@/lib/company";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Старые черновики без имени (27.09.2026).
@@ -44,7 +45,7 @@ export async function GET() {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Stale drafts count error:", error);
+    reportError(error, "estimates/stale-drafts", "Stale drafts count error");
     return NextResponse.json({ error: "Не удалось посчитать черновики" }, { status: 500 });
   }
 }
@@ -62,7 +63,7 @@ export async function DELETE() {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Stale drafts cleanup error:", error);
+    reportError(error, "estimates/stale-drafts", "Stale drafts cleanup error");
     return NextResponse.json({ error: "Не удалось убрать черновики" }, { status: 500 });
   }
 }

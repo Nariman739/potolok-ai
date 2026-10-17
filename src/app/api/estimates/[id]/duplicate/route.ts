@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(
   request: Request,
@@ -70,7 +71,7 @@ export async function POST(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Duplicate estimate error:", error);
+    reportError(error, "estimates/[id]/duplicate", "Duplicate estimate error");
     return NextResponse.json({ error: "Ошибка копирования" }, { status: 500 });
   }
 }

@@ -7,8 +7,9 @@ import {
   type MasterBrief,
 } from "@/lib/kp/ai-onboarding";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
-import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
+import { userFacingAiError } from "@/lib/ai-errors";
 import { aiLogOnce } from "@/lib/ai-log";
+import { reportAiError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
     try {
       result = await generateKpConfigFromBrief(brief);
     } catch (aiErr) {
-      console.error("[kp-onboarding] AI недоступен:", safeAiErrorLog(aiErr));
+      reportAiError(aiErr, "ai/kp-onboarding", "[kp-onboarding] AI недоступен");
       result = buildFallbackConfigFromBrief(brief);
       aiUnavailable = true;
       aiError = aiErr;
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...result, aiUnavailable });
   } catch (err) {
-    console.error("[kp-onboarding] error:", safeAiErrorLog(err));
+    reportAiError(err, "ai/kp-onboarding", "[kp-onboarding] error");
     const { message, status } = userFacingAiError(err);
     return NextResponse.json({ error: message }, { status });
   }

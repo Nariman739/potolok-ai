@@ -15,14 +15,15 @@ const securityHeaders = {
     // Safari проверяет worker по script-src.
     // widget.tiptoppay.kz — платёжный виджет TipTop Pay (/pricing, оплата картой):
     // скрипт с их домена, форма карты в их iframe, запросы к их API.
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://widget.tiptoppay.kz",
+    // connect.facebook.net / www.facebook.com — пиксель Meta на маркетинговых страницах (17.10.2026)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://widget.tiptoppay.kz https://connect.facebook.net",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com https://*.tiptoppay.kz",
+    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.vercel-storage.com https://*.tiptoppay.kz https://www.facebook.com",
     "font-src 'self' data:",
     // blob: — three грузит встроенные текстуры GLB как blob:-URL через fetch.
     // *.ingest.de.sentry.io — браузерный Sentry сайта: без этого CSP молча
     // блокировал отправку ошибок с клиента (замечено 16.10.2026 на /n/…).
-    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com https://*.tiptoppay.kz https://*.ingest.de.sentry.io https://*.ingest.sentry.io",
+    "connect-src 'self' blob: https://*.neon.tech https://openrouter.ai https://api.telegram.org https://*.vercel-storage.com https://*.tiptoppay.kz https://*.ingest.de.sentry.io https://*.ingest.sentry.io https://www.facebook.com https://connect.facebook.net",
     // worker-src — DRACOLoader запускает Web Worker из blob:.
     "worker-src 'self' blob:",
     "frame-src https://*.tiptoppay.kz",

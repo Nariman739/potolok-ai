@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteSession } from "@/lib/auth";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
     // If called via form submission, redirect to login page
     return NextResponse.redirect(new URL("/auth/login", request.url));
   } catch (error) {
-    console.error("Logout error:", error);
+    reportError(error, "auth/logout", "Logout error");
     return NextResponse.json(
       { error: "Ошибка выхода" },
       { status: 500 }

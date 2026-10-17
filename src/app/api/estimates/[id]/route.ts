@@ -10,6 +10,7 @@ import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } f
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
+import { reportError } from "@/lib/report-error";
 
 export async function GET(
   _request: Request,
@@ -57,7 +58,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Get estimate error:", error);
+    reportError(error, "estimates/[id]", "Get estimate error");
     return NextResponse.json(
       { error: "Ошибка получения расчёта" },
       { status: 500 }
@@ -263,7 +264,7 @@ export async function PUT(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Update estimate error:", error);
+    reportError(error, "estimates/[id]", "Update estimate error");
     return NextResponse.json(
       { error: "Ошибка обновления расчёта" },
       { status: 500 }
@@ -306,7 +307,7 @@ export async function DELETE(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Delete estimate error:", error);
+    reportError(error, "estimates/[id]", "Delete estimate error");
     return NextResponse.json(
       { error: "Ошибка удаления расчёта" },
       { status: 500 }

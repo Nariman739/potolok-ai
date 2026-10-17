@@ -4,6 +4,7 @@ import { getOpenRouter } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
 import { CURRENCIES, asCurrency, type CurrencyCode } from "@/lib/currency";
 import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
+import { reportError } from "@/lib/report-error";
 
 const PARSE_MODEL = "anthropic/claude-sonnet-4.5";
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Quick estimate parse error:", error);
+    reportError(error, "quick-estimate/parse", "Quick estimate parse error");
     return NextResponse.json({ error: "Ошибка распознавания" }, { status: 500 });
   }
 }

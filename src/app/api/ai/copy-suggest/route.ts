@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userFacingAiError, safeAiErrorLog } from "@/lib/ai-errors";
+import { userFacingAiError } from "@/lib/ai-errors";
 import { requireAuth } from "@/lib/auth";
 import { suggestCopy, type CopyFieldKind, type CopyContext } from "@/lib/kp/ai-copy";
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 import { aiLogOnce } from "@/lib/ai-log";
+import { reportAiError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ suggestions });
   } catch (err) {
-    console.error("[copy-suggest] error:", safeAiErrorLog(err));
+    reportAiError(err, "ai/copy-suggest", "[copy-suggest] error");
     const { message, status } = userFacingAiError(err);
     return NextResponse.json({ error: message }, { status });
   }

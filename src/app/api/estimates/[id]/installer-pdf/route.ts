@@ -8,6 +8,7 @@ import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
+import { reportError } from "@/lib/report-error";
 
 // ── Install price code mapping ──
 // Maps client item codes to install item codes
@@ -290,8 +291,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("Installer PDF error:", msg);
+    reportError(error, "estimates/[id]/installer-pdf", "Installer PDF error");
     return NextResponse.json({ error: "Ошибка генерации" }, { status: 500 });
   }
 }

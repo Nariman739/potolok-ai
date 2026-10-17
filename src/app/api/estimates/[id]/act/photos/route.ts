@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { stringList } from "@/lib/act-render";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Фото готового потолка к акту (27.09.2026). Лучшее доказательство
@@ -53,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Act photo upload error:", error);
+    reportError(error, "estimates/[id]/act/photos", "Act photo upload error");
     return NextResponse.json({ error: "Ошибка загрузки фото" }, { status: 500 });
   }
 }
@@ -75,7 +76,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Act photo delete error:", error);
+    reportError(error, "estimates/[id]/act/photos", "Act photo delete error");
     return NextResponse.json({ error: "Ошибка удаления фото" }, { status: 500 });
   }
 }

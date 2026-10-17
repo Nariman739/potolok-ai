@@ -4,6 +4,7 @@ import { getScope, inScope } from "@/lib/company";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { KpDocument } from "@/lib/kp/pdf/KpDocument";
 import { buildPdfData } from "@/lib/kp/pdf-data";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export async function GET(
     if (e.message === "Estimate not found") {
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     }
-    console.error("[estimates/[id]/pdf] error:", e);
+    reportError(e, "estimates/[id]/pdf", "[estimates/[id]/pdf] error");
     return NextResponse.json(
       {
         error: e.message || "Failed to generate PDF",

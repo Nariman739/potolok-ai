@@ -4,6 +4,7 @@ import { verifyPassword, createSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
 import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit";
 import { asCurrency } from "@/lib/currency";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
       token,
     });
   } catch (error) {
-    console.error("Login error:", error instanceof Error ? error.message : error);
+    reportError(error, "auth/login", "Login error");
     return NextResponse.json(
       { error: "Ошибка входа" },
       { status: 500 }

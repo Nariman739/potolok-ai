@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { hashPassword } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(request: Request) {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Reset password error:", error);
+    reportError(error, "auth/reset-password", "Reset password error");
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }
 }

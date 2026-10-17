@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMaster } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getBillingStatus } from "@/lib/billing";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Профиль + статус подписки для мобилки (поле `billing`, 12.10.2026).
@@ -25,7 +26,7 @@ export async function GET() {
     const billing = await getBillingStatus(master.id);
     return NextResponse.json({ ...master, billing });
   } catch (error) {
-    console.error("Get me error:", error);
+    reportError(error, "auth/me", "Get me error");
     return NextResponse.json(
       { error: "Ошибка получения данных" },
       { status: 500 }

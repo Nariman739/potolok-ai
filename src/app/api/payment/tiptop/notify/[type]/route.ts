@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { reportError } from "@/lib/report-error";
 import {
   checkNotification,
   failNotification,
@@ -48,7 +49,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ type: stri
         return NextResponse.json({ code: 0 });
     }
   } catch (err) {
-    console.error(`tiptop notify/${type} failed:`, err);
+    reportError(err, "payment/tiptop/notify/[type]", "tiptop notify/${type} failed");
     // 500 → TipTop повторит позже; для Pay это то, что нужно (не потерять оплату).
     return NextResponse.json({ code: 13 }, { status: 500 });
   }

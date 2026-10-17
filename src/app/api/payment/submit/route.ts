@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { quotePayment, notifyAdminAboutPayment } from "@/lib/payment";
 import type { BillingPeriod } from "@/lib/billing";
 import type { PaymentMethod } from "@/lib/payment";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Заявка на оплату вручную (Kaspi-перевод + скрин чека). Срок и сумма
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     });
 
     notifyAdminAboutPayment(payment, method).catch((err) => {
-      console.error("notifyAdminAboutPayment failed:", err);
+      reportError(err, "payment/submit", "notifyAdminAboutPayment failed");
     });
 
     return NextResponse.json({
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Payment submit error:", error);
+    reportError(error, "payment/submit", "Payment submit error");
     return NextResponse.json({ error: "Ошибка отправки заявки" }, { status: 500 });
   }
 }

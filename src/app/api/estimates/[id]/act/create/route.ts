@@ -5,6 +5,7 @@ import { getScope, inScope } from "@/lib/company";
 import { addClientEvent } from "@/lib/clients";
 import { stringList } from "@/lib/act-render";
 import crypto from "crypto";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Создать или дополнить акт приёмки (27.09.2026).
@@ -117,7 +118,7 @@ export async function POST(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Create act error:", error);
+    reportError(error, "estimates/[id]/act/create", "Create act error");
     return NextResponse.json({ error: "Ошибка создания акта" }, { status: 500 });
   }
 }

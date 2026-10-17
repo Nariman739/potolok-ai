@@ -13,6 +13,11 @@ const ANDROID_URL = "https://play.google.com/store/apps/details?id=ai.potolok.ap
 
 // Отправляем событие так, чтобы оно дошло даже когда браузер уже уходит в стор.
 function track(event: "view" | "click", platform: Platform, utm: Utm) {
+  // Пиксель Meta (17.10.2026): «Скачать» = стандартное событие Lead, его Meta
+  // умеет оптимизировать. Наш AppLinkClick остаётся источником правды для отчётов.
+  if (event === "click") {
+    try { window.fbq?.("track", "Lead", { content_name: platform }); } catch { /* пиксель не загрузился — не мешаем переходу */ }
+  }
   try {
     const body = JSON.stringify({ event, platform, ...utm });
     if (navigator.sendBeacon) {

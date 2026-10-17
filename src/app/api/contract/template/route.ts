@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope } from "@/lib/company";
 import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
 import { asLang } from "@/lib/i18n";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Свой договор мастера (26.09.2026).
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract template read error:", error);
+    reportError(error, "contract/template", "Contract template read error");
     return NextResponse.json({ error: "Не удалось прочитать договор" }, { status: 500 });
   }
 }
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Contract template save error:", error);
+    reportError(error, "contract/template", "Contract template save error");
     return NextResponse.json({ error: "Не удалось сохранить договор" }, { status: 500 });
   }
 }

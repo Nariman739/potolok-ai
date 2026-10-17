@@ -9,6 +9,7 @@ import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
 import type { CalculationResult, RoomInput } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { priceBookCompanyId, priceMapFor, customItemsMapFor } from "@/lib/price-items";
+import { reportError } from "@/lib/report-error";
 
 interface DesignerPayload {
   walls: number[];
@@ -130,7 +131,7 @@ export async function POST(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    console.error("Recalc room error:", error);
+    reportError(error, "estimates/[id]/recalc-room/[idx]", "Recalc room error");
     return NextResponse.json(
       { error: "Ошибка пересчёта комнаты" },
       { status: 500 }

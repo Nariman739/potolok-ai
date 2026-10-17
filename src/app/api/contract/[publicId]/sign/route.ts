@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { addClientEvent, changeClientStatus } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
 import { currencyFor } from "@/lib/company";
+import { reportError } from "@/lib/report-error";
 
 export async function POST(
   request: Request,
@@ -115,7 +116,7 @@ export async function POST(
       signerName: signedName,
     });
   } catch (error) {
-    console.error("Sign contract error:", error);
+    reportError(error, "contract/[publicId]/sign", "Sign contract error");
     return NextResponse.json(
       { error: "Ошибка подтверждения" },
       { status: 500 },
