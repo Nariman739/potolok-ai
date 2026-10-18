@@ -143,6 +143,7 @@ model Master {
   rangefinders    Rangefinder[]
   pendingPayments PendingPayment[]
   pushDevices     PushDevice[]
+  onboardingPushes OnboardingPush[]
   workshopOrders  WorkshopOrder[]
   payments        Payment[]
   feedback        MasterFeedback[]
@@ -300,6 +301,22 @@ model PushDevice {
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 
   @@index([masterId, disabledAt])
+}
+
+/// Пуш-цепочка новичку «зарегистрировался, но не замерил» (18.10.2026):
+/// шаги h2 / d1 / d3 — через 2 часа, завтра, через 3 дня. Одна строка =
+/// один отправленный шаг; уникальность (masterId, step) защищает от дублей
+/// при повторных запусках крона /api/cron/onboarding-pushes.
+model OnboardingPush {
+  id       String   @id @default(uuid())
+  masterId String
+  step     String // "h2" | "d1" | "d3"
+  sentAt   DateTime @default(now())
+
+  master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  @@unique([masterId, step])
+  @@index([sentAt])
 }
 
 // Single-use, short-lived (≤60s) handoff token used by the mobile app to

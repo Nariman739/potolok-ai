@@ -26,6 +26,10 @@
     {
       "path": "/api/cron/billing-reminders",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/onboarding-pushes",
+      "schedule": "0 * * * *"
     }
   ]
 }
