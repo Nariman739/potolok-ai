@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   sendTelegramMessage,
+  sendTelegramMessageWithButtons,
   sendTelegramShareContactRequest,
   sendTelegramMessageRemoveKeyboard,
 } from "@/lib/telegram";
@@ -9,15 +10,27 @@ import { answerCallbackQuery } from "@/lib/telegram";
 import { handleBotCommand, BOT_HELP } from "@/lib/telegram-bot";
 import { normalizePhone, looksLikePhone } from "@/lib/phone";
 import { activateSubscription, rejectPayment, notifyUserAboutPaymentDecision } from "@/lib/payment";
+import {
+  handleCalendarCallback,
+  handleCalendarMessage,
+  sendCalendarConnectPrompt,
+  sendCalendarStatus,
+  calendarOff,
+  connectButton,
+} from "@/lib/calendar-assistant";
+import { getCalendarLink, isGoogleConfigured } from "@/lib/google-calendar";
 
 /**
- * Webhook Telegram-бота. Бот — только уведомления (14.10.2026):
+ * Webhook Telegram-бота. Уведомления (14.10.2026) + Google Календарь (17.10.2026):
  *  - /start, привязка по коду из профиля или по номеру телефона;
  *  - /start reset → поделиться номером → код сброса пароля;
  *  - кнопки ✅/❌ по оплатам (только владелец);
- *  - /kp, /help; всё остальное (фото, текст) — справка.
+ *  - /calendar, /calendar_off — Google Календарь (для любого чата, без аккаунта тоже);
+ *  - /kp, /help для привязанных;
+ *  - любой текст/голос в чате с подключённым календарём → карточка события;
+ *    без календаря — кнопка «Подключить Google Календарь».
  */
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // TELEGRAM_WEBHOOK_SECRET is REQUIRED — without it any attacker who knows the
 // webhook URL can replay updates and impersonate any linked master.
@@ -51,6 +64,17 @@ export async function POST(request: Request) {
 
       // Acknowledge the button press immediately
       await answerCallbackQuery(cbId);
+
+      // cal:save|edit|cancel:<draftId> — карточка события календаря
+      if (cbData.startsWith("cal:")) {
+        try {
+          await handleCalendarCallback(cbChatId, cbData, callbackQuery.message?.message_id ?? null);
+        } catch (err) {
+          console.error("Calendar callback error:", err);
+          await sendTelegramMessage(cbChatId, "⚠️ Ошибка календаря. Попробуйте ещё раз.");
+        }
+        return NextResponse.json({ ok: true });
+      }
 
       // pay:approve:<id> / pay:reject:<id> — только владелец
       if (cbData.startsWith("pay:")) {
@@ -115,12 +139,22 @@ export async function POST(request: Request) {
 
     const chatId = String(message.chat?.id ?? "");
     const text: string = (message.text ?? "").trim();
+    const voiceFileId: string | null = message.voice?.file_id ?? null;
+    const voiceDurationSec: number | null = message.voice?.duration ?? null;
+
+    // Групповые чаты не обслуживаем (бот личный)
+    if (message.chat?.type && message.chat.type !== "private") {
+      return NextResponse.json({ ok: true });
+    }
 
     // ── Привязан ли чат к мастеру ──
     const linkedMaster = await prisma.master.findUnique({
       where: { telegramChatId: chatId },
       select: { id: true, firstName: true },
     });
+
+    // ── Подключён ли Google Календарь (ключ — чат, не мастер) ──
+    const calendarLink = isGoogleConfigured() ? await getCalendarLink(chatId) : null;
 
     // ── /start — приветствие + привязка ──
     if (text.startsWith("/start")) {
@@ -168,15 +202,40 @@ export async function POST(request: Request) {
           chatId,
           `👋 <b>${linkedMaster.firstName}, с возвращением!</b>\n\n` + BOT_HELP,
         );
+        if (!calendarLink) await sendCalendarConnectPrompt(chatId);
       } else {
-        await sendTelegramMessage(
-          chatId,
-          `👋 Привет! Это бот <b>PotolokAI</b>.\n\n` +
-          `Чтобы начать, напишите <b>номер телефона</b> от аккаунта potolok.ai\n\n` +
-          `Например: <code>+7 700 123 4567</code>\n\n` +
-          `Ещё нет аккаунта? Зарегистрируйтесь на potolok.ai`
-        );
+        // Календарь доступен и без аккаунта potolok.ai (как Toki) — предлагаем
+        // сразу, вход в приложение — второй абзац.
+        const greeting =
+          `👋 Привет! Это бот <b>PotolokAI</b> — ассистент мастера натяжных потолков.\n\n` +
+          (calendarLink
+            ? `📅 Календарь подключён ✅ — напишите или наговорите голосом, что и когда.\n\n`
+            : "") +
+          `Если у вас есть аккаунт potolok.ai — напишите <b>номер телефона</b> от аккаунта, ` +
+          `и сюда будут приходить уведомления о КП и договорах.\n` +
+          `Например: <code>+7 700 123 4567</code>`;
+        if (calendarLink || !isGoogleConfigured()) {
+          await sendTelegramMessage(chatId, greeting);
+        } else {
+          await sendTelegramMessageWithButtons(
+            chatId,
+            greeting +
+              `\n\n📅 <b>Личный ассистент-календарь</b>\nПодключите Google Календарь одной кнопкой и дальше просто говорите боту голосом:\n` +
+              `🎙 «замер завтра в 15:00, Сейфуллина 12, Айгерим» — я создам событие и напомню за час и за день.`,
+            connectButton(chatId),
+          );
+        }
       }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Календарь: команды доступны всем, привязка к аккаунту не нужна ──
+    if (text.startsWith("/calendar_off")) {
+      await calendarOff(chatId);
+      return NextResponse.json({ ok: true });
+    }
+    if (text.startsWith("/calendar")) {
+      await sendCalendarStatus(chatId);
       return NextResponse.json({ ok: true });
     }
 
@@ -298,17 +357,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Не привязан и не телефон — просим номер ──
-    if (!linkedMaster) {
-      await sendTelegramMessage(
+    // ── Календарь подключён: любой текст (не команда) или голос → событие ──
+    if (calendarLink && (voiceFileId || (text && !text.startsWith("/")))) {
+      await handleCalendarMessage(chatId, { text, voiceFileId, voiceDurationSec });
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Голос без календаря — предлагаем подключить ──
+    if (voiceFileId) {
+      await sendCalendarConnectPrompt(
         chatId,
-        `Для начала работы напишите <b>номер телефона</b> от аккаунта potolok.ai\n\n` +
-        `Например: <code>+7 700 123 4567</code>`
+        "🎙 Голосовые я превращаю в события календаря — для этого подключите Google Календарь.",
       );
       return NextResponse.json({ ok: true });
     }
 
-    // ── Привязан: команды, всё остальное — справка ──
+    // ── Не привязан и не телефон — просим номер (и предлагаем календарь) ──
+    if (!linkedMaster) {
+      if (text.startsWith("/")) {
+        await sendTelegramMessage(chatId, BOT_HELP);
+        return NextResponse.json({ ok: true });
+      }
+      await sendCalendarConnectPrompt(
+        chatId,
+        `Если у вас есть аккаунт potolok.ai — напишите <b>номер телефона</b> от аккаунта, например <code>+7 700 123 4567</code>.`,
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Привязан: команды, всё остальное — справка + кнопка календаря ──
     if (text.startsWith("/")) {
       const command = text.split(" ")[0].split("@")[0];
       await handleBotCommand(chatId, command, linkedMaster.id);
@@ -316,6 +393,7 @@ export async function POST(request: Request) {
     }
 
     await sendTelegramMessage(chatId, BOT_HELP);
+    await sendCalendarConnectPrompt(chatId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram webhook error:", error);

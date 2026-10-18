@@ -177,6 +177,34 @@ export async function sendTelegramMessageWithButtons(
 }
 
 // ─────────────────────────────────────────────────────
+// Edit an existing message (text and/or inline buttons). Используется
+// карточкой календаря: после «Сохранить» кнопки заменяются на ссылку.
+// ─────────────────────────────────────────────────────
+export async function editTelegramMessage(
+  chatId: string,
+  messageId: number,
+  text: string,
+  buttons?: Array<Array<{ text: string; callback_data?: string; url?: string }>>,
+): Promise<void> {
+  try {
+    const truncated = text.length > 4096 ? text.substring(0, 4090) + "..." : text;
+    await fetch(apiUrl("editMessageText"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text: truncated,
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: buttons ?? [] },
+      }),
+    });
+  } catch {
+    console.error("Telegram editMessageText failed");
+  }
+}
+
+// ─────────────────────────────────────────────────────
 // Send message with reply-keyboard "Поделиться номером".
 // Используется в flow восстановления пароля: бот получает реальный
 // номер из Telegram-аккаунта (его подделать нельзя).

@@ -33,7 +33,7 @@ npx prisma db push   # Push schema to Neon
 - **prisma.config.ts**: загружает `.env.local`
 - **pdfkit**: в `next.config.ts` как serverExternalPackages
 - **AI model**: менять только в `src/lib/openrouter.ts`
-- **Env vars**: DATABASE_URL, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, BLOB_READ_WRITE_TOKEN, CRON_SECRET, TIPTOP_PUBLIC_ID/TIPTOP_API_SECRET (оплата картой), PAYMENTS_OPEN, BILLING_ENABLED, ADMIN_TG_CHAT_ID, KASPI_PHONE/KASPI_RECEIVER_NAME
+- **Env vars**: DATABASE_URL, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, BLOB_READ_WRITE_TOKEN, CRON_SECRET, TIPTOP_PUBLIC_ID/TIPTOP_API_SECRET (оплата картой), PAYMENTS_OPEN, BILLING_ENABLED, ADMIN_TG_CHAT_ID, KASPI_PHONE/KASPI_RECEIVER_NAME, GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET (OAuth-клиент «potolok-bot», проект Potolok AI), GOOGLE_TOKEN_KEY (32 байта base64 — AES-GCM для refresh_token календаря)
 
 ## Features
 - Расчёт потолка по фото (AI vision)
@@ -41,6 +41,6 @@ npx prisma db push   # Push schema to Neon
 - Визуальный конструктор потолка
 - Серверные замеры с фото комнат
 - Каталог мастеров
-- Telegram-бот — только уведомления (привязка по телефону/коду, сброс пароля, «клиент открыл КП / подписал договор / акт», напоминания, кнопки ✅/❌ оплат для владельца). Instagram-постинг из бота удалён 14.10.2026 (никто не пользовался с апреля). Модели InstagramAccount/InstagramPost/InstagramSession/ContentPlan в схеме остались пустыми — можно дропать.
+- Telegram-бот — уведомления (привязка по телефону/коду, сброс пароля, «клиент открыл КП / подписал договор / акт», напоминания, кнопки ✅/❌ оплат для владельца) + **Google Календарь голосом** (17.10.2026): кнопка «Подключить Google Календарь» → `/api/google/start` → OAuth → `/api/google/callback` → `GoogleCalendarLink` (ключ — telegramChatId, работает и без аккаунта potolok.ai). Любой текст/голос в чате с календарём → `src/lib/calendar-assistant.ts`: голос расшифровывает `google/gemini-2.5-flash` (ogg напрямую), событие вынимает AI_MODEL, черновик в `CalendarDraft`, карточка [Сохранить][Изменить][Отмена] → events.insert с напоминанием за час и за день. OAuth-экран Google в режиме Testing (тест-юзеры), публикация после проверки Google. `src/lib/google-calendar.ts` — токены (AES-GCM), state (HMAC), refresh, invalid_grant → связь удаляется. Instagram-постинг из бота удалён 14.10.2026 (никто не пользовался с апреля). Модели InstagramAccount/InstagramPost/InstagramSession/ContentPlan в схеме остались пустыми — можно дропать.
 - Пуши мастеру: `src/lib/push.ts` (Expo Push; устройства в PushDevice). Кроны (vercel.json, UTC): `kp-unsent` 04:00 «посчитал, но не отправил КП» (вчерашние DRAFT), `tg-followups` 04:00 «кому позвонить» (пуш всем + Telegram), `tg-reminders` каждые 5 мин «за час до события» (пуш + Telegram), `act-reminders`, `billing-reminders` 05:00, `backup-data` 23:00. Пуш открывает экран по `data.screen` (например `/estimate/{id}`).
 - Оплата: `src/lib/billing.ts` (цены/даты/лимит), `src/lib/payment.ts` (Kaspi вручную, активация), `src/lib/tiptop.ts` + `/api/payment/tiptop/*` (карта через TipTop Pay)

@@ -20,7 +20,9 @@ export type AiFeature =
   | "copy-suggest"
   | "techpassport"
   | "logo-chat"
-  | "kp-onboarding";
+  | "kp-onboarding"
+  | "calendar-bot"
+  | "voice-transcribe";
 
 const MAX_TEXT = 8000;
 

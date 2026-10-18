@@ -1457,6 +1457,42 @@ model AiLog {
   @@index([createdAt])
 }
 
+/// Google Календарь в Telegram-боте (17.10.2026). Ключ — чат Telegram, а не
+/// мастер: календарём может пользоваться любой, кто зашёл в бот (как Toki);
+/// masterId заполняется, если чат привязан к аккаунту. refreshToken хранится
+/// зашифрованным (AES-256-GCM, ключ GOOGLE_TOKEN_KEY). /calendar_off удаляет строку.
+model GoogleCalendarLink {
+  id                   String    @id @default(uuid())
+  telegramChatId       String    @unique
+  masterId             String?
+  email                String?
+  refreshToken         String // зашифрован, см. src/lib/google-calendar.ts
+  accessToken          String? // зашифрован
+  accessTokenExpiresAt DateTime?
+  calendarId           String    @default("primary")
+  timeZone             String    @default("Asia/Almaty")
+  eventsCreated        Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([masterId])
+}
+
+/// Черновик события из голосового/текста до нажатия «Сохранить». На Vercel
+/// in-memory нельзя, поэтому в базе; в callback_data уходит только id.
+/// Старые черновики чистятся при создании нового в том же чате.
+model CalendarDraft {
+  id             String   @id @default(uuid())
+  telegramChatId String
+  payload        Json // CalendarEventDraft: title, start, durationMin, address, clientName, phone, notes
+  sourceText     String?  @db.Text // расшифровка, чтобы «Изменить» видело исходник
+  awaitingEdit   Boolean  @default(false) // нажали «Изменить» — следующий текст правит черновик
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([telegramChatId, createdAt])
+}
+
 /// Анонимный архив геометрии (09.10.2026): перед ОКОНЧАТЕЛЬНЫМ удалением объекта
 /// или аккаунта копируем только размеры/элементы/цены — без адреса, клиента,
 /// мастера, фото и координат. Это не персональные данные; нужен для базы
