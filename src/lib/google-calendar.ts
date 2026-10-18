@@ -356,14 +356,19 @@ async function parseEventResponse(res: Response, timeZone: string, chatId: strin
   const data = (await res.json().catch(() => ({}))) as {
     id?: string;
     htmlLink?: string;
+    creator?: { email?: string };
+    organizer?: { email?: string };
     error?: { message?: string; status?: string };
   };
   if (!res.ok || !data.id) {
     throw new Error(`google events.insert ${res.status}: ${data.error?.message || data.error?.status || "unknown"}`);
   }
+  // Почта владельца: calendars/primary со scope calendar.events не читается (18.10.2026,
+  // у Наримана email остался null), а events.insert возвращает creator.email — берём оттуда.
+  const email = data.creator?.email || data.organizer?.email || null;
   await prisma.googleCalendarLink.updateMany({
     where: { telegramChatId: chatId },
-    data: { eventsCreated: { increment: 1 } },
+    data: { eventsCreated: { increment: 1 }, ...(email ? { email } : {}) },
   });
   return { id: data.id, htmlLink: data.htmlLink ?? null, timeZone };
 }
