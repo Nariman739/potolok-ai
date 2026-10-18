@@ -15,10 +15,9 @@ import { prisma } from "@/lib/prisma";
 
 export const GOOGLE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 export const DEFAULT_TIMEZONE = "Asia/Almaty";
-// 24 часа: кнопка в Telegram-сообщении статична, мастер жмёт её когда угодно
-// (18.10.2026 Нариман нажал через 11 минут и получил «ссылка устарела»).
-// State привязывает только chatId — чужой календарь к чужому чату не подцепить без самого чата.
-const STATE_TTL_MS = 24 * 60 * 60 * 1000;
+// Срок OAuth-state: он создаётся при нажатии кнопки (см. makeConnectToken),
+// 10 минут хватает на экран Google.
+const STATE_TTL_MS = 10 * 60 * 1000;
 
 export function siteBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_BASE_URL || "https://potolok.ai").replace(/\/$/, "");
@@ -102,9 +101,36 @@ export function verifyOAuthState(state: string | null | undefined): string | nul
   return chatId;
 }
 
-/** Ссылка для кнопки в Telegram: сначала на наш /api/google/start (там редирект на Google). */
+// ── Постоянная ссылка кнопки (без срока) ──────────────────────────────────
+// Идея Наримана 18.10.2026: кнопка в Telegram статична, поэтому в ней не
+// state со сроком, а подписанный chatId. Сам OAuth-state (10 мин) создаётся
+// в /api/google/start в момент нажатия — «ссылка устарела» невозможна.
+
+function connectHmac(chatId: string): string {
+  const key = requireTokenKey();
+  return crypto.createHmac("sha256", key).update(`google-connect:${chatId}`).digest("base64url");
+}
+
+export function makeConnectToken(chatId: string): string {
+  return `${chatId}.${connectHmac(chatId)}`;
+}
+
+export function verifyConnectToken(token: string | null | undefined): string | null {
+  if (!token) return null;
+  const idx = token.indexOf(".");
+  if (idx <= 0) return null;
+  const chatId = token.slice(0, idx);
+  const sig = token.slice(idx + 1);
+  const expected = connectHmac(chatId);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  return chatId;
+}
+
+/** Ссылка для кнопки в Telegram: на наш /api/google/start, там создаётся state и редирект на Google. */
 export function connectUrlForChat(chatId: string): string {
-  return `${siteBaseUrl()}/api/google/start?s=${encodeURIComponent(makeOAuthState(chatId))}`;
+  return `${siteBaseUrl()}/api/google/start?c=${encodeURIComponent(makeConnectToken(chatId))}`;
 }
 
 export function googleAuthUrl(state: string): string {

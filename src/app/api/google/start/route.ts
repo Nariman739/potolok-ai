@@ -1,23 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { googleAuthUrl, isGoogleConfigured, verifyOAuthState } from "@/lib/google-calendar";
+import {
+  googleAuthUrl,
+  isGoogleConfigured,
+  makeOAuthState,
+  verifyConnectToken,
+  verifyOAuthState,
+} from "@/lib/google-calendar";
 
 /**
  * Старт подключения Google Календаря из Telegram-бота (17.10.2026).
- * s = подписанный state (chatId + срок 24 ч). Проверяем подпись и
- * отправляем на экран согласия Google; тот же state вернётся в callback.
+ * c = постоянный подписанный chatId из кнопки (без срока). В момент нажатия
+ * создаём свежий OAuth-state (10 мин) и отправляем на экран согласия Google;
+ * state вернётся в callback. s = старый формат (state в самой кнопке) —
+ * оставлен для сообщений, отправленных до 18.10.2026.
  */
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const state = request.nextUrl.searchParams.get("s");
   if (!isGoogleConfigured()) {
-    return new NextResponse("Подключение календаря временно недоступно.", { status: 503 });
+    return new NextResponse("Подключение календаря временно недоступно.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
-  if (!verifyOAuthState(state)) {
+
+  const q = request.nextUrl.searchParams;
+  const chatId = verifyConnectToken(q.get("c")) ?? verifyOAuthState(q.get("s"));
+  if (!chatId) {
     return new NextResponse(
-      "Ссылка устарела. Вернитесь в Telegram-бот @potolokaiBot и нажмите «Подключить Google Календарь» ещё раз.",
+      "Ссылка не подходит. Вернитесь в Telegram-бот @potolokaiBot, отправьте /calendar и нажмите «Подключить Google Календарь».",
       { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
     );
   }
-  return NextResponse.redirect(googleAuthUrl(state as string), 302);
+
+  const state = makeOAuthState(chatId);
+  return NextResponse.redirect(googleAuthUrl(state), { status: 302, headers: { "Cache-Control": "no-store" } });
 }

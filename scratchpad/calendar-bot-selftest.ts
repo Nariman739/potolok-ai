@@ -7,6 +7,8 @@ import {
   makeOAuthState,
   verifyOAuthState,
   connectUrlForChat,
+  makeConnectToken,
+  verifyConnectToken,
   googleAuthUrl,
   isGoogleConfigured,
 } from "../src/lib/google-calendar";
@@ -30,7 +32,9 @@ assert(verifyOAuthState(state) === "123456789", "state: подпись и chatId
 assert(verifyOAuthState(state.replace(/.$/, (c) => (c === "a" ? "b" : "a"))) === null, "state: подделка отклоняется");
 assert(verifyOAuthState("1.2.3") === null, "state: мусор отклоняется");
 const url = connectUrlForChat("123456789");
-assert(url.startsWith("https://potolok.ai/api/google/start?s="), "ссылка кнопки → /api/google/start");
+assert(url.startsWith("https://potolok.ai/api/google/start?c="), "ссылка кнопки → /api/google/start (постоянная)");
+assert(verifyConnectToken(makeConnectToken("123456789")) === "123456789", "connect-токен: подпись и chatId");
+assert(verifyConnectToken("123456789.fake") === null, "connect-токен: подделка отклоняется");
 const auth = new URL(googleAuthUrl(state));
 assert(auth.searchParams.get("scope") === "https://www.googleapis.com/auth/calendar.events", "scope calendar.events");
 assert(auth.searchParams.get("access_type") === "offline" && auth.searchParams.get("prompt") === "consent", "offline + consent");
