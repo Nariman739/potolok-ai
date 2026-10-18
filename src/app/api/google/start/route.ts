@@ -3,7 +3,7 @@ import { googleAuthUrl, isGoogleConfigured, verifyOAuthState } from "@/lib/googl
 
 /**
  * Старт подключения Google Календаря из Telegram-бота (17.10.2026).
- * s = подписанный state (chatId + срок 10 мин). Проверяем подпись и
+ * s = подписанный state (chatId + срок 24 ч). Проверяем подпись и
  * отправляем на экран согласия Google; тот же state вернётся в callback.
  */
 export const dynamic = "force-dynamic";

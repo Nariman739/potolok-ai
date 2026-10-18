@@ -15,7 +15,10 @@ import { prisma } from "@/lib/prisma";
 
 export const GOOGLE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 export const DEFAULT_TIMEZONE = "Asia/Almaty";
-const STATE_TTL_MS = 10 * 60 * 1000;
+// 24 часа: кнопка в Telegram-сообщении статична, мастер жмёт её когда угодно
+// (18.10.2026 Нариман нажал через 11 минут и получил «ссылка устарела»).
+// State привязывает только chatId — чужой календарь к чужому чату не подцепить без самого чата.
+const STATE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function siteBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_BASE_URL || "https://potolok.ai").replace(/\/$/, "");
@@ -69,7 +72,7 @@ export function decryptSecret(payload: string): string {
 
 // ── State-токен для OAuth (чат + срок + HMAC) ──────────────────────────────
 // Формат: <chatId>.<expiresMs>.<hmac(base64url)>. HMAC — на ключе GOOGLE_TOKEN_KEY
-// с отдельной меткой, чтобы не смешивать с шифрованием.
+// с отдельной меткой, чтобы не смешивать с шифрованием. Срок — STATE_TTL_MS.
 
 function stateHmac(chatId: string, expires: number): string {
   const key = requireTokenKey();
