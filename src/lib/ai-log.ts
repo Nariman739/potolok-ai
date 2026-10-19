@@ -22,7 +22,8 @@ export type AiFeature =
   | "logo-chat"
   | "kp-onboarding"
   | "calendar-bot"
-  | "voice-transcribe";
+  | "voice-transcribe"
+  | "telegram-assistant";
 
 const MAX_TEXT = 8000;
 

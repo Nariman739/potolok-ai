@@ -19,6 +19,8 @@ import {
   connectButton,
 } from "@/lib/calendar-assistant";
 import { getCalendarLink, isGoogleConfigured } from "@/lib/google-calendar";
+import { transcribeVoice, extractEvent, DEFAULT_TIMEZONE_FOR_BOT } from "@/lib/calendar-assistant";
+import { answerAsAssistant } from "@/lib/telegram-assistant";
 
 /**
  * Webhook Telegram-бота. Уведомления (14.10.2026) + Google Календарь (17.10.2026):
@@ -150,7 +152,7 @@ export async function POST(request: Request) {
     // ── Привязан ли чат к мастеру ──
     const linkedMaster = await prisma.master.findUnique({
       where: { telegramChatId: chatId },
-      select: { id: true, firstName: true },
+      select: { id: true, firstName: true, language: true },
     });
 
     // ── Подключён ли Google Календарь (ключ — чат, не мастер) ──
@@ -357,43 +359,68 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Календарь подключён: любой текст (не команда) или голос → событие ──
+    // ── Календарь подключён: любой текст (не команда) или голос → событие
+    //    или, если это не событие, ответ ассистента (19.10.2026) ──
     if (calendarLink && (voiceFileId || (text && !text.startsWith("/")))) {
-      await handleCalendarMessage(chatId, { text, voiceFileId, voiceDurationSec });
+      await handleCalendarMessage(chatId, { text, voiceFileId, voiceDurationSec }, { master: linkedMaster });
       return NextResponse.json({ ok: true });
     }
 
-    // ── Голос без календаря — предлагаем подключить ──
+    // Кнопка «Подключить календарь» под ответами ассистента — пока не подключён.
+    const calendarButton = isGoogleConfigured() ? connectButton(chatId) : undefined;
+
+    // ── Голос без календаря: расшифровываем и смотрим, что это. Событие →
+    //    предлагаем подключить календарь; вопрос/болтовня → ответ ассистента ──
     if (voiceFileId) {
-      await sendCalendarConnectPrompt(
-        chatId,
-        "🎙 Голосовые я превращаю в события календаря — для этого подключите Google Календарь.",
-      );
+      const transcript = (voiceDurationSec ?? 0) <= 120 ? await transcribeVoice(voiceFileId) : null;
+      if (!transcript) {
+        await sendCalendarConnectPrompt(
+          chatId,
+          "🎙 Голосовые я превращаю в события календаря — для этого подключите Google Календарь.",
+        );
+        return NextResponse.json({ ok: true });
+      }
+      const heard = `🎙 Услышал: «${transcript.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}»`;
+      let intent: "event" | "question" | "chat" = "chat";
+      try {
+        intent = (await extractEvent({ text: transcript, timeZone: DEFAULT_TIMEZONE_FOR_BOT, current: null })).intent;
+      } catch {
+        // ИИ недоступен — ниже ответит ассистент своим «попробуйте позже»
+      }
+      if (intent === "event") {
+        await sendCalendarConnectPrompt(
+          chatId,
+          `${heard}\n\nПохоже на событие. Подключите Google Календарь — и я добавлю его туда с напоминанием.`,
+        );
+      } else {
+        await answerAsAssistant(chatId, transcript, {
+          master: linkedMaster,
+          calendarConnected: false,
+          prefix: heard,
+          buttons: calendarButton,
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
-    // ── Не привязан и не телефон — просим номер (и предлагаем календарь) ──
+    // ── Не привязан и не телефон: команда → справка, текст → ассистент ──
     if (!linkedMaster) {
       if (text.startsWith("/")) {
         await sendTelegramMessage(chatId, BOT_HELP);
         return NextResponse.json({ ok: true });
       }
-      await sendCalendarConnectPrompt(
-        chatId,
-        `Если у вас есть аккаунт potolok.ai — напишите <b>номер телефона</b> от аккаунта, например <code>+7 700 123 4567</code>.`,
-      );
+      await answerAsAssistant(chatId, text, { master: null, calendarConnected: false, buttons: calendarButton });
       return NextResponse.json({ ok: true });
     }
 
-    // ── Привязан: команды, всё остальное — справка + кнопка календаря ──
+    // ── Привязан: команды, всё остальное — ассистент (+ кнопка календаря) ──
     if (text.startsWith("/")) {
       const command = text.split(" ")[0].split("@")[0];
       await handleBotCommand(chatId, command, linkedMaster.id);
       return NextResponse.json({ ok: true });
     }
 
-    await sendTelegramMessage(chatId, BOT_HELP);
-    await sendCalendarConnectPrompt(chatId);
+    await answerAsAssistant(chatId, text, { master: linkedMaster, calendarConnected: false, buttons: calendarButton });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram webhook error:", error);

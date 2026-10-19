@@ -65,7 +65,10 @@ export async function getCurrentMaster(bearerToken?: string): Promise<MasterProf
 
   if (!session || session.expiresAt < new Date()) {
     if (session) {
-      await prisma.session.delete({ where: { id: session.id } });
+      // deleteMany, а не delete: две параллельные проверки одной протухшей
+      // сессии (мобилка шлёт /auth/me и /today разом) удаляли одну запись, и
+      // вторая падала P2025 → 500 вместо 401 (Sentry POTOLOK-AI-WEB-3, 18.10.2026).
+      await prisma.session.deleteMany({ where: { id: session.id } });
     }
     return null;
   }

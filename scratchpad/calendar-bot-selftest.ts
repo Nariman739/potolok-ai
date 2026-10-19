@@ -13,6 +13,7 @@ import {
   isGoogleConfigured,
 } from "../src/lib/google-calendar";
 import { extractEvent, formatDraftCard, zonedLocalToDate, formatLocalIso } from "../src/lib/calendar-assistant";
+import { assistantReply } from "../src/lib/telegram-assistant";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) {
@@ -46,21 +47,28 @@ assert(formatLocalIso(d, "Asia/Almaty") === "2026-10-18T15:00:00", "обратн
 
 async function main() {
 const tz = "Asia/Almaty";
-const samples = [
-  "замер завтра в 3, Сифулина 12, Айгерим, телефон 87771234567",
-  "монтаж в пятницу с 10 до 14, Абая 5 кв 14, Серик",
-  "позвонить Марату в понедельник в 9 утра",
-  "у Данияра день рождения 25 октября",
-  "привет как дела",
-  "замер у Айгерим на Сейфуллина 12",
+// Событие → карточка; вопрос/болтовня → intent question/chat (ответит ассистент).
+const samples: Array<[string, "event" | "question" | "chat"]> = [
+  ["замер завтра в 3, Сифулина 12, Айгерим, телефон 87771234567", "event"],
+  ["монтаж в пятницу с 10 до 14, Абая 5 кв 14, Серик", "event"],
+  ["позвонить Марату в понедельник в 9 утра", "event"],
+  ["у Данияра день рождения 25 октября", "event"],
+  ["замер завтра у Айгерим", "event"],
+  ["надо съездить к Марату", "event"],
+  ["замер завтра в 15, Абая 5, Серик", "event"],
+  ["что ты умеешь", "question"],
+  ["привет", "chat"],
+  ["как отправить КП клиенту", "question"],
 ];
-for (const text of samples) {
+for (const [text, want] of samples) {
   const t0 = Date.now();
   const r = await extractEvent({ text, timeZone: tz, current: null });
-  console.log(`\n— «${text}» (${Date.now() - t0} ms)`);
+  console.log(`\n— «${text}» (${Date.now() - t0} ms) → intent=${r.intent}`);
   if (r.draft) console.log(formatDraftCard(r.draft, tz).replace(/<[^>]+>/g, ""));
-  else console.log("(не событие)");
-  if (r.question) console.log("❓", r.question);
+  assert(r.intent === want, `intent «${text}» = ${want}`);
+  if (text === "замер завтра у Айгерим") assert(r.draft?.start && r.draft.timeUnknown, "дата без времени → timeUnknown, без вопроса");
+  if (text === "у Данияра день рождения 25 октября") assert(r.draft?.allDay, "день рождения → весь день");
+  if (text === "надо съездить к Марату") assert(r.draft && !r.draft.start, "нет даты → start null (код спросит «Когда?» один раз)");
 }
 
 // Правка черновика
@@ -69,5 +77,20 @@ const edited = await extractEvent({ text: "в 16:30 и это монтаж", tim
 console.log("\n— правка «в 16:30 и это монтаж»:");
 if (edited.draft) console.log(formatDraftCard(edited.draft, tz).replace(/<[^>]+>/g, ""));
 assert(edited.draft?.kind === "install" && edited.draft?.start?.endsWith("16:30") && edited.draft?.address === "Сейфуллина 12", "правка сохранила адрес и поменяла время/тип");
+
+// Баг 19.10: «Ещё не знаю» в ответ на вопрос не должен обнулять дату
+const sv = await extractEvent({ text: "Завтра замер в 7 вечера, Светлана", timeZone: tz, current: null });
+assert(sv.draft?.start?.endsWith("19:00") && sv.draft?.clientName === "Светлана", "«в 7 вечера» → 19:00, Светлана");
+const dk = await extractEvent({ text: "Ещё не знаю", timeZone: tz, current: sv.draft });
+console.log("\n— «Ещё не знаю» поверх черновика:");
+if (dk.draft) console.log(formatDraftCard(dk.draft, tz).replace(/<[^>]+>/g, ""));
+assert(dk.intent === "event" && dk.draft?.start === sv.draft?.start && dk.draft?.clientName === "Светлана", "«не знаю» не трогает дату и имя");
+
+// Ответ ассистента (без Telegram)
+for (const q of ["что ты умеешь", "как отправить КП клиенту"]) {
+  const a = await assistantReply(q, { master: { firstName: "Нариман", language: "ru" }, calendarConnected: true });
+  console.log(`\n— ассистент «${q}»:\n${a}`);
+  assert(a.length > 20 && !/не понял, какое событие/i.test(a), `ассистент ответил на «${q}»`);
+}
 }
 main().then(() => process.exit(process.exitCode ?? 0));

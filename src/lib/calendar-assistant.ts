@@ -32,9 +32,12 @@ import {
   DEFAULT_TIMEZONE,
 } from "@/lib/google-calendar";
 import type { Prisma } from "@/generated/prisma/client";
+import { answerAsAssistant, type AssistantMaster } from "@/lib/telegram-assistant";
 
 /** Модель для расшифровки голоса: принимает audio (ogg/opus) напрямую, рус/каз. */
 export const VOICE_MODEL = "google/gemini-2.5-flash";
+/** Пояс для разбора голосовых без подключённого календаря (нет link.timeZone). */
+export const DEFAULT_TIMEZONE_FOR_BOT = DEFAULT_TIMEZONE;
 
 export type EventKind = "measure" | "install" | "meeting" | "call" | "birthday" | "other";
 
@@ -50,6 +53,12 @@ export type CalendarEventDraft = {
   durationMin: number;
   /** Весь день (день рождения, «в субботу выходной») — время не нужно, в Google уходит date. */
   allDay?: boolean;
+  /**
+   * Дата есть, времени мастер не назвал («замер завтра у Айгерим»). Не
+   * переспрашиваем (правило Наримана 19.10.2026: бот не докапывается) —
+   * в карточке «время не указано», в Google уходит событие на весь день.
+   */
+  timeUnknown?: boolean;
   notes: string | null;
 };
 
@@ -148,7 +157,11 @@ export type IncomingCalendarMessage = {
  * Обработать текст/голос в чате с подключённым календарём. Вызывается из
  * webhook как fallback после команд и привязки — ничего в старых сценариях не меняет.
  */
-export async function handleCalendarMessage(chatId: string, msg: IncomingCalendarMessage): Promise<void> {
+export async function handleCalendarMessage(
+  chatId: string,
+  msg: IncomingCalendarMessage,
+  ctx: { master?: AssistantMaster } = {},
+): Promise<void> {
   const link = await getCalendarLink(chatId);
   if (!link) {
     await sendCalendarConnectPrompt(chatId);
@@ -182,16 +195,16 @@ export async function handleCalendarMessage(chatId: string, msg: IncomingCalenda
 
   await sendTypingAction(chatId);
 
+  const heard = msg.voiceFileId ? `🎙 Услышал: «${escapeHtml(text)}»` : "";
+
   let draft: CalendarEventDraft | null;
-  let question: string | null;
   try {
     const result = await extractEvent({
       text,
       timeZone,
       current: pending ? (pending.payload as CalendarEventDraft) : null,
     });
-    draft = result.draft;
-    question = result.question;
+    draft = result.intent === "event" ? result.draft : null;
   } catch (e) {
     reportAiError(e, "calendar-bot", "extract failed");
     await sendTelegramMessage(chatId, "⚠️ ИИ сейчас недоступен. Попробуйте через минуту.");
@@ -199,12 +212,9 @@ export async function handleCalendarMessage(chatId: string, msg: IncomingCalenda
   }
 
   if (!draft) {
-    // Совсем не похоже на событие (например «привет»)
-    await sendTelegramMessage(
-      chatId,
-      (msg.voiceFileId ? `🎙 Услышал: «${escapeHtml(text)}»\n\n` : "") +
-        `Не понял, какое событие создать. Скажите, что, когда и где — например: «замер завтра в 15:00, Сейфуллина 12, Айгерим».`,
-    );
+    // Не событие («что ты умеешь», «привет», «как отправить КП») — отвечает
+    // ассистент, а не «назовите событие». Черновик, если ждал правки, не трогаем.
+    await answerAsAssistant(chatId, text, { master: ctx.master, calendarConnected: true, prefix: heard });
     return;
   }
 
@@ -214,14 +224,19 @@ export async function handleCalendarMessage(chatId: string, msg: IncomingCalenda
   } else {
     await prisma.calendarDraft.deleteMany({ where: { telegramChatId: chatId } });
   }
-  const needsClarification = !draft.start || Boolean(question);
+  // Единственный вопрос — когда даты нет совсем, и только ОДИН раз: если уже
+  // спрашивали (pending) и ответа про дату не было — показываем карточку с
+  // кнопками, человек сам нажмёт «Изменить». Адрес, имя, телефон, время не
+  // переспрашиваем никогда (правило Наримана 19.10.2026).
+  const needsClarification = !draft.start && !pending;
   const saved = pending
     ? await prisma.calendarDraft.update({
         where: { id: pending.id },
         data: {
           payload: draft as unknown as Prisma.InputJsonValue,
           sourceText: [pending.sourceText, text].filter(Boolean).join("\n"),
-          awaitingEdit: needsClarification,
+          // Без даты черновик остаётся «ждущим»: следующий текст его дополнит.
+          awaitingEdit: !draft.start,
         },
       })
     : await prisma.calendarDraft.create({
@@ -229,25 +244,23 @@ export async function handleCalendarMessage(chatId: string, msg: IncomingCalenda
           telegramChatId: chatId,
           payload: draft as unknown as Prisma.InputJsonValue,
           sourceText: text,
-          awaitingEdit: needsClarification,
+          awaitingEdit: !draft.start,
         },
       });
 
-  // 4. Не поняли дату/время — один уточняющий вопрос
+  // 4. Даты нет совсем — один вопрос
   if (needsClarification) {
-    const q = question || "Когда? Назовите день и время — например «завтра в 15:00» или «в пятницу в 10 утра».";
     await sendTelegramMessage(
       chatId,
-      (msg.voiceFileId ? `🎙 Услышал: «${escapeHtml(text)}»\n\n` : "") +
-        `${formatDraftCard(draft, timeZone)}\n\n❓ ${escapeHtml(q)}`,
+      (heard ? heard + "\n\n" : "") + `${formatDraftCard(draft, timeZone)}\n\n❓ Когда? (например, завтра в 15:00)`,
     );
     return;
   }
 
-  // 5. Карточка с кнопками
+  // 5. Карточка с кнопками — всегда, даже неполная
   await sendTelegramMessageWithButtons(
     chatId,
-    (msg.voiceFileId ? `🎙 Услышал: «${escapeHtml(text)}»\n\n` : "") + formatDraftCard(draft, timeZone),
+    (heard ? heard + "\n\n" : "") + formatDraftCard(draft, timeZone),
     draftButtons(saved.id),
   );
 }
@@ -306,7 +319,7 @@ export async function handleCalendarCallback(
     }
     if (!payload.start) {
       await prisma.calendarDraft.update({ where: { id: draft.id }, data: { awaitingEdit: true } });
-      await sendTelegramMessage(chatId, "❓ Когда? Назовите день и время.");
+      await sendTelegramMessage(chatId, "❓ Когда? (например, завтра в 15:00)");
       return true;
     }
     const timeZone = link.timeZone || DEFAULT_TIMEZONE;
@@ -393,7 +406,9 @@ export async function transcribeVoice(fileId: string): Promise<string | null> {
 
 // ── Извлечение события из текста ──────────────────────────────────────────
 
-type ExtractResult = { draft: CalendarEventDraft | null; question: string | null };
+export type MessageIntent = "event" | "question" | "chat";
+
+type ExtractResult = { intent: MessageIntent; draft: CalendarEventDraft | null };
 
 export async function extractEvent(args: {
   text: string;
@@ -404,27 +419,35 @@ export async function extractEvent(args: {
   const nowLocal = formatLocalIso(now, args.timeZone);
   const weekday = new Intl.DateTimeFormat("ru-RU", { timeZone: args.timeZone, weekday: "long" }).format(now);
 
+  // Правило Наримана (19.10.2026): бот НЕ докапывается — записывает, что
+  // сказали; адрес, телефон, имя, длительность не спрашивает. Единственный
+  // вопрос (задаёт код, не модель) — когда даты нет совсем.
   const system =
-    `Ты ассистент-календарь мастера по натяжным потолкам в Казахстане. Из сообщения (русский, казахский или смесь) ` +
-    `извлеки одно событие для календаря и верни СТРОГО JSON без пояснений.\n\n` +
+    `Ты ассистент-календарь мастера по натяжным потолкам в Казахстане. Определи, что это за сообщение (русский, казахский или смесь), ` +
+    `и верни СТРОГО JSON без пояснений.\n\n` +
     `Сейчас: ${nowLocal} (${weekday}), часовой пояс ${args.timeZone}. Все даты и времена — локальные в этом поясе.\n\n` +
     `Схема:\n` +
-    `{"event": {\n` +
+    `{"intent": "event|question|chat",   // event — заявка на событие (есть что и/или когда: замер, монтаж, встреча, звонок, день рождения, «надо съездить к…»); question — вопрос про бота, приложение, potolok.ai («что ты умеешь», «как сделать КП», «сколько стоит»); chat — приветствие, благодарность, прочее\n` +
+    ` "event": {                    // только при intent=event, иначе null\n` +
     `  "kind": "measure|install|meeting|call|birthday|other",   // замер → measure, монтаж/установка → install, встреча → meeting, позвонить/звонок → call, день рождения → birthday\n` +
     `  "title": string,            // короткое название без имени клиента: "Замер", "Монтаж", "Встреча", "Звонок", "День рождения" или своё ("Забрать полотно")\n` +
     `  "clientName": string|null,  // имя клиента/человека, как сказано (Айгерим, Серик, Марат Петрович)\n` +
     `  "address": string|null,     // адрес/место: "Сейфуллина 12", "Абая 5, кв 14". Исправь очевидные ошибки расшифровки улиц Казахстана (Сифулина → Сейфуллина)\n` +
     `  "phone": string|null,       // телефон цифрами, если назван\n` +
-    `  "start": "YYYY-MM-DDTHH:mm"|null, // начало. "завтра", "послезавтра", "в пятницу" (ближайшая будущая), "через час", "в 3" днём → 15:00, если контекст рабочий день; "утром" → 10:00, "вечером" → 18:00, "в обед" → 13:00. Если дата ясна, а время нет — null\n` +
+    `  "start": "YYYY-MM-DDTHH:mm"|null, // начало. "завтра", "послезавтра", "в пятницу" (ближайшая будущая), "через час", "в 3" днём → 15:00, если контекст рабочий день; "утром" → 10:00, "вечером" → 18:00, "в обед" → 13:00. Дата ясна, а время не названо — поставь 10:00 и timeUnknown=true. Дата НЕ названа вообще (нет «завтра», дня недели, числа, «через …», «в пятницу») — СТРОГО null, дату не угадывай\n` +
+    `  "timeUnknown": boolean,     // true, если дата есть, а время мастер не назвал\n` +
     `  "durationMin": number,      // замер 60, монтаж 240, встреча 60, звонок 15, иначе 60; если сказано «с 10 до 12» — посчитай\n` +
-    `  "allDay": boolean,          // true для дня рождения или события на весь день без времени (start тогда "YYYY-MM-DDT00:00", вопрос про время НЕ задавать)\n` +
+    `  "allDay": boolean,          // true для дня рождения или события на весь день (start тогда "YYYY-MM-DDT00:00")\n` +
     `  "notes": string|null        // прочие детали: этаж, «два уровня», «клиент просил позвонить до», и т.п.\n` +
-    `} | null,                     // null, если сообщение вообще не про событие\n` +
-    ` "question": string|null}     // ОДИН короткий вопрос по-русски, если дата или время не понятны; иначе null\n\n` +
+    `} | null}\n\n` +
+    `Никаких уточняющих вопросов: чего не сказали — null. Нет адреса — address null, нет имени — clientName null.\n` +
     (args.current
-      ? `Есть ТЕКУЩИЙ черновик, пользователь присылает ПРАВКУ или ответ на уточнение. Верни полный обновлённый event: ` +
-        `сохрани все поля черновика, измени только то, о чём говорит сообщение.\nТекущий черновик: ${JSON.stringify(args.current)}\n`
-      : `Если в тексте только время без даты — считай сегодня, если это время ещё впереди, иначе завтра.\n`) +
+      ? `Есть ТЕКУЩИЙ черновик, пользователь присылает ПРАВКУ или ответ на вопрос о дате. intent всегда "event". ` +
+        `Верни event, где изменено ТОЛЬКО то, о чём говорит сообщение; поля, о которых сообщение молчит, верни как в черновике. ` +
+        `«Не знаю», «пока нет», «без адреса» — это ответ про поле, а не правка остальных: ничего не обнуляй. ` +
+        `Чтобы ОЧИСТИТЬ поле по явной просьбе («убери адрес»), верни пустую строку "".\nТекущий черновик: ${JSON.stringify(args.current)}\n`
+      : `Если названо время, но не дата («в 3 часа») — считай сегодня, если это время ещё впереди, иначе завтра. ` +
+        `Если нет ни даты, ни времени («замер у Айгерим на Сейфуллина 12», «позвонить Серику») — start null, timeUnknown false.\n`) +
     `Прошедшие даты не ставь: если получилось в прошлом — сдвинь на ближайшее будущее.`;
 
   const client = getOpenRouter();
@@ -452,31 +475,54 @@ export async function extractEvent(args: {
   if (!parsed) throw new Error("calendar-bot: model returned non-JSON");
 
   const ev = parsed.event as Partial<CalendarEventDraft> | null | undefined;
-  if (!ev) return { draft: null, question: null };
+  const rawIntent = parsed.intent;
+  // Правка черновика — всегда событие; без черновика верим модели, а если она
+  // не дала intent, судим по наличию event.
+  const intent: MessageIntent = args.current
+    ? "event"
+    : rawIntent === "question" || rawIntent === "chat"
+      ? rawIntent
+      : ev
+        ? "event"
+        : "chat";
+  if (intent !== "event") return { intent, draft: null };
+  if (!ev) return { intent: args.current ? "event" : "chat", draft: args.current };
 
+  const cur = args.current;
   const kind = (["measure", "install", "meeting", "call", "birthday", "other"] as EventKind[]).includes(ev.kind as EventKind)
     ? (ev.kind as EventKind)
-    : "other";
-  const start = typeof ev.start === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ev.start) ? ev.start.slice(0, 16) : null;
-  const phoneRaw = typeof ev.phone === "string" ? ev.phone.trim() : null;
+    : cur?.kind ?? "other";
+  const modelStart =
+    typeof ev.start === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ev.start) ? ev.start.slice(0, 16) : null;
+  // Правка: поле, о котором сообщение молчит, модель вернула null — берём из
+  // черновика (19.10.2026: «ещё не знаю» на вопрос про адрес обнуляло дату).
+  // Пустая строка — явная просьба очистить.
+  const merge = (v: unknown, prev: string | null | undefined): string | null => {
+    if (v === "") return null;
+    const s = strOrNull(v);
+    return s ?? (cur ? prev ?? null : null);
+  };
+  const start = modelStart ?? (cur?.start ?? null);
+  const startChanged = modelStart !== null && modelStart !== cur?.start;
+  const phoneRaw = merge(ev.phone, cur?.phone);
   const phone = phoneRaw ? normalizePhone(phoneRaw) || phoneRaw : null;
 
   const draft: CalendarEventDraft = {
     kind,
-    title: (typeof ev.title === "string" && ev.title.trim()) || KIND_LABEL[kind],
-    clientName: strOrNull(ev.clientName),
-    address: strOrNull(ev.address),
+    title: (typeof ev.title === "string" && ev.title.trim()) || cur?.title || KIND_LABEL[kind],
+    clientName: merge(ev.clientName, cur?.clientName),
+    address: merge(ev.address, cur?.address),
     phone,
     start,
     durationMin:
       typeof ev.durationMin === "number" && ev.durationMin >= 5 && ev.durationMin <= 24 * 60
         ? Math.round(ev.durationMin)
-        : DEFAULT_DURATION[kind],
-    allDay: ev.allDay === true,
-    notes: strOrNull(ev.notes),
+        : cur?.durationMin ?? DEFAULT_DURATION[kind],
+    allDay: cur && !startChanged ? cur.allDay === true : ev.allDay === true,
+    timeUnknown: cur && !startChanged ? cur.timeUnknown === true : ev.timeUnknown === true && ev.allDay !== true,
+    notes: merge(ev.notes, cur?.notes),
   };
-  const question = typeof parsed.question === "string" && parsed.question.trim() ? parsed.question.trim() : null;
-  return { draft, question };
+  return { intent: "event", draft };
 }
 
 function parseJson(raw: string): Record<string, unknown> | null {
@@ -500,10 +546,11 @@ function strOrNull(v: unknown): string | null {
 export function formatDraftCard(d: CalendarEventDraft, timeZone: string): string {
   const head = `${KIND_EMOJI[d.kind]} <b>${escapeHtml(d.title)}${d.clientName ? ` — ${escapeHtml(d.clientName)}` : ""}</b>`;
   const lines = [head];
-  if (d.start && d.allDay) {
+  if (d.start && (d.allDay || d.timeUnknown)) {
     const startDate = zonedLocalToDate(d.start, timeZone);
     const day = new Intl.DateTimeFormat("ru-RU", { timeZone, weekday: "short", day: "numeric", month: "short" }).format(startDate);
-    lines.push(`🗓 ${day.charAt(0).toUpperCase() + day.slice(1).replace(/\.$/, "")}, весь день`);
+    const capDay = day.charAt(0).toUpperCase() + day.slice(1).replace(/\.$/, "");
+    lines.push(d.allDay ? `🗓 ${capDay}, весь день` : `🗓 ${capDay}, <i>время не указано</i>`);
   } else if (d.start) {
     const startDate = zonedLocalToDate(d.start, timeZone);
     const endDate = new Date(startDate.getTime() + d.durationMin * 60 * 1000);
@@ -527,7 +574,8 @@ function buildEventInput(d: CalendarEventDraft, timeZone: string) {
   if (d.notes) descLines.push(`Заметки: ${d.notes}`);
   descLines.push("", `Создано через potolok.ai (${siteBaseUrl()}) — Telegram-бот @potolokaiBot`);
   const summary = `${d.title}${d.clientName ? ` — ${d.clientName}` : ""}`;
-  if (d.allDay) {
+  // Время не названо — событие на весь день, мастер поправит в календаре.
+  if (d.allDay || d.timeUnknown) {
     const nextDay = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
     return {
       summary,
