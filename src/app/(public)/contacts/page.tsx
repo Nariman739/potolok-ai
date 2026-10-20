@@ -22,6 +22,7 @@ export default async function ContactsPage() {
         <li><b>WhatsApp / телефон:</b> {o.phone}</li>
         <li><b>Email:</b> {o.email}</li>
         <li><b>Telegram-бот:</b> <a href="https://t.me/potolokaiBot" target="_blank" rel="noopener noreferrer">@potolokaiBot</a></li>
+        <li><b>Группа мастеров в WhatsApp:</b> <a href="/wa?src=contacts">вступить</a></li>
       </ul>
 
       <h2>Реквизиты</h2>

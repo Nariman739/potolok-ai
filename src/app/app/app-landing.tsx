@@ -263,6 +263,17 @@ export function AppLanding({
           <p className="mt-3 text-center text-sm text-[#94A3B8]">Попробуй бесплатно</p>
         </section>
 
+        {/* Группа мастеров — спокойная кнопка, не перебивает «Скачать» */}
+        <section className="mt-6">
+          <a
+            href="/wa?src=app"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-[#334155]/80 bg-[#111C33]/60 px-5 py-3.5 text-[15px] font-semibold text-[#CBD5E1] transition hover:bg-[#1E293B]"
+          >
+            <span aria-hidden>💬</span>
+            <span>Группа мастеров в WhatsApp — вопросы и помощь</span>
+          </a>
+        </section>
+
         <footer className="mt-auto flex items-center justify-center gap-4 pt-12 text-xs text-[#64748B]">
           <Link href="/" className="hover:text-[#94A3B8]">potolok.ai</Link>
           <span>·</span>
