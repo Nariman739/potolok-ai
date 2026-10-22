@@ -33,6 +33,7 @@ import {
 } from "@/lib/google-calendar";
 import type { Prisma } from "@/generated/prisma/client";
 import { answerAsAssistant, type AssistantMaster } from "@/lib/telegram-assistant";
+import { handleNote, handleMoney, handleAsk } from "@/lib/bot-memory";
 
 /** Модель для расшифровки голоса: принимает audio (ogg/opus) напрямую, рус/каз. */
 export const VOICE_MODEL = "google/gemini-2.5-flash";
@@ -154,20 +155,19 @@ export type IncomingCalendarMessage = {
 };
 
 /**
- * Обработать текст/голос в чате с подключённым календарём. Вызывается из
- * webhook как fallback после команд и привязки — ничего в старых сценариях не меняет.
+ * Любой текст/голос мастера (не команда). Вызывается из webhook после /start,
+ * кодов, телефона и команд. Один классификатор на входе (extractEvent):
+ *  - note / money / ask → память и бухгалтер (src/lib/bot-memory.ts), работает без календаря и аккаунта;
+ *  - event → карточка события (календарь подключён) или предложение подключить;
+ *  - question / chat → ответ ассистента.
  */
-export async function handleCalendarMessage(
+export async function handleIncomingMessage(
   chatId: string,
   msg: IncomingCalendarMessage,
-  ctx: { master?: AssistantMaster } = {},
+  ctx: { master?: (AssistantMaster & { id?: string }) | null } = {},
 ): Promise<void> {
-  const link = await getCalendarLink(chatId);
-  if (!link) {
-    await sendCalendarConnectPrompt(chatId);
-    return;
-  }
-  const timeZone = link.timeZone || DEFAULT_TIMEZONE;
+  const link = isGoogleConfigured() ? await getCalendarLink(chatId) : null;
+  const timeZone = link?.timeZone || DEFAULT_TIMEZONE;
 
   await sendTypingAction(chatId);
 
@@ -187,34 +187,66 @@ export async function handleCalendarMessage(
   }
   if (!text) return;
 
-  // 2. Есть черновик, ждущий правки / уточнения? Тогда правим его.
-  const pending = await prisma.calendarDraft.findFirst({
-    where: { telegramChatId: chatId, awaitingEdit: true },
-    orderBy: { createdAt: "desc" },
-  });
+  // 2. Есть черновик, ждущий правки / уточнения? Тогда правим его (только с календарём).
+  const pending = link
+    ? await prisma.calendarDraft.findFirst({
+        where: { telegramChatId: chatId, awaitingEdit: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
 
   await sendTypingAction(chatId);
 
   const heard = msg.voiceFileId ? `🎙 Услышал: «${escapeHtml(text)}»` : "";
+  const prefix = heard ? heard + "\n\n" : "";
 
-  let draft: CalendarEventDraft | null;
+  let result: ExtractResult;
   try {
-    const result = await extractEvent({
+    result = await extractEvent({
       text,
       timeZone,
       current: pending ? (pending.payload as CalendarEventDraft) : null,
     });
-    draft = result.intent === "event" ? result.draft : null;
   } catch (e) {
     reportAiError(e, "calendar-bot", "extract failed");
     await sendTelegramMessage(chatId, "⚠️ ИИ сейчас недоступен. Попробуйте через минуту.");
     return;
   }
 
+  // Память и бухгалтер (22.10.2026) — без календаря и без аккаунта.
+  const memCtx = { masterId: ctx.master?.id ?? null, timeZone };
+  if (result.intent === "note" && result.note) {
+    await handleNote(chatId, result.note, memCtx, prefix);
+    return;
+  }
+  if (result.intent === "money" && result.money) {
+    await handleMoney(chatId, result.money, memCtx, prefix);
+    return;
+  }
+  if (result.intent === "ask" && result.ask) {
+    await handleAsk(chatId, result.ask, memCtx, prefix);
+    return;
+  }
+
+  const draft = result.intent === "event" ? result.draft : null;
   if (!draft) {
     // Не событие («что ты умеешь», «привет», «как отправить КП») — отвечает
     // ассистент, а не «назовите событие». Черновик, если ждал правки, не трогаем.
-    await answerAsAssistant(chatId, text, { master: ctx.master, calendarConnected: true, prefix: heard });
+    await answerAsAssistant(chatId, text, {
+      master: ctx.master,
+      calendarConnected: Boolean(link),
+      prefix: heard,
+      buttons: link || !isGoogleConfigured() ? undefined : connectButton(chatId),
+    });
+    return;
+  }
+
+  if (!link) {
+    // Событие, а календаря нет — предлагаем подключить (один раз, тут же).
+    await sendCalendarConnectPrompt(
+      chatId,
+      `${prefix}Похоже на событие. Подключите Google Календарь — и я добавлю его туда с напоминанием.`,
+    );
     return;
   }
 
@@ -406,9 +438,34 @@ export async function transcribeVoice(fileId: string): Promise<string | null> {
 
 // ── Извлечение события из текста ──────────────────────────────────────────
 
-export type MessageIntent = "event" | "question" | "chat";
+export type MessageIntent = "event" | "question" | "chat" | "note" | "money" | "ask";
 
-type ExtractResult = { intent: MessageIntent; draft: CalendarEventDraft | null };
+export type MoneyKind = "income" | "expense" | "debt_to_me" | "debt_mine" | "debt_closed";
+export type AskKind = "notes" | "debts" | "money_period" | "money_search";
+export type AskPeriod = "today" | "week" | "month";
+
+/** Деньги/долг (22.10.2026): «заработал 120 тысяч от Асель», «Марат занял 50, отдаст в пятницу». */
+export type MoneyDraft = {
+  kind: MoneyKind;
+  /** В тенге. «85» про деньги = 85 000 (мастера говорят в тысячах) — правит код. */
+  amount: number | null;
+  counterparty: string | null;
+  /** «YYYY-MM-DD» — срок долга. */
+  dueAt: string | null;
+  /** Коротко, о чём запись: «материалы», «остаток за зал», «монтажникам». */
+  text: string;
+};
+
+export type AskDraft = { ask: AskKind; period: AskPeriod | null; query: string | null };
+
+export type ExtractResult = {
+  intent: MessageIntent;
+  draft: CalendarEventDraft | null;
+  /** intent=note: что запомнить. */
+  note?: string | null;
+  money?: MoneyDraft | null;
+  ask?: AskDraft | null;
+};
 
 export async function extractEvent(args: {
   text: string;
@@ -427,7 +484,25 @@ export async function extractEvent(args: {
     `и верни СТРОГО JSON без пояснений.\n\n` +
     `Сейчас: ${nowLocal} (${weekday}), часовой пояс ${args.timeZone}. Все даты и времена — локальные в этом поясе.\n\n` +
     `Схема:\n` +
-    `{"intent": "event|question|chat",   // event — заявка на событие (есть что и/или когда: замер, монтаж, встреча, звонок, день рождения, «надо съездить к…»); question — вопрос про бота, приложение, potolok.ai («что ты умеешь», «как сделать КП», «сколько стоит»); chat — приветствие, благодарность, прочее\n` +
+    `{"intent": "event|note|money|ask|question|chat",\n` +
+    `   // event — заявка на событие С ДАТОЙ или временем (замер, монтаж, встреча, звонок, день рождения, «надо съездить к… завтра»);\n` +
+    `   // note — «запомни …», «не забыть …», факт без даты и без денег («у Серика ключ от склада», «не забыть позвонить Болату», «Айгерим хочет сатин»);\n` +
+    `   // money — деньги мастера: заработал/получил/пришло/остаток/предоплата (income), потратил/заплатил/отдал/купил (expense), «X занял у меня / должен мне / отдаст» (debt_to_me), «я должен X / занял у X» (debt_mine), «X отдал / вернул / рассчитался» (debt_closed). Долг с датой возврата — тоже money, не event;\n` +
+    `   // ask — вопрос про СВОИ записи и деньги: «что я записывал?», «кто мне должен?», «кому я должен?», «сколько заработал за неделю?», «сколько потратил на материалы?»;\n` +
+    `   // question — вопрос про бота, приложение, potolok.ai («что ты умеешь», «как сделать КП», «сколько стоит подписка»); chat — приветствие, благодарность, прочее\n` +
+    ` "note": string|null,          // при intent=note: что запомнить, своими словами мастера, без «запомни»\n` +
+    ` "money": {                    // только при intent=money, иначе null\n` +
+    `  "kind": "income|expense|debt_to_me|debt_mine|debt_closed",\n` +
+    `  "amount": number|null,      // в тенге. «120 тысяч», «120к», «120 000» → 120000; «1,5 млн» → 1500000; «85» в разговоре о деньгах → 85000 (мастера называют тысячи). Нет суммы — null\n` +
+    `  "counterparty": string|null, // имя человека/клиента В ИМЕНИТЕЛЬНОМ падеже: «Ерлану» → "Ерлан", «от Асель» → "Асель", «монтажникам» → "монтажники"; нет — null\n` +
+    `  "dueAt": "YYYY-MM-DD"|null, // срок долга («отдаст в пятницу» → ближайшая пятница); иначе null\n` +
+    `  "text": string              // 1–4 слова, о чём: «материалы», «остаток за зал», «монтажникам», «долг»\n` +
+    ` } | null,\n` +
+    ` "ask": {                      // только при intent=ask, иначе null\n` +
+    `  "ask": "notes|debts|money_period|money_search", // notes — что записывал; debts — кто/кому должен; money_period — сколько заработал/потратил/итог за период; money_search — траты/доходы по теме («на материалы», «от Асель»)\n` +
+    `  "period": "today|week|month"|null,              // «сегодня», «за неделю», «за месяц»; не названо — null\n` +
+    `  "query": string|null                           // тема поиска для money_search: «материалы», «Асель»\n` +
+    ` } | null,\n` +
     ` "event": {                    // только при intent=event, иначе null\n` +
     `  "kind": "measure|install|meeting|call|birthday|other",   // замер → measure, монтаж/установка → install, встреча → meeting, позвонить/звонок → call, день рождения → birthday\n` +
     `  "title": string,            // короткое название без имени клиента: "Замер", "Монтаж", "Встреча", "Звонок", "День рождения" или своё ("Забрать полотно")\n` +
@@ -440,6 +515,11 @@ export async function extractEvent(args: {
     `  "allDay": boolean,          // true для дня рождения или события на весь день (start тогда "YYYY-MM-DDT00:00")\n` +
     `  "notes": string|null        // прочие детали: этаж, «два уровня», «клиент просил позвонить до», и т.п.\n` +
     `} | null}\n\n` +
+    `Приоритет: деньги или долг (даже с датой) → money; «запомни»/факт без даты и денег → note; есть дата/время и это встреча, замер, монтаж, звонок, ДР → event; вопрос про свои записи/деньги → ask. ` +
+    `«Заработал» без суммы → note. Примеры: «запомни: у Серика ключ от склада» → note; «сегодня заработал 120 тысяч от Асель» → money income 120000 Асель; ` +
+    `«потратил 30 на материалы» → money expense 30000 «материалы»; «заплатил монтажникам 40 тысяч» → money expense 40000 «монтажникам»; ` +
+    `«Марат занял 50 тысяч, отдаст в пятницу» → money debt_to_me 50000 Марат dueAt=пятница; «я должен Ерлану 20 тысяч» → money debt_mine 20000 Ерлан; ` +
+    `«Марат отдал» → money debt_closed Марат; «кто мне должен?» → ask debts; «сколько заработал за неделю?» → ask money_period week; «сколько потратил на материалы?» → ask money_search «материалы».\n` +
     `Никаких уточняющих вопросов: чего не сказали — null. Нет адреса — address null, нет имени — clientName null.\n` +
     (args.current
       ? `Есть ТЕКУЩИЙ черновик, пользователь присылает ПРАВКУ или ответ на вопрос о дате. intent всегда "event". ` +
@@ -480,11 +560,23 @@ export async function extractEvent(args: {
   // не дала intent, судим по наличию event.
   const intent: MessageIntent = args.current
     ? "event"
-    : rawIntent === "question" || rawIntent === "chat"
+    : rawIntent === "question" || rawIntent === "chat" || rawIntent === "note" || rawIntent === "money" || rawIntent === "ask"
       ? rawIntent
       : ev
         ? "event"
         : "chat";
+  if (intent === "note") {
+    const note = strOrNull(parsed.note) ?? args.text.replace(/^\s*(запомни|не забыть|не забудь)[:,\s]*/i, "").trim();
+    return note ? { intent, draft: null, note } : { intent: "chat", draft: null };
+  }
+  if (intent === "money") {
+    const money = parseMoney(parsed.money);
+    return money ? { intent, draft: null, money } : { intent: "chat", draft: null };
+  }
+  if (intent === "ask") {
+    const ask = parseAsk(parsed.ask);
+    return ask ? { intent, draft: null, ask } : { intent: "question", draft: null };
+  }
   if (intent !== "event") return { intent, draft: null };
   if (!ev) return { intent: args.current ? "event" : "chat", draft: args.current };
 
@@ -539,6 +631,39 @@ function parseJson(raw: string): Record<string, unknown> | null {
 
 function strOrNull(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+const MONEY_KINDS: MoneyKind[] = ["income", "expense", "debt_to_me", "debt_mine", "debt_closed"];
+const ASK_KINDS: AskKind[] = ["notes", "debts", "money_period", "money_search"];
+
+/** Сумма из ответа модели → тенге. Мастера говорят «85» про 85 тысяч: до 1000 умножаем. */
+export function normalizeAmount(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.replace(/[^\d.,-]/g, "").replace(",", ".")) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const abs = Math.round(Math.abs(n));
+  return abs < 1000 ? abs * 1000 : abs;
+}
+
+function parseMoney(v: unknown): MoneyDraft | null {
+  if (!v || typeof v !== "object") return null;
+  const m = v as Record<string, unknown>;
+  if (!MONEY_KINDS.includes(m.kind as MoneyKind)) return null;
+  const due = typeof m.dueAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(m.dueAt) ? m.dueAt.slice(0, 10) : null;
+  return {
+    kind: m.kind as MoneyKind,
+    amount: normalizeAmount(m.amount),
+    counterparty: strOrNull(m.counterparty),
+    dueAt: due,
+    text: strOrNull(m.text) ?? "",
+  };
+}
+
+function parseAsk(v: unknown): AskDraft | null {
+  if (!v || typeof v !== "object") return null;
+  const a = v as Record<string, unknown>;
+  if (!ASK_KINDS.includes(a.ask as AskKind)) return null;
+  const period = a.period === "today" || a.period === "week" || a.period === "month" ? a.period : null;
+  return { ask: a.ask as AskKind, period, query: strOrNull(a.query) };
 }
 
 // ── Карточка и событие ────────────────────────────────────────────────────

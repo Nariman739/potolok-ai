@@ -12,8 +12,11 @@ import {
   googleAuthUrl,
   isGoogleConfigured,
 } from "../src/lib/google-calendar";
-import { extractEvent, formatDraftCard, zonedLocalToDate, formatLocalIso } from "../src/lib/calendar-assistant";
+import { extractEvent, formatDraftCard, zonedLocalToDate, formatLocalIso, normalizeAmount } from "../src/lib/calendar-assistant";
+import type { MessageIntent, MoneyDraft, AskDraft } from "../src/lib/calendar-assistant";
 import { assistantReply } from "../src/lib/telegram-assistant";
+import { answerAsk, closeDebt, formatMoney, periodStart } from "../src/lib/bot-memory";
+import { prisma } from "../src/lib/prisma";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) {
@@ -91,6 +94,78 @@ for (const q of ["что ты умеешь", "как отправить КП к�
   const a = await assistantReply(q, { master: { firstName: "Нариман", language: "ru" }, calendarConnected: true });
   console.log(`\n— ассистент «${q}»:\n${a}`);
   assert(a.length > 20 && !/не понял, какое событие/i.test(a), `ассистент ответил на «${q}»`);
+}
+assert(/запомни|деньги|заработал/i.test(await assistantReply("что ты умеешь", { master: null, calendarConnected: false })), "«что ты умеешь» упоминает память/деньги");
+
+// ── Память и бухгалтер (22.10.2026) ─────────────────────────────────────
+console.log("\n══ Память и деньги ══");
+assert(normalizeAmount(85) === 85000 && normalizeAmount(120000) === 120000 && normalizeAmount("1 500") === 1500 && normalizeAmount(0) === null, "normalizeAmount: 85 → 85 000, 120000 как есть");
+assert(formatMoney(120000) === "120 000 ₸", "formatMoney 120 000 ₸");
+const ps = periodStart("today", tz, new Date("2026-10-22T18:00:00Z"));
+assert(ps.toISOString() === "2026-10-21T19:00:00.000Z", "periodStart today = локальная полночь Алматы (22.10 00:00 = 21.10 19:00Z)");
+
+type MemCase = { text: string; intent: MessageIntent; check?: (r: { money?: MoneyDraft | null; ask?: AskDraft | null; note?: string | null }) => boolean; label?: string };
+const memCases: MemCase[] = [
+  { text: "запомни: у Серика ключ от склада", intent: "note", check: (r) => /ключ от склада/i.test(r.note ?? ""), label: "note с текстом" },
+  { text: "не забыть позвонить Болату", intent: "note" },
+  { text: "сегодня заработал 120 тысяч от Асель", intent: "money", check: (r) => r.money?.kind === "income" && r.money.amount === 120000 && /асель/i.test(r.money.counterparty ?? ""), label: "income 120 000 Асель" },
+  { text: "получил остаток 85 тысяч", intent: "money", check: (r) => r.money?.kind === "income" && r.money.amount === 85000, label: "income 85 000" },
+  { text: "потратил 30 на материалы", intent: "money", check: (r) => r.money?.kind === "expense" && r.money.amount === 30000, label: "expense 30 000 материалы" },
+  { text: "заплатил монтажникам 40 тысяч", intent: "money", check: (r) => r.money?.kind === "expense" && r.money.amount === 40000, label: "expense 40 000 монтажникам" },
+  { text: "Марат занял 50 тысяч, отдаст в пятницу", intent: "money", check: (r) => r.money?.kind === "debt_to_me" && r.money.amount === 50000 && !!r.money.dueAt, label: "debt_to_me 50 000 с датой" },
+  { text: "я должен Ерлану 20 тысяч", intent: "money", check: (r) => r.money?.kind === "debt_mine" && r.money.amount === 20000, label: "debt_mine 20 000" },
+  { text: "Марат отдал", intent: "money", check: (r) => r.money?.kind === "debt_closed" && /марат/i.test(r.money.counterparty ?? ""), label: "debt_closed Марат" },
+  { text: "что я записывал?", intent: "ask", check: (r) => r.ask?.ask === "notes", label: "ask notes" },
+  { text: "кто мне должен?", intent: "ask", check: (r) => r.ask?.ask === "debts", label: "ask debts" },
+  { text: "сколько заработал за неделю?", intent: "ask", check: (r) => r.ask?.ask === "money_period" && r.ask.period === "week", label: "ask money_period week" },
+  { text: "сколько потратил на материалы?", intent: "ask", check: (r) => r.ask?.ask === "money_search" && /материал/i.test(r.ask.query ?? ""), label: "ask money_search материалы" },
+  { text: "замер завтра в 15, Абая 5, Серик", intent: "event" },
+  { text: "сколько стоит подписка", intent: "question" },
+];
+for (const c of memCases) {
+  const t0 = Date.now();
+  const r = await extractEvent({ text: c.text, timeZone: tz, current: null });
+  console.log(`— «${c.text}» (${Date.now() - t0} ms) → ${r.intent} ${JSON.stringify(r.money ?? r.ask ?? r.note ?? "")}`);
+  assert(r.intent === c.intent, `intent «${c.text}» = ${c.intent}`);
+  if (c.check) assert(c.check(r), c.label ?? c.text);
+}
+
+// Ответы из базы — тестовый чат, записи чистим в конце
+const chat = "selftest-bot-memory";
+await prisma.botNote.deleteMany({ where: { telegramChatId: chat } });
+try {
+  await prisma.botNote.createMany({
+    data: [
+      { telegramChatId: chat, kind: "note", text: "у Серика ключ от склада" },
+      { telegramChatId: chat, kind: "note", text: "позвонить Болату" },
+      { telegramChatId: chat, kind: "income", text: "остаток за зал", amount: 120000, counterparty: "Асель" },
+      { telegramChatId: chat, kind: "expense", text: "материалы", amount: 30000 },
+      { telegramChatId: chat, kind: "debt_to_me", text: "долг", amount: 50000, counterparty: "Марат", dueAt: new Date() },
+      { telegramChatId: chat, kind: "debt_mine", text: "долг", amount: 20000, counterparty: "Ерлан" },
+    ],
+  });
+  const notes = await answerAsk(chat, { ask: "notes", period: null, query: null }, {});
+  console.log("\n— что я записывал:\n" + notes.replace(/<[^>]+>/g, ""));
+  assert(/ключ от склада/.test(notes) && /Болату/.test(notes), "список заметок");
+  const debts = await answerAsk(chat, { ask: "debts", period: null, query: null }, {});
+  console.log("\n— кто мне должен:\n" + debts.replace(/<[^>]+>/g, ""));
+  assert(/Марат — 50 000 ₸/.test(debts) && /Ерлан — 20 000 ₸/.test(debts) && /Должны тебе/.test(debts), "долги в обе стороны с суммами");
+  const week = await answerAsk(chat, { ask: "money_period", period: "week", query: null }, {});
+  console.log("\n— за неделю:\n" + week.replace(/<[^>]+>/g, ""));
+  assert(/Получил: 120 000 ₸/.test(week) && /Потратил: 30 000 ₸/.test(week) && /Итого: \+90 000 ₸/.test(week), "доходы/расходы/итог за неделю");
+  const mat = await answerAsk(chat, { ask: "money_search", period: null, query: "материалы" }, {});
+  console.log("\n— на материалы:\n" + mat.replace(/<[^>]+>/g, ""));
+  assert(/30 000 ₸/.test(mat), "поиск по «материалы»");
+  const closed = await closeDebt(chat, { kind: "debt_closed", amount: null, counterparty: "Марата", dueAt: null, text: "" });
+  console.log("\n— Марат отдал: " + closed);
+  assert(/Марат рассчитался/.test(closed), "закрытие долга по имени в косвенном падеже");
+  const debts2 = await answerAsk(chat, { ask: "debts", period: null, query: null }, {});
+  assert(!/Марат/.test(debts2) && /Ерлан/.test(debts2), "после закрытия Марата нет в долгах");
+  const part = await closeDebt(chat, { kind: "debt_closed", amount: 5000, counterparty: "Ерлан", dueAt: null, text: "" });
+  console.log("— вернул Ерлану 5: " + part);
+  assert(/осталось 15 000 ₸/.test(part), "частичный возврат уменьшает долг");
+} finally {
+  await prisma.botNote.deleteMany({ where: { telegramChatId: chat } });
 }
 }
 main().then(() => process.exit(process.exitCode ?? 0));

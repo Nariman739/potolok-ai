@@ -23,7 +23,8 @@ export type AiFeature =
   | "kp-onboarding"
   | "calendar-bot"
   | "voice-transcribe"
-  | "telegram-assistant";
+  | "telegram-assistant"
+  | "bot-memory";
 
 const MAX_TEXT = 8000;
 

@@ -1510,6 +1510,37 @@ model CalendarDraft {
   @@index([telegramChatId, createdAt])
 }
 
+/// Память и бухгалтер бота (22.10.2026): «запомни …», «заработал 120 тысяч»,
+/// «Марат занял 50, отдаст в пятницу». Ключ — чат Telegram (работает без
+/// аккаунта, как календарь); masterId заполняется, если чат привязан.
+/// Удаление — мягкое (deletedAt), долг закрывается closedAt.
+model BotNote {
+  id             String    @id @default(uuid())
+  telegramChatId String
+  masterId       String?
+  kind           String // note | income | expense | debt_to_me | debt_mine
+  text           String    @db.Text
+  amount         Int? // ₸
+  counterparty   String?
+  dueAt          DateTime?
+  closedAt       DateTime? // долг закрыт
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([telegramChatId, createdAt])
+  @@index([masterId, kind])
+}
+
+/// Настройки чата бота: вечерний вопрос «как прошёл день?» (крон tg-evening)
+/// и активность — lastUserMsgAt обновляется на любое сообщение мастера.
+model BotSettings {
+  telegramChatId String    @id
+  eveningOff     Boolean   @default(false)
+  eveningMissed  Int       @default(0) // вечеров подряд без ответа; ≥3 → раз в неделю
+  lastEveningAt  DateTime?
+  lastUserMsgAt  DateTime?
+}
+
 /// Анонимный архив геометрии (09.10.2026): перед ОКОНЧАТЕЛЬНЫМ удалением объекта
 /// или аккаунта копируем только размеры/элементы/цены — без адреса, клиента,
 /// мастера, фото и координат. Это не персональные данные; нужен для базы

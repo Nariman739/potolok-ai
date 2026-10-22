@@ -30,6 +30,10 @@
     {
       "path": "/api/cron/onboarding-pushes",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/tg-evening",
+      "schedule": "30 15 * * *"
     }
   ]
 }
