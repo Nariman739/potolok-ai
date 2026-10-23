@@ -37,13 +37,30 @@ export type Shape =
   | { k: "path"; d: string; fill: string; stroke: string; sw: number }
   | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number }
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash?: string; round?: boolean }
-  | { k: "polyline"; points: Pt[]; stroke: string; sw: number }
+  | { k: "polyline"; points: Pt[]; stroke: string; sw: number; dash?: string }
   | { k: "circle"; cx: number; cy: number; r: number; fill: string; stroke: string; sw: number }
-  | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean };
+  | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean; haloColor?: string };
 
-export type Legend = { key: string; color: string; kind: "dot" | "ring" | "pair" | "line" | "dash" };
+/**
+ * Легенда: `kind` — форма значка; в карандашном стиле типы различаются не
+ * цветом, а рисунком линии: `dash` — пунктир, `double` — двойная линия.
+ */
+export type Legend = {
+  key: string;
+  color: string;
+  kind: "dot" | "ring" | "pair" | "vent" | "chand" | "line" | "dash";
+  dash?: string;
+  double?: boolean;
+  mul?: number;
+};
 
-export type RoomPlan = { size: number; shapes: Shape[]; legend: Legend[] };
+export type RoomPlan = {
+  size: number;
+  shapes: Shape[];
+  legend: Legend[];
+  /** Перевод см → единицы плана: x·scale + ox. Нужен, чтобы продолжить клетку за пределы плана. */
+  frame: { ox: number; oy: number; scale: number };
+};
 
 export type PlanOptions = {
   /**
@@ -54,7 +71,45 @@ export type PlanOptions = {
    * см до ЦЕНТРА светильника, у пары — до центра пары.
    */
   dims?: boolean;
+  /**
+   * «Тетрадь в клеточку, карандашом» (Нариман 23.10.2026): бумага, клетка
+   * 10/50 см, всё одним графитом; типы элементов — рисунком линии (двойная,
+   * пунктир, штрих-пунктир, точки), а не цветом. Для страницы чертежа в PDF.
+   */
+  pencil?: boolean;
+  /** Рисовать клетку внутри плана (по умолчанию да в карандашном стиле). */
+  grid?: boolean;
 };
+
+type Palette = Record<keyof typeof COLORS, string>;
+const PAPER = "#fbfaf3";
+const INK = "#2f2f35";
+const GRID = "#dde5ee";
+const GRID_MAJOR = "#c3d0de";
+const PENCIL_COLORS: Palette = {
+  spot: INK, pendant: INK, chandelier: INK, vent: INK, track: INK, lightline: INK, curtain: INK,
+  subcurtain: INK, floating: INK, wall: INK, roomFill: "none", label: INK,
+};
+/** Рисунок линий элементов в карандашном стиле (паттерны в единицах u). */
+const LINE_PENCIL: Record<string, { dash?: string; double?: boolean; mul?: number }> = {
+  track: { double: true },
+  lightline: { dash: "7 3 1.5 3" },
+  curtain: { dash: "9 4" },
+  subcurtain: { dash: "1.5 3", mul: 1.5 },
+};
+/** Профили стен карандашом: толщина и рисунок вместо цвета. */
+const PROFILE_PENCIL: Record<string, { dash?: string; double?: boolean; mul: number }> = {
+  pvc: { dash: "6 4", mul: 1 },
+  aluminum_insert: { mul: 1.4 },
+  aluminum: { dash: "6 4", mul: 1.4 },
+  shadow: { mul: 2.4 },
+  floating: { double: true, mul: 2.4 },
+  subcurtain: { dash: "1.5 3", mul: 1.8 },
+  subcurtain_light: { dash: "1.5 3", mul: 1.8 },
+  ldsp: { dash: "7 3 1.5 3", mul: 1.6 },
+  eurobrus: { dash: "7 3 1.5 3", mul: 1.6 },
+};
+const scaleDash = (d: string, u: number) => d.split(" ").map((n) => (Number(n) * u).toFixed(2)).join(" ");
 
 const DIM = "#64748b";
 const DIM_TEXT = "#1e293b";
@@ -166,11 +221,11 @@ function elementLength(el: RoomElement): number {
 const CURTAIN_TYPES = new Set(["curtain", "builtin_gardina", "shower_curtain"]);
 const LINE_TYPES = new Set(["track", "lightline", "curtain", "subcurtain", "builtin_gardina", "shower_curtain"]);
 
-function lineColor(type: string): string {
-  if (type === "track") return COLORS.track;
-  if (type === "lightline") return COLORS.lightline;
-  if (type === "subcurtain") return COLORS.subcurtain;
-  return COLORS.curtain;
+function lineColor(type: string, C: Palette = COLORS): string {
+  if (type === "track") return C.track;
+  if (type === "lightline") return C.lightline;
+  if (type === "subcurtain") return C.subcurtain;
+  return C.curtain;
 }
 
 function legendKey(type: string): string {
@@ -457,13 +512,47 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   const strokeW = 2 * u;
   const fs = 10 * u;
 
+  const pencil = !!opts.pencil;
+  const C: Palette = pencil ? PENCIL_COLORS : COLORS;
   const shapes: Shape[] = [];
+
+  // Клетка тетради: 10 см тонко, 50 см жирнее, по всему листу, в масштабе комнаты
+  // (PDF рисует клетку сам на всю страницу по frame — тогда grid: false)
+  if (pencil && opts.grid !== false) {
+    const k0x = Math.floor(-ox / scale / 10), k1x = Math.ceil((size - ox) / scale / 10);
+    const k0y = Math.floor(-oy / scale / 10), k1y = Math.ceil((size - oy) / scale / 10);
+    for (let k = k0x; k <= k1x; k++) {
+      const X = sx(k * 10);
+      if (X < 0 || X > size) continue;
+      const major = k % 5 === 0;
+      shapes.push({ k: "line", x1: X, y1: 0, x2: X, y2: size, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u });
+    }
+    for (let k = k0y; k <= k1y; k++) {
+      const Y = sy(k * 10);
+      if (Y < 0 || Y > size) continue;
+      const major = k % 5 === 0;
+      shapes.push({ k: "line", x1: 0, y1: Y, x2: size, y2: Y, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u });
+    }
+  }
+
+  /** Линия элемента: в карандашном стиле — двойная / пунктир / точки по типу. */
+  const pushStyled = (base: Extract<Shape, { k: "line" } | { k: "polyline" }>, type: string) => {
+    if (!pencil) { shapes.push(base); return; }
+    const ps = LINE_PENCIL[legendKey(type)] ?? {};
+    if (ps.double) {
+      shapes.push({ ...base, sw: strokeW * 1.9 });
+      shapes.push({ ...base, stroke: PAPER, sw: strokeW * 0.7 });
+      return;
+    }
+    shapes.push({ ...base, sw: strokeW * (ps.mul ?? 1), dash: ps.dash ? scaleDash(ps.dash, u) : undefined });
+  };
+
   const outline = roomOutlinePath(sv, {
     bulges: room.bulges?.map((b) => (b || 0) * scale),
     cornerRadii: room.cornerRadii?.map((r) => (r || 0) * scale),
   });
-  if (outline) shapes.push({ k: "path", d: outline, fill: COLORS.roomFill, stroke: COLORS.wall, sw: strokeW });
-  else shapes.push({ k: "polygon", points: sv, fill: COLORS.roomFill, stroke: COLORS.wall, sw: strokeW });
+  if (outline) shapes.push({ k: "path", d: outline, fill: C.roomFill, stroke: C.wall, sw: strokeW });
+  else shapes.push({ k: "polygon", points: sv, fill: C.roomFill, stroke: C.wall, sw: strokeW });
 
   // Внутренняя сторона стены: центроид комнаты подсказывает знак перпендикуляра.
   const cx0 = sv.reduce((s, p) => s + p.x, 0) / n, cy0 = sv.reduce((s, p) => s + p.y, 0) / n;
@@ -484,9 +573,20 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   walls.forEach((_, i) => {
     const p = prof[i];
     if (p === "pvc_insert") return; // обычный пластик — просто контур
-    const st = PROFILE_STYLE[p] ?? { color: "#7c3aed", dashed: true, mul: 1.2 };
     const { a, b } = wallFrame(i);
     used.add(`prof:${p}`);
+    if (pencil) {
+      const ps = PROFILE_PENCIL[p] ?? { dash: "4 3", mul: 1.4 };
+      const base = { k: "line" as const, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: INK, sw: strokeW * ps.mul };
+      if (ps.double) {
+        shapes.push(base);
+        shapes.push({ ...base, stroke: PAPER, sw: strokeW * 0.8 });
+      } else {
+        shapes.push({ ...base, dash: ps.dash ? scaleDash(ps.dash, u) : undefined });
+      }
+      return;
+    }
+    const st = PROFILE_STYLE[p] ?? { color: "#7c3aed", dashed: true, mul: 1.2 };
     shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: st.color, sw: strokeW * st.mul + u, dash: st.dashed ? `${6 * u} ${4 * u}` : undefined });
   });
 
@@ -509,14 +609,14 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     const off = depthCm * scale;
     const x1 = a.x + nx * startT + px * off, y1 = a.y + ny * startT + py * off;
     const x2 = a.x + nx * (startT + elLen) + px * off, y2 = a.y + ny * (startT + elLen) + py * off;
-    const color = lineColor(type);
+    const color = lineColor(type, C);
     used.add(`el:${legendKey(type)}`);
     const sw = type === "subcurtain" ? strokeW * 1.3 : strokeW;
-    shapes.push({ k: "line", x1, y1, x2, y2, stroke: color, sw, round: true });
+    pushStyled({ k: "line", x1, y1, x2, y2, stroke: color, sw, round: true }, type);
     // П-ниша / Г-загиб подшторника: возвраты к стене
     if (type === "subcurtain" && (shape === "u-niche" || shape === "l-bend")) {
-      if (shape === "u-niche" || el.side !== "left") shapes.push({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw });
-      if (shape === "u-niche" || el.side === "left") shapes.push({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw });
+      if (shape === "u-niche" || el.side !== "left") pushStyled({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw }, type);
+      if (shape === "u-niche" || el.side === "left") pushStyled({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw }, type);
     }
     const cm = Math.round(el.length ?? wallCm);
     shapes.push({ k: "text", x: (x1 + x2) / 2 + px * (fs + 2 * u), y: (y1 + y2) / 2 + py * (fs + 2 * u), text: String(cm), size: fs, weight: 600, fill: color, halo: true });
@@ -528,14 +628,14 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (String(el.shape) === "circle" && typeof (el as { cx?: number }).cx === "number") {
       const c = el as unknown as { cx: number; cy: number; radius: number };
       used.add(`el:${legendKey(type)}`);
-      shapes.push({ k: "circle", cx: sx(c.cx), cy: sy(c.cy), r: Math.max(2 * u, c.radius * scale), fill: "none", stroke: lineColor(type), sw: strokeW });
+      shapes.push({ k: "circle", cx: sx(c.cx), cy: sy(c.cy), r: Math.max(2 * u, c.radius * scale), fill: "none", stroke: lineColor(type, C), sw: strokeW });
       continue;
     }
     if (el.shape !== "freeform" || !el.points || el.points.length < 2) continue;
     const p = freeformPoints(el).map(S);
-    const color = lineColor(type);
+    const color = lineColor(type, C);
     used.add(`el:${legendKey(type)}`);
-    shapes.push({ k: "polyline", points: p, stroke: color, sw: strokeW });
+    pushStyled({ k: "polyline", points: p, stroke: color, sw: strokeW }, type);
     const cm = Math.round(elementLength(el));
     if (cm > 0) {
       const mid = p[Math.floor(p.length / 2)];
@@ -566,32 +666,32 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const half = Math.max(spotRad + 2.2 * u, (dCm / 2) * scale);
       const c = S({ x: un.cx, y: un.cy });
       for (const t of [-half, half]) {
-        shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: COLORS.spot, sw: 1.8 * u });
+        shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u });
       }
       continue;
     }
     const el = un.members[0];
     const x = sx(el.x as number), y = sy(el.y as number);
     if (type === "spot") {
-      shapes.push({ k: "circle", cx: x, cy: y, r: spotRad, fill: "#fff", stroke: COLORS.spot, sw: 1.8 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u });
     } else if (type === "pendant") {
-      shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: COLORS.pendant, sw: 2 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: COLORS.pendant, stroke: "none", sw: 0 });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: C.pendant, sw: 2 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: C.pendant, stroke: "none", sw: 0 });
     } else if (type === "vent") {
       // Теневая вытяжка — круг в круге, чуть меньше люстры (8.5u)
       const rv = 7.5 * u;
-      shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: COLORS.vent, sw: 1.8 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.55, fill: "#fff", stroke: COLORS.vent, sw: 1.4 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: C.vent, sw: 1.8 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.55, fill: "#fff", stroke: C.vent, sw: 1.4 * u });
     } else {
-      shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: COLORS.chandelier, sw: 2 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: COLORS.chandelier, stroke: "none", sw: 0 });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: C.chandelier, sw: 2 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: C.chandelier, stroke: "none", sw: 0 });
     }
   }
 
   // Подписи длин стен (см) снаружи, с запасом под толстую линию профиля
   walls.forEach((len, i) => {
     const { a, b, px, py } = wallFrame(i);
-    shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text: String(len), size: 11 * u, weight: 400, fill: COLORS.label, halo: true });
+    shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text: String(len), size: 11 * u, weight: 400, fill: C.label, halo: true });
   });
   // Буквы углов — наружу, против биссектрисы к соседям
   sv.forEach((p, i) => {
@@ -599,33 +699,48 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     let dx = (prev.x - p.x) + (next.x - p.x), dy = (prev.y - p.y) + (next.y - p.y);
     const l = Math.hypot(dx, dy) || 1;
     dx /= l; dy /= l;
-    shapes.push({ k: "text", x: p.x - dx * 11 * u, y: p.y - dy * 11 * u, text: cornerLetter(i), size: 10 * u, weight: 700, fill: COLORS.wall, halo: false });
+    shapes.push({ k: "text", x: p.x - dx * 11 * u, y: p.y - dy * 11 * u, text: cornerLetter(i), size: 10 * u, weight: 700, fill: C.wall, halo: false });
   });
 
   const legend: Legend[] = [];
   for (const key of used) {
     const [kind, name] = key.split(":");
     if (kind === "el") {
-      if (name === "spot") legend.push({ key: t("wo.el.spot"), color: COLORS.spot, kind: "ring" });
-      else if (name === "spotPair") legend.push({ key: t("wo.el.spotPair"), color: COLORS.spot, kind: "pair" });
-      else if (name === "pendant") legend.push({ key: t("wo.el.pendant"), color: COLORS.pendant, kind: "dot" });
-      else if (name === "chandelier") legend.push({ key: t("wo.el.chandelier"), color: COLORS.chandelier, kind: "dot" });
-      else if (name === "vent") legend.push({ key: t("wo.el.vent"), color: COLORS.vent, kind: "ring" });
-      else if (name === "track") legend.push({ key: t("wo.el.track"), color: COLORS.track, kind: "line" });
-      else if (name === "lightline") legend.push({ key: t("wo.el.lightline"), color: COLORS.lightline, kind: "line" });
-      else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: COLORS.curtain, kind: "line" });
-      else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: COLORS.subcurtain, kind: "line" });
+      const ln = (type: string): Pick<Legend, "dash" | "double" | "mul"> => {
+        if (!pencil) return {};
+        const ps = LINE_PENCIL[type] ?? {};
+        return { dash: ps.dash, double: ps.double, mul: ps.mul };
+      };
+      if (name === "spot") legend.push({ key: t("wo.el.spot"), color: C.spot, kind: "ring" });
+      else if (name === "spotPair") legend.push({ key: t("wo.el.spotPair"), color: C.spot, kind: "pair" });
+      else if (name === "pendant") legend.push({ key: t("wo.el.pendant"), color: C.pendant, kind: "dot" });
+      else if (name === "chandelier") legend.push({ key: t("wo.el.chandelier"), color: C.chandelier, kind: "chand" });
+      else if (name === "vent") legend.push({ key: t("wo.el.vent"), color: C.vent, kind: "vent" });
+      else if (name === "track") legend.push({ key: t("wo.el.track"), color: C.track, kind: "line", ...ln("track") });
+      else if (name === "lightline") legend.push({ key: t("wo.el.lightline"), color: C.lightline, kind: "line", ...ln("lightline") });
+      else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: C.curtain, kind: "line", ...ln("curtain") });
+      else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: C.subcurtain, kind: "line", ...ln("subcurtain") });
     } else {
-      const st = PROFILE_STYLE[name];
-      legend.push({
-        key: `${t("wo.profile")} ${PROFILE_TYPES.includes(name) ? t(`wo.prof.${name}`) : t("wo.prof.custom")}`,
-        color: st?.color ?? "#7c3aed",
-        kind: st?.dashed === false ? "line" : "dash",
-      });
+      const label = `${t("wo.profile")} ${PROFILE_TYPES.includes(name) ? t(`wo.prof.${name}`) : t("wo.prof.custom")}`;
+      if (pencil) {
+        const ps = PROFILE_PENCIL[name] ?? { dash: "4 3", mul: 1.4 };
+        legend.push({ key: label, color: INK, kind: "line", dash: ps.dash, double: ps.double, mul: ps.mul });
+      } else {
+        const st = PROFILE_STYLE[name];
+        legend.push({ key: label, color: st?.color ?? "#7c3aed", kind: st?.dashed === false ? "line" : "dash" });
+      }
     }
   }
 
-  return { size, shapes, legend };
+  // Карандаш: подложка подписей — цвет бумаги, заливки кружков — бумага
+  if (pencil) {
+    for (const s of shapes) {
+      if (s.k === "text") s.haloColor = PAPER;
+      else if (s.k === "circle" && s.fill === "#fff") s.fill = PAPER;
+    }
+  }
+
+  return { size, shapes, legend, frame: { ox, oy, scale } };
 }
 
 // ============================================
@@ -644,11 +759,11 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
             case "path": return <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
             case "polygon": return <polygon key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
             case "line": return <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap={s.round ? "round" : "butt"} />;
-            case "polyline": return <polyline key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={s.stroke} strokeWidth={s.sw} strokeLinecap="round" strokeLinejoin="round" />;
+            case "polyline": return <polyline key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap="round" strokeLinejoin="round" />;
             case "circle": return <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
             case "text": return (
               <text key={i} x={s.x} y={s.y} fontSize={s.size} fontWeight={s.weight} textAnchor="middle" dominantBaseline="middle" fill={s.fill}
-                stroke={s.halo ? "#ffffff" : undefined} strokeWidth={s.halo ? 3 : undefined} paintOrder={s.halo ? "stroke" : undefined}>{s.text}</text>
+                stroke={s.halo ? (s.haloColor ?? "#ffffff") : undefined} strokeWidth={s.halo ? 3 : undefined} paintOrder={s.halo ? "stroke" : undefined}>{s.text}</text>
             );
           }
         })}
@@ -659,6 +774,10 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
             <li key={l.key} className="flex items-center gap-1.5">
               {l.kind === "line" || l.kind === "dash" ? (
                 <span className="inline-block w-4 border-t-2" style={{ borderColor: l.color, borderStyle: l.kind === "dash" ? "dashed" : "solid" }} />
+              ) : l.kind === "vent" || l.kind === "chand" ? (
+                <span className="inline-flex items-center justify-center w-3 h-3 rounded-full" style={{ border: `2px solid ${l.color}` }}>
+                  <span className="inline-block w-1 h-1 rounded-full" style={l.kind === "vent" ? { border: `1px solid ${l.color}` } : { backgroundColor: l.color }} />
+                </span>
               ) : l.kind === "pair" ? (
                 <span className="inline-flex items-center gap-[2px]">
                   <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ border: `2px solid ${l.color}` }} />

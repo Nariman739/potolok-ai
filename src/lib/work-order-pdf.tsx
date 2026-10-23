@@ -4,14 +4,18 @@
  * Фигуры плана строит buildRoomPlan, здесь они рисуются примитивами @react-pdf.
  */
 import React from "react";
-import { Document, Page, View, Text, StyleSheet, Svg, Path, Polygon, Polyline, Line, Circle, Text as SvgText, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet, Svg, Path, Polygon, Polyline, Line, Circle, Rect, Text as SvgText, renderToBuffer } from "@react-pdf/renderer";
 import { ensureFontsRegistered } from "@/lib/kp/pdf/fonts";
 import { tFor } from "@/lib/i18n";
-import { buildRoomPlan, type RoomPlan } from "@/lib/work-order-plan";
+import { buildRoomPlan, type RoomPlan, type Legend } from "@/lib/work-order-plan";
 import type { WorkOrderModel } from "@/lib/work-order-data";
 
 const NAVY = "#1e3a5f";
 const PLAN = 230; // pt — сторона квадрата плана
+// Карандашная страница чертежа
+const PAPER = "#fbfaf3";
+const INK = "#2f2f35";
+const INK_SOFT = "#5b5b63";
 
 const s = StyleSheet.create({
   page: { paddingTop: 34, paddingBottom: 40, paddingHorizontal: 36, fontFamily: "Inter", fontSize: 9.5, color: "#0f172a" },
@@ -46,26 +50,82 @@ function PlanSvg({ plan, side = PLAN }: { plan: RoomPlan; side?: number }) {
           case "path": return <Path key={i} d={sh.d} fill={sh.fill} stroke={sh.stroke} strokeWidth={sh.sw} />;
           case "polygon": return <Polygon key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={sh.fill} stroke={sh.stroke} strokeWidth={sh.sw} />;
           case "line": return <Line key={i} x1={sh.x1} y1={sh.y1} x2={sh.x2} y2={sh.y2} stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap={sh.round ? "round" : "butt"} />;
-          case "polyline": return <Polyline key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={sh.stroke} strokeWidth={sh.sw} strokeLinecap="round" strokeLinejoin="round" />;
+          case "polyline": return <Polyline key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap="round" strokeLinejoin="round" />;
           case "circle": return <Circle key={i} cx={sh.cx} cy={sh.cy} r={sh.r} fill={sh.fill} stroke={sh.stroke === "none" ? undefined : sh.stroke} strokeWidth={sh.sw} />;
-          case "text": return (
-            // Шрифт у svg-Text в react-pdf задаётся через style; в типах этих полей нет
-            <SvgText key={i} x={sh.x} y={sh.y} fill={sh.fill} textAnchor="middle" dominantBaseline="middle"
-              style={{ fontSize: sh.size, fontFamily: "Inter", fontWeight: sh.weight >= 600 ? 600 : 400 } as unknown as Record<string, never>}>
-              {sh.text}
-            </SvgText>
-          );
+          case "text": {
+            // Шрифт у svg-Text в react-pdf задаётся через style; в типах этих полей нет.
+            // Подложка под цифрой (чтобы клетка не лезла под текст) — прямоугольник цвета бумаги.
+            const style = { fontSize: sh.size, fontFamily: "Inter", fontWeight: sh.weight >= 600 ? 600 : 400 } as unknown as Record<string, never>;
+            const tw = sh.text.length * sh.size * 0.58;
+            return (
+              <React.Fragment key={i}>
+                {sh.halo && sh.haloColor && (
+                  <Rect x={sh.x - tw / 2 - sh.size * 0.15} y={sh.y - sh.size * 0.62} width={tw + sh.size * 0.3} height={sh.size * 1.24} fill={sh.haloColor} />
+                )}
+                <SvgText x={sh.x} y={sh.y} fill={sh.fill} textAnchor="middle" dominantBaseline="middle" style={style}>
+                  {sh.text}
+                </SvgText>
+              </React.Fragment>
+            );
+          }
         }
       })}
     </Svg>
   );
 }
 
-function LegendSwatch({ color, kind }: { color: string; kind: "dot" | "ring" | "pair" | "line" | "dash" }) {
+const PLAN_TOP = 104; // pt — верх плана на карандашной странице (под заголовком)
+const A4_W = 595.28, A4_H = 841.89;
+
+/**
+ * Клетка тетради на всю страницу, в масштабе комнаты и выровненная с планом:
+ * линия каждые 10 см, жирнее каждые 50 см. План лежит абсолютно в (left, top).
+ */
+function PageGrid({ plan, left, top, side }: { plan: RoomPlan; left: number; top: number; side: number }) {
+  const k = side / plan.size;
+  const step = 10 * plan.frame.scale * k; // pt на 10 см
+  if (step < 2) return null;
+  const x0 = left + plan.frame.ox * k; // где x = 0 см
+  const y0 = top + plan.frame.oy * k;
+  const lines: React.ReactElement[] = [];
+  const iMin = Math.ceil(-x0 / step), iMax = Math.floor((A4_W - x0) / step);
+  for (let i = iMin; i <= iMax; i++) {
+    const X = x0 + i * step;
+    const major = i % 5 === 0;
+    lines.push(<Line key={`x${i}`} x1={X} y1={0} x2={X} y2={A4_H} stroke={major ? "#c3d0de" : "#dde5ee"} strokeWidth={major ? 0.9 : 0.5} />);
+  }
+  const jMin = Math.ceil(-y0 / step), jMax = Math.floor((A4_H - y0) / step);
+  for (let j = jMin; j <= jMax; j++) {
+    const Y = y0 + j * step;
+    const major = j % 5 === 0;
+    lines.push(<Line key={`y${j}`} x1={0} y1={Y} x2={A4_W} y2={Y} stroke={major ? "#c3d0de" : "#dde5ee"} strokeWidth={major ? 0.9 : 0.5} />);
+  }
+  // Svg сам по себе не позиционируется — оборачиваем в View, иначе он
+  // занимает всю страницу в потоке и выталкивает содержимое на следующую.
+  return (
+    <View style={{ position: "absolute", left: 0, top: 0, width: A4_W, height: A4_H }} fixed>
+      <Svg width={A4_W} height={A4_H} viewBox={`0 0 ${A4_W} ${A4_H}`}>
+        {lines}
+      </Svg>
+    </View>
+  );
+}
+
+function LegendSwatch({ color, kind, dash, double, mul, paper }: { color: string; kind: Legend["kind"]; dash?: string; double?: boolean; mul?: number; paper?: string }) {
   if (kind === "line" || kind === "dash") {
+    const sw = 2 * (mul ?? 1);
     return (
-      <Svg width={14} height={6} viewBox="0 0 14 6">
-        <Line x1={0} y1={3} x2={14} y2={3} stroke={color} strokeWidth={2} strokeDasharray={kind === "dash" ? "3 2" : undefined} />
+      <Svg width={18} height={8} viewBox="0 0 18 8">
+        <Line x1={0} y1={4} x2={18} y2={4} stroke={color} strokeWidth={double ? sw * 1.6 : sw} strokeDasharray={kind === "dash" ? "3 2" : dash ? dash.split(" ").map((n) => (Number(n) * 0.45).toFixed(2)).join(" ") : undefined} />
+        {double && <Line x1={0} y1={4} x2={18} y2={4} stroke={paper ?? "#fff"} strokeWidth={sw * 0.6} />}
+      </Svg>
+    );
+  }
+  if (kind === "vent" || kind === "chand") {
+    return (
+      <Svg width={10} height={10} viewBox="0 0 10 10">
+        <Circle cx={5} cy={5} r={4} fill="#fff" stroke={color} strokeWidth={1.3} />
+        <Circle cx={5} cy={5} r={1.6} fill={kind === "chand" ? color : "#fff"} stroke={color} strokeWidth={1} />
       </Svg>
     );
   }
@@ -99,7 +159,7 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
   // свет/элементы — большой план с размерными цепочками до каждого светильника.
   const BIG = 523; // pt — ширина A4 минус поля
   const dimPages = model.rooms
-    .map((r, i) => ({ r, i, plan: r.lines.length > 0 ? buildRoomPlan(r.plan, model.lang, 320, { dims: true }) : null }))
+    .map((r, i) => ({ r, i, plan: r.lines.length > 0 ? buildRoomPlan(r.plan, model.lang, 320, { dims: true, pencil: true, grid: false }) : null }))
     .filter((p): p is { r: typeof model.rooms[number]; i: number; plan: RoomPlan } => !!p.plan);
 
   return (
@@ -182,28 +242,35 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
         </View>
       </Page>
 
+      {/* Страница чертежа — «тетрадь в клеточку, карандашом»: бумага, клетка, графит (Нариман 23.10.2026) */}
       {dimPages.map(({ r, i, plan }) => (
-        <Page key={`dims-${r.id}`} size="A4" style={s.page}>
-          <Text style={s.eyebrow}>{t("wo.dimsTitle")} · {model.title}</Text>
-          <Text style={s.h1}>{i + 1}. {r.name}</Text>
-          <Text style={s.sub}>{r.area} м² · {t("wo.perimeter")} {r.perimeter} м · {r.wallsCount} {t("wo.walls")}</Text>
-          <View style={{ marginTop: 6, alignItems: "center" }}>
+        <Page key={`dims-${r.id}`} size="A4" style={[s.page, { backgroundColor: PAPER, color: INK }]}>
+          <PageGrid plan={plan} left={36} top={PLAN_TOP} side={BIG} />
+          <View style={{ backgroundColor: PAPER, alignSelf: "flex-start", paddingRight: 10, paddingBottom: 4 }}>
+            <Text style={[s.eyebrow, { color: INK_SOFT }]}>{t("wo.dimsTitle")} · {model.title}</Text>
+            <Text style={[s.h1, { color: INK }]}>{i + 1}. {r.name}</Text>
+            <Text style={[s.sub, { color: INK_SOFT }]}>{r.area} м² · {t("wo.perimeter")} {r.perimeter} м · {r.wallsCount} {t("wo.walls")}</Text>
+          </View>
+          <View style={{ position: "absolute", left: 36, top: PLAN_TOP }}>
             <PlanSvg plan={plan} side={BIG} />
           </View>
-          {plan.legend.length > 0 && (
-            <View style={[s.legend, { width: BIG, alignSelf: "center" }]}>
-              {plan.legend.map((l) => (
-                <View key={l.key} style={s.legendItem}>
-                  <LegendSwatch color={l.color} kind={l.kind} />
-                  <Text style={[s.legendText, { marginLeft: 3 }]}>{l.key}</Text>
-                </View>
-              ))}
+          <View style={{ height: PLAN_TOP + BIG - 96 }} />
+          <View style={{ backgroundColor: PAPER, padding: 6, marginHorizontal: -6 }}>
+            {plan.legend.length > 0 && (
+              <View style={[s.legend, { width: BIG }]}>
+                {plan.legend.map((l) => (
+                  <View key={l.key} style={s.legendItem}>
+                    <LegendSwatch color={l.color} kind={l.kind} dash={l.dash} double={l.double} mul={l.mul} paper={PAPER} />
+                    <Text style={[s.legendText, { marginLeft: 3, color: INK_SOFT }]}>{l.key}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <View style={{ marginTop: 6 }}>
+              {r.lines.map((l) => <Text key={l} style={[s.li, { color: INK }]}>• {l}</Text>)}
             </View>
-          )}
-          <View style={{ marginTop: 6 }}>
-            {r.lines.map((l) => <Text key={l} style={s.li}>• {l}</Text>)}
+            <Text style={[s.hint, { color: INK_SOFT }]}>{t("wo.dimsHint")}</Text>
           </View>
-          <Text style={s.hint}>{t("wo.dimsHint")}</Text>
           <View style={s.footer} fixed>
             <Text>{t("wo.pdfFooter", { date: new Date().toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" }) })}</Text>
             <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
