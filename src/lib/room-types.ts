@@ -6,6 +6,8 @@ export type ElementType =
   | "spot"
   | "pendant"
   | "chandelier"
+  /** Вытяжка (вентиляционный выход) — точечный элемент Ø 10–12 см, как софит (23.10.2026). */
+  | "vent"
   | "curtain"
   | "subcurtain"
   | "track"

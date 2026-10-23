@@ -68,6 +68,7 @@ export function buildRoomInputFromDesigner(
   const spotsCount = spotsOurs + spotsClient;
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
+  const ventCount = els.filter((e) => e.type === "vent").length;
   const trackMagneticLength =
     Math.round(
       els
@@ -141,6 +142,7 @@ export function buildRoomInputFromDesigner(
     chandelierInstallCount:
       existing?.chandelierInstallCount ?? chandelierCount,
     pendantCount,
+    ventCount,
     spotPairsCount,
     spotTriplesCount,
     trackMagneticLength,

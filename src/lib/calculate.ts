@@ -161,6 +161,13 @@ function calculateRoom(
     if (pendantInstallItem) items.push(pendantInstallItem);
   }
 
+  // Вытяжки (вентиляционные выходы)
+  const ventCount = room.ventCount ?? 0;
+  if (ventCount > 0) {
+    const ventItem = makeLineItem("vent", ventCount, prices);
+    if (ventItem) items.push(ventItem);
+  }
+
   // Track magnetic
   if (room.trackMagneticLength > 0) {
     const trackItem = makeLineItem("track_magnetic", room.trackMagneticLength, prices);

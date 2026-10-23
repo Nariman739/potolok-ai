@@ -65,6 +65,7 @@ const COLORS = {
   spot: "#F59E0B",
   pendant: "#3B82F6",
   chandelier: "#8B5CF6",
+  vent: "#475569",
   track: "#EF4444",
   lightline: "#CA8A04",
   curtain: "#10B981",
@@ -186,6 +187,7 @@ export type RoomSummary = {
   spotPairs: number;
   pendants: number;
   chandeliers: number;
+  vents: number;
   trackCm: number;
   trackCount: number;
   lightlineCm: number;
@@ -202,7 +204,7 @@ export type RoomSummary = {
 
 function emptySummary(): RoomSummary {
   return {
-    spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
+    spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, vents: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
     curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {},
   };
 }
@@ -216,7 +218,7 @@ function pointUnits(els: RoomElement[]): PointUnit[] {
   for (const e of els) {
     const type = String(e.type);
     if (typeof e.x !== "number" || typeof e.y !== "number") continue;
-    if (type !== "spot" && type !== "pendant" && type !== "chandelier") continue;
+    if (type !== "spot" && type !== "pendant" && type !== "chandelier" && type !== "vent") continue;
     if (type === "spot" && e.groupId) {
       let u = byGroup.get(e.groupId);
       if (!u) { u = { key: e.groupId, type, members: [], cx: 0, cy: 0 }; byGroup.set(e.groupId, u); units.push(u); }
@@ -243,6 +245,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
     if (t === "spot") s.spots++;
     else if (t === "pendant") s.pendants++;
     else if (t === "chandelier") s.chandeliers++;
+    else if (t === "vent") s.vents++;
     else if (t === "track") { s.trackCount++; s.trackCm += elementLength(e); }
     else if (t === "lightline") { s.lightlineCount++; s.lightlineCm += elementLength(e); }
     else if (CURTAIN_TYPES.has(t)) { s.curtainCount++; s.curtainCm += elementLength(e); }
@@ -261,7 +264,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
 export function mergeSummaries(list: RoomSummary[]): RoomSummary {
   const out = emptySummary();
   for (const s of list) {
-    out.spots += s.spots; out.spotPairs += s.spotPairs; out.pendants += s.pendants; out.chandeliers += s.chandeliers;
+    out.spots += s.spots; out.spotPairs += s.spotPairs; out.pendants += s.pendants; out.chandeliers += s.chandeliers; out.vents += s.vents;
     out.trackCm += s.trackCm; out.trackCount += s.trackCount;
     out.lightlineCm += s.lightlineCm; out.lightlineCount += s.lightlineCount;
     out.curtainCount += s.curtainCount; out.curtainCm += s.curtainCm;
@@ -281,6 +284,7 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   if (s.spots) out.push(`${t("wo.el.spot")}: ${s.spots} ${pcs}${s.spotPairs ? ` · ${t("wo.pairsN", { n: s.spotPairs })}` : ""}`);
   if (s.pendants) out.push(`${t("wo.el.pendant")}: ${s.pendants} ${pcs}`);
   if (s.chandeliers) out.push(`${t("wo.el.chandelier")}: ${s.chandeliers} ${pcs}`);
+  if (s.vents) out.push(`${t("wo.el.vent")}: ${s.vents} ${pcs}`);
   if (s.trackCount) out.push(`${t("wo.el.track")}: ${s.trackCount} ${pcs}${s.trackCm ? ` · ${m(s.trackCm)}` : ""}`);
   if (s.lightlineCount) out.push(`${t("wo.el.lightline")}: ${s.lightlineCount} ${pcs}${s.lightlineCm ? ` · ${m(s.lightlineCm)}` : ""}`);
   if (s.curtainCount) out.push(`${t("wo.el.curtainOnly")}: ${s.curtainCount} ${pcs}${s.curtainCm ? ` · ${m(s.curtainCm)}` : ""}`);
@@ -573,6 +577,11 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     } else if (type === "pendant") {
       shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: COLORS.pendant, sw: 2 * u });
       shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: COLORS.pendant, stroke: "none", sw: 0 });
+    } else if (type === "vent") {
+      // Теневая вытяжка — круг в круге (диффузор Ø 12 см, но не меньше символа)
+      const rv = Math.max(6 * u, 6 * scale);
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: COLORS.vent, sw: 1.8 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.6, fill: "#fff", stroke: COLORS.vent, sw: 1.4 * u });
     } else {
       shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: COLORS.chandelier, sw: 2 * u });
       shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: COLORS.chandelier, stroke: "none", sw: 0 });
@@ -601,6 +610,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       else if (name === "spotPair") legend.push({ key: t("wo.el.spotPair"), color: COLORS.spot, kind: "pair" });
       else if (name === "pendant") legend.push({ key: t("wo.el.pendant"), color: COLORS.pendant, kind: "dot" });
       else if (name === "chandelier") legend.push({ key: t("wo.el.chandelier"), color: COLORS.chandelier, kind: "dot" });
+      else if (name === "vent") legend.push({ key: t("wo.el.vent"), color: COLORS.vent, kind: "ring" });
       else if (name === "track") legend.push({ key: t("wo.el.track"), color: COLORS.track, kind: "line" });
       else if (name === "lightline") legend.push({ key: t("wo.el.lightline"), color: COLORS.lightline, kind: "line" });
       else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: COLORS.curtain, kind: "line" });

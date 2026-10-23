@@ -62,6 +62,8 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Подвесной светильник / бра — отдельная категория (меньше люстры)
   { code: "pendant", name: "Закладная под бра / подвес", unit: "шт.", defaultPrice: 1500, category: "spot", description: "Закладная под бра или подвесной светильник" },
   { code: "pendant_install", name: "Установка подвесного светильника", unit: "шт.", defaultPrice: 3000, category: "spot", description: "Монтаж подвесного светильника / бра" },
+  // Вытяжка (23.10.2026): в туалете/ванной, круглая Ø 10–12 см — ставится в дизайнере как софит.
+  { code: "vent", name: "Теневая вытяжка (диффузор)", unit: "шт.", defaultPrice: 13000, category: "other", description: "Теневой диффузор под трубу Ø 100/125 с установкой" },
 
   // Люстры
   { code: "chandelier", name: "Закладная под люстру", unit: "шт.", defaultPrice: 2000, category: "chandelier" },

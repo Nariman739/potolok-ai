@@ -52,6 +52,7 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   chandelier: { role: "point", appliesTo: ["chandelier"] },
   chandelier_install: { role: "point", appliesTo: ["chandelier"] },
   transformer: { role: "point", appliesTo: ["chandelier"] },
+  vent: { role: "point", appliesTo: ["vent"] },
 
   track_magnetic: { role: "linear", appliesTo: ["track"] },
   light_line: { role: "linear", appliesTo: ["lightline"] },
