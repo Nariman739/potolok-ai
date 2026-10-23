@@ -381,10 +381,45 @@ export async function handleCalendarCallback(
 
 // ── Расшифровка голоса ────────────────────────────────────────────────────
 
+/** 429 / 5xx / сетевая ошибка (без HTTP-статуса) — провайдер «икнул», стоит попробовать ещё раз. */
+function isTransientAiError(e: unknown): boolean {
+  const status = (e as { status?: unknown })?.status;
+  if (typeof status === "number") return status === 429 || status === 408 || status >= 500;
+  // openai SDK: APIConnectionError/таймаут приходят без status
+  const msg = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
+  return (
+    msg.includes("fetch failed") ||
+    msg.includes("connection error") ||
+    msg.includes("timed out") ||
+    msg.includes("timeout") ||
+    msg.includes("econnreset") ||
+    msg.includes("socket hang up")
+  );
+}
+
+const VOICE_RETRY_DELAY_MS = 1500;
+
+/**
+ * Расшифровка голосового. 22.10.2026 21:15 Gemini через OpenRouter ответил 429,
+ * и мастер сразу получил «Не разобрал голосовое» — теперь при 429/5xx/сети
+ * одна повторная попытка через 1,5 с; обе попытки пишутся в AiLog (вторая с
+ * пометкой retry). Пустая строка от модели (нет речи) — не ошибка, не повторяем.
+ */
 export async function transcribeVoice(fileId: string): Promise<string | null> {
   const buf = await downloadTelegramFile(fileId);
   if (!buf || buf.length === 0) return null;
+  const first = await transcribeOnce(buf, 0);
+  if (first.ok || !first.transient) return first.text;
+  await new Promise((r) => setTimeout(r, VOICE_RETRY_DELAY_MS));
+  return (await transcribeOnce(buf, 1)).text;
+}
+
+async function transcribeOnce(
+  buf: Buffer,
+  attempt: 0 | 1,
+): Promise<{ ok: boolean; text: string | null; transient: boolean }> {
   const t0 = Date.now();
+  const tag = attempt > 0 ? `retry ${attempt}, ` : "";
   try {
     const client = getOpenRouter();
     const res = await client.chat.completions.create({
@@ -414,25 +449,26 @@ export async function transcribeVoice(fileId: string): Promise<string | null> {
     const cost = (res.usage as { cost?: number } | undefined)?.cost ?? null;
     await aiLogOnce({
       feature: "voice-transcribe",
-      input: `[voice ${buf.length} bytes, ${Date.now() - t0} ms]`,
+      input: `[voice ${buf.length} bytes, ${tag}${Date.now() - t0} ms]`,
       output: text,
       ok: true,
       model: VOICE_MODEL,
       costUsd: cost,
       platform: "telegram",
     });
-    return text || null;
+    return { ok: true, text: text || null, transient: false };
   } catch (e) {
-    reportAiError(e, "voice-transcribe", "gemini failed");
+    const transient = isTransientAiError(e);
+    reportAiError(e, "voice-transcribe", attempt > 0 ? "gemini failed (retry)" : transient ? "gemini failed, will retry" : "gemini failed");
     await aiLogOnce({
       feature: "voice-transcribe",
-      input: `[voice ${buf.length} bytes]`,
+      input: `[voice ${buf.length} bytes, ${tag}${Date.now() - t0} ms]`,
       ok: false,
       error: e,
       model: VOICE_MODEL,
       platform: "telegram",
     });
-    return null;
+    return { ok: false, text: null, transient };
   }
 }
 

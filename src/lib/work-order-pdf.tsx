@@ -37,10 +37,10 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 18, left: 36, right: 36, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: "#94a3b8" },
 });
 
-function PlanSvg({ plan }: { plan: RoomPlan }) {
+function PlanSvg({ plan, side = PLAN }: { plan: RoomPlan; side?: number }) {
   const { size, shapes } = plan;
   return (
-    <Svg width={PLAN} height={PLAN} viewBox={`0 0 ${size} ${size}`}>
+    <Svg width={side} height={side} viewBox={`0 0 ${size} ${size}`}>
       {shapes.map((sh, i) => {
         switch (sh.k) {
           case "path": return <Path key={i} d={sh.d} fill={sh.fill} stroke={sh.stroke} strokeWidth={sh.sw} />;
@@ -61,11 +61,20 @@ function PlanSvg({ plan }: { plan: RoomPlan }) {
   );
 }
 
-function LegendSwatch({ color, kind }: { color: string; kind: "dot" | "ring" | "line" | "dash" }) {
+function LegendSwatch({ color, kind }: { color: string; kind: "dot" | "ring" | "pair" | "line" | "dash" }) {
   if (kind === "line" || kind === "dash") {
     return (
       <Svg width={14} height={6} viewBox="0 0 14 6">
         <Line x1={0} y1={3} x2={14} y2={3} stroke={color} strokeWidth={2} strokeDasharray={kind === "dash" ? "3 2" : undefined} />
+      </Svg>
+    );
+  }
+  if (kind === "pair") {
+    return (
+      <Svg width={16} height={8} viewBox="0 0 16 8">
+        <Path d="M 4 0.75 L 12 0.75 A 3.25 3.25 0 0 1 12 7.25 L 4 7.25 A 3.25 3.25 0 0 1 4 0.75 Z" fill="#fff" stroke={color} strokeWidth={1.2} />
+        <Circle cx={5} cy={4} r={1.6} fill="#fff" stroke={color} strokeWidth={1.1} />
+        <Circle cx={11} cy={4} r={1.6} fill="#fff" stroke={color} strokeWidth={1.1} />
       </Svg>
     );
   }
@@ -87,6 +96,12 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
   const t = tFor(model.lang);
   const plans = model.rooms.map((r) => buildRoomPlan(r.plan, model.lang, 320));
   const half = Math.ceil(model.totals.length / 2);
+  // Чертёж для монтажа (23.10.2026): отдельная страница на комнату, где есть
+  // свет/элементы — большой план с размерными цепочками до каждого светильника.
+  const BIG = 523; // pt — ширина A4 минус поля
+  const dimPages = model.rooms
+    .map((r, i) => ({ r, i, plan: r.lines.length > 0 ? buildRoomPlan(r.plan, model.lang, 320, { dims: true }) : null }))
+    .filter((p): p is { r: typeof model.rooms[number]; i: number; plan: RoomPlan } => !!p.plan);
 
   return (
     <Document title={`${t("wo.title")} · ${model.title}`} author={model.company}>
@@ -167,6 +182,35 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
           <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
+
+      {dimPages.map(({ r, i, plan }) => (
+        <Page key={`dims-${r.id}`} size="A4" style={s.page}>
+          <Text style={s.eyebrow}>{t("wo.dimsTitle")} · {model.title}</Text>
+          <Text style={s.h1}>{i + 1}. {r.name}</Text>
+          <Text style={s.sub}>{r.area} м² · {t("wo.perimeter")} {r.perimeter} м · {r.wallsCount} {t("wo.walls")}</Text>
+          <View style={{ marginTop: 6, alignItems: "center" }}>
+            <PlanSvg plan={plan} side={BIG} />
+          </View>
+          {plan.legend.length > 0 && (
+            <View style={[s.legend, { width: BIG, alignSelf: "center" }]}>
+              {plan.legend.map((l) => (
+                <View key={l.key} style={s.legendItem}>
+                  <LegendSwatch color={l.color} kind={l.kind} />
+                  <Text style={[s.legendText, { marginLeft: 3 }]}>{l.key}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={{ marginTop: 6 }}>
+            {r.lines.map((l) => <Text key={l} style={s.li}>• {l}</Text>)}
+          </View>
+          <Text style={s.hint}>{t("wo.dimsHint")}</Text>
+          <View style={s.footer} fixed>
+            <Text>{t("wo.pdfFooter", { date: new Date().toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" }) })}</Text>
+            <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+          </View>
+        </Page>
+      ))}
     </Document>
   );
 }

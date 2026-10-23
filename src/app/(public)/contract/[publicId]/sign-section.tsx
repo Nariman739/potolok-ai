@@ -110,6 +110,7 @@ export function SignSection({ publicId, lang = "ru" }: { publicId: string; lang?
             </>
           )}
         </Button>
+        <p className="text-xs text-muted-foreground">{t("sign.ct.legal")}</p>
       </CardContent>
     </Card>
   );

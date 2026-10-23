@@ -41,9 +41,25 @@ export type Shape =
   | { k: "circle"; cx: number; cy: number; r: number; fill: string; stroke: string; sw: number }
   | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean };
 
-export type Legend = { key: string; color: string; kind: "dot" | "ring" | "line" | "dash" };
+export type Legend = { key: string; color: string; kind: "dot" | "ring" | "pair" | "line" | "dash" };
 
 export type RoomPlan = { size: number; shapes: Shape[]; legend: Legend[] };
+
+export type PlanOptions = {
+  /**
+   * Размерные цепочки для монтажника (23.10.2026, Нариман: «чертёж для
+   * монтажника — где софиты и на каком расстоянии»): ряды светильников —
+   * от стены до первого, шаг между соседними, до стены; отступ ряда от стены
+   * или от соседнего ряда; одиночные — до двух ближайших стен. Все размеры в
+   * см до ЦЕНТРА светильника, у пары — до центра пары.
+   */
+  dims?: boolean;
+};
+
+const DIM = "#64748b";
+const DIM_TEXT = "#1e293b";
+/** Светильники в одном ряду, если их центры расходятся не больше чем на столько см. */
+const ROW_TOL_CM = 3;
 
 const COLORS = {
   spot: "#F59E0B",
@@ -166,6 +182,8 @@ function legendKey(type: string): string {
 
 export type RoomSummary = {
   spots: number;
+  /** Сколько из софитов — двойные (пары с общим groupId). В spots они уже посчитаны по 2. */
+  spotPairs: number;
   pendants: number;
   chandeliers: number;
   trackCm: number;
@@ -184,14 +202,42 @@ export type RoomSummary = {
 
 function emptySummary(): RoomSummary {
   return {
-    spots: 0, pendants: 0, chandeliers: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
+    spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
     curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {},
   };
+}
+
+/** Точечный светильник или пара софитов (общий groupId) — одна «единица» с центром. */
+type PointUnit = { key: string; type: string; members: RoomElement[]; cx: number; cy: number };
+
+function pointUnits(els: RoomElement[]): PointUnit[] {
+  const byGroup = new Map<string, PointUnit>();
+  const units: PointUnit[] = [];
+  for (const e of els) {
+    const type = String(e.type);
+    if (typeof e.x !== "number" || typeof e.y !== "number") continue;
+    if (type !== "spot" && type !== "pendant" && type !== "chandelier") continue;
+    if (type === "spot" && e.groupId) {
+      let u = byGroup.get(e.groupId);
+      if (!u) { u = { key: e.groupId, type, members: [], cx: 0, cy: 0 }; byGroup.set(e.groupId, u); units.push(u); }
+      u.members.push(e);
+    } else {
+      units.push({ key: e.id, type, members: [e], cx: e.x, cy: e.y });
+    }
+  }
+  for (const u of units) {
+    if (u.members.length > 1) {
+      u.cx = u.members.reduce((s, m) => s + (m.x as number), 0) / u.members.length;
+      u.cy = u.members.reduce((s, m) => s + (m.y as number), 0) / u.members.length;
+    }
+  }
+  return units;
 }
 
 export function summarizeRoom(room: PlanRoom): RoomSummary {
   const els = elementsOf(room);
   const s = emptySummary();
+  s.spotPairs = pointUnits(els).filter((u) => u.type === "spot" && u.members.length === 2).length;
   for (const e of els) {
     const t = String(e.type);
     if (t === "spot") s.spots++;
@@ -215,7 +261,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
 export function mergeSummaries(list: RoomSummary[]): RoomSummary {
   const out = emptySummary();
   for (const s of list) {
-    out.spots += s.spots; out.pendants += s.pendants; out.chandeliers += s.chandeliers;
+    out.spots += s.spots; out.spotPairs += s.spotPairs; out.pendants += s.pendants; out.chandeliers += s.chandeliers;
     out.trackCm += s.trackCm; out.trackCount += s.trackCount;
     out.lightlineCm += s.lightlineCm; out.lightlineCount += s.lightlineCount;
     out.curtainCount += s.curtainCount; out.curtainCm += s.curtainCm;
@@ -232,7 +278,7 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   const t = tFor(lang);
   const pcs = t("wo.pcs");
   const out: string[] = [];
-  if (s.spots) out.push(`${t("wo.el.spot")}: ${s.spots} ${pcs}`);
+  if (s.spots) out.push(`${t("wo.el.spot")}: ${s.spots} ${pcs}${s.spotPairs ? ` · ${t("wo.pairsN", { n: s.spotPairs })}` : ""}`);
   if (s.pendants) out.push(`${t("wo.el.pendant")}: ${s.pendants} ${pcs}`);
   if (s.chandeliers) out.push(`${t("wo.el.chandelier")}: ${s.chandeliers} ${pcs}`);
   if (s.trackCount) out.push(`${t("wo.el.track")}: ${s.trackCount} ${pcs}${s.trackCm ? ` · ${m(s.trackCm)}` : ""}`);
@@ -250,10 +296,132 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
 }
 
 // ============================================
+// Размерные цепочки для монтажника
+// ============================================
+
+/** Длина луча из p по dir до контура (см) — ближайшее пересечение со стеной. */
+function rayToWall(p: Pt, dir: Pt, v: Pt[]): number | null {
+  const n = v.length;
+  let best: number | null = null;
+  for (let i = 0; i < n; i++) {
+    const a = v[i], b = v[(i + 1) % n];
+    const ex = b.x - a.x, ey = b.y - a.y;
+    const den = dir.x * ey - dir.y * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((a.x - p.x) * ey - (a.y - p.y) * ex) / den;
+    const s = ((a.x - p.x) * dir.y - (a.y - p.y) * dir.x) / den;
+    if (t > 0.5 && s >= -1e-6 && s <= 1 + 1e-6 && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+/** Сгруппировать единицы в ряды по координате `key` (допуск ROW_TOL_CM), внутри ряда — по другой оси. */
+function groupRows(units: PointUnit[], key: "cx" | "cy"): PointUnit[][] {
+  const other = key === "cx" ? "cy" : "cx";
+  const sorted = [...units].sort((a, b) => a[key] - b[key]);
+  const rows: PointUnit[][] = [];
+  for (const u of sorted) {
+    const last = rows[rows.length - 1];
+    if (last && Math.abs(u[key] - last[0][key]) <= ROW_TOL_CM) last.push(u);
+    else rows.push([u]);
+  }
+  for (const r of rows) r.sort((a, b) => a[other] - b[other]);
+  return rows;
+}
+
+function addDimensions(units: PointUnit[], v: Pt[], S: (p: Pt) => Pt, u: number, shapes: Shape[]) {
+  const fs = 7.5 * u;
+  const tick = 2.2 * u;
+  const n = v.length;
+  const cx0 = v.reduce((s, p) => s + p.x, 0) / n, cy0 = v.reduce((s, p) => s + p.y, 0) / n;
+  /**
+   * Размер между двумя точками (см) с засечками. Подпись — с той стороны
+   * линии, что дальше от центра комнаты (у стены свободнее, соседние ряды не
+   * перекрываются).
+   */
+  const dim = (p1: Pt, p2: Pt) => {
+    const cm = Math.round(Math.hypot(p2.x - p1.x, p2.y - p1.y));
+    if (cm < 1) return;
+    const A = S(p1), B = S(p2);
+    const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    const horizontal = Math.abs(p2.x - p1.x) >= Math.abs(p2.y - p1.y);
+    const midCm = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    const side = horizontal ? { x: 0, y: midCm.y > cy0 ? 1 : -1 } : { x: midCm.x > cx0 ? 1 : -1, y: 0 };
+    shapes.push({ k: "line", x1: A.x, y1: A.y, x2: B.x, y2: B.y, stroke: DIM, sw: 0.7 * u });
+    for (const P of [A, B]) {
+      shapes.push({ k: "line", x1: P.x - nx * tick, y1: P.y - ny * tick, x2: P.x + nx * tick, y2: P.y + ny * tick, stroke: DIM, sw: 0.9 * u });
+    }
+    // Короткий отрезок — подпись не влезет между засечками, но она и так сбоку от линии
+    shapes.push({
+      k: "text", x: (A.x + B.x) / 2 + side.x * 5.5 * u, y: (A.y + B.y) / 2 + side.y * 5.5 * u,
+      text: String(cm), size: fs, weight: 600, fill: DIM_TEXT, halo: true,
+    });
+  };
+  /** Привязка точки к ближайшей стене вдоль оси: луч в обе стороны, берём короче. */
+  const tieToWall = (p: Pt, axis: "x" | "y") => {
+    const dirs = axis === "x" ? [{ x: -1, y: 0 }, { x: 1, y: 0 }] : [{ x: 0, y: -1 }, { x: 0, y: 1 }];
+    let best: { t: number; d: Pt } | null = null;
+    for (const d of dirs) {
+      const t = rayToWall(p, d, v);
+      if (t !== null && (!best || t < best.t)) best = { t, d };
+    }
+    if (!best) return;
+    const q = { x: p.x + best.d.x * best.t, y: p.y + best.d.y * best.t };
+    dim(p, q);
+  };
+
+  const covered = new Set<string>();
+
+  /**
+   * Цепочки вдоль оси `along` (ряды при "x": единицы с одинаковым y).
+   * Для каждого ряда из ≥2: стена → первый → … → последний → стена, плюс
+   * отступ ряда: первый ряд — до ближней стены поперёк, следующие — до
+   * предыдущего ряда, последний (если рядов ≥ 2) — ещё и до стены.
+   */
+  const chains = (along: "x" | "y", pool: PointUnit[]) => {
+    const rowKey = along === "x" ? "cy" : "cx";
+    const rows = groupRows(pool, rowKey).filter((r) => r.length >= 2);
+    rows.forEach((row, ri) => {
+      const first = row[0], last = row[row.length - 1];
+      for (const un of row) covered.add(un.key);
+      // Вдоль ряда: от стены до первого
+      const dirBack = along === "x" ? { x: -1, y: 0 } : { x: 0, y: -1 };
+      const dirFwd = along === "x" ? { x: 1, y: 0 } : { x: 0, y: 1 };
+      const t0 = rayToWall({ x: first.cx, y: first.cy }, dirBack, v);
+      if (t0 !== null) dim({ x: first.cx + dirBack.x * t0, y: first.cy + dirBack.y * t0 }, { x: first.cx, y: first.cy });
+      for (let i = 1; i < row.length; i++) dim({ x: row[i - 1].cx, y: row[i - 1].cy }, { x: row[i].cx, y: row[i].cy });
+      const t1 = rayToWall({ x: last.cx, y: last.cy }, dirFwd, v);
+      if (t1 !== null) dim({ x: last.cx, y: last.cy }, { x: last.cx + dirFwd.x * t1, y: last.cy + dirFwd.y * t1 });
+      // Поперёк ряда: отступ
+      const across: "x" | "y" = along === "x" ? "y" : "x";
+      if (ri === 0) tieToWall({ x: first.cx, y: first.cy }, across);
+      else {
+        const prev = rows[ri - 1][0];
+        const p = { x: first.cx, y: first.cy };
+        const q = along === "x" ? { x: first.cx, y: prev.cy } : { x: prev.cx, y: first.cy };
+        dim(q, p);
+      }
+      if (ri === rows.length - 1 && rows.length >= 2) tieToWall({ x: last.cx, y: last.cy }, across);
+    });
+  };
+
+  // 1. Горизонтальные ряды; 2. вертикальные колонки из тех, кто не попал в ряд;
+  // 3. оставшиеся одиночки — до двух ближайших стен.
+  chains("x", units);
+  chains("y", units.filter((un) => !covered.has(un.key)));
+  for (const un of units) {
+    if (covered.has(un.key)) continue;
+    tieToWall({ x: un.cx, y: un.cy }, "x");
+    tieToWall({ x: un.cx, y: un.cy }, "y");
+  }
+}
+
+// ============================================
 // Построение плана (фигуры)
 // ============================================
 
-export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320): RoomPlan | null {
+export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: PlanOptions = {}): RoomPlan | null {
   const v = verticesOf(room);
   if (!v) return null;
   const t = tFor(lang);
@@ -371,13 +539,42 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320): RoomPlan 
     }
   }
 
-  // 4. Точечные: софиты, подвесы, люстры
-  for (const el of els) {
-    const type = String(el.type);
-    if (typeof el.x !== "number" || typeof el.y !== "number") continue;
-    if (type !== "spot" && type !== "pendant" && type !== "chandelier") continue;
-    const x = sx(el.x), y = sy(el.y);
+  const units = pointUnits(els);
+
+  // 3b. Размерные цепочки — ДО светильников: кружки с белой заливкой закрывают
+  // линию, и цепочка читается как осевая «от центра до центра».
+  if (opts.dims && units.length > 0) addDimensions(units, v, S, u, shapes);
+
+  // 4. Точечные: софиты (одиночные и пары), подвесы, люстры
+  for (const un of units) {
+    const type = un.type;
     used.add(`el:${type}`);
+    if (type === "spot" && un.members.length === 2) {
+      // Пара — одна капсула с двумя кольцами (как сдвоенный светильник). Кольца
+      // ставим по реальным точкам, но не ближе символического минимума, чтобы
+      // на мелком масштабе пара не слипалась в одно пятно.
+      used.add("el:spotPair");
+      const [m1, m2] = un.members;
+      const dx = (m2.x as number) - (m1.x as number), dy = (m2.y as number) - (m1.y as number);
+      const dCm = Math.hypot(dx, dy);
+      const ax = dCm > 0.01 ? dx / dCm : 1, ay = dCm > 0.01 ? dy / dCm : 0;
+      const half = Math.max(3.6 * u, (dCm / 2) * scale);
+      const r = Math.min(3.2 * u, half * 0.78);
+      const R = r + 1.3 * u;
+      const c = S({ x: un.cx, y: un.cy });
+      const nx = -ay, ny = ax;
+      const P = (t: number, s: number): Pt => ({ x: c.x + ax * t + nx * s, y: c.y + ay * t + ny * s });
+      const p1 = P(half, R), p2 = P(half, -R), p3 = P(-half, -R), p4 = P(-half, R);
+      const f = (p: Pt) => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+      const d = `M ${f(p1)} A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 0 ${f(p2)} L ${f(p3)} A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 0 ${f(p4)} Z`;
+      shapes.push({ k: "path", d, fill: "#fffbeb", stroke: COLORS.spot, sw: 1.6 * u });
+      const c1 = P(-half, 0), c2 = P(half, 0);
+      shapes.push({ k: "circle", cx: c1.x, cy: c1.y, r, fill: "#fff", stroke: COLORS.spot, sw: 1.6 * u });
+      shapes.push({ k: "circle", cx: c2.x, cy: c2.y, r, fill: "#fff", stroke: COLORS.spot, sw: 1.6 * u });
+      continue;
+    }
+    const el = un.members[0];
+    const x = sx(el.x as number), y = sy(el.y as number);
     if (type === "spot") {
       shapes.push({ k: "circle", cx: x, cy: y, r: 4.5 * u, fill: "#fff", stroke: COLORS.spot, sw: 2 * u });
     } else if (type === "pendant") {
@@ -408,6 +605,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320): RoomPlan 
     const [kind, name] = key.split(":");
     if (kind === "el") {
       if (name === "spot") legend.push({ key: t("wo.el.spot"), color: COLORS.spot, kind: "ring" });
+      else if (name === "spotPair") legend.push({ key: t("wo.el.spotPair"), color: COLORS.spot, kind: "pair" });
       else if (name === "pendant") legend.push({ key: t("wo.el.pendant"), color: COLORS.pendant, kind: "dot" });
       else if (name === "chandelier") legend.push({ key: t("wo.el.chandelier"), color: COLORS.chandelier, kind: "dot" });
       else if (name === "track") legend.push({ key: t("wo.el.track"), color: COLORS.track, kind: "line" });
@@ -458,6 +656,11 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
             <li key={l.key} className="flex items-center gap-1.5">
               {l.kind === "line" || l.kind === "dash" ? (
                 <span className="inline-block w-4 border-t-2" style={{ borderColor: l.color, borderStyle: l.kind === "dash" ? "dashed" : "solid" }} />
+              ) : l.kind === "pair" ? (
+                <span className="inline-flex items-center justify-center gap-[2px] w-5 h-3 rounded-full" style={{ border: `1.5px solid ${l.color}` }}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ border: `1.5px solid ${l.color}` }} />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ border: `1.5px solid ${l.color}` }} />
+                </span>
               ) : (
                 <span className="inline-block w-2.5 h-2.5 rounded-full" style={l.kind === "ring" ? { border: `2px solid ${l.color}` } : { backgroundColor: l.color }} />
               )}
