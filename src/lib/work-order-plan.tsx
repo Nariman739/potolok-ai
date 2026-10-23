@@ -578,10 +578,10 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: COLORS.pendant, sw: 2 * u });
       shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: COLORS.pendant, stroke: "none", sw: 0 });
     } else if (type === "vent") {
-      // Теневая вытяжка — круг в круге (диффузор Ø 12 см, но не меньше символа)
-      const rv = Math.max(6 * u, 6 * scale);
+      // Теневая вытяжка — круг в круге, чуть меньше люстры (8.5u)
+      const rv = 7.5 * u;
       shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: COLORS.vent, sw: 1.8 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.6, fill: "#fff", stroke: COLORS.vent, sw: 1.4 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.55, fill: "#fff", stroke: COLORS.vent, sw: 1.4 * u });
     } else {
       shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: COLORS.chandelier, sw: 2 * u });
       shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: COLORS.chandelier, stroke: "none", sw: 0 });
