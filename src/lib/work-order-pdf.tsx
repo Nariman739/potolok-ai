@@ -72,9 +72,8 @@ function LegendSwatch({ color, kind }: { color: string; kind: "dot" | "ring" | "
   if (kind === "pair") {
     return (
       <Svg width={16} height={8} viewBox="0 0 16 8">
-        <Path d="M 4 0.75 L 12 0.75 A 3.25 3.25 0 0 1 12 7.25 L 4 7.25 A 3.25 3.25 0 0 1 4 0.75 Z" fill="#fff" stroke={color} strokeWidth={1.2} />
-        <Circle cx={5} cy={4} r={1.6} fill="#fff" stroke={color} strokeWidth={1.1} />
-        <Circle cx={11} cy={4} r={1.6} fill="#fff" stroke={color} strokeWidth={1.1} />
+        <Circle cx={4} cy={4} r={3} fill="#fff" stroke={color} strokeWidth={1.5} />
+        <Circle cx={12} cy={4} r={3} fill="#fff" stroke={color} strokeWidth={1.5} />
       </Svg>
     );
   }

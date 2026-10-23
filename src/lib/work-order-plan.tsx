@@ -549,34 +549,27 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   for (const un of units) {
     const type = un.type;
     used.add(`el:${type}`);
+    const spotRad = 3.6 * u;
     if (type === "spot" && un.members.length === 2) {
-      // Пара — одна капсула с двумя кольцами (как сдвоенный светильник). Кольца
-      // ставим по реальным точкам, но не ближе символического минимума, чтобы
-      // на мелком масштабе пара не слипалась в одно пятно.
+      // Пара — два кружка того же диаметра, что одиночный, с небольшим зазором;
+      // центр пары — между ними (размеры на чертеже идут к нему). Кружки по
+      // реальным точкам, но не ближе зазора, чтобы на мелком масштабе не слипались.
       used.add("el:spotPair");
       const [m1, m2] = un.members;
       const dx = (m2.x as number) - (m1.x as number), dy = (m2.y as number) - (m1.y as number);
       const dCm = Math.hypot(dx, dy);
       const ax = dCm > 0.01 ? dx / dCm : 1, ay = dCm > 0.01 ? dy / dCm : 0;
-      const half = Math.max(3.6 * u, (dCm / 2) * scale);
-      const r = Math.min(3.2 * u, half * 0.78);
-      const R = r + 1.3 * u;
+      const half = Math.max(spotRad + 0.9 * u, (dCm / 2) * scale);
       const c = S({ x: un.cx, y: un.cy });
-      const nx = -ay, ny = ax;
-      const P = (t: number, s: number): Pt => ({ x: c.x + ax * t + nx * s, y: c.y + ay * t + ny * s });
-      const p1 = P(half, R), p2 = P(half, -R), p3 = P(-half, -R), p4 = P(-half, R);
-      const f = (p: Pt) => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
-      const d = `M ${f(p1)} A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 0 ${f(p2)} L ${f(p3)} A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 0 ${f(p4)} Z`;
-      shapes.push({ k: "path", d, fill: "#fffbeb", stroke: COLORS.spot, sw: 1.6 * u });
-      const c1 = P(-half, 0), c2 = P(half, 0);
-      shapes.push({ k: "circle", cx: c1.x, cy: c1.y, r, fill: "#fff", stroke: COLORS.spot, sw: 1.6 * u });
-      shapes.push({ k: "circle", cx: c2.x, cy: c2.y, r, fill: "#fff", stroke: COLORS.spot, sw: 1.6 * u });
+      for (const t of [-half, half]) {
+        shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: COLORS.spot, sw: 1.8 * u });
+      }
       continue;
     }
     const el = un.members[0];
     const x = sx(el.x as number), y = sy(el.y as number);
     if (type === "spot") {
-      shapes.push({ k: "circle", cx: x, cy: y, r: 4.5 * u, fill: "#fff", stroke: COLORS.spot, sw: 2 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: spotRad, fill: "#fff", stroke: COLORS.spot, sw: 1.8 * u });
     } else if (type === "pendant") {
       shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: COLORS.pendant, sw: 2 * u });
       shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: COLORS.pendant, stroke: "none", sw: 0 });
@@ -657,9 +650,9 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
               {l.kind === "line" || l.kind === "dash" ? (
                 <span className="inline-block w-4 border-t-2" style={{ borderColor: l.color, borderStyle: l.kind === "dash" ? "dashed" : "solid" }} />
               ) : l.kind === "pair" ? (
-                <span className="inline-flex items-center justify-center gap-[2px] w-5 h-3 rounded-full" style={{ border: `1.5px solid ${l.color}` }}>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ border: `1.5px solid ${l.color}` }} />
-                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ border: `1.5px solid ${l.color}` }} />
+                <span className="inline-flex items-center gap-[2px]">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ border: `2px solid ${l.color}` }} />
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ border: `2px solid ${l.color}` }} />
                 </span>
               ) : (
                 <span className="inline-block w-2.5 h-2.5 rounded-full" style={l.kind === "ring" ? { border: `2px solid ${l.color}` } : { backgroundColor: l.color }} />
