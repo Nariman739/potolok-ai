@@ -559,7 +559,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const dx = (m2.x as number) - (m1.x as number), dy = (m2.y as number) - (m1.y as number);
       const dCm = Math.hypot(dx, dy);
       const ax = dCm > 0.01 ? dx / dCm : 1, ay = dCm > 0.01 ? dy / dCm : 0;
-      const half = Math.max(spotRad + 0.9 * u, (dCm / 2) * scale);
+      const half = Math.max(spotRad + 2.2 * u, (dCm / 2) * scale);
       const c = S({ x: un.cx, y: un.cy });
       for (const t of [-half, half]) {
         shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: COLORS.spot, sw: 1.8 * u });
