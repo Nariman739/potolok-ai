@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
-import { BILLING_ENABLED, getBillingStatus } from "@/lib/billing";
+import { BILLING_ENABLED, PAYMENTS_OPEN, getBillingStatus } from "@/lib/billing";
 
 function fmtTenge(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
@@ -40,7 +40,10 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
 
   const cookieStore = await cookies();
   const fromIos = cookieStore.get("app_platform")?.value === "ios";
-  const s = BILLING_ENABLED && !m.isOwner ? await getBillingStatus(masterId) : null;
+  // PAYMENTS_OPEN без BILLING_ENABLED (с 14.10): лимитов нет, но оплатить
+  // уже можно — иначе с рабочего стола к /pricing нет пути (Нариман 24.10
+  // сам не нашёл, набирал адрес руками).
+  const s = (BILLING_ENABLED || PAYMENTS_OPEN) && !m.isOwner ? await getBillingStatus(masterId) : null;
 
   const payBtn = (label: string, tone: "default" | "amber" = "default") =>
     fromIos ? null : (
@@ -54,7 +57,39 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
     );
 
   let billingCard: React.ReactNode = null;
-  if (s) {
+  if (s && !BILLING_ENABLED) {
+    // Лимиты выключены: всё бесплатно, PRO — по желанию. Из iOS не показываем.
+    if (s.proReason === "paid" && s.paidUntil) {
+      billingCard = (
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="font-medium text-emerald-900">PRO до {fmtDate(s.paidUntil)}</p>
+              <p className="text-xs text-emerald-800">Спасибо, что с нами.</p>
+            </div>
+            {s.daysLeft !== null && s.daysLeft <= 7 && payBtn("Продлить", "amber")}
+          </CardContent>
+        </Card>
+      );
+    } else if (!fromIos) {
+      billingCard = (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="font-medium text-amber-900">
+                PRO — {fmtTenge(s.launchPrice ? s.prices.launchMonth : s.prices.month)}/мес
+                {s.launchPrice && `, стартовая цена до ${fmtLastDay(s.launchPriceUntil)}`}
+              </p>
+              <p className="text-xs text-amber-800">
+                Сейчас всё бесплатно. Оплата — картой или Kaspi, PRO включается сразу.
+              </p>
+            </div>
+            {payBtn("Оплатить")}
+          </CardContent>
+        </Card>
+      );
+    }
+  } else if (s) {
     if (s.freePeriod) {
       billingCard = (
         <Card className="border-sky-300 bg-sky-50">
