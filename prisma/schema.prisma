@@ -79,6 +79,7 @@ model Master {
   founderMonthsPaid    Int              @default(0) // счётчик 3000₸-оплат, после 3 → переход на STANDARD_PRICE
   festPromoActivatedAt DateTime? // когда применил FEST2026 (3 месяца Pro бесплатно)
   welcomeSent          Boolean          @default(false) // отправили ли инвайты в TG+WA группы
+  payNudgeSentAt       DateTime? // когда слали «бесплатные объекты закончились + ссылка на оплату» (не чаще раза в 3 дня)
   hasUsedTrial         Boolean          @default(false) // защита от повторной регистрации с trial
 
   // CRM notifications (Telegram)
@@ -342,6 +343,9 @@ model BridgeToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  /// Откуда открывают сайт: "ios" | "android" — токен из приложения; null —
+  /// ссылка из мессенджера/письма (обычный браузер, цены показываем).
+  platform  String?
 
   master Master @relation(fields: [masterId], references: [id], onDelete: Cascade)
 

@@ -53,7 +53,12 @@ export async function GET(request: Request) {
       .catch(() => null);
 
     if (!consumed || consumed.expiresAt < new Date()) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+      // Ссылку открывает человек в браузере (из Telegram/пуша) — вместо JSON
+      // ведём на вход с возвратом туда, куда он шёл.
+      const login = new URL("/auth/login", request.url);
+      login.searchParams.set("redirect", safeRedirect);
+      login.searchParams.set("expired", "1");
+      return NextResponse.redirect(login);
     }
 
     const master = await prisma.master.findUnique({
@@ -65,7 +70,9 @@ export async function GET(request: Request) {
     }
 
     await issueSessionCookie(master.id);
-    await setPlatformCookie(request);
+    // Платформа — из токена (кто его создал), а не из User-Agent: ссылка на
+    // оплату из Telegram, открытая в Safari на iPhone, не должна прятать цены.
+    await setPlatformCookie(consumed.platform);
     return NextResponse.redirect(new URL(safeRedirect, request.url));
   }
 
@@ -106,7 +113,8 @@ export async function GET(request: Request) {
     path: "/",
     expires: session.expiresAt,
   });
-  await setPlatformCookie(request);
+  const legacyUa = request.headers.get("user-agent") ?? "";
+  await setPlatformCookie(/iPhone|iPad|iPod/i.test(legacyUa) ? "ios" : /Android/i.test(legacyUa) ? "android" : null);
   return NextResponse.redirect(new URL(safeRedirect, request.url));
 }
 
@@ -115,11 +123,10 @@ export async function GET(request: Request) {
  * По куке `app_platform=ios` сайт прячет цены и кнопку оплаты — Apple
  * запрещает вести на внешнюю оплату из приложения (App Store 3.1.1), а
  * встроенный браузер мобилки для ревьюера — часть приложения.
+ * Платформу определяет создатель токена (bridge/create), не User-Agent.
  */
-async function setPlatformCookie(request: Request) {
-  const ua = request.headers.get("user-agent") ?? "";
-  const platform = /iPhone|iPad|iPod/i.test(ua) ? "ios" : /Android/i.test(ua) ? "android" : null;
-  if (!platform) return;
+async function setPlatformCookie(platform: string | null) {
+  if (platform !== "ios" && platform !== "android") return;
   const cookieStore = await cookies();
   cookieStore.set("app_platform", platform, {
     httpOnly: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,23 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
+/** Куда вернуть после входа (?redirect=/pricing от middleware или моста). Только внутренние пути. */
+function safeRedirectFromUrl(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const r = new URLSearchParams(window.location.search).get("redirect") ?? "";
+  return r.startsWith("/") && !r.startsWith("//") ? r : "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [expiredLink, setExpiredLink] = useState(false);
+
+  // Ссылка на оплату из Telegram/пуша живёт сутки; протухла — объясняем,
+  // что после входа всё равно откроем нужную страницу.
+  useEffect(() => {
+    setExpiredLink(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,7 +57,7 @@ export default function LoginPage() {
       }
 
       toast.success(`Добро пожаловать, ${data.firstName}!`);
-      router.push("/dashboard");
+      router.push(safeRedirectFromUrl());
       router.refresh();
     } catch {
       toast.error("Ошибка соединения");
@@ -56,7 +70,11 @@ export default function LoginPage() {
     <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Вход</CardTitle>
-        <CardDescription>Войдите в личный кабинет</CardDescription>
+        <CardDescription>
+          {expiredLink
+            ? "Ссылка устарела. Войдите по номеру — и сразу откроем нужную страницу."
+            : "Войдите в личный кабинет"}
+        </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">

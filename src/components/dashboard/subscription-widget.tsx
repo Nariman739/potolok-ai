@@ -20,8 +20,8 @@ function fmtLastDay(iso: string): string {
 
 /**
  * Плашка подписки на главной дашборда (12.10.2026):
- *  - старому мастеру до 23 ноября: «бесплатно до…, до 31 декабря PRO по стартовой цене»;
- *  - на бесплатном тарифе: «объектов N из 10», кнопка PRO;
+ *  - до дня запуска (announce): «с <дата> первые 10 объектов бесплатно, дальше PRO»;
+ *  - на бесплатном тарифе: «объектов N из 10» → «осталось 2» → «в долг» → стоп, кнопка PRO;
  *  - PRO: «до даты», за 7 дней — жёлтая, просрочено — красная, но без
  *    блокировки: старое открыто, новые объекты только после оплаты.
  * Из iOS-приложения (куки app_platform=ios, ставит /api/auth/bridge) цены
@@ -90,18 +90,19 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
       );
     }
   } else if (s) {
-    if (s.freePeriod) {
+    if (s.announce) {
+      // Флаг включён, день запуска впереди: предупреждаем за несколько дней.
       billingCard = (
         <Card className="border-sky-300 bg-sky-50">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div>
-              <p className="font-medium text-sky-900">Бесплатно до {fmtDate(s.freeUntil)}</p>
+              <p className="font-medium text-sky-900">С {fmtDate(s.launchAt)} — первые {s.objectsLimit} объектов бесплатно, дальше PRO</p>
               <p className="text-xs text-sky-800">
                 {fromIos
-                  ? `Потом — тариф PRO или первые ${s.objectsLimit} объектов бесплатно. Всё, что вы сделали, останется открытым.`
+                  ? "Счётчик у всех начнётся с нуля. Всё, что вы сделали, останется открытым."
                   : s.launchPrice
-                    ? `Потом — PRO или первые ${s.objectsLimit} объектов бесплатно. До ${fmtLastDay(s.launchPriceUntil)} PRO стоит ${fmtTenge(s.prices.launchMonth)}/мес, дальше — ${fmtTenge(s.prices.month)}.`
-                    : `Потом — PRO ${fmtTenge(s.prices.month)}/мес или первые ${s.objectsLimit} объектов бесплатно.`}
+                    ? `Счётчик у всех с нуля. PRO — ${fmtTenge(s.prices.launchMonth)}/мес до ${fmtLastDay(s.launchPriceUntil)}, дальше ${fmtTenge(s.prices.month)}. Всё старое останется открытым.`
+                    : `Счётчик у всех с нуля. PRO — ${fmtTenge(s.prices.month)}/мес. Всё старое останется открытым.`}
               </p>
             </div>
             {payBtn("Оплатить PRO")}
@@ -125,27 +126,40 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
         </Card>
       );
     } else if (!s.isPro) {
-      const left = Math.max(0, s.objectsLimit - s.objectsUsed);
+      // Бесплатный тариф: спокойно → предупреждение за 2 объекта → «в долг» → стоп.
       const expired = !!s.paidUntil;
+      const tone = s.graceUsed || expired ? "red" : s.inGrace || s.freeLeft <= 2 ? "amber" : "slate";
+      const cls =
+        tone === "red" ? "border-red-300 bg-red-50" : tone === "amber" ? "border-amber-300 bg-amber-50" : "border-slate-200";
+      const titleCls = tone === "red" ? "text-red-900" : tone === "amber" ? "text-amber-900" : "";
+      const textCls = tone === "red" ? "text-red-800" : tone === "amber" ? "text-amber-800" : "text-muted-foreground";
+      const title = expired
+        ? "PRO закончился"
+        : s.graceUsed
+          ? "Бесплатные объекты и объект в долг использованы"
+          : s.inGrace
+            ? `Бесплатные ${s.objectsLimit} объектов использованы`
+            : s.freeLeft <= 2
+              ? `Остал${s.freeLeft === 1 ? "ся" : "ось"} ${s.freeLeft} бесплатн${s.freeLeft === 1 ? "ый объект" : "ых объекта"}`
+              : `Бесплатный тариф: объектов ${s.objectsUsed} из ${s.objectsLimit}`;
+      const text = expired || s.graceUsed
+        ? "Всё старое открыто: смотреть, скачать, отправить. Новые объекты — на тарифе PRO."
+        : s.inGrace
+          ? "Следующий объект сделать можно — он будет в долг. Подключите PRO заранее, чтобы не решать это у клиента."
+          : s.freeLeft <= 2
+            ? "Подключите PRO заранее — у клиента на это не будет времени. Старое останется открытым."
+            : `Ещё ${s.freeLeft} бесплатно. Потом — тариф PRO, старое останется открытым.`;
       billingCard = (
-        <Card className={left === 0 ? "border-red-300 bg-red-50" : "border-slate-200"}>
+        <Card className={cls}>
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div>
-              <p className={`font-medium ${left === 0 ? "text-red-900" : ""}`}>
-                {expired
-                  ? "PRO закончился"
-                  : left === 0
-                    ? `Бесплатные ${s.objectsLimit} объектов использованы`
-                    : `Бесплатный тариф: объектов ${s.objectsUsed} из ${s.objectsLimit}`}
-              </p>
-              <p className={`text-xs ${left === 0 ? "text-red-800" : "text-muted-foreground"}`}>
-                {left === 0 || expired
-                  ? "Всё старое открыто: смотреть, скачать, отправить. Новые объекты — на тарифе PRO."
-                  : `Ещё ${left} бесплатно. Потом — тариф PRO, старое останется открытым.`}
+              <p className={`font-medium ${titleCls}`}>{title}</p>
+              <p className={`text-xs ${textCls}`}>
+                {text}
                 {s.launchPrice && !fromIos && ` До ${fmtLastDay(s.launchPriceUntil)} — ${fmtTenge(s.prices.launchMonth)}/мес.`}
               </p>
             </div>
-            {payBtn(left === 0 || expired ? "Открыть PRO" : "PRO")}
+            {payBtn(tone === "slate" ? "PRO" : "Оплатить PRO", tone === "slate" ? "default" : "amber")}
           </CardContent>
         </Card>
       );

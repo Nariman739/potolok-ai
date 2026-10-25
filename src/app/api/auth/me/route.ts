@@ -6,8 +6,9 @@ import { reportError } from "@/lib/report-error";
 
 /**
  * Профиль + статус подписки для мобилки (поле `billing`, 12.10.2026).
- * Мобилка показывает плашку по freePeriod / objectsUsed / daysLeft; в iOS —
- * без цен и ссылок на оплату (App Store 3.1.1), цены там игнорировать.
+ * Мобилка показывает плашку по announce / objectsUsed / freeLeft / inGrace /
+ * graceUsed / daysLeft; в iOS — без цен и ссылок на оплату (App Store 3.1.1),
+ * цены там игнорировать. Типы — src/lib/billing-client.ts.
  */
 export async function GET() {
   try {

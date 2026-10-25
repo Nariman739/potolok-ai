@@ -301,10 +301,16 @@ export function PricingClient(props: Props) {
               <div className="text-sm text-muted-foreground">
                 {s.proReason === "paid" && s.paidUntil ? (
                   <>PRO до <b>{fmtDate(s.paidUntil)}</b></>
-                ) : s.freePeriod ? (
-                  <>Бесплатно до <b>{fmtDate(s.freeUntil)}</b>, потом — бесплатный тариф или PRO</>
                 ) : s.proReason === "owner" ? (
                   <>Владелец сервиса</>
+                ) : s.announce ? (
+                  <>С <b>{fmtDate(s.launchAt)}</b> — первые {s.objectsLimit} объектов бесплатно, дальше PRO. Сейчас всё бесплатно.</>
+                ) : !s.enforced ? (
+                  <>Сейчас всё бесплатно. PRO — по желанию.</>
+                ) : s.graceUsed ? (
+                  <>Бесплатные объекты и объект в долг использованы — новые объекты на PRO. Старое открыто.</>
+                ) : s.inGrace ? (
+                  <>Бесплатные {s.objectsLimit} использованы, следующий объект — в долг. Старое открыто.</>
                 ) : (
                   <>Бесплатный тариф: объектов <b>{s.objectsUsed} из {s.objectsLimit}</b></>
                 )}

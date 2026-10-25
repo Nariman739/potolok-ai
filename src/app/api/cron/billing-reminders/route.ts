@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPushToMaster } from "@/lib/push";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { BILLING_ENABLED, FREE_UNTIL, isLaunchPriceOpen, daysUntil } from "@/lib/billing";
+import { BILLING_ENABLED, daysUntil } from "@/lib/billing";
 
 /**
  * Напоминания об оплате (12.10.2026). Раз в сутки, 10:00 по Алматы.
@@ -10,8 +10,6 @@ import { BILLING_ENABLED, FREE_UNTIL, isLaunchPriceOpen, daysUntil } from "@/lib
  * Кому и когда (день = целое число дней до paidUntil):
  *   −7, −3, 0  — «PRO заканчивается», мягко;
  *   +3         — «PRO закончился, старое открыто, новые объекты — на PRO».
- * Плюс старым мастерам за 7 и 1 день до FREE_UNTIL — «бесплатный период
- * заканчивается» (+ про стартовую цену, пока она действует).
  *
  * Без отдельного поля «напоминали»: запускаемся раз в сутки и бьём только в
  * точные дни, поэтому дублей нет. Текст без цен и ссылок — пуш виден в iOS
@@ -57,29 +55,8 @@ export async function GET(request: NextRequest) {
     sent++;
   }
 
-  // ── Старые мастера перед концом бесплатного периода ──
-  const dFree = daysUntil(FREE_UNTIL, now);
-  if (dFree === 7 || dFree === 1) {
-    const olds = await prisma.master.findMany({
-      where: { isOwner: false, OR: [{ paidUntil: null }, { paidUntil: { lt: now } }] },
-      select: { id: true, telegramChatId: true },
-      take: 2000,
-    });
-    const launchOpen = isLaunchPriceOpen(now);
-    for (const m of olds) {
-      await sendPushToMaster(m.id, {
-        title: dFree === 1 ? "Завтра заканчивается бесплатный период" : "Через неделю заканчивается бесплатный период",
-        body: launchOpen
-          ? "Потом — тариф PRO или первые 10 объектов бесплатно. До 31 декабря PRO по стартовой цене — на сайте potolok.ai."
-          : "Потом — тариф PRO или первые 10 объектов бесплатно. Всё, что вы сделали, останется открытым.",
-        data: { screen: "/(tabs)/profile" },
-      });
-      if (m.telegramChatId) {
-        await sendTelegramMessage(m.telegramChatId, `Бесплатный период заканчивается ${dFree === 1 ? "завтра" : "через неделю"}. Тарифы: https://potolok.ai/pricing`).catch(() => {});
-      }
-      sent++;
-    }
-  }
-
+  // «Бесплатный период до 23 ноября» убран 25.10.2026: лимит теперь у всех
+  // с дня запуска, а про конец бесплатных объектов мастер узнаёт по месту
+  // (плашка + ссылка на оплату при упоре, см. pay-link.ts).
   return NextResponse.json({ checked: paid.length, sent });
 }

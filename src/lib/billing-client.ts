@@ -11,12 +11,19 @@ export const BILLING_ENABLED_CLIENT =
 
 export type BillingPeriod = "month" | "year";
 
+/**
+ * Статус подписки (решение Наримана 25.10.2026): с дня включения
+ * (launchAt) у ВСЕХ счётчик с нуля — objectsLimit объектов бесплатно, потом
+ * один объект «в долг» (graceObjects), дальше только PRO.
+ */
 export type BillingStatus = {
-  /** Платные правила действуют для этого мастера (новый — сразу, старый — после FREE_UNTIL). */
+  /** Лимит действует прямо сейчас (флаг включён и день запуска наступил). */
   enforced: boolean;
-  /** Старый мастер в бесплатном периоде: показываем плашку «до 23 ноября бесплатно». */
-  freePeriod: boolean;
-  /** Сейчас есть полный доступ (PRO): оплачено, owner или бесплатный период. */
+  /** Флаг включён, но день запуска ещё впереди — показываем «с <дата> …». */
+  announce: boolean;
+  /** День запуска: объекты считаем с него. ISO. */
+  launchAt: string;
+  /** Сейчас есть полный доступ (PRO): оплачено, owner или лимит не действует. */
   isPro: boolean;
   /** Почему PRO: "owner" | "paid" | "free_period" | null (бесплатный тариф). */
   proReason: "owner" | "paid" | "free_period" | null;
@@ -26,9 +33,17 @@ export type BillingStatus = {
   /** Сейчас действует стартовая цена (оплата до launchPriceUntil — по prices.launchMonth). */
   launchPrice: boolean;
   launchPriceUntil: string;
-  freeUntil: string;
+  /** Объектов создано с launchAt. */
   objectsUsed: number;
   objectsLimit: number;
+  /** Сколько объектов можно сделать сверх лимита «в долг» (обычно 1). */
+  graceObjects: number;
+  /** Сколько бесплатных ещё осталось (без учёта долга). */
+  freeLeft: number;
+  /** Бесплатные кончились, следующий объект — «в долг» (ещё можно). */
+  inGrace: boolean;
+  /** И долг использован — новые объекты только с PRO. */
+  graceUsed: boolean;
   /** Можно ли создать новый объект прямо сейчас. */
   canCreateObject: boolean;
   prices: {
