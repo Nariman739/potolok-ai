@@ -163,7 +163,7 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
   const s = await getBillingStatus(masterId);
   if (s.isPro) return null;
 
-  const { sendPayNudge, mintPayLink } = await import("@/lib/pay-link");
+  const { sendPayNudge, mintPayLink, payChannels } = await import("@/lib/pay-link");
 
   if (s.canCreateObject) {
     if (s.inGrace) {
@@ -174,11 +174,24 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
   }
 
   await sendPayNudge(masterId, "blocked").catch((err) => console.error("pay nudge (blocked) failed:", err));
-  const payUrl = await mintPayLink(masterId).catch(() => null);
+  const [payUrl, ch] = await Promise.all([
+    mintPayLink(masterId).catch(() => null),
+    payChannels(masterId).catch(() => ({ telegram: false, push: false })),
+  ]);
+  // Текст показывает мобилка как есть (Alert), в т.ч. на iPhone — без цены и
+  // ссылки. Обещаем только тот канал, который у мастера реально есть.
+  const where =
+    ch.telegram && ch.push
+      ? "Ссылку на оплату отправили вам в Telegram и уведомлением."
+      : ch.telegram
+        ? "Ссылку на оплату отправили вам в Telegram."
+        : ch.push
+          ? "Ссылку на оплату отправили вам уведомлением."
+          : "Оформить PRO можно на сайте potolok.ai, раздел «Тарифы» — вход по вашему номеру телефона.";
   return {
     status: 402,
     body: {
-      error: `Бесплатные ${s.objectsLimit} объектов использованы. Старые замеры и КП открыты, а для новых нужен тариф PRO — ссылку на оплату отправили вам в Telegram и уведомлением.`,
+      error: `Бесплатные ${s.objectsLimit} объектов использованы. Этот замер сохранён на телефоне и отправится на сервер после подключения PRO; старые замеры и КП открыты. ${where}`,
       code: "OBJECT_LIMIT",
       used: s.objectsUsed,
       limit: s.objectsLimit,

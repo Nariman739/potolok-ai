@@ -24,6 +24,9 @@ function siteUrl(): string {
 
 export async function mintPayLink(masterId: string, ttlMs = PAY_LINK_TTL_MS): Promise<string> {
   const token = crypto.randomBytes(32).toString("base64url");
+  // Неоткрытые ссылки этого мастера, которые уже протухли, — подчищаем здесь же,
+  // иначе каждый повтор 402 (оффлайн-очередь мобилки) копит строки.
+  await prisma.bridgeToken.deleteMany({ where: { masterId, expiresAt: { lt: new Date() } } }).catch(() => {});
   await prisma.bridgeToken.create({
     data: { masterId, token, platform: null, expiresAt: new Date(Date.now() + ttlMs) },
   });
@@ -35,6 +38,15 @@ function fmtTenge(n: number): string {
 }
 
 export type NudgeKind = "grace" | "blocked";
+
+/** Куда у мастера вообще может дойти ссылка — чтобы текст ошибки не обещал лишнего. */
+export async function payChannels(masterId: string): Promise<{ telegram: boolean; push: boolean }> {
+  const [m, devices] = await Promise.all([
+    prisma.master.findUnique({ where: { id: masterId }, select: { telegramChatId: true } }),
+    prisma.pushDevice.count({ where: { masterId, disabledAt: null } }),
+  ]);
+  return { telegram: !!m?.telegramChatId, push: devices > 0 };
+}
 
 /**
  * «Бесплатные объекты закончились» + ссылка. grace — этот замер ещё сохранится
@@ -48,6 +60,10 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
   });
   if (!m) return false;
   if (m.payNudgeSentAt && Date.now() - m.payNudgeSentAt.getTime() < NUDGE_COOLDOWN_MS) return false;
+  const devices = await prisma.pushDevice.count({ where: { masterId, disabledAt: null } });
+  // Некуда слать — не тратим ссылку и не ставим отметку: текст ошибки в
+  // приложении сам объяснит, где оформить PRO.
+  if (!m.telegramChatId && devices === 0) return false;
 
   const url = await mintPayLink(masterId);
   const price = fmtTenge(isLaunchPriceOpen() ? LAUNCH_PRICE_MONTH : PRICE_MONTH);
