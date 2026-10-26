@@ -176,13 +176,16 @@ function RoomCard({
 }) {
   const { theme, fonts } = data;
   const roomNum = String(index + 1).padStart(2, "0");
+  // Комната переезжает на новую страницу целиком: при разрыве номер оставался
+  // внизу, а листик плана уезжал на следующую. Только очень длинный список
+  // (больше 12 позиций) разрешаем рвать.
   return (
     <View
       style={{
         marginBottom: 6,
         flexDirection: "row",
       }}
-      wrap={true}
+      wrap={room.items.length > 12}
     >
       {/* Слева — крупный номер комнаты, план с замера (если есть),
           вертикальная цветная полоса. План показывает форму комнаты
@@ -242,7 +245,7 @@ function RoomCard({
           }}
           minPresenceAhead={50}
         >
-          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+          <View style={{ flexDirection: "row", alignItems: "baseline", flex: 1, paddingRight: 8 }}>
             <Text
               style={{
                 fontFamily: fonts.display.family,
@@ -251,6 +254,8 @@ function RoomCard({
                 color: theme.palette.pageText,
                 marginRight: 10,
                 letterSpacing: -0.2,
+                maxLines: 1,
+                textOverflow: "ellipsis",
               }}
             >
               {room.name}

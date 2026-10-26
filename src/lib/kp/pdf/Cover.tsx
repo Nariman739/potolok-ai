@@ -1051,11 +1051,11 @@ function CoverWarmHandmade({
           />
         </View>
       ) : hasPlans(estimate.rooms) ? (
-        <View style={{ position: "absolute", left: 36, bottom: 196, width: 230, height: 210 }}>
+        <View style={{ position: "absolute", left: 36, bottom: 196, width: 230, height: 280 }}>
           <KpPlanHero
             data={data}
             width={222}
-            height={204}
+            height={272}
             drawing={{ accent: TERRA, ink: theme.palette.coverText, paper: theme.palette.coverBg }}
             tilt={-2}
           />

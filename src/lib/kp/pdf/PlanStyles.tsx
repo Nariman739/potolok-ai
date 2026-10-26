@@ -200,8 +200,12 @@ export function KpPlanHero({
   const captionH = sketch ? 14 : 11;
   const innerH = height - pad * 2 - legendH - captionH;
   const n = rooms.length;
-  const labelSize = sketch ? (n > 4 ? 9.5 : n > 1 ? 11 : 13) : n > 4 ? 6.5 : 7.5;
-  const labelH = labelSize + 4;
+  const labelSize = sketch ? (n > 6 ? 8 : n > 4 ? 9.5 : n > 1 ? 11 : 13) : n > 6 ? 5.5 : n > 4 ? 6.5 : 7.5;
+  // От семи комнат подпись — только имя, до двух строк (площадь переносила
+  // подпись на три строки, и легенда наезжала на последний ряд)
+  const many = n > 6;
+  const labelLines = many ? 2 : 1;
+  const labelH = labelSize * 1.2 * labelLines + 3;
   const { cols, cellW, sides } = layoutRooms(rooms, innerW, innerH, labelH, 6);
 
   // Внешний View центрует ряды по вертикали (alignContent у react-pdf для
@@ -224,11 +228,15 @@ export function KpPlanHero({
               color: ink,
               marginTop: sketch ? 0 : 2,
               maxWidth: cellW - 4,
+              textAlign: "center",
+              lineHeight: 1.2,
+              maxLines: labelLines,
+              textOverflow: "ellipsis",
               ...(sketch ? {} : { letterSpacing: 1, textTransform: "uppercase" as const }),
             }}
           >
             {r.name}
-            {showArea && r.area > 0 ? `${sketch ? ", " : " · "}${fmtArea(r.area)}` : ""}
+            {showArea && !many && r.area > 0 ? `${sketch ? ", " : " · "}${fmtArea(r.area)}` : ""}
           </Text>
         </View>
       ))}

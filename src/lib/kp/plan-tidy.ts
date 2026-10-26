@@ -132,8 +132,9 @@ export function roomBoundsCm(room: PlanRoom): { w: number; h: number } | null {
 }
 
 /**
- * Размеры комнаты текстом для шапки состава работ: прямоугольник — «5,0 × 4,5 м»,
- * иначе стены через точку «5,0 · 3,2 · 2,1 · … м» (до шести).
+ * Размеры комнаты текстом для шапки состава работ: «5,0 × 4,5 м». У
+ * непрямоугольной комнаты — габарит по стенам (перечень шести стен не влезал
+ * в шапку и наезжал на цену).
  */
 export function roomDimsText(room: PlanRoom): string {
   const m = (cm: number) => (cm / 100).toFixed(2).replace(".", ",").replace(/,?0+$/, "");
@@ -141,7 +142,10 @@ export function roomDimsText(room: PlanRoom): string {
   const angles = room.angles ?? [];
   const rect = walls.length === 4 && angles.every((a) => a === 90 || a === undefined) && Math.abs(walls[0] - walls[2]) < 3 && Math.abs(walls[1] - walls[3]) < 3;
   if (rect) return `${m(walls[0])} × ${m(walls[1])} м`;
-  return `${walls.slice(0, 6).map(m).join(" · ")}${walls.length > 6 ? " · …" : ""} м`;
+  const v = verticesOf(room);
+  if (!v) return "";
+  const xs = v.map((p) => p.x), ys = v.map((p) => p.y);
+  return `${m(Math.max(...xs) - Math.min(...xs))} × ${m(Math.max(...ys) - Math.min(...ys))} м`;
 }
 
 // ---------- helpers ----------

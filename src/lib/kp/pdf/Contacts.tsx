@@ -99,10 +99,11 @@ export function ContactsPage({
               backgroundColor: theme.palette.accentText + "22",
             }}
           >
+            {/* У Lora/Playfair нет глифа «→» — печаталась закорючка «’» (26.10.2026) */}
             <Text
               style={{
-                fontFamily: fonts.display.family,
-                fontWeight: fonts.display.weight as 400 | 700 | 800,
+                fontFamily: "Inter",
+                fontWeight: 600,
                 fontSize: 28,
                 color: theme.palette.accentText,
               }}
