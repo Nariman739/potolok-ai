@@ -60,6 +60,12 @@ export type RoomPlan = {
   legend: Legend[];
   /** Перевод см → единицы плана: x·scale + ox. Нужен, чтобы продолжить клетку за пределы плана. */
   frame: { ox: number; oy: number; scale: number };
+  /**
+   * Габариты комнаты с элементами в единицах плана, с полем под подписи.
+   * Квадрат `size` для вытянутой комнаты наполовину пустой — КП обрезает
+   * по этому прямоугольнику, чтобы подпись комнаты стояла сразу под планом.
+   */
+  bbox: { x: number; y: number; w: number; h: number };
 };
 
 export type PlanOptions = {
@@ -79,6 +85,20 @@ export type PlanOptions = {
   pencil?: boolean;
   /** Рисовать клетку внутри плана (по умолчанию да в карандашном стиле). */
   grid?: boolean;
+  /**
+   * План для КЛИЕНТА (26.10.2026): всё в фирменном цвете мастера, без букв
+   * углов, без длин элементов, без легенды профилей — не чертёж, а картинка
+   * «вот ваша комната, вот где свет». Длины стен — только если `labels`.
+   */
+  client?: { accent: string; ink: string; fill: string; paper: string };
+  /** Подписи длин стен для клиента: в метрах («4,84»). Без поля — без подписей. */
+  labels?: "walls-m";
+  /**
+   * Множитель толщин линий, кружков и подписей. План в КП рисуется в 84pt —
+   * при пропорциональном уменьшении софиты становились точками, а цифры
+   * нечитаемыми; на мелком плане линии нужны относительно толще.
+   */
+  boost?: number;
 };
 
 type Palette = Record<keyof typeof COLORS, string>;
@@ -508,12 +528,19 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   const S = (p: Pt): Pt => ({ x: sx(p.x), y: sy(p.y) });
   const sv = v.map(S);
   // Масштаб толщин и шрифтов от размера плана (320 — страница, 220 — PDF)
-  const u = size / 320;
+  const u = (size / 320) * (opts.boost ?? 1);
   const strokeW = 2 * u;
   const fs = 10 * u;
 
   const pencil = !!opts.pencil;
-  const C: Palette = pencil ? PENCIL_COLORS : COLORS;
+  const client = opts.client;
+  const C: Palette = client
+    ? {
+        spot: client.ink, pendant: client.ink, chandelier: client.accent, vent: client.ink, track: client.accent,
+        lightline: client.accent, curtain: client.ink, subcurtain: client.ink, floating: client.accent,
+        wall: client.accent, roomFill: client.fill, label: client.ink,
+      }
+    : pencil ? PENCIL_COLORS : COLORS;
   const shapes: Shape[] = [];
 
   // Клетка тетради: 10 см тонко, 50 см жирнее, по всему листу, в масштабе комнаты
@@ -575,6 +602,12 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (p === "pvc_insert") return; // обычный пластик — просто контур
     const { a, b } = wallFrame(i);
     used.add(`prof:${p}`);
+    if (client) {
+      // Клиенту — без цветовой кодировки профилей: теневой/парящий чуть толще, и всё
+      const mul = p === "shadow" || p === "floating" ? 1.9 : 1.2;
+      shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: C.wall, sw: strokeW * mul, round: true });
+      return;
+    }
     if (pencil) {
       const ps = PROFILE_PENCIL[p] ?? { dash: "4 3", mul: 1.4 };
       const base = { k: "line" as const, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: INK, sw: strokeW * ps.mul };
@@ -618,6 +651,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       if (shape === "u-niche" || el.side !== "left") pushStyled({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw }, type);
       if (shape === "u-niche" || el.side === "left") pushStyled({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw }, type);
     }
+    if (client) continue;
     const cm = Math.round(el.length ?? wallCm);
     shapes.push({ k: "text", x: (x1 + x2) / 2 + px * (fs + 2 * u), y: (y1 + y2) / 2 + py * (fs + 2 * u), text: String(cm), size: fs, weight: 600, fill: color, halo: true });
   }
@@ -637,7 +671,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     used.add(`el:${legendKey(type)}`);
     pushStyled({ k: "polyline", points: p, stroke: color, sw: strokeW }, type);
     const cm = Math.round(elementLength(el));
-    if (cm > 0) {
+    if (cm > 0 && !client) {
       const mid = p[Math.floor(p.length / 2)];
       shapes.push({ k: "text", x: mid.x, y: mid.y - fs, text: String(cm), size: fs, weight: 600, fill: color, halo: true });
     }
@@ -688,13 +722,17 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     }
   }
 
-  // Подписи длин стен (см) снаружи, с запасом под толстую линию профиля
-  walls.forEach((len, i) => {
-    const { a, b, px, py } = wallFrame(i);
-    shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text: String(len), size: 11 * u, weight: 400, fill: C.label, halo: true });
-  });
-  // Буквы углов — наружу, против биссектрисы к соседям
-  sv.forEach((p, i) => {
+  // Подписи длин стен (см) снаружи, с запасом под толстую линию профиля.
+  // Клиенту — в метрах и только по запросу (в «Кратко» размеров нет).
+  if (!client || opts.labels === "walls-m") {
+    walls.forEach((len, i) => {
+      const { a, b, px, py } = wallFrame(i);
+      const text = client ? (len / 100).toFixed(2).replace(".", ",").replace(/,?0+$/, "") : String(len);
+      shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text, size: (client ? 12 : 11) * u, weight: client ? 600 : 400, fill: C.label, halo: true });
+    });
+  }
+  // Буквы углов — наружу, против биссектрисы к соседям (клиенту не нужны)
+  if (!client) sv.forEach((p, i) => {
     const prev = sv[(i - 1 + n) % n], next = sv[(i + 1) % n];
     let dx = (prev.x - p.x) + (next.x - p.x), dy = (prev.y - p.y) + (next.y - p.y);
     const l = Math.hypot(dx, dy) || 1;
@@ -732,15 +770,20 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     }
   }
 
-  // Карандаш: подложка подписей — цвет бумаги, заливки кружков — бумага
-  if (pencil) {
+  // Карандаш/клиент: подложка подписей — цвет бумаги, заливки кружков — бумага
+  const paper = pencil ? PAPER : client?.paper;
+  if (paper) {
     for (const s of shapes) {
-      if (s.k === "text") s.haloColor = PAPER;
-      else if (s.k === "circle" && s.fill === "#fff") s.fill = PAPER;
+      if (s.k === "text") s.haloColor = paper;
+      else if (s.k === "circle" && s.fill === "#fff") s.fill = paper;
     }
   }
 
-  return { size, shapes, legend, frame: { ox, oy, scale } };
+  // Без подписей стен (план на обложке, «Кратко») поле вокруг комнаты уже —
+  // иначе подпись комнаты отрывалась от плана.
+  const bpad = client && opts.labels !== "walls-m" ? pad * 0.35 : pad;
+  const bbox = { x: sx(minX) - bpad, y: sy(minY) - bpad, w: w * scale + bpad * 2, h: h * scale + bpad * 2 };
+  return { size, shapes, legend, frame: { ox, oy, scale }, bbox };
 }
 
 // ============================================

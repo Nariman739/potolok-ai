@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     const format: KpFormat = formatParam === "quick" ? "quick" : "full";
     const brandColor = searchParams.get("brandColor") || undefined;
     const tagline = searchParams.get("tagline") || undefined;
+    // ?noPhoto=1 — обложка без фото: так КП выглядит у мастера без coverPhoto
+    // (у большинства) — вместо фото рисуется план по замеру (26.10.2026)
+    const noPhoto = searchParams.get("noPhoto") === "1";
 
     const config = getDefaultConfigForTemplate(template);
     config.format = format;
@@ -37,7 +40,7 @@ export async function GET(req: NextRequest) {
       template,
       brandColor,
       config,
-      master: tagline ? { tagline } : undefined,
+      master: tagline || noPhoto ? { ...(tagline ? { tagline } : {}), ...(noPhoto ? { coverPhotoUrl: "" } : {}) } : undefined,
     });
 
     const buffer = await renderToBuffer(KpDocument({ data }));

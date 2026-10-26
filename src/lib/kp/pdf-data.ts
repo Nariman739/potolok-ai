@@ -3,6 +3,7 @@ import { ownerBrandFor } from "@/lib/company";
 import { asCurrency, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
+import type { PlanRoom } from "@/lib/work-order-plan";
 import { DEFAULT_KP_CONFIG } from "./templates";
 import { asPriceView, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
 
@@ -37,6 +38,12 @@ export type PdfRoom = {
   items: PdfLineItem[];
   total: number;
   designerData: RoomDesignerData;
+  /**
+   * Комната из замера (Estimate.roomsData: стены, углы, дуги, софиты, люстры,
+   * гардины, треки — в сантиметрах). Из неё рисуется план для клиента на
+   * обложке и в составе работ (26.10.2026). null — замера с геометрией нет.
+   */
+  plan: PlanRoom | null;
 };
 
 export type PdfLineItem = {
@@ -90,6 +97,8 @@ export type PdfEstimate = {
   id: string;
   publicId: string;
   clientName: string;
+  /** Заголовок обложки: имя клиента, а без имени — «Ваш новый потолок», не слово «Клиент» */
+  coverTitle: string;
   clientAddress: string;
   total: number;
   discountPercent: number;
@@ -166,7 +175,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
   const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult & {
     quickEstimate?: boolean;
   };
-  const rooms = mapRooms(calc);
+  const rooms = mapRooms(calc, estimate.roomsData);
   const extraItems = (calc.extraItems ?? []).map(mapLineItem);
   const subtotal = calc.subtotal ?? estimate.total ?? 0;
   const isQuick = !!calc.quickEstimate;
@@ -180,6 +189,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
       id: estimate.id,
       publicId: estimate.publicId,
       clientName: estimate.clientName ?? "Клиент",
+      coverTitle: estimate.clientName?.trim() || "Ваш новый потолок",
       clientAddress: estimate.clientAddress ?? "",
       total: estimate.total ?? 0,
       discountPercent: estimate.discountPercent ?? 0,
@@ -230,10 +240,35 @@ export function normalizeConfig(raw: unknown): KpConfig {
   };
 }
 
-function mapRooms(calc: CalculationResult): PdfRoom[] {
+/** Комната замера с геометрией (стены ≥ 3) — иначе плана нет. */
+export function planRoomOf(raw: unknown): PlanRoom | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (!Array.isArray(r.walls) || r.walls.length < 3 || !r.walls.every((w) => typeof w === "number" && w > 0)) return null;
+  return {
+    walls: r.walls as number[],
+    angles: Array.isArray(r.angles) ? (r.angles as number[]) : null,
+    normalCorners: Array.isArray(r.normalCorners) ? (r.normalCorners as boolean[]) : null,
+    bulges: Array.isArray(r.bulges) ? (r.bulges as number[]) : null,
+    cornerRadii: Array.isArray(r.cornerRadii) ? (r.cornerRadii as number[]) : null,
+    elements: r.elements,
+    wallProfiles: r.wallProfiles,
+  };
+}
+
+function mapRooms(calc: CalculationResult, roomsData: unknown): PdfRoom[] {
   const results = calc.roomResults ?? [];
   const inputs = calc.rooms ?? [];
-  return results.map((r: RoomResult) => {
+  const measured: Array<Record<string, unknown>> = Array.isArray(roomsData)
+    ? (roomsData as Array<Record<string, unknown>>)
+    : [];
+  return results.map((r: RoomResult, idx: number) => {
+    // Замер к позиции расчёта: по id комнаты, иначе по имени, иначе по порядку
+    const raw =
+      measured.find((m) => m.id === r.roomId) ??
+      measured.find((m) => m.name === r.roomName) ??
+      (measured.length === results.length ? measured[idx] : undefined);
+    const plan = planRoomOf(raw);
     const input = inputs.find(
       (i) =>
         (i as unknown as { id?: string; roomId?: string }).id === r.roomId ||
@@ -249,6 +284,7 @@ function mapRooms(calc: CalculationResult): PdfRoom[] {
       items: (r.items ?? []).map(mapLineItem),
       total: r.subtotalAfterHeight ?? r.subtotal,
       designerData,
+      plan,
     };
   });
 }

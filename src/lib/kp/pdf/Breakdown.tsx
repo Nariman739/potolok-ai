@@ -5,6 +5,12 @@ import { fmtArea, makeStyles, PageFooter, PriceText, QtyPriceText, tengeSafeFami
 import { currencySymbol } from "@/lib/currency";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
+import { ClientRoomPlan } from "./ClientPlan";
+
+// Ширина левой колонки комнаты: номер + план по замеру (26.10.2026 план стал
+// крупнее — 48pt иконки клиент не читал, теперь видно софиты и гардины).
+const ROOM_COL_W = 92;
+const ROOM_PLAN_SIDE = 84;
 
 // СТРАНИЦА — Детальный разбор по комнатам.
 // Шапка комнаты — драматичный large-number ("01") + вертикальная цветная полоса,
@@ -163,6 +169,7 @@ function RoomCard({
 }) {
   const { theme, fonts } = data;
   const roomNum = String(index + 1).padStart(2, "0");
+  const detailed = data.estimate.priceView !== "summary";
 
   return (
     <View
@@ -172,12 +179,12 @@ function RoomCard({
       }}
       wrap={true}
     >
-      {/* Слева — крупный номер комнаты, мини-план с замера (если есть),
+      {/* Слева — крупный номер комнаты, план с замера (если есть),
           вертикальная цветная полоса. План показывает форму комнаты
           и расстановку софитов/люстры — клиент сразу видит «где что». */}
       <View
         style={{
-          width: 56,
+          width: ROOM_COL_W,
           alignItems: "center",
           paddingTop: 2,
         }}
@@ -194,7 +201,17 @@ function RoomCard({
         >
           {roomNum}
         </Text>
-        {room.designerData && (
+        {room.plan ? (
+          <View style={{ marginTop: 9, alignItems: "center" }}>
+            {/* В «Подробно» — длины стен в метрах; в «Кратко» размеров нет (16.10.2026) */}
+            <ClientRoomPlan
+              room={room.plan}
+              side={ROOM_PLAN_SIDE}
+              colors={{ accent: theme.palette.accent, ink: theme.palette.pageText, paper: theme.palette.pageBg }}
+              dims={detailed}
+            />
+          </View>
+        ) : room.designerData ? (
           <View style={{ marginTop: 10, alignItems: "center" }}>
             <RoomPlan2D
               designerData={room.designerData}
@@ -205,7 +222,7 @@ function RoomCard({
               chandelierColor={theme.palette.accent}
             />
           </View>
-        )}
+        ) : null}
         <View
           style={{
             width: 2,
@@ -218,7 +235,9 @@ function RoomCard({
       </View>
 
       <View style={{ flex: 1, paddingLeft: 12 }}>
-        {/* Шапка — название комнаты, площадь, итог. Без заливки. */}
+        {/* Шапка — название комнаты, площадь, итог. Без заливки.
+            minPresenceAhead: шапка не остаётся одна внизу страницы — вместе с
+            ней на страницу должны влезть хотя бы две первые строки. */}
         <View
           style={{
             flexDirection: "row",
@@ -229,6 +248,7 @@ function RoomCard({
             borderBottomColor: theme.palette.pageText,
             marginBottom: 4,
           }}
+          minPresenceAhead={50}
         >
           <View style={{ flexDirection: "row", alignItems: "baseline" }}>
             <Text
@@ -300,6 +320,7 @@ function ItemRow({
           borderBottomWidth: theme.decor.hairlineWidth,
           borderBottomColor: theme.palette.hairline,
         }}
+        wrap={false}
       >
         <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: theme.palette.accent, width: 12 }}>•</Text>
         <Text style={{ fontFamily: fonts.body.family, fontSize: 10, color: theme.palette.pageText, lineHeight: 1.3, flex: 1 }}>
@@ -318,6 +339,7 @@ function ItemRow({
         borderBottomWidth: theme.decor.hairlineWidth,
         borderBottomColor: theme.palette.hairline,
       }}
+      wrap={false}
     >
       <View style={{ flex: 1, paddingRight: 8 }}>
         <Text

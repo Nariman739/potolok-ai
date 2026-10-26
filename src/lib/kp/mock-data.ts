@@ -82,6 +82,24 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
           { type: "spot", x: 250, y: 320 },
         ],
       },
+      // План по замеру — как его пишет мобилка в Estimate.roomsData (сантиметры)
+      plan: {
+        walls: [500, 450, 500, 450],
+        angles: [90, 90, 90, 90],
+        wallProfiles: { "0": "shadow", "1": "shadow", "2": "shadow", "3": "shadow" },
+        elements: [
+          { type: "chandelier", x: 250, y: 225 },
+          { type: "spot", x: 100, y: 80 },
+          { type: "spot", x: 400, y: 80 },
+          { type: "spot", x: 100, y: 370 },
+          { type: "spot", x: 400, y: 370 },
+          { type: "spot", x: 100, y: 225 },
+          { type: "spot", x: 400, y: 225 },
+          { type: "spot", x: 250, y: 80 },
+          { type: "spot", x: 250, y: 370 },
+          { type: "curtain", wallIndex: 0, length: 400, wallPosition: 0.5 },
+        ],
+      },
     },
     {
       id: "r2",
@@ -106,6 +124,18 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
           { type: "spot", x: 320, y: 296 },
         ],
       },
+      plan: {
+        walls: [400, 375, 400, 375],
+        angles: [90, 90, 90, 90],
+        elements: [
+          { type: "chandelier", x: 200, y: 188 },
+          { type: "spot", x: 80, y: 80 },
+          { type: "spot", x: 320, y: 80 },
+          { type: "spot", x: 80, y: 296 },
+          { type: "spot", x: 320, y: 296 },
+          { type: "lightline", shape: "freeform", points: [{ x: 40, y: 40 }, { x: 360, y: 40 }] },
+        ],
+      },
     },
     {
       id: "r3",
@@ -121,6 +151,17 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
       total: 110600,
       designerData: {
         walls: [3.5, 3.43, 3.5, 3.43],
+        angles: [90, 90, 90, 90],
+        elements: [
+          { type: "chandelier", x: 175, y: 172 },
+          { type: "spot", x: 60, y: 60 },
+          { type: "spot", x: 290, y: 60 },
+          { type: "spot", x: 60, y: 284 },
+          { type: "spot", x: 290, y: 284 },
+        ],
+      },
+      plan: {
+        walls: [350, 343, 350, 343],
         angles: [90, 90, 90, 90],
         elements: [
           { type: "chandelier", x: 175, y: 172 },
@@ -175,6 +216,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
       id: "sample-preview",
       publicId: "sample-preview",
       clientName: "Айгуль Серикова",
+      coverTitle: "Айгуль Серикова",
       clientAddress: "Астана, ул. Кабанбай батыра 49, кв. 87",
       total,
       discountPercent: 0,

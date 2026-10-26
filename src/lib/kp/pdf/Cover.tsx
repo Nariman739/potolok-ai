@@ -3,6 +3,19 @@ import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { fmtDate, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
+import { CoverPlanHero, hasPlans } from "./ClientPlan";
+
+// Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
+// по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
+function planCaption(estimate: PdfData["estimate"]): string {
+  return `План по замеру · ${fmtDate(estimate.createdAt)}`;
+}
+
+// «5–7 дней работы» было вшито в обложку выдумкой. Вместо него — гарантия
+// мастера из настроек (как в классической теме после аудита 24.09.2026).
+function warrantyYears(master: PdfData["master"]): string {
+  return String(master.warrantyMaterials || 10);
+}
 
 // СТРАНИЦА 1 — Обложка.
 // 5 ТЕМ — 5 РАЗНЫХ ЛЕЙАУТОВ. Никакого «один шаблон с разными цветами».
@@ -265,7 +278,7 @@ function CoverMinimal({
       </View>
 
       {/* Hero photo — узкая полоса справа, 38% ширины, не доходит до низа */}
-      {heroImageUrl && (
+      {heroImageUrl ? (
         <View
           style={{
             position: "absolute",
@@ -284,7 +297,19 @@ function CoverMinimal({
             }}
           />
         </View>
-      )}
+      ) : hasPlans(estimate.rooms) ? (
+        <View style={{ position: "absolute", right: 36, top: 120, width: A4_W * 0.42, height: 380 }}>
+          <CoverPlanHero
+            rooms={estimate.rooms}
+            width={A4_W * 0.42}
+            height={380}
+            colors={{ accent: theme.palette.accent, ink: theme.palette.pageText, paper: "#FAFAF9" }}
+            fonts={fonts}
+            showArea={estimate.priceView !== "summary"}
+            caption={planCaption(estimate)}
+          />
+        </View>
+      ) : null}
 
       {/* Eyebrow + клиент — асимметрия слева, ОЧЕНЬ много воздуха */}
       <View
@@ -318,7 +343,7 @@ function CoverMinimal({
             letterSpacing: -1.5,
           }}
         >
-          {estimate.clientName.split(" ")[0]}
+          {estimate.coverTitle.split(" ")[0]}
         </Text>
         <Text
           style={{
@@ -331,7 +356,7 @@ function CoverMinimal({
             marginBottom: 22,
           }}
         >
-          {estimate.clientName.split(" ").slice(1).join(" ") || ""}
+          {estimate.coverTitle.split(" ").slice(1).join(" ") || ""}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -375,7 +400,7 @@ function CoverMinimal({
         {spotsCount > 0 && (
           <StatMinimal label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
-        <StatMinimal label="дней работы" value="5–7" theme={theme} fonts={fonts} />
+        <StatMinimal label="лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
       </View>
 
       {/* Цена в правом нижнем углу — асимметрия, цифра доминирующая */}
@@ -596,8 +621,8 @@ function CoverPremiumDark({
         }}
       />
 
-      {/* Hero photo — занимает ~38% высоты вверху, между рамкой */}
-      {heroImageUrl && (
+      {/* Hero photo — занимает ~38% высоты вверху, между рамкой; без фото — план по замеру золотом */}
+      {(heroImageUrl || hasPlans(estimate.rooms)) && (
         <>
           <View
             style={{
@@ -608,10 +633,22 @@ function CoverPremiumDark({
               height: 220,
             }}
           >
-            <Image
-              src={heroImageUrl}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+            {heroImageUrl ? (
+              <Image
+                src={heroImageUrl}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <CoverPlanHero
+                rooms={estimate.rooms}
+                width={A4_W - 96}
+                height={220}
+                colors={{ accent: GOLD, ink: "#E2E8F0", paper: DARK }}
+                fonts={fonts}
+                showArea={estimate.priceView !== "summary"}
+                caption={planCaption(estimate)}
+              />
+            )}
           </View>
           {/* Тонкая золотая хейрлайн под фото */}
           <View
@@ -742,7 +779,7 @@ function CoverPremiumDark({
             textAlign: "center",
           }}
         >
-          {estimate.clientName}
+          {estimate.coverTitle}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -784,7 +821,7 @@ function CoverPremiumDark({
           </>
         )}
         <DotGold />
-        <StatPremium label="Дней" value="5–7" theme={theme} fonts={fonts} />
+        <StatPremium label="Лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
       </View>
 
       {/* Тонкая золотая линия */}
@@ -998,8 +1035,8 @@ function CoverWarmHandmade({
         }}
       />
 
-      {/* Hero photo — в "окошке" слева внизу, с тёплой рамкой */}
-      {heroImageUrl && (
+      {/* Hero photo — в "окошке" слева внизу, с тёплой рамкой; без фото — план по замеру в том же окошке */}
+      {(heroImageUrl || hasPlans(estimate.rooms)) && (
         <View
           style={{
             position: "absolute",
@@ -1011,10 +1048,22 @@ function CoverWarmHandmade({
             padding: 6,
           }}
         >
-          <Image
-            src={heroImageUrl}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          {heroImageUrl ? (
+            <Image
+              src={heroImageUrl}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <CoverPlanHero
+              rooms={estimate.rooms}
+              width={248}
+              height={188}
+              colors={{ accent: TERRA, ink: theme.palette.coverText, paper: "#FFFFFF" }}
+              fonts={fonts}
+              showArea={estimate.priceView !== "summary"}
+              caption={planCaption(estimate)}
+            />
+          )}
         </View>
       )}
 
@@ -1145,7 +1194,7 @@ function CoverWarmHandmade({
             letterSpacing: -1,
           }}
         >
-          {estimate.clientName}
+          {estimate.coverTitle}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -1177,7 +1226,7 @@ function CoverWarmHandmade({
         {spotsCount > 0 && (
           <StatWarm label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
-        <StatWarm label="дней работы" value="5–7" theme={theme} fonts={fonts} />
+        <StatWarm label="лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
       </View>
 
       {/* Цена — справа внизу, на глубоком кремовом блоке */}
@@ -1469,7 +1518,7 @@ function CoverClassicArchitectural({
             textAlign: "center",
           }}
         >
-          {estimate.clientName}
+          {estimate.coverTitle}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -1511,8 +1560,8 @@ function CoverClassicArchitectural({
         }}
       />
 
-      {/* Hero photo — широкая полоса, симметрично */}
-      {heroImageUrl && (
+      {/* Hero photo — широкая полоса, симметрично; без фото — план по замеру, как чертёж в журнале */}
+      {(heroImageUrl || hasPlans(estimate.rooms)) && (
         <View
           style={{
             position: "absolute",
@@ -1522,10 +1571,22 @@ function CoverClassicArchitectural({
             height: 280,
           }}
         >
-          <Image
-            src={heroImageUrl}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          {heroImageUrl ? (
+            <Image
+              src={heroImageUrl}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <CoverPlanHero
+              rooms={estimate.rooms}
+              width={A4_W - 96}
+              height={280}
+              colors={{ accent: "#000000", ink: BORDO, paper: "#FFFFFF" }}
+              fonts={fonts}
+              showArea={estimate.priceView !== "summary"}
+              caption={planCaption(estimate)}
+            />
+          )}
         </View>
       )}
 
@@ -1563,7 +1624,12 @@ function CoverClassicArchitectural({
       >
         <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
         <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
-        <StatClassic label={spotsCount > 0 ? "Точек света" : "Дней работы"} value={spotsCount > 0 ? String(spotsCount) : "5–7"} theme={theme} fonts={fonts} />
+        <StatClassic
+          label={spotsCount > 0 ? "Точек света" : "Позиций"}
+          value={String(spotsCount > 0 ? spotsCount : estimate.rooms.reduce((s, r) => s + r.items.length, 0) + estimate.extraItems.length)}
+          theme={theme}
+          fonts={fonts}
+        />
         {/* Гарантия — из настроек мастера. Раньше обложка обещала 10 лет
             независимо от того, что стоит у мастера и что написано в
             договоре (аудит 24.09.2026). */}
@@ -1773,8 +1839,8 @@ function CoverBoldColor({
         {String(estimate.rooms.length)}
       </Text>
 
-      {/* Hero photo маленьким окошком внизу справа (если есть) */}
-      {heroImageUrl && (
+      {/* Hero photo маленьким окошком вверху справа; без фото — план по замеру белым на цветном поле */}
+      {heroImageUrl ? (
         <View
           style={{
             position: "absolute",
@@ -1786,7 +1852,19 @@ function CoverBoldColor({
         >
           <Image src={heroImageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </View>
-      )}
+      ) : hasPlans(estimate.rooms) ? (
+        <View style={{ position: "absolute", right: 48, top: 100, width: 240, height: 170 }}>
+          <CoverPlanHero
+            rooms={estimate.rooms}
+            width={240}
+            height={170}
+            colors={{ accent: TEXT, ink: TEXT, paper: ACCENT }}
+            fonts={fonts}
+            showArea={estimate.priceView !== "summary"}
+            caption={planCaption(estimate)}
+          />
+        </View>
+      ) : null}
 
       {/* Шапка */}
       <View
@@ -1861,7 +1939,9 @@ function CoverBoldColor({
             letterSpacing: -3,
           }}
         >
-          {estimate.clientName.split(" ")[0]}.
+          {estimate.clientName.trim() && estimate.clientName !== "Клиент"
+            ? `${estimate.clientName.trim().split(" ")[0]}.`
+            : "Новый потолок."}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -1906,7 +1986,7 @@ function CoverBoldColor({
         {spotsCount > 0 && (
           <StatBold label="точек света" value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         )}
-        <StatBold label="дней" value="5–7" text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+        <StatBold label="лет гарантии" value={warrantyYears(master)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
       </View>
 
       {/* Цена — гигантская, доминирующая */}
