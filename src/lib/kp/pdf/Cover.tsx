@@ -3,7 +3,7 @@ import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { fmtDate, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
-import { CoverPlanHero, hasPlans } from "./ClientPlan";
+import { hasPlans, SketchCoverHero } from "./SketchPlan";
 
 // Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
 // по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
@@ -298,12 +298,11 @@ function CoverMinimal({
           />
         </View>
       ) : hasPlans(estimate.rooms) ? (
-        <View style={{ position: "absolute", right: 36, top: 120, width: A4_W * 0.42, height: 380 }}>
-          <CoverPlanHero
+        <View style={{ position: "absolute", right: 44, top: 130, width: 236, height: 360 }}>
+          <SketchCoverHero
             rooms={estimate.rooms}
-            width={A4_W * 0.42}
-            height={380}
-            colors={{ accent: theme.palette.accent, ink: theme.palette.pageText, paper: "#FAFAF9" }}
+            width={236}
+            height={360}
             fonts={fonts}
             showArea={estimate.priceView !== "summary"}
             caption={planCaption(estimate)}
@@ -639,15 +638,17 @@ function CoverPremiumDark({
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              <CoverPlanHero
-                rooms={estimate.rooms}
-                width={A4_W - 96}
-                height={220}
-                colors={{ accent: GOLD, ink: "#E2E8F0", paper: DARK }}
-                fonts={fonts}
-                showArea={estimate.priceView !== "summary"}
-                caption={planCaption(estimate)}
-              />
+              <View style={{ alignItems: "center" }}>
+                <SketchCoverHero
+                  rooms={estimate.rooms}
+                  width={360}
+                  height={212}
+                  fonts={fonts}
+                  showArea={estimate.priceView !== "summary"}
+                  caption={planCaption(estimate)}
+                  tilt={-1.2}
+                />
+              </View>
             )}
           </View>
           {/* Тонкая золотая хейрлайн под фото */}
@@ -1036,7 +1037,7 @@ function CoverWarmHandmade({
       />
 
       {/* Hero photo — в "окошке" слева внизу, с тёплой рамкой; без фото — план по замеру в том же окошке */}
-      {(heroImageUrl || hasPlans(estimate.rooms)) && (
+      {heroImageUrl ? (
         <View
           style={{
             position: "absolute",
@@ -1048,24 +1049,24 @@ function CoverWarmHandmade({
             padding: 6,
           }}
         >
-          {heroImageUrl ? (
-            <Image
-              src={heroImageUrl}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <CoverPlanHero
-              rooms={estimate.rooms}
-              width={248}
-              height={188}
-              colors={{ accent: TERRA, ink: theme.palette.coverText, paper: "#FFFFFF" }}
-              fonts={fonts}
-              showArea={estimate.priceView !== "summary"}
-              caption={planCaption(estimate)}
-            />
-          )}
+          <Image
+            src={heroImageUrl}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         </View>
-      )}
+      ) : hasPlans(estimate.rooms) ? (
+        <View style={{ position: "absolute", left: 36, bottom: 196, width: 266, height: 210 }}>
+          <SketchCoverHero
+            rooms={estimate.rooms}
+            width={260}
+            height={204}
+            fonts={fonts}
+            showArea={estimate.priceView !== "summary"}
+            caption={planCaption(estimate)}
+            tilt={-2}
+          />
+        </View>
+      ) : null}
 
       {/* Большая полупрозрачная цифра на фоне — N помещений */}
       <Text
@@ -1577,15 +1578,17 @@ function CoverClassicArchitectural({
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           ) : (
-            <CoverPlanHero
-              rooms={estimate.rooms}
-              width={A4_W - 96}
-              height={280}
-              colors={{ accent: "#000000", ink: BORDO, paper: "#FFFFFF" }}
-              fonts={fonts}
-              showArea={estimate.priceView !== "summary"}
-              caption={planCaption(estimate)}
-            />
+            <View style={{ alignItems: "center" }}>
+              <SketchCoverHero
+                rooms={estimate.rooms}
+                width={400}
+                height={270}
+                fonts={fonts}
+                showArea={estimate.priceView !== "summary"}
+                caption={planCaption(estimate)}
+                tilt={-1}
+              />
+            </View>
           )}
         </View>
       )}
@@ -1853,15 +1856,15 @@ function CoverBoldColor({
           <Image src={heroImageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </View>
       ) : hasPlans(estimate.rooms) ? (
-        <View style={{ position: "absolute", right: 48, top: 100, width: 240, height: 170 }}>
-          <CoverPlanHero
+        <View style={{ position: "absolute", right: 48, top: 96, width: 246, height: 186 }}>
+          <SketchCoverHero
             rooms={estimate.rooms}
             width={240}
-            height={170}
-            colors={{ accent: TEXT, ink: TEXT, paper: ACCENT }}
+            height={180}
             fonts={fonts}
             showArea={estimate.priceView !== "summary"}
             caption={planCaption(estimate)}
+            tilt={2}
           />
         </View>
       ) : null}

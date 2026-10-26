@@ -47,6 +47,15 @@ export function ensureFontsRegistered() {
     ],
   });
 
+  // Рукописный с кириллицей — подписи на «листе из тетради» (план по замеру в КП, 26.10.2026)
+  Font.register({
+    family: "Caveat",
+    fonts: [
+      { src: ttf("Caveat-400"), fontWeight: 400 },
+      { src: ttf("Caveat-700"), fontWeight: 700 },
+    ],
+  });
+
   Font.register({
     family: "Cormorant Garamond",
     fonts: [

@@ -33,13 +33,19 @@ export type PlanRoom = {
 
 export type Pt = { x: number; y: number };
 
-export type Shape =
+/**
+ * `tag` — что это за фигура (wall, profile, spot, chandelier, curtain, track,
+ * dim-wall, …): карандашный рендер КП перерисовывает фигуры по смыслу
+ * (волнистая гардина, кружок с лучиками у люстры), а не по геометрии.
+ */
+export type Shape = (
   | { k: "path"; d: string; fill: string; stroke: string; sw: number }
   | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number }
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash?: string; round?: boolean }
   | { k: "polyline"; points: Pt[]; stroke: string; sw: number; dash?: string }
   | { k: "circle"; cx: number; cy: number; r: number; fill: string; stroke: string; sw: number }
-  | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean; haloColor?: string };
+  | { k: "text"; x: number; y: number; text: string; size: number; weight: 400 | 600 | 700; fill: string; halo: boolean; haloColor?: string }
+) & { tag?: string };
 
 /**
  * Легенда: `kind` — форма значка; в карандашном стиле типы различаются не
@@ -552,13 +558,13 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const X = sx(k * 10);
       if (X < 0 || X > size) continue;
       const major = k % 5 === 0;
-      shapes.push({ k: "line", x1: X, y1: 0, x2: X, y2: size, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u });
+      shapes.push({ k: "line", x1: X, y1: 0, x2: X, y2: size, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u, tag: "grid" });
     }
     for (let k = k0y; k <= k1y; k++) {
       const Y = sy(k * 10);
       if (Y < 0 || Y > size) continue;
       const major = k % 5 === 0;
-      shapes.push({ k: "line", x1: 0, y1: Y, x2: size, y2: Y, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u });
+      shapes.push({ k: "line", x1: 0, y1: Y, x2: size, y2: Y, stroke: major ? GRID_MAJOR : GRID, sw: (major ? 0.8 : 0.45) * u, tag: "grid" });
     }
   }
 
@@ -578,8 +584,8 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     bulges: room.bulges?.map((b) => (b || 0) * scale),
     cornerRadii: room.cornerRadii?.map((r) => (r || 0) * scale),
   });
-  if (outline) shapes.push({ k: "path", d: outline, fill: C.roomFill, stroke: C.wall, sw: strokeW });
-  else shapes.push({ k: "polygon", points: sv, fill: C.roomFill, stroke: C.wall, sw: strokeW });
+  if (outline) shapes.push({ k: "path", d: outline, fill: C.roomFill, stroke: C.wall, sw: strokeW, tag: "wall" });
+  else shapes.push({ k: "polygon", points: sv, fill: C.roomFill, stroke: C.wall, sw: strokeW, tag: "wall" });
 
   // Внутренняя сторона стены: центроид комнаты подсказывает знак перпендикуляра.
   const cx0 = sv.reduce((s, p) => s + p.x, 0) / n, cy0 = sv.reduce((s, p) => s + p.y, 0) / n;
@@ -605,12 +611,12 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (client) {
       // Клиенту — без цветовой кодировки профилей: теневой/парящий чуть толще, и всё
       const mul = p === "shadow" || p === "floating" ? 1.9 : 1.2;
-      shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: C.wall, sw: strokeW * mul, round: true });
+      shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: C.wall, sw: strokeW * mul, round: true, tag: `profile:${p}` });
       return;
     }
     if (pencil) {
       const ps = PROFILE_PENCIL[p] ?? { dash: "4 3", mul: 1.4 };
-      const base = { k: "line" as const, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: INK, sw: strokeW * ps.mul };
+      const base = { k: "line" as const, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: INK, sw: strokeW * ps.mul, tag: `profile:${p}` };
       if (ps.double) {
         shapes.push(base);
         shapes.push({ ...base, stroke: PAPER, sw: strokeW * 0.8 });
@@ -620,7 +626,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       return;
     }
     const st = PROFILE_STYLE[p] ?? { color: "#7c3aed", dashed: true, mul: 1.2 };
-    shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: st.color, sw: strokeW * st.mul + u, dash: st.dashed ? `${6 * u} ${4 * u}` : undefined });
+    shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: st.color, sw: strokeW * st.mul + u, dash: st.dashed ? `${6 * u} ${4 * u}` : undefined, tag: `profile:${p}` });
   });
 
   // 2. Элементы на стене (прямые гардины, подшторники, треки, свет.линии по стене)
@@ -645,15 +651,15 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     const color = lineColor(type, C);
     used.add(`el:${legendKey(type)}`);
     const sw = type === "subcurtain" ? strokeW * 1.3 : strokeW;
-    pushStyled({ k: "line", x1, y1, x2, y2, stroke: color, sw, round: true }, type);
+    pushStyled({ k: "line", x1, y1, x2, y2, stroke: color, sw, round: true, tag: type }, type);
     // П-ниша / Г-загиб подшторника: возвраты к стене
     if (type === "subcurtain" && (shape === "u-niche" || shape === "l-bend")) {
-      if (shape === "u-niche" || el.side !== "left") pushStyled({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw }, type);
-      if (shape === "u-niche" || el.side === "left") pushStyled({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw }, type);
+      if (shape === "u-niche" || el.side !== "left") pushStyled({ k: "line", x1, y1, x2: x1 - px * off, y2: y1 - py * off, stroke: color, sw, tag: type }, type);
+      if (shape === "u-niche" || el.side === "left") pushStyled({ k: "line", x1: x2, y1: y2, x2: x2 - px * off, y2: y2 - py * off, stroke: color, sw, tag: type }, type);
     }
     if (client) continue;
     const cm = Math.round(el.length ?? wallCm);
-    shapes.push({ k: "text", x: (x1 + x2) / 2 + px * (fs + 2 * u), y: (y1 + y2) / 2 + py * (fs + 2 * u), text: String(cm), size: fs, weight: 600, fill: color, halo: true });
+    shapes.push({ k: "text", x: (x1 + x2) / 2 + px * (fs + 2 * u), y: (y1 + y2) / 2 + py * (fs + 2 * u), text: String(cm), size: fs, weight: 600, fill: color, halo: true, tag: "dim-el" });
   }
 
   // 3. Свободные ломаные (трек, свет.линия, гардина по точкам) и круги
@@ -662,18 +668,18 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (String(el.shape) === "circle" && typeof (el as { cx?: number }).cx === "number") {
       const c = el as unknown as { cx: number; cy: number; radius: number };
       used.add(`el:${legendKey(type)}`);
-      shapes.push({ k: "circle", cx: sx(c.cx), cy: sy(c.cy), r: Math.max(2 * u, c.radius * scale), fill: "none", stroke: lineColor(type, C), sw: strokeW });
+      shapes.push({ k: "circle", cx: sx(c.cx), cy: sy(c.cy), r: Math.max(2 * u, c.radius * scale), fill: "none", stroke: lineColor(type, C), sw: strokeW, tag: `${type}-circle` });
       continue;
     }
     if (el.shape !== "freeform" || !el.points || el.points.length < 2) continue;
     const p = freeformPoints(el).map(S);
     const color = lineColor(type, C);
     used.add(`el:${legendKey(type)}`);
-    pushStyled({ k: "polyline", points: p, stroke: color, sw: strokeW }, type);
+    pushStyled({ k: "polyline", points: p, stroke: color, sw: strokeW, tag: type }, type);
     const cm = Math.round(elementLength(el));
     if (cm > 0 && !client) {
       const mid = p[Math.floor(p.length / 2)];
-      shapes.push({ k: "text", x: mid.x, y: mid.y - fs, text: String(cm), size: fs, weight: 600, fill: color, halo: true });
+      shapes.push({ k: "text", x: mid.x, y: mid.y - fs, text: String(cm), size: fs, weight: 600, fill: color, halo: true, tag: "dim-el" });
     }
   }
 
@@ -700,25 +706,25 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const half = Math.max(spotRad + 2.2 * u, (dCm / 2) * scale);
       const c = S({ x: un.cx, y: un.cy });
       for (const t of [-half, half]) {
-        shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u });
+        shapes.push({ k: "circle", cx: c.x + ax * t, cy: c.y + ay * t, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u, tag: "spot" });
       }
       continue;
     }
     const el = un.members[0];
     const x = sx(el.x as number), y = sy(el.y as number);
     if (type === "spot") {
-      shapes.push({ k: "circle", cx: x, cy: y, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: spotRad, fill: "#fff", stroke: C.spot, sw: 1.8 * u, tag: "spot" });
     } else if (type === "pendant") {
-      shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: C.pendant, sw: 2 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: C.pendant, stroke: "none", sw: 0 });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 6.5 * u, fill: "#fff", stroke: C.pendant, sw: 2 * u, tag: "pendant" });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.2 * u, fill: C.pendant, stroke: "none", sw: 0, tag: "pendant-dot" });
     } else if (type === "vent") {
       // Теневая вытяжка — круг в круге, чуть меньше люстры (8.5u)
       const rv = 7.5 * u;
-      shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: C.vent, sw: 1.8 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.55, fill: "#fff", stroke: C.vent, sw: 1.4 * u });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv, fill: "#fff", stroke: C.vent, sw: 1.8 * u, tag: "vent" });
+      shapes.push({ k: "circle", cx: x, cy: y, r: rv * 0.55, fill: "#fff", stroke: C.vent, sw: 1.4 * u, tag: "vent-inner" });
     } else {
-      shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: C.chandelier, sw: 2 * u });
-      shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: C.chandelier, stroke: "none", sw: 0 });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 8.5 * u, fill: "#fff", stroke: C.chandelier, sw: 2 * u, tag: "chandelier" });
+      shapes.push({ k: "circle", cx: x, cy: y, r: 2.6 * u, fill: C.chandelier, stroke: "none", sw: 0, tag: "chandelier-dot" });
     }
   }
 
@@ -728,7 +734,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     walls.forEach((len, i) => {
       const { a, b, px, py } = wallFrame(i);
       const text = client ? (len / 100).toFixed(2).replace(".", ",").replace(/,?0+$/, "") : String(len);
-      shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text, size: (client ? 12 : 11) * u, weight: client ? 600 : 400, fill: C.label, halo: true });
+      shapes.push({ k: "text", x: (a.x + b.x) / 2 - px * 14 * u, y: (a.y + b.y) / 2 - py * 14 * u, text, size: (client ? 12 : 11) * u, weight: client ? 600 : 400, fill: C.label, halo: true, tag: "dim-wall" });
     });
   }
   // Буквы углов — наружу, против биссектрисы к соседям (клиенту не нужны)
@@ -737,7 +743,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     let dx = (prev.x - p.x) + (next.x - p.x), dy = (prev.y - p.y) + (next.y - p.y);
     const l = Math.hypot(dx, dy) || 1;
     dx /= l; dy /= l;
-    shapes.push({ k: "text", x: p.x - dx * 11 * u, y: p.y - dy * 11 * u, text: cornerLetter(i), size: 10 * u, weight: 700, fill: C.wall, halo: false });
+    shapes.push({ k: "text", x: p.x - dx * 11 * u, y: p.y - dy * 11 * u, text: cornerLetter(i), size: 10 * u, weight: 700, fill: C.wall, halo: false, tag: "corner" });
   });
 
   const legend: Legend[] = [];
