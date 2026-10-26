@@ -16,7 +16,7 @@
  * те же фигуры примитивами @react-pdf для PDF монтажнику.
  */
 import React from "react";
-import { getVertices, roomOutlinePath } from "@/lib/room-geometry";
+import { getVertices, roomOutlinePath, roomPolygonDense } from "@/lib/room-geometry";
 import type { RoomElement } from "@/lib/room-types";
 import type { Lang } from "@/lib/i18n";
 import { tFor } from "@/lib/i18n";
@@ -519,10 +519,16 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   const all: Pt[] = [...v];
   for (const e of els) {
     if (typeof e.x === "number" && typeof e.y === "number") all.push({ x: e.x, y: e.y });
-    if (e.shape === "freeform" && e.points) all.push(...freeformPoints(e));
+    if (e.shape === "freeform" && e.points) all.push(...freeformPoints(e).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
+  }
+  // Дуги стен (эркер) выходят за прямые вершины — габарит считаем по плотному контуру
+  if (room.bulges?.some((b) => b) || room.cornerRadii?.some((r) => r)) {
+    all.push(...roomPolygonDense(v, { bulges: room.bulges, cornerRadii: room.cornerRadii }));
   }
   const xs = all.map((p) => p.x), ys = all.map((p) => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  // Кривая точка в замере (трек без y, угол без числа) — весь план стал бы NaN
+  if (![minX, maxX, minY, maxY].every(Number.isFinite)) return null;
   const w = Math.max(maxX - minX, 1), h = Math.max(maxY - minY, 1);
   const roomSize = Math.max(w, h);
   const pad = size * 0.095;
@@ -608,12 +614,9 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (p === "pvc_insert") return; // обычный пластик — просто контур
     const { a, b } = wallFrame(i);
     used.add(`prof:${p}`);
-    if (client) {
-      // Клиенту — без цветовой кодировки профилей: теневой/парящий чуть толще, и всё
-      const mul = p === "shadow" || p === "floating" ? 1.9 : 1.2;
-      shapes.push({ k: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: C.wall, sw: strokeW * mul, round: true, tag: `profile:${p}` });
-      return;
-    }
+    // Клиенту — одна толщина стен: разная толщина читалась как ошибка рендера,
+    // а профиль и так назван в позициях (ревью 26.10.2026)
+    if (client) return;
     if (pencil) {
       const ps = PROFILE_PENCIL[p] ?? { dash: "4 3", mul: 1.4 };
       const base = { k: "line" as const, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: INK, sw: strokeW * ps.mul, tag: `profile:${p}` };

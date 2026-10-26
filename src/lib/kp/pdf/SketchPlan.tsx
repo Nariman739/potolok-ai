@@ -1,9 +1,6 @@
 import React from "react";
-import { Svg, Path, Line, Rect, Text as SvgText, View, Text } from "@react-pdf/renderer";
+import { Svg, Path, Line, Rect, Text as SvgText, View } from "@react-pdf/renderer";
 import { buildRoomPlan, type PlanRoom, type Pt, type Shape } from "@/lib/work-order-plan";
-import type { FontPair } from "../types";
-import type { PdfRoom } from "../pdf-data";
-import { fmtArea } from "./shared";
 
 /**
  * «Лист из тетради замерщика» (Нариман 26.10.2026: «чтобы было красивее,
@@ -342,63 +339,5 @@ export function NotebookSheet({
         />
       )}
     </View>
-  );
-}
-
-// ---------- обложка: все комнаты на одном листе ----------
-
-export function SketchCoverHero({
-  rooms,
-  width,
-  height,
-  fonts,
-  showArea,
-  caption,
-  tilt = -1.5,
-}: {
-  rooms: PdfRoom[];
-  width: number;
-  height: number;
-  fonts: FontPair;
-  showArea: boolean;
-  caption?: string;
-  tilt?: number;
-}): React.ReactElement | null {
-  const planned = rooms.filter((r) => r.plan);
-  const n = planned.length;
-  if (n === 0) return null;
-  void fonts;
-
-  const pad = 12;
-  const innerW = width - pad * 2;
-  const captionH = caption ? 18 : 0;
-  const innerH = height - pad * 2 - captionH;
-  const portrait = innerH > innerW * 1.15;
-  const cols = n === 1 ? 1 : n === 2 ? (portrait ? 1 : 2) : n <= 4 ? 2 : n <= 6 ? (portrait ? 2 : 3) : portrait ? 3 : 4;
-  const rows = Math.ceil(n / cols);
-  const labelH = 15;
-  const cellW = innerW / cols, cellH = innerH / rows;
-  const side = Math.max(24, Math.min(cellW, cellH - labelH) * (n === 1 ? 0.96 : 0.86));
-  const labelSize = n > 4 ? 9.5 : n > 1 ? 11 : 13;
-
-  return (
-    <NotebookSheet width={width} height={height} tilt={tilt} padding={pad}>
-      <View style={{ width: innerW, height: innerH, flexDirection: "row", flexWrap: "wrap", alignContent: "center", justifyContent: "center" }}>
-        {planned.map((r) => (
-          <View key={r.id} style={{ width: cellW, height: cellH, alignItems: "center", justifyContent: "center" }}>
-            <SketchRoomPlan room={r.plan!} side={side} />
-            <Text style={{ fontFamily: "Caveat", fontWeight: 700, fontSize: labelSize, color: NOTEBOOK.ink, marginTop: 1, maxWidth: cellW - 4 }}>
-              {r.name}
-              {showArea && r.area > 0 ? `, ${fmtArea(r.area)}` : ""}
-            </Text>
-          </View>
-        ))}
-      </View>
-      {caption && (
-        <Text style={{ fontFamily: "Caveat", fontWeight: 400, fontSize: 10.5, color: NOTEBOOK.inkSoft, textAlign: "right", marginTop: 2 }}>
-          {caption}
-        </Text>
-      )}
-    </NotebookSheet>
   );
 }

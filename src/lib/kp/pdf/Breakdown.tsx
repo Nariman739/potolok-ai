@@ -5,7 +5,8 @@ import { fmtArea, makeStyles, PageFooter, PriceText, QtyPriceText, tengeSafeFami
 import { currencySymbol } from "@/lib/currency";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
-import { KpRoomPlanCard } from "./PlanStyles";
+import { anyGridded, KpRoomPlanCard, SCHEMATIC_NOTE } from "./PlanStyles";
+import { roomDimsText } from "../plan-tidy";
 
 // Ширина левой колонки комнаты: номер + план по замеру (26.10.2026 план стал
 // крупнее — 48pt иконки клиент не читал, теперь видно софиты и гардины).
@@ -90,6 +91,12 @@ export function BreakdownPage({
         </View>
       )}
 
+      {anyGridded(estimate.rooms) && (
+        <Text style={{ fontFamily: fonts.body.family, fontSize: 7.5, color: theme.palette.pageMuted, marginTop: 4, marginBottom: 6 }}>
+          * {SCHEMATIC_NOTE}
+        </Text>
+      )}
+
       {/* Итого — асимметричный блок с крупной цифрой справа */}
       <View
         style={{
@@ -169,8 +176,6 @@ function RoomCard({
 }) {
   const { theme, fonts } = data;
   const roomNum = String(index + 1).padStart(2, "0");
-  const detailed = data.estimate.priceView !== "summary";
-
   return (
     <View
       style={{
@@ -205,7 +210,7 @@ function RoomCard({
           <View style={{ marginTop: 9, alignItems: "center" }}>
             {/* Листик из тетради: в «Подробно» — длины стен в метрах от руки,
                 в «Кратко» размеров нет (16.10.2026) */}
-            <KpRoomPlanCard data={data} room={room.plan} side={ROOM_PLAN_SIDE} dims={detailed} />
+            <KpRoomPlanCard data={data} room={room.plan} side={ROOM_PLAN_SIDE} />
           </View>
         ) : room.designerData ? (
           <View style={{ marginTop: 10, alignItems: "center" }}>
@@ -219,15 +224,6 @@ function RoomCard({
             />
           </View>
         ) : null}
-        <View
-          style={{
-            width: 2,
-            flex: 1,
-            backgroundColor: theme.palette.accent,
-            marginTop: 10,
-            minHeight: 20,
-          }}
-        />
       </View>
 
       <View style={{ flex: 1, paddingLeft: 12 }}>
@@ -271,6 +267,8 @@ function RoomCard({
                 }}
               >
                 {fmtArea(room.area)}
+                {/* Размеры стен текстом — в плитке плана они не читались (ревью 26.10.2026) */}
+                {room.plan ? `  ·  ${roomDimsText(room.plan)}` : ""}
               </Text>
             )}
           </View>

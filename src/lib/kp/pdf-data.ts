@@ -247,14 +247,29 @@ export function normalizeConfig(raw: unknown): KpConfig {
 export function planRoomOf(raw: unknown): PlanRoom | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (!Array.isArray(r.walls) || r.walls.length < 3 || !r.walls.every((w) => typeof w === "number" && w > 0)) return null;
+  const walls = r.walls;
+  if (!Array.isArray(walls) || walls.length < 3 || !walls.every((w) => typeof w === "number" && Number.isFinite(w) && w > 0)) return null;
+  // Числовые массивы берём только целиком «здоровые»: один undefined в angles
+  // давал NaN во всех вершинах и пустой план вместо старой иконки
+  const nums = (v: unknown): number[] | null =>
+    Array.isArray(v) && v.length === walls.length && v.every((x) => typeof x === "number" && Number.isFinite(x)) ? (v as number[]) : null;
+  const elements = Array.isArray(r.elements)
+    ? r.elements.filter((e) => {
+        if (!e || typeof e !== "object") return false;
+        const o = e as { x?: unknown; y?: unknown; points?: unknown };
+        if (o.x !== undefined && !Number.isFinite(o.x)) return false;
+        if (o.y !== undefined && !Number.isFinite(o.y)) return false;
+        if (o.points !== undefined && (!Array.isArray(o.points) || !o.points.every((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)))) return false;
+        return true;
+      })
+    : [];
   return {
-    walls: r.walls as number[],
-    angles: Array.isArray(r.angles) ? (r.angles as number[]) : null,
-    normalCorners: Array.isArray(r.normalCorners) ? (r.normalCorners as boolean[]) : null,
-    bulges: Array.isArray(r.bulges) ? (r.bulges as number[]) : null,
-    cornerRadii: Array.isArray(r.cornerRadii) ? (r.cornerRadii as number[]) : null,
-    elements: r.elements,
+    walls: walls as number[],
+    angles: nums(r.angles),
+    normalCorners: Array.isArray(r.normalCorners) && r.normalCorners.length === walls.length ? (r.normalCorners as boolean[]) : null,
+    bulges: nums(r.bulges),
+    cornerRadii: nums(r.cornerRadii),
+    elements,
     wallProfiles: r.wallProfiles,
   };
 }
@@ -268,8 +283,8 @@ function mapRooms(calc: CalculationResult, roomsData: unknown): PdfRoom[] {
   return results.map((r: RoomResult, idx: number) => {
     // Замер к позиции расчёта: по id комнаты, иначе по имени, иначе по порядку
     const raw =
-      measured.find((m) => m.id === r.roomId) ??
-      measured.find((m) => m.name === r.roomName) ??
+      (r.roomId ? measured.find((m) => m.id === r.roomId) : undefined) ??
+      (r.roomName ? measured.find((m) => m.name === r.roomName) : undefined) ??
       (measured.length === results.length ? measured[idx] : undefined);
     const plan = planRoomOf(raw);
     const input = inputs.find(

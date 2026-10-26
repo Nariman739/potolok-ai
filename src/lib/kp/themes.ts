@@ -74,7 +74,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Премиум Dark",
     segment: "Премиум-сегмент, элитная недвижимость",
     defaultFontPair: "serif-modern",
-    defaultPlanStyle: "blueprint",
+    defaultPlanStyle: "notebook", // кремовый лист на тёмном — сильнее контраст, чем синий на синем
     palette: {
       coverBg: "#0F172A",
       coverText: "#F8FAFC",
@@ -140,7 +140,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Bold Color",
     segment: "Молодой смелый бренд",
     defaultFontPair: "inter",
-    defaultPlanStyle: "blueprint",
+    defaultPlanStyle: "drawing", // синий лист спорил с цветным полем обложки
     palette: {
       coverBg: "#1E3A5F", // переопределяется master.brandColor
       coverText: "#FFFFFF",

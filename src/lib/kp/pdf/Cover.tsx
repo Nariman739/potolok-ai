@@ -7,14 +7,14 @@ import { hasPlans, KpPlanHero } from "./PlanStyles";
 
 // Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
 // по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
-function planCaption(estimate: PdfData["estimate"]): string {
-  return `План по замеру · ${fmtDate(estimate.createdAt)}`;
-}
-
 // «5–7 дней работы» было вшито в обложку выдумкой. Вместо него — гарантия
-// мастера из настроек (как в классической теме после аудита 24.09.2026).
-function warrantyYears(master: PdfData["master"]): string {
-  return String(master.warrantyMaterials || 10);
+// мастера из настроек; если мастер поставил 0 — число позиций, а не чужие
+// «10 лет» (аудит 24.09.2026, ревью 26.10.2026).
+function fourthStat(data: PdfData): { label: string; value: string } {
+  const years = data.master.warrantyMaterials;
+  if (years > 0) return { label: "лет гарантии", value: String(years) };
+  const n = data.estimate.rooms.reduce((s, r) => s + r.items.length, 0) + data.estimate.extraItems.length;
+  return { label: "позиций", value: String(n) };
 }
 
 // СТРАНИЦА 1 — Обложка.
@@ -304,7 +304,6 @@ function CoverMinimal({
             width={236}
             height={360}
             drawing={{ accent: theme.palette.accent, ink: theme.palette.pageText, paper: "#FAFAF9" }}
-            caption={planCaption(estimate)}
           />
         </View>
       ) : null}
@@ -396,9 +395,9 @@ function CoverMinimal({
         <StatMinimal label="помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatMinimal label="м² площади" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatMinimal label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
+          <StatMinimal label="софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
-        <StatMinimal label="лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
+        <StatMinimal label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
       </View>
 
       {/* Цена в правом нижнем углу — асимметрия, цифра доминирующая */}
@@ -643,8 +642,7 @@ function CoverPremiumDark({
                   width={360}
                   height={212}
                   drawing={{ accent: GOLD, ink: "#E2E8F0", paper: DARK }}
-                  caption={planCaption(estimate)}
-                  tilt={-1.2}
+                        tilt={-1.2}
                 />
               </View>
             )}
@@ -816,11 +814,11 @@ function CoverPremiumDark({
         {spotsCount > 0 && (
           <>
             <DotGold />
-            <StatPremium label="Точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
+            <StatPremium label="Софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
           </>
         )}
         <DotGold />
-        <StatPremium label="Лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
+        <StatPremium label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
       </View>
 
       {/* Тонкая золотая линия */}
@@ -1053,13 +1051,12 @@ function CoverWarmHandmade({
           />
         </View>
       ) : hasPlans(estimate.rooms) ? (
-        <View style={{ position: "absolute", left: 36, bottom: 196, width: 266, height: 210 }}>
+        <View style={{ position: "absolute", left: 36, bottom: 196, width: 230, height: 210 }}>
           <KpPlanHero
             data={data}
-            width={260}
+            width={222}
             height={204}
             drawing={{ accent: TERRA, ink: theme.palette.coverText, paper: theme.palette.coverBg }}
-            caption={planCaption(estimate)}
             tilt={-2}
           />
         </View>
@@ -1222,9 +1219,9 @@ function CoverWarmHandmade({
         <StatWarm label="помещения" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatWarm label="м² общей" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatWarm label="точек света" value={String(spotsCount)} theme={theme} fonts={fonts} />
+          <StatWarm label="софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
-        <StatWarm label="лет гарантии" value={warrantyYears(master)} theme={theme} fonts={fonts} />
+        <StatWarm label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
       </View>
 
       {/* Цена — справа внизу, на глубоком кремовом блоке */}
@@ -1580,9 +1577,8 @@ function CoverClassicArchitectural({
                 data={data}
                 width={400}
                 height={270}
-                drawing={{ accent: "#000000", ink: BORDO, paper: "#FFFFFF" }}
-                caption={planCaption(estimate)}
-                tilt={-1}
+                drawing={{ accent: "#000000", ink: BORDO, paper: "#FFFFFF", noFill: true }}
+                    tilt={-1}
               />
             </View>
           )}
@@ -1624,7 +1620,7 @@ function CoverClassicArchitectural({
         <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
         <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         <StatClassic
-          label={spotsCount > 0 ? "Точек света" : "Позиций"}
+          label={spotsCount > 0 ? "Софитов" : "Позиций"}
           value={String(spotsCount > 0 ? spotsCount : estimate.rooms.reduce((s, r) => s + r.items.length, 0) + estimate.extraItems.length)}
           theme={theme}
           fonts={fonts}
@@ -1858,7 +1854,6 @@ function CoverBoldColor({
             width={240}
             height={180}
             drawing={{ accent: TEXT, ink: TEXT, paper: ACCENT }}
-            caption={planCaption(estimate)}
             tilt={2}
           />
         </View>
@@ -1937,9 +1932,7 @@ function CoverBoldColor({
             letterSpacing: -3,
           }}
         >
-          {estimate.clientName.trim() && estimate.clientName !== "Клиент"
-            ? `${estimate.clientName.trim().split(" ")[0]}.`
-            : "Новый потолок."}
+          {estimate.coverTitle === "Ваш новый потолок" ? "Новый потолок." : `${estimate.coverTitle.split(" ")[0]}.`}
         </Text>
         {estimate.clientAddress && (
           <Text
@@ -1982,9 +1975,9 @@ function CoverBoldColor({
         <StatBold label="помещений" value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         <StatBold label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatBold label="точек света" value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+          <StatBold label="софитов" value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         )}
-        <StatBold label="лет гарантии" value={warrantyYears(master)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+        <StatBold label={fourthStat(data).label} value={fourthStat(data).value} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
       </View>
 
       {/* Цена — гигантская, доминирующая */}

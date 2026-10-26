@@ -1,9 +1,6 @@
 import React from "react";
-import { Svg, Path, Polygon, Polyline, Line, Circle, Rect, Text as SvgText, View, Text } from "@react-pdf/renderer";
+import { Svg, Path, Polygon, Polyline, Line, Circle, Rect, Text as SvgText } from "@react-pdf/renderer";
 import { buildRoomPlan, type PlanRoom, type RoomPlan } from "@/lib/work-order-plan";
-import type { FontPair } from "../types";
-import type { PdfRoom } from "../pdf-data";
-import { fmtArea } from "./shared";
 
 /**
  * План комнаты для клиента в КП (26.10.2026).
@@ -26,6 +23,8 @@ export type PlanColors = {
   ink: string;
   /** Фон под планом — им же заливаются кружки светильников и подложки цифр */
   paper: string;
+  /** Без заливки комнаты (классика: серая заливка выглядела как disabled) */
+  noFill?: boolean;
 };
 
 /** Смешать два hex-цвета: t = 0 → a, t = 1 → b. 8-значный hex с альфой в Svg react-pdf не надёжен. */
@@ -38,7 +37,7 @@ export function mixHex(a: string, b: string, t: number): string {
 
 function parseHex(hex: string): [number, number, number] | null {
   const m = hex.replace("#", "");
-  if (m.length < 6) return null;
+  if (!/^[0-9a-f]{6}/i.test(m)) return null;
   return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)];
 }
 
@@ -98,99 +97,10 @@ export function ClientRoomPlan({
   // 84pt → ×2.1, 230pt → ×1 (иначе софиты превращались в точки).
   const boost = Math.min(2.6, Math.max(1, (320 / side) * 0.55));
   const plan = buildRoomPlan(room, "ru", 320, {
-    client: { accent: colors.accent, ink: colors.ink, paper: colors.paper, fill: mixHex(colors.accent, colors.paper, 0.9) },
+    client: { accent: colors.accent, ink: colors.ink, paper: colors.paper, fill: colors.noFill ? "none" : mixHex(colors.accent, colors.paper, 0.92) },
     labels: dims ? "walls-m" : undefined,
     boost,
   });
   if (!plan) return null;
   return <PlanShapes plan={plan} side={side} crop />;
 }
-
-/**
- * Главная картинка обложки: все комнаты замера сеткой в заданном окне.
- * Комнаты в одном окне подписаны именем (и площадью, если не «Кратко»).
- */
-export function CoverPlanHero({
-  rooms,
-  width,
-  height,
-  colors,
-  fonts,
-  showArea,
-  caption,
-}: {
-  rooms: PdfRoom[];
-  width: number;
-  height: number;
-  colors: PlanColors;
-  fonts: FontPair;
-  showArea: boolean;
-  /** Подпись под сеткой, например «План по замеру · 25 октября 2026 г.» */
-  caption?: string;
-}): React.ReactElement | null {
-  const planned = rooms.filter((r) => r.plan);
-  const n = planned.length;
-  if (n === 0) return null;
-
-  const captionH = caption ? 16 : 0;
-  const gridH = height - captionH;
-  const portrait = gridH > width * 1.15;
-  const cols = n === 1 ? 1 : n === 2 ? (portrait ? 1 : 2) : n <= 4 ? 2 : n <= 6 ? (portrait ? 2 : 3) : portrait ? 3 : 4;
-  const rows = Math.ceil(n / cols);
-  const labelH = 16;
-  const cellW = width / cols;
-  const cellH = gridH / rows;
-  const side = Math.max(24, Math.min(cellW, cellH - labelH) * (n === 1 ? 1 : 0.92));
-  const labelSize = n > 4 ? 7 : 8;
-
-  return (
-    <View style={{ width, height }}>
-      <View
-        style={{
-          width,
-          height: gridH,
-          flexDirection: "row",
-          flexWrap: "wrap",
-          alignContent: "center",
-          justifyContent: "center",
-        }}
-      >
-        {planned.map((r) => (
-          <View key={r.id} style={{ width: cellW, height: cellH, alignItems: "center", justifyContent: "center" }}>
-            <ClientRoomPlan room={r.plan!} side={side} colors={colors} />
-            <Text
-              style={{
-                fontFamily: fonts.body.family,
-                fontSize: labelSize,
-                color: colors.ink,
-                marginTop: 1,
-                letterSpacing: 0.3,
-                maxWidth: cellW - 6,
-              }}
-            >
-              {r.name}
-              {showArea && r.area > 0 ? ` · ${fmtArea(r.area)}` : ""}
-            </Text>
-          </View>
-        ))}
-      </View>
-      {caption && (
-        <Text
-          style={{
-            fontFamily: fonts.body.family,
-            fontSize: 6.5,
-            color: colors.ink,
-            opacity: 0.7,
-            letterSpacing: 1.6,
-            textTransform: "uppercase",
-            textAlign: "center",
-            marginTop: 4,
-          }}
-        >
-          {caption}
-        </Text>
-      )}
-    </View>
-  );
-}
-

@@ -26,7 +26,13 @@ export async function POST(req: NextRequest) {
     if (body.kpConfig !== undefined) data.kpConfig = body.kpConfig as unknown as object;
     if (body.tagline !== undefined) data.tagline = body.tagline || null;
     if (body.coverPhotoUrl !== undefined) data.coverPhotoUrl = body.coverPhotoUrl || null;
-    if (body.brandColor !== undefined && body.brandColor) data.brandColor = body.brandColor;
+    // Только #RRGGBB: произвольная строка ломала расчёт оттенков в плане КП (ревью 26.10.2026)
+    if (body.brandColor !== undefined && body.brandColor) {
+      if (!/^#[0-9a-f]{6}$/i.test(body.brandColor)) {
+        return NextResponse.json({ error: "Цвет бренда должен быть в формате #RRGGBB" }, { status: 400 });
+      }
+      data.brandColor = body.brandColor;
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ ok: true });
