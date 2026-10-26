@@ -787,7 +787,8 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
 
   // Без подписей стен (план на обложке, «Кратко») поле вокруг комнаты уже —
   // иначе подпись комнаты отрывалась от плана.
-  const bpad = client && opts.labels !== "walls-m" ? pad * 0.35 : pad;
+  // С подписями длин поле шире: подпись стоит в 14u от стены и сама ~24u в ширину
+  const bpad = client ? (opts.labels === "walls-m" ? Math.max(pad, 42 * u) : pad * 0.35) : pad;
   const bbox = { x: sx(minX) - bpad, y: sy(minY) - bpad, w: w * scale + bpad * 2, h: h * scale + bpad * 2 };
   return { size, shapes, legend, frame: { ox, oy, scale }, bbox };
 }

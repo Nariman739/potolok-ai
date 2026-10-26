@@ -17,15 +17,17 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ALL_TEMPLATES, FONT_PAIRS } from "@/lib/kp/themes";
-import type {
-  KpConfig,
-  KpSection,
-  KpTemplateId,
-  KpFontPairId,
-  WarrantyItem,
-  FaqItem,
-  QuickIncludedItem,
+import { ALL_TEMPLATES, FONT_PAIRS, getThemeById } from "@/lib/kp/themes";
+import {
+  KP_PLAN_STYLES,
+  KP_PLAN_STYLE_LABELS,
+  type KpConfig,
+  type KpSection,
+  type KpTemplateId,
+  type KpFontPairId,
+  type WarrantyItem,
+  type FaqItem,
+  type QuickIncludedItem,
 } from "@/lib/kp/types";
 import { PdfPreview } from "./PdfPreview";
 import { AiSuggestButton } from "./AiSuggestButton";
@@ -256,6 +258,37 @@ export function BrandingEditor({
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {pair.display.family} + {pair.body.family}
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <Label>План комнат по замеру</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Картинка на обложке и у каждой комнаты в составе работ: контур, софиты, люстра, гардины — как замерили.
+            </p>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {KP_PLAN_STYLES.map((id) => {
+                const themeDefault = getThemeById(config.template).defaultPlanStyle;
+                const isActive = (config.planStyle ?? themeDefault) === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onConfigChange({ ...config, planStyle: id })}
+                    className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
+                      isActive
+                        ? "border-violet-600 bg-violet-50/40 ring-1 ring-violet-600"
+                        : "border-border hover:border-violet-300"
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {KP_PLAN_STYLE_LABELS[id].label}
+                      {id === themeDefault && <span className="ml-1 text-[10px] text-muted-foreground">· для темы</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{KP_PLAN_STYLE_LABELS[id].hint}</div>
                   </button>
                 );
               })}

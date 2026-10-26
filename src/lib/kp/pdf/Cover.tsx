@@ -3,7 +3,7 @@ import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { fmtDate, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
-import { hasPlans, SketchCoverHero } from "./SketchPlan";
+import { hasPlans, KpPlanHero } from "./PlanStyles";
 
 // Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
 // по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
@@ -299,12 +299,11 @@ function CoverMinimal({
         </View>
       ) : hasPlans(estimate.rooms) ? (
         <View style={{ position: "absolute", right: 44, top: 130, width: 236, height: 360 }}>
-          <SketchCoverHero
-            rooms={estimate.rooms}
+          <KpPlanHero
+            data={data}
             width={236}
             height={360}
-            fonts={fonts}
-            showArea={estimate.priceView !== "summary"}
+            drawing={{ accent: theme.palette.accent, ink: theme.palette.pageText, paper: "#FAFAF9" }}
             caption={planCaption(estimate)}
           />
         </View>
@@ -639,12 +638,11 @@ function CoverPremiumDark({
               />
             ) : (
               <View style={{ alignItems: "center" }}>
-                <SketchCoverHero
-                  rooms={estimate.rooms}
+                <KpPlanHero
+                  data={data}
                   width={360}
                   height={212}
-                  fonts={fonts}
-                  showArea={estimate.priceView !== "summary"}
+                  drawing={{ accent: GOLD, ink: "#E2E8F0", paper: DARK }}
                   caption={planCaption(estimate)}
                   tilt={-1.2}
                 />
@@ -1056,12 +1054,11 @@ function CoverWarmHandmade({
         </View>
       ) : hasPlans(estimate.rooms) ? (
         <View style={{ position: "absolute", left: 36, bottom: 196, width: 266, height: 210 }}>
-          <SketchCoverHero
-            rooms={estimate.rooms}
+          <KpPlanHero
+            data={data}
             width={260}
             height={204}
-            fonts={fonts}
-            showArea={estimate.priceView !== "summary"}
+            drawing={{ accent: TERRA, ink: theme.palette.coverText, paper: theme.palette.coverBg }}
             caption={planCaption(estimate)}
             tilt={-2}
           />
@@ -1579,12 +1576,11 @@ function CoverClassicArchitectural({
             />
           ) : (
             <View style={{ alignItems: "center" }}>
-              <SketchCoverHero
-                rooms={estimate.rooms}
+              <KpPlanHero
+                data={data}
                 width={400}
                 height={270}
-                fonts={fonts}
-                showArea={estimate.priceView !== "summary"}
+                drawing={{ accent: "#000000", ink: BORDO, paper: "#FFFFFF" }}
                 caption={planCaption(estimate)}
                 tilt={-1}
               />
@@ -1857,12 +1853,11 @@ function CoverBoldColor({
         </View>
       ) : hasPlans(estimate.rooms) ? (
         <View style={{ position: "absolute", right: 48, top: 96, width: 246, height: 186 }}>
-          <SketchCoverHero
-            rooms={estimate.rooms}
+          <KpPlanHero
+            data={data}
             width={240}
             height={180}
-            fonts={fonts}
-            showArea={estimate.priceView !== "summary"}
+            drawing={{ accent: TEXT, ink: TEXT, paper: ACCENT }}
             caption={planCaption(estimate)}
             tilt={2}
           />

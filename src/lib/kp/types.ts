@@ -62,6 +62,24 @@ export function asPriceView(v: unknown): KpPriceView {
   return v === "summary" ? "summary" : "detailed";
 }
 
+/**
+ * Стиль плана комнат по замеру в КП (26.10.2026):
+ * - notebook  — «лист из тетради»: карандаш на бумаге в клетку, подписи от руки;
+ * - drawing   — ровные тонкие линии в фирменном цвете мастера на чистом фоне;
+ * - blueprint — белые линии на синем чертёжном листе, как у архитектора.
+ * null/нет поля — дефолт темы (KpTheme.defaultPlanStyle).
+ */
+export type KpPlanStyle = "notebook" | "drawing" | "blueprint";
+export const KP_PLAN_STYLES: KpPlanStyle[] = ["notebook", "drawing", "blueprint"];
+export const KP_PLAN_STYLE_LABELS: Record<KpPlanStyle, { label: string; hint: string }> = {
+  notebook: { label: "Тетрадь", hint: "Карандашом на бумаге в клетку, подписи от руки" },
+  drawing: { label: "Чертёж", hint: "Ровные линии в фирменном цвете на чистом фоне" },
+  blueprint: { label: "Blueprint", hint: "Белые линии на синем листе, как у архитектора" },
+};
+export function asPlanStyle(v: unknown): KpPlanStyle | null {
+  return v === "notebook" || v === "drawing" || v === "blueprint" ? v : null;
+}
+
 export type KpConfig = {
   template: KpTemplateId;
   fontPair: KpFontPairId | null; // null = дефолт темы
@@ -70,6 +88,8 @@ export type KpConfig = {
   quick?: QuickContentOverrides | null;
   /** Дефолтный вид цен для новых КП мастера; у самого КП своё поле. */
   priceView?: KpPriceView;
+  /** Стиль плана комнат; null/нет — дефолт темы */
+  planStyle?: KpPlanStyle | null;
 };
 
 // Шрифтовая пара (display + body), используется и в @react-pdf, и в HTML CSS
@@ -111,6 +131,8 @@ export type KpTheme = {
   label: string;
   segment: string;
   defaultFontPair: KpFontPairId;
+  /** Стиль плана по замеру, если мастер не выбрал свой */
+  defaultPlanStyle: KpPlanStyle;
   palette: ThemePalette;
   coverLayout: CoverLayout;
   // Декоративные нюансы — толщина линий, стиль разделителей

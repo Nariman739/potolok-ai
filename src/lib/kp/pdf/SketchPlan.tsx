@@ -258,12 +258,25 @@ export function SketchRoomPlan({
  * в масштабе страницы (5 мм), а не плана — как у настоящей тетради.
  * `tilt` — наклон в градусах (на обложке лист лежит чуть криво, как приклеенный).
  */
+/** Синий чертёжный лист (стиль blueprint): белые линии, тонкая белая рамка, без скотча. */
+export const BLUEPRINT = {
+  paper: "#1F3F7A",
+  paperEdge: "#17305E",
+  grid: "#FFFFFF",
+  ink: "#FFFFFF",
+  inkSoft: "#C7D4EA",
+  cell: 14.17,
+};
+
+export type SheetLook = "notebook" | "blueprint";
+
 export function NotebookSheet({
   width,
   height,
   tilt = 0,
   tape = true,
   padding = 10,
+  look = "notebook",
   children,
 }: {
   width: number;
@@ -271,11 +284,15 @@ export function NotebookSheet({
   tilt?: number;
   tape?: boolean;
   padding?: number;
+  look?: SheetLook;
   children?: React.ReactNode;
 }) {
-  const cell = NOTEBOOK.cell;
+  const C = look === "blueprint" ? BLUEPRINT : NOTEBOOK;
+  const cell = C.cell;
   const cols = Math.ceil(width / cell), rows = Math.ceil(height / cell);
   const shadow = Math.max(2, Math.min(5, width / 60));
+  const gridOpacity = look === "blueprint" ? 0.14 : 0.85;
+  const showTape = tape && look === "notebook";
   return (
     <View
       style={{
@@ -287,16 +304,22 @@ export function NotebookSheet({
       {/* Тень */}
       <View style={{ position: "absolute", left: shadow, top: shadow, width, height, backgroundColor: "#000000", opacity: 0.13 }} />
       {/* Бумага */}
-      <View style={{ position: "absolute", left: 0, top: 0, width, height, backgroundColor: NOTEBOOK.paper, borderWidth: 0.5, borderColor: NOTEBOOK.paperEdge }} />
+      <View style={{ position: "absolute", left: 0, top: 0, width, height, backgroundColor: C.paper, borderWidth: 0.5, borderColor: C.paperEdge }} />
       {/* Клетка */}
       <View style={{ position: "absolute", left: 0, top: 0, width, height }}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
           {Array.from({ length: cols }, (_, k) => (
-            <Line key={`v${k}`} x1={k * cell + 3} y1={0} x2={k * cell + 3} y2={height} stroke={NOTEBOOK.grid} strokeWidth={0.45} strokeOpacity={0.85} />
+            <Line key={`v${k}`} x1={k * cell + 3} y1={0} x2={k * cell + 3} y2={height} stroke={C.grid} strokeWidth={0.45} strokeOpacity={gridOpacity} />
           ))}
           {Array.from({ length: rows }, (_, k) => (
-            <Line key={`h${k}`} x1={0} y1={k * cell + 3} x2={width} y2={k * cell + 3} stroke={NOTEBOOK.grid} strokeWidth={0.45} strokeOpacity={0.85} />
+            <Line key={`h${k}`} x1={0} y1={k * cell + 3} x2={width} y2={k * cell + 3} stroke={C.grid} strokeWidth={0.45} strokeOpacity={gridOpacity} />
           ))}
+          {look === "blueprint" && width > 100 && (
+            <>
+              <Rect x={5} y={5} width={width - 10} height={height - 10} fill="none" stroke={BLUEPRINT.ink} strokeWidth={0.6} strokeOpacity={0.7} />
+              <Rect x={7.5} y={7.5} width={width - 15} height={height - 15} fill="none" stroke={BLUEPRINT.ink} strokeWidth={0.3} strokeOpacity={0.5} />
+            </>
+          )}
         </Svg>
       </View>
       {/* Содержимое */}
@@ -304,7 +327,7 @@ export function NotebookSheet({
         {children}
       </View>
       {/* Скотч */}
-      {tape && (
+      {showTape && (
         <View
           style={{
             position: "absolute",
@@ -320,11 +343,6 @@ export function NotebookSheet({
       )}
     </View>
   );
-}
-
-/** Есть ли что рисовать: хотя бы одна комната с геометрией замера. */
-export function hasPlans(rooms: PdfRoom[]): boolean {
-  return rooms.some((r) => r.plan);
 }
 
 // ---------- обложка: все комнаты на одном листе ----------

@@ -3,7 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { KpDocument } from "@/lib/kp/pdf/KpDocument";
 import { buildMockPdfData } from "@/lib/kp/mock-data";
 import { ALL_TEMPLATES } from "@/lib/kp/themes";
-import type { KpFormat, KpTemplateId } from "@/lib/kp/types";
+import { asPlanStyle, type KpFormat, type KpTemplateId } from "@/lib/kp/types";
 import { getDefaultConfigForTemplate } from "@/lib/kp/templates";
 
 export const runtime = "nodejs";
@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
 
     const config = getDefaultConfigForTemplate(template);
     config.format = format;
+    // ?planStyle=notebook|drawing|blueprint — стиль плана по замеру (26.10.2026)
+    config.planStyle = asPlanStyle(searchParams.get("planStyle"));
 
     const data = await buildMockPdfData({
       template,

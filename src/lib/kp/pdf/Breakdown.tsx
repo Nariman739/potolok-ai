@@ -5,12 +5,12 @@ import { fmtArea, makeStyles, PageFooter, PriceText, QtyPriceText, tengeSafeFami
 import { currencySymbol } from "@/lib/currency";
 import { SectionHeader } from "./SectionHeader";
 import { RoomPlan2D } from "./RoomPlan2D";
-import { NotebookSheet, SketchRoomPlan } from "./SketchPlan";
+import { KpRoomPlanCard } from "./PlanStyles";
 
 // Ширина левой колонки комнаты: номер + план по замеру (26.10.2026 план стал
 // крупнее — 48pt иконки клиент не читал, теперь видно софиты и гардины).
-const ROOM_COL_W = 92;
-const ROOM_PLAN_SIDE = 84;
+const ROOM_COL_W = 100;
+const ROOM_PLAN_SIDE = 92;
 
 // СТРАНИЦА — Детальный разбор по комнатам.
 // Шапка комнаты — драматичный large-number ("01") + вертикальная цветная полоса,
@@ -205,11 +205,7 @@ function RoomCard({
           <View style={{ marginTop: 9, alignItems: "center" }}>
             {/* Листик из тетради: в «Подробно» — длины стен в метрах от руки,
                 в «Кратко» размеров нет (16.10.2026) */}
-            <NotebookSheet width={ROOM_PLAN_SIDE} height={ROOM_PLAN_SIDE} padding={5} tape={false}>
-              <View style={{ width: ROOM_PLAN_SIDE - 10, height: ROOM_PLAN_SIDE - 10, alignItems: "center", justifyContent: "center" }}>
-                <SketchRoomPlan room={room.plan} side={ROOM_PLAN_SIDE - 12} dims={detailed} />
-              </View>
-            </NotebookSheet>
+            <KpRoomPlanCard data={data} room={room.plan} side={ROOM_PLAN_SIDE} dims={detailed} />
           </View>
         ) : room.designerData ? (
           <View style={{ marginTop: 10, alignItems: "center" }}>

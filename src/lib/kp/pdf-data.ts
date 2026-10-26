@@ -5,7 +5,7 @@ import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
 import type { PlanRoom } from "@/lib/work-order-plan";
 import { DEFAULT_KP_CONFIG } from "./templates";
-import { asPriceView, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
+import { asPriceView, asPlanStyle, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
 
 // ============================================
 // Структура данных, которую читают и PDF-рендерер, и HTML-превью
@@ -228,6 +228,7 @@ export function normalizeConfig(raw: unknown): KpConfig {
       template: obj.template ?? DEFAULT_KP_CONFIG.template,
       fontPair: obj.fontPair ?? null,
       ...(obj.priceView ? { priceView: asPriceView(obj.priceView) } : {}),
+      planStyle: asPlanStyle(obj.planStyle),
     };
   }
   return {
@@ -237,6 +238,8 @@ export function normalizeConfig(raw: unknown): KpConfig {
     // Дефолт вида цен мастера (16.10.2026); остальные поля kpConfig здесь
     // по-прежнему не прокидываются — format решает роут PDF.
     ...(obj.priceView ? { priceView: asPriceView(obj.priceView) } : {}),
+    // Стиль плана по замеру (26.10.2026); null — дефолт темы
+    planStyle: asPlanStyle(obj.planStyle),
   };
 }
 

@@ -2,9 +2,11 @@ import type {
   FontPair,
   KpConfig,
   KpFontPairId,
+  KpPlanStyle,
   KpTemplateId,
   KpTheme,
 } from "./types";
+import { asPlanStyle } from "./types";
 
 // ============================================
 // ШРИФТЫ
@@ -50,6 +52,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Минимализм",
     segment: "Универсальный нейтральный стиль",
     defaultFontPair: "inter",
+    defaultPlanStyle: "notebook",
     palette: {
       coverBg: "#FFFFFF",
       coverText: "#0F172A",
@@ -71,6 +74,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Премиум Dark",
     segment: "Премиум-сегмент, элитная недвижимость",
     defaultFontPair: "serif-modern",
+    defaultPlanStyle: "blueprint",
     palette: {
       coverBg: "#0F172A",
       coverText: "#F8FAFC",
@@ -92,6 +96,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Тёплый Hand-made",
     segment: "Семейные квартиры, уютная атмосфера",
     defaultFontPair: "warm",
+    defaultPlanStyle: "notebook",
     palette: {
       coverBg: "#FFF8F0",
       coverText: "#3D2E22",
@@ -113,6 +118,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Архитектурная классика",
     segment: "Дизайнерские квартиры и коттеджи",
     defaultFontPair: "classic",
+    defaultPlanStyle: "drawing",
     palette: {
       coverBg: "#FFFFFF",
       coverText: "#000000",
@@ -134,6 +140,7 @@ const BASE_THEMES: Record<KpTemplateId, KpTheme> = {
     label: "Bold Color",
     segment: "Молодой смелый бренд",
     defaultFontPair: "inter",
+    defaultPlanStyle: "blueprint",
     palette: {
       coverBg: "#1E3A5F", // переопределяется master.brandColor
       coverText: "#FFFFFF",
@@ -249,4 +256,9 @@ function isLight(hex: string): boolean {
   const b = parseInt(m.slice(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.65;
+}
+
+/** Стиль плана комнат: выбор мастера, иначе дефолт темы. */
+export function planStyleFor(config: Partial<KpConfig> | null | undefined, theme: KpTheme): KpPlanStyle {
+  return asPlanStyle(config?.planStyle) ?? theme.defaultPlanStyle;
 }
