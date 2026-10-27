@@ -43,11 +43,13 @@ export const PRICE_YEAR = Number(process.env.YEAR_PRICE ?? 39900);
 /** Стартовая цена за месяц — действует на оплаты до LAUNCH_PRICE_UNTIL. */
 export const LAUNCH_PRICE_MONTH = Number(process.env.LAUNCH_PRICE ?? 1990);
 
-// ── Цены в рублях для мастеров из России (27.10.2026). Предложение окна
-// рекламы, ждёт подтверждения Наримана: старт 390 ₽, стандарт 990 ₽, год 7 900 ₽
-// (≈ наши 1 990 / 4 990 / 39 900 ₸). Меняются через env без деплоя.
-export const PRICE_MONTH_RUB = Number(process.env.STANDARD_PRICE_RUB ?? 990);
-export const PRICE_YEAR_RUB = Number(process.env.YEAR_PRICE_RUB ?? 7900);
+// ── Цены в рублях для мастеров из России (27.10.2026). Рынок РФ: «Потолочник»
+// (callrec) PRO 390 ₽/мес помесячно, 249 ₽/мес при оплате за год (2 990 ₽),
+// Business 990 ₽/мес. Наш старт 390 ₽ — паритет с их помесячной ценой;
+// стандарт 790 ₽ — в два раза дороже их помесячной, но у нас 3D, ИИ,
+// договоры и наряд; год 6 900 ₽ (≈ −27%). Меняются через env без деплоя.
+export const PRICE_MONTH_RUB = Number(process.env.STANDARD_PRICE_RUB ?? 790);
+export const PRICE_YEAR_RUB = Number(process.env.YEAR_PRICE_RUB ?? 6900);
 export const LAUNCH_PRICE_MONTH_RUB = Number(process.env.LAUNCH_PRICE_RUB ?? 390);
 
 export type BillingPrices = { month: number; year: number; launchMonth: number };

@@ -147,22 +147,29 @@ export const DEFAULT_PRICES: Record<string, number> = Object.fromEntries(
 /**
  * Стартовые цены в рублях (27.10.2026) — для мастеров из России (валюта RUB).
  * До этого новичок из РФ получал «полотно 1500» и читал это как 1500 ₽/м² —
- * втрое выше рынка. Ориентиры рынка РФ 2026 (Авито/Яндекс, оценка окна
- * рекламы): полотно 450/650/900 ₽/м², пластиковый профиль 150 ₽/м.п.,
- * теневой 1 200, парящий 1 800, LED 900, софит 400/900, люстра 1 000,
- * световая линия 3 500. Остальное — те же пропорции (≈ ÷6, круглые числа).
- * Коэффициент высоты без валюты. Мастер правит всё в «Моём прайсе».
+ * втрое выше рынка. Сверено с прайсами РФ 27.10.2026 (Москва: masterpotolkov,
+ * potolki-msk, 100potolkov, Экос-Стиль, rumexpert-обзор 2026; регионы:
+ * Новосибирск, Екатеринбург, Казань, Брянск): полотно MSD 290–525 ₽/м² в
+ * Москве и 200–490 в регионах → 450/650/900 по ширине; багет со вставкой
+ * ~250 ₽/м.п. → профиль 200 + вставка 70; алюминиевый 250–410 → 350;
+ * теневой 1 150–1 300 → 1 200; парящий 1 500–2 500 → 1 800; софит
+ * 250–570 ₽/шт → 400, с лампой ~900; закладная/установка люстры 500–1 170 →
+ * 800; обход трубы 250–385 → 350; ниша под шторы 700–1 100 → 700, встроенная
+ * 1 690–2 300 → 1 800; световая линия 2 535–3 300 → 3 000; демонтаж
+ * 200–360 ₽/м² → 250; углы 200–350 / внешний 850 → 250 / 800; минимальный
+ * заказ 12–15 тыс. в Москве, 5–7 тыс. в регионах → 12 000. Остальное — те же
+ * пропорции. Коэффициент высоты без валюты. Мастер правит всё в «Моём прайсе».
  */
 export const DEFAULT_PRICES_RUB: Record<string, number> = {
   canvas_320: 450,
   canvas_550: 650,
   canvas_over: 900,
-  profile_plastic: 150,
-  insert: 100,
+  profile_plastic: 200,
+  insert: 70,
   profile_shadow: 1200,
   profile_floating: 1800,
-  profile_aluminum: 450,
-  led_strip: 900,
+  profile_aluminum: 350,
+  led_strip: 800,
   spot_client: 400,
   spot_ours: 900,
   spot_pair_client: 800,
@@ -170,11 +177,11 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   pendant: 300,
   pendant_install: 500,
   vent: 2500,
-  chandelier: 400,
-  chandelier_install: 1000,
+  chandelier: 800,
+  chandelier_install: 800,
   transformer: 1500,
   track_magnetic: 3500,
-  light_line: 3500,
+  light_line: 3000,
   curtain_ldsp: 600,
   curtain_aluminum: 900,
   gardina_plastic: 700,
@@ -184,17 +191,17 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   podshtornik_plastic: 450,
   podshtornik_ldsp: 900,
   podshtornik_aluminum: 1400,
-  corner_plastic: 150,
+  corner_plastic: 250,
   corner_aluminum: 800,
   corner_rounded: 800,
   corner_furniture_bypass: 350,
   corner_furniture_planned: 250,
-  pipe_bypass: 500,
+  pipe_bypass: 350,
   eurobrus: 900,
   diffuser: 2500,
   vent_grille: 2500,
-  demontage: 100,
-  min_order: 15000,
+  demontage: 250,
+  min_order: 12000,
   height_coefficient: 1.3,
   install_canvas: 150,
   install_profile: 50,
