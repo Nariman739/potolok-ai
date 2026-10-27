@@ -8,10 +8,10 @@
 import type { RoomInput } from "@/lib/types";
 import type { CanvasType } from "@/lib/constants";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
-import {
-  getVertices,
-  computeSubcurtainStats,
-} from "@/app/(dashboard)/dashboard/vision-test/room-designer";
+// Только серверно-безопасные модули: room-designer.tsx — "use client", и в
+// Next 16 его функции с сервера звать нельзя (500 в recalc-room, 27.10.2026).
+import { getVertices } from "@/lib/room-geometry";
+import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
 
 interface DesignerRoom {
   id?: string;
