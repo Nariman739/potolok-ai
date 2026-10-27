@@ -221,6 +221,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
       id: "sample-preview",
       publicId: "sample-preview",
       clientName: "Айгуль Серикова",
+      clientNameRaw: "Айгуль Серикова",
       coverTitle: "Айгуль Серикова",
       clientAddress: "Астана, ул. Кабанбай батыра 49, кв. 87",
       total,
