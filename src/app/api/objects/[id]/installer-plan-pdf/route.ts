@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getScope } from "@/lib/company";
 import { loadWorkOrderById, buildWorkOrderModel } from "@/lib/work-order-data";
 import { renderWorkOrderPdf } from "@/lib/work-order-pdf";
+import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="plan-montazhniku-${id.slice(0, 8)}.pdf"`,
+        "Content-Disposition": pdfDisposition(
+          "inline",
+          prettyPdfName(["План монтажнику", obj.address || obj.client?.name, fileDate()]),
+          `plan-montazhniku-${id.slice(0, 8)}`,
+        ),
         "Cache-Control": "no-store",
       },
     });

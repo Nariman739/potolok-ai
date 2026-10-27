@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { KpDocument } from "@/lib/kp/pdf/KpDocument";
 import { buildPdfData } from "@/lib/kp/pdf-data";
 import { reportError } from "@/lib/report-error";
+import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,12 +46,14 @@ export async function GET(
     const filename = sanitizeFilename(
       `KP-${data.master.companyName}-${data.estimate.clientName || data.estimate.id.slice(0, 8)}.pdf`
     );
+    // По-русски для мобилки и браузера: «КП — Асель — ул. Абая 120 — 27.10.2026.pdf»
+    const pretty = prettyPdfName(["КП", data.estimate.clientName, data.estimate.clientAddress, fileDate()]);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": pdfDisposition("inline", pretty, filename),
         "Cache-Control": "no-store",
       },
     });

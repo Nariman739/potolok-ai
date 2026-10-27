@@ -9,6 +9,7 @@ import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
 import { DEFAULT_PRICES } from "@/lib/constants";
 import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
+import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 
 // ── Install price code mapping ──
 // Maps client item codes to install item codes
@@ -280,11 +281,12 @@ export async function GET(
     doc.end();
     const pdfBuffer = await promise;
     const filename = sanitizeFilename(`Montazh-${estimate.clientName || "order"}-${estimate.publicId.slice(0, 8)}`);
+    const pretty = prettyPdfName(["Наряд", estimate.clientName || estimate.clientAddress, fileDate()]);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+        "Content-Disposition": pdfDisposition("attachment", pretty, filename),
       },
     });
   } catch (error) {
