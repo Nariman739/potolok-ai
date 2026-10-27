@@ -24,6 +24,7 @@ import { reportError } from "@/lib/report-error";
  */
 
 const MAX_BODY = 60_000;
+const MAX_ASK = 1000;
 
 export async function POST(request: Request) {
   try {
@@ -49,8 +50,24 @@ export async function POST(request: Request) {
     if (!current || current.length > MAX_BODY) {
       return NextResponse.json({ error: "Нет текста договора" }, { status: 400 });
     }
-    if (ask.length < 3 || ask.length > 1000) {
-      return NextResponse.json({ error: "Скажите, что поменять в договоре" }, { status: 400 });
+    if (ask.length < 3) {
+      return NextResponse.json(
+        { error: language === "kk" ? "Шартта нені өзгерту керек екенін айтыңыз" : "Скажите, что поменять в договоре" },
+        { status: 400 },
+      );
+    }
+    // Мастер вставил кусок договора на 3 700 знаков и получил «скажите, что
+    // поменять» — не понял, в чём дело (27.10.2026). Говорим прямо.
+    if (ask.length > MAX_ASK) {
+      return NextResponse.json(
+        {
+          error:
+            language === "kk"
+              ? `Тым ұзақ: түзетуді қысқаша жазыңыз, ${MAX_ASK} таңбаға дейін`
+              : `Слишком длинно: опишите правку короче, до ${MAX_ASK} знаков`,
+        },
+        { status: 400 },
+      );
     }
 
     const tags = CONTRACT_PLACEHOLDERS.map((p) => `{${p.key}} — ${p.about}`).join("\n");
