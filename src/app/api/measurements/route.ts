@@ -95,6 +95,24 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       linkedClientId = auto?.id ?? null;
     }
 
+    // Пустой объект (без комнат) рядом со свежим живым по тому же адресу — это
+    // не второй замер, а хвост сбоя на телефоне: Диас 27.10.2026 получил два
+    // «2 подъезд 7 этаж 1 квартира» с разницей 0,4 с, один из них без комнат.
+    // Отдаём существующий, ничего не создаём.
+    if (!rooms?.length && address?.trim()) {
+      const twin = await prisma.measurementObject.findFirst({
+        where: {
+          masterId: master.id,
+          address: address.trim(),
+          deletedAt: null,
+          createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+        },
+        include: { rooms: { orderBy: { sortOrder: "asc" } } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (twin) return NextResponse.json(twin, { headers: { "x-object-twin": "1" } });
+    }
+
     const obj = await prisma.measurementObject.create({
       data: {
         masterId: master.id,
