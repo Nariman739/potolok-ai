@@ -11,6 +11,7 @@ const SECTIONS_DEFAULT_ORDER: Omit<
 >["type"][] = [
   "cover",
   "breakdown",
+  "gallery",
   "portfolio",
   "warranties",
   "reviews",
@@ -31,6 +32,8 @@ function buildSections(args: {
         return { type: "cover" };
       case "breakdown":
         return { type: "breakdown" };
+      case "gallery":
+        return { type: "gallery", enabled: true };
       case "portfolio":
         return { type: "portfolio", enabled: true };
       case "warranties":

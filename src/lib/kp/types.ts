@@ -20,6 +20,8 @@ export type FaqItem = { q: string; a: string };
 export type KpSection =
   | { type: "cover" }
   | { type: "breakdown" }
+  /** «Как это будет выглядеть» — фото по типам элементов из КП (26.10.2026) */
+  | { type: "gallery"; enabled: boolean }
   | { type: "portfolio"; enabled: boolean }
   | { type: "warranties"; enabled: boolean; items: WarrantyItem[] }
   | { type: "reviews"; enabled: boolean }

@@ -21,10 +21,12 @@ export function BreakdownPage({
   data,
   pageNum,
   totalPages,
+  sectionNumber = "01",
 }: {
   data: PdfData;
   pageNum: number;
   totalPages: number;
+  sectionNumber?: string;
 }) {
   const { theme, fonts, estimate } = data;
   const styles = makeStyles(theme, fonts);
@@ -39,7 +41,7 @@ export function BreakdownPage({
         eyebrow="Состав проекта"
         title="Что входит в работу"
         subtitle={`${estimate.rooms.length} помещени${pluralRu(estimate.rooms.length, ["е", "я", "й"])} · ${fmtArea(estimate.totalArea)} общей площади`}
-        sectionNumber="01"
+        sectionNumber={sectionNumber}
       />
 
       {estimate.rooms.map((room, idx) => (

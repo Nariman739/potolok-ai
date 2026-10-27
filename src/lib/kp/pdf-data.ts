@@ -4,6 +4,8 @@ import { asCurrency, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { themeFor } from "./themes";
 import type { PlanRoom } from "@/lib/work-order-plan";
+import { kindFromItemName, kindsFromRoom, mergeKinds, type KpKind } from "./kinds";
+import { pickGalleryPhotos, type GalleryPhoto } from "./library";
 import { DEFAULT_KP_CONFIG } from "./templates";
 import { asPriceView, asPlanStyle, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
 
@@ -121,6 +123,8 @@ export type PdfData = {
   estimate: PdfEstimate;
   portfolio: PdfPortfolioItem[];
   reviews: PdfReview[];
+  /** Фото по типам элементов этого КП для страницы «Как это будет выглядеть» (26.10.2026) */
+  gallery: GalleryPhoto[];
   /** QR на онлайн-версию УБРАН из PDF (Нариман 14.09.2026: клиент получает
    *  PDF в WhatsApp, 3D-визуализации по ссылке нет). Поле оставлено пустым,
    *  чтобы обложки тем (guard `data.qrDataUrl &&`) его просто не рисовали. */
@@ -183,6 +187,8 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
   const publicUrl = `${normalizeUrl(BASE_URL)}/kp/${estimate.publicId}`;
   const qrDataUrl = "";
 
+  const gallery = await buildGallery(estimate.id, estimate.roomsData, rooms, extraItems);
+
   return {
     master: mapBranding(estimate.master),
     estimate: {
@@ -206,6 +212,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
     },
     portfolio: estimate.master.portfolioWorks.map(mapPortfolio),
     reviews: estimate.master.reviews.map(mapReview),
+    gallery,
     qrDataUrl,
     publicUrl,
     config,
@@ -217,6 +224,31 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
 // ============================================
 // Helpers
 // ============================================
+
+/**
+ * Типы элементов КП (замер + позиции) → фото. Своё фото мастера к позиции
+ * (PriceVariant.photoUrl в строке) идёт первым, остальное — из библиотеки.
+ */
+export async function buildGallery(seed: string, roomsData: unknown, rooms: PdfRoom[], extraItems: PdfLineItem[]): Promise<GalleryPhoto[]> {
+  const fromRooms: KpKind[] = [];
+  if (Array.isArray(roomsData)) for (const r of roomsData) fromRooms.push(...kindsFromRoom(r));
+  const fromItems: KpKind[] = [];
+  const own: Partial<Record<KpKind, string>> = {};
+  for (const it of [...rooms.flatMap((r) => r.items), ...extraItems]) {
+    const k = kindFromItemName(it.name);
+    if (!k) continue;
+    fromItems.push(k);
+    if (it.photoUrl && !own[k]) own[k] = it.photoUrl;
+  }
+  // «spot» из замера уточняется видом софита из прайса — своё фото тогда тоже к нему
+  const kinds = mergeKinds(fromRooms, fromItems);
+  try {
+    return await pickGalleryPhotos(kinds, own, seed);
+  } catch (e) {
+    console.warn("[kp gallery] skipped:", e);
+    return [];
+  }
+}
 
 export function normalizeConfig(raw: unknown): KpConfig {
   if (!raw || typeof raw !== "object") return JSON.parse(JSON.stringify(DEFAULT_KP_CONFIG));
@@ -231,10 +263,17 @@ export function normalizeConfig(raw: unknown): KpConfig {
       planStyle: asPlanStyle(obj.planStyle),
     };
   }
+  // Старые конфиги без секции «Как это будет выглядеть» — включаем её после разбора
+  let sections = obj.sections as KpSection[];
+  if (!sections.some((x) => x.type === "gallery")) {
+    const i = sections.findIndex((x) => x.type === "breakdown");
+    sections = [...sections];
+    sections.splice(i >= 0 ? i + 1 : 1, 0, { type: "gallery", enabled: true });
+  }
   return {
     template: obj.template ?? DEFAULT_KP_CONFIG.template,
     fontPair: obj.fontPair ?? null,
-    sections: obj.sections as KpSection[],
+    sections,
     // Дефолт вида цен мастера (16.10.2026); остальные поля kpConfig здесь
     // по-прежнему не прокидываются — format решает роут PDF.
     ...(obj.priceView ? { priceView: asPriceView(obj.priceView) } : {}),

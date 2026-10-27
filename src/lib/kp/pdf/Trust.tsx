@@ -12,11 +12,13 @@ export function TrustPage({
   data,
   pageNum,
   totalPages,
+  sectionNumber = "03",
   blocks,
 }: {
   data: PdfData;
   pageNum: number;
   totalPages: number;
+  sectionNumber?: string;
   blocks: KpSection[];
 }) {
   const { theme, fonts } = data;
@@ -29,7 +31,7 @@ export function TrustPage({
         fonts={fonts}
         eyebrow="Почему нам можно доверять"
         title="Гарантии и подход"
-        sectionNumber="03"
+        sectionNumber={sectionNumber}
       />
 
       {blocks.map((b, i) => {

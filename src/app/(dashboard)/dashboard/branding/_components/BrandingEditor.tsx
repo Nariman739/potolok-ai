@@ -601,6 +601,8 @@ function sectionLabel(type: KpSection["type"]): string {
       return "Обложка";
     case "breakdown":
       return "Разбор по комнатам";
+    case "gallery":
+      return "Как это будет выглядеть (фото по элементам)";
     case "portfolio":
       return "Галерея работ";
     case "warranties":

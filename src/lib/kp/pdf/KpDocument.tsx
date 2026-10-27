@@ -9,6 +9,7 @@ import { PortfolioPage } from "./Portfolio";
 import { TrustPage } from "./Trust";
 import { ContactsPage } from "./Contacts";
 import { QuickPage } from "./QuickPage";
+import { GalleryPage, GALLERY_PER_PAGE } from "./Gallery";
 
 // Главный документ КП. Читает kpConfig.sections и собирает страницы в указанном порядке.
 // Логические группировки:
@@ -22,6 +23,7 @@ import { QuickPage } from "./QuickPage";
 type PageBlock =
   | { kind: "cover" }
   | { kind: "breakdown" }
+  | { kind: "gallery"; items: PdfData["gallery"]; part: number; parts: number }
   | { kind: "portfolio" }
   | { kind: "trust"; blocks: KpSection[] }
   | { kind: "contacts" };
@@ -45,6 +47,15 @@ function planPages(data: PdfData): PageBlock[] {
     } else if (s.type === "breakdown") {
       flushTrust();
       pages.push({ kind: "breakdown" });
+    } else if (s.type === "gallery") {
+      // Фото по элементам — по 6 на страницу; без фото страницы нет
+      if (s.enabled && data.gallery.length > 0) {
+        flushTrust();
+        const parts = Math.ceil(data.gallery.length / GALLERY_PER_PAGE);
+        for (let part = 0; part < parts; part++) {
+          pages.push({ kind: "gallery", items: data.gallery.slice(part * GALLERY_PER_PAGE, (part + 1) * GALLERY_PER_PAGE), part: part + 1, parts });
+        }
+      }
     } else if (s.type === "portfolio") {
       if (s.enabled && data.portfolio.length > 0) {
         flushTrust();
@@ -98,6 +109,15 @@ export function KpDocument({ data }: { data: PdfData }) {
 
   const pages = planPages(data);
   const total = pages.length;
+  // Сквозные номера разделов «01, 02, …» — по порядку страниц после обложки
+  // (вторая страница галереи номер не увеличивает)
+  const sectionNumbers: string[] = [];
+  let sec = 0;
+  for (const p of pages) {
+    if (p.kind === "cover") sectionNumbers.push("");
+    else if (p.kind === "gallery" && p.part > 1) sectionNumbers.push(String(sec).padStart(2, "0"));
+    else sectionNumbers.push(String(++sec).padStart(2, "0"));
+  }
 
   return (
     <Document
@@ -113,11 +133,15 @@ export function KpDocument({ data }: { data: PdfData }) {
             return <CoverPage key={i} data={data} pageNum={num} totalPages={total} />;
           case "breakdown":
             return (
-              <BreakdownPage key={i} data={data} pageNum={num} totalPages={total} />
+              <BreakdownPage key={i} data={data} pageNum={num} totalPages={total} sectionNumber={sectionNumbers[i]} />
+            );
+          case "gallery":
+            return (
+              <GalleryPage key={i} data={data} pageNum={num} totalPages={total} sectionNumber={sectionNumbers[i]} items={p.items} part={p.part} parts={p.parts} />
             );
           case "portfolio":
             return (
-              <PortfolioPage key={i} data={data} pageNum={num} totalPages={total} />
+              <PortfolioPage key={i} data={data} pageNum={num} totalPages={total} sectionNumber={sectionNumbers[i]} />
             );
           case "trust":
             return (
@@ -127,11 +151,12 @@ export function KpDocument({ data }: { data: PdfData }) {
                 pageNum={num}
                 totalPages={total}
                 blocks={p.blocks}
+                sectionNumber={sectionNumbers[i]}
               />
             );
           case "contacts":
             return (
-              <ContactsPage key={i} data={data} pageNum={num} totalPages={total} />
+              <ContactsPage key={i} data={data} pageNum={num} totalPages={total} sectionNumber={sectionNumbers[i]} />
             );
         }
       })}

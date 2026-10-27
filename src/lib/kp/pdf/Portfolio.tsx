@@ -12,10 +12,12 @@ export function PortfolioPage({
   data,
   pageNum,
   totalPages,
+  sectionNumber = "02",
 }: {
   data: PdfData;
   pageNum: number;
   totalPages: number;
+  sectionNumber?: string;
 }) {
   const { theme, fonts, portfolio } = data;
   const styles = makeStyles(theme, fonts);
@@ -41,7 +43,7 @@ export function PortfolioPage({
         eyebrow="Портфолио"
         title="Наши работы"
         subtitle="Реальные потолки, реальные клиенты — без стоковых фото"
-        sectionNumber="02"
+        sectionNumber={sectionNumber}
       />
 
       {hasHero && (

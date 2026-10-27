@@ -13,10 +13,12 @@ export function ContactsPage({
   data,
   pageNum,
   totalPages,
+  sectionNumber = "04",
 }: {
   data: PdfData;
   pageNum: number;
   totalPages: number;
+  sectionNumber?: string;
 }) {
   const { theme, fonts, master } = data;
   const styles = makeStyles(theme, fonts);
@@ -32,7 +34,7 @@ export function ContactsPage({
         eyebrow="Следующий шаг"
         title="Готовы начать?"
         subtitle="Один шаг — и мы согласуем дату монтажа. Звонок займёт 3 минуты."
-        sectionNumber="04"
+        sectionNumber={sectionNumber}
       />
 
       {/* CTA-блок WhatsApp — теперь в accent-цвете темы, не зелёный

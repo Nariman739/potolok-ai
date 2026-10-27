@@ -1,4 +1,5 @@
 import { themeFor } from "./themes";
+import { pickGalleryPhotos } from "./library";
 import { DEFAULT_KP_CONFIG, getDefaultConfigForTemplate } from "./templates";
 import type { PdfData } from "./pdf-data";
 import type { KpConfig, KpTemplateId } from "./types";
@@ -210,6 +211,10 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
     },
   ];
 
+  // Страница «Как это будет выглядеть» — из библиотеки на типовых элементах;
+  // без базы (локальный рендер) просто пусто
+  const gallery = await pickGalleryPhotos(["track", "lightline", "shadow", "spot_gx53", "floating", "curtain"], {}, "sample-preview").catch(() => []);
+
   return {
     master,
     estimate: {
@@ -233,6 +238,7 @@ export async function buildMockPdfData(overrides: MockOverrides = {}): Promise<P
     },
     portfolio,
     reviews,
+    gallery,
     qrDataUrl,
     publicUrl: MOCK_PUBLIC_URL,
     config,
