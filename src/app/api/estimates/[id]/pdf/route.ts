@@ -47,7 +47,7 @@ export async function GET(
       `KP-${data.master.companyName}-${data.estimate.clientName || data.estimate.id.slice(0, 8)}.pdf`
     );
     // По-русски для мобилки и браузера: «КП — Асель — ул. Абая 120 — 27.10.2026.pdf»
-    const pretty = prettyPdfName(["КП", data.estimate.clientName, data.estimate.clientAddress, fileDate()]);
+    const pretty = prettyPdfName(["КП", data.estimate.clientNameRaw, data.estimate.clientAddress, fileDate()]);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

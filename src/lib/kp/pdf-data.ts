@@ -99,6 +99,8 @@ export type PdfEstimate = {
   id: string;
   publicId: string;
   clientName: string;
+  /** Имя клиента как есть (null, если не указано) — для имени файла, без заглушки «Клиент» */
+  clientNameRaw: string | null;
   /** Заголовок обложки: имя клиента, а без имени — «Ваш новый потолок», не слово «Клиент» */
   coverTitle: string;
   clientAddress: string;
@@ -195,6 +197,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
       id: estimate.id,
       publicId: estimate.publicId,
       clientName: estimate.clientName ?? "Клиент",
+      clientNameRaw: estimate.clientName?.trim() || null,
       coverTitle: estimate.clientName?.trim() || "Ваш новый потолок",
       clientAddress: estimate.clientAddress ?? "",
       total: estimate.total ?? 0,
