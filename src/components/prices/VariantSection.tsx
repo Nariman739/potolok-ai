@@ -300,8 +300,8 @@ export function VariantDialog({
 
       const res = await fetch(url, { method, body: form });
       if (!res.ok) {
-        const errBody = await res.text();
-        toast.error(errBody || "Ошибка сохранения");
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(errBody?.error || "Ошибка сохранения");
         return;
       }
       const saved = await res.json() as PriceVariant;

@@ -295,8 +295,11 @@ export function planRoomOf(raw: unknown): PlanRoom | null {
   const r = raw as Record<string, unknown>;
   let walls = r.walls;
   // Старый веб-калькулятор пишет комнату как ширина × длина (в метрах) без стен —
-  // рисуем прямоугольник, чтобы и у таких КП был план
-  if (!Array.isArray(walls) && typeof r.width === "number" && typeof r.length === "number" && r.width > 0 && r.length > 0 && Number.isFinite(r.width) && Number.isFinite(r.length)) {
+  // рисуем прямоугольник, чтобы и у таких КП был план. Но если у комнаты есть
+  // designerData.walls (настоящий многоугольник, его рисует Breakdown по старому
+  // пути) — прямоугольником его не перебиваем
+  const designerWalls = (r.designerData as { walls?: unknown } | undefined)?.walls;
+  if (!Array.isArray(walls) && !Array.isArray(designerWalls) && typeof r.width === "number" && typeof r.length === "number" && r.width > 0 && r.length > 0 && Number.isFinite(r.width) && Number.isFinite(r.length)) {
     const w = Math.round(r.width * 100), l = Math.round(r.length * 100);
     walls = [w, l, w, l];
   }

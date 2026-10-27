@@ -13,6 +13,7 @@
  * соберётся как раньше.
  */
 import sharp from "sharp";
+import { looksLikeHeic } from "@/lib/compress-photo";
 import type { PdfData } from "./pdf-data";
 
 type Role = "hero" | "portfolio" | "gallery" | "logo";
@@ -71,7 +72,9 @@ export async function shrinkImage(url: string, role: Role): Promise<string | nul
     const img = sharp(input, { failOn: "none", limitInputPixels: 80e6 }).rotate();
     const meta = await img.metadata();
     const keepAlpha = role === "logo" && meta.hasAlpha === true;
-    const resized = img.resize({ width: side, height: side, fit: "inside", withoutEnlargement: true });
+    let resized = img.resize({ width: side, height: side, fit: "inside", withoutEnlargement: true });
+    // PNG с прозрачностью в JPEG — иначе прозрачное станет чёрным
+    if (!keepAlpha && meta.hasAlpha) resized = resized.flatten({ background: "#ffffff" });
     const out = keepAlpha
       ? await resized.png({ compressionLevel: 9, palette: true }).toBuffer()
       : await resized.jpeg({ quality: QUALITY[role], mozjpeg: true }).toBuffer();
@@ -79,9 +82,23 @@ export async function shrinkImage(url: string, role: Role): Promise<string | nul
     remember(key, dataUrl);
     return dataUrl;
   } catch {
-    remember(key, "bad");
+    // Навсегда (на инстанс) запоминаем только заведомо нечитаемый HEIC;
+    // прочие сбои sharp (память, лимит пикселей) могут быть разовыми
+    if (looksLikeHeic(input)) remember(key, "bad");
     return "bad";
   }
+}
+
+/** Не больше N картинок одновременно — бережём память функции на Vercel */
+async function runLimited(jobs: Array<() => Promise<void>>, limit: number) {
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const job = jobs[next++];
+      await job();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
 }
 
 /**
@@ -91,17 +108,17 @@ export async function shrinkImage(url: string, role: Role): Promise<string | nul
  * портфолио и галереи выкидываются.
  */
 export async function inlinePdfImages(data: PdfData): Promise<PdfData> {
-  const jobs: Promise<void>[] = [];
+  const jobs: Array<() => Promise<void>> = [];
   const run = (url: string | null | undefined, role: Role, apply: (v: string | null) => void) => {
     if (!url || url.startsWith("data:")) return;
-    jobs.push(shrinkImage(url, role).then((v) => { if (v === "bad") apply(null); else if (v) apply(v); }));
+    jobs.push(() => shrinkImage(url, role).then((v) => { if (v === "bad") apply(null); else if (v) apply(v); }));
   };
   run(data.master.logoUrl, "logo", (v) => { data.master.logoUrl = v; });
   run(data.master.coverPhotoUrl, "hero", (v) => { data.master.coverPhotoUrl = v; });
   run(data.estimate.room3dPreviewUrl, "hero", (v) => { data.estimate.room3dPreviewUrl = v; });
   for (const p of data.portfolio) run(p.photoUrl, "portfolio", (v) => { p.photoUrl = v; });
   for (const g of data.gallery) run(g.url, "gallery", (v) => { g.url = v === null ? "" : v; });
-  await Promise.all(jobs);
+  await runLimited(jobs, 4);
   data.portfolio = data.portfolio.filter((p) => p.photoUrl);
   data.gallery = data.gallery.filter((g) => g.url);
   return data;

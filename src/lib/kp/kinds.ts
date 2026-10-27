@@ -82,7 +82,9 @@ export const FOLDER_TO_KIND: Record<string, KpKind> = {
 
 /** Тип по названию позиции расчёта; null — не распознали. */
 export function kindFromItemName(name: string): KpKind | null {
-  const n = name.toLowerCase().replace("ё", "е");
+  // «Профиль (без вставки)» — не вставка; само «без вставки» просто вычёркиваем,
+  // чтобы «Полотно матовое без вставки» осталось полотном
+  const n = name.toLowerCase().replace(/ё/g, "е").replace(/без\s+вставк\S*/g, "");
   if (/закладн/.test(n) && /софит|спот|светильник/.test(n)) return "spot_platform";
   if (/закладн/.test(n) && /люстр/.test(n)) return "chandelier";
   if (/трек|трэк|track/.test(n)) return "track";
@@ -105,7 +107,6 @@ export function kindFromItemName(name: string): KpKind | null {
     if (/gu ?10|gu ?5\.?3|mr ?16|утоплен|встроен|встраив|скрыт/.test(n) || bh10.test(n)) return "spot_recessed";
     return "spot";
   }
-  if (/без вставк/.test(n)) return null;
   if (/вставк|маскировоч/.test(n)) return "insert";
   if (/галтел|плинтус/.test(n)) return "galtel";
   if (/полотн|пленк|плёнк|msd|bauf|pongs|ткан/.test(n)) {

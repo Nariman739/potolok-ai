@@ -219,6 +219,7 @@ function PortfolioCard({
         }}
       >
         {item.photoUrl ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
           <Image
             src={item.photoUrl}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}

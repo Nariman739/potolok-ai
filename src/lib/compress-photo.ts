@@ -46,6 +46,8 @@ export async function compressPhoto(file: File): Promise<CompressedPhoto> {
     const out = await sharp(input, { failOn: "none" })
       .rotate()
       .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
+      // прозрачный PNG в JPEG — на белый, а не на чёрный
+      .flatten({ background: "#ffffff" })
       .jpeg({ quality: 82, mozjpeg: true })
       .toBuffer();
     // Если «сжатое» вышло не меньше оригинала (уже мелкий JPEG) — берём оригинал.

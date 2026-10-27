@@ -100,7 +100,10 @@ export function BrandingEditor({
         method: "POST",
         body: fd,
       });
-      if (!res.ok) throw new Error("Не удалось загрузить");
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || "Не удалось загрузить");
+      }
       const { url } = (await res.json()) as { url: string };
       onMasterChange({ ...master, coverPhotoUrl: url });
       toast.success("Обложка загружена");
