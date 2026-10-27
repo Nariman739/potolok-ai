@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { compressPhoto } from "@/lib/compress-photo";
+import { compressPhoto, HEIC_UPLOAD_ERROR } from "@/lib/compress-photo";
 import { requireAuth } from "@/lib/auth";
 import { getScope } from "@/lib/company";
 import {
@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
         }
         // Сжатие до 1600px / JPEG 82% (13.10.2026) — фото с телефона 3–6 МБ, в прайсе столько не нужно.
         const photo = await compressPhoto(file);
+        if (photo.heic) return NextResponse.json({ error: HEIC_UPLOAD_ERROR }, { status: 400 });
         const path = `price-variants/${master.id}/${Date.now()}.${photo.ext}`;
         const blob = await put(path, photo.body, { access: "public", contentType: photo.contentType, addRandomSuffix: true });
         photoUrl = blob.url;

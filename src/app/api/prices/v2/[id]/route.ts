@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
-import { compressPhoto } from "@/lib/compress-photo";
+import { compressPhoto, HEIC_UPLOAD_ERROR } from "@/lib/compress-photo";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, currencyFor } from "@/lib/company";
@@ -68,6 +68,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         }
         // Сжатие до 1600px / JPEG 82% (13.10.2026) — фото с телефона 3–6 МБ, в прайсе столько не нужно.
         const photo = await compressPhoto(file);
+        if (photo.heic) return NextResponse.json({ error: HEIC_UPLOAD_ERROR }, { status: 400 });
         const path = `price-items/${companyId}/${Date.now()}.${photo.ext}`;
         const blob = await put(path, photo.body, { access: "public", contentType: photo.contentType, addRandomSuffix: true });
         data.photoUrl = blob.url;

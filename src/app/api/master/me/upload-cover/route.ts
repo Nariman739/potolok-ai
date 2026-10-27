@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { compressPhoto, HEIC_UPLOAD_ERROR } from "@/lib/compress-photo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,14 +34,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Максимум 10MB" }, { status: 400 });
     }
 
-    const blobExt = ext === "heic" || ext === "heif" ? "jpg" : ext || "jpg";
-    const contentType =
-      file.type === "image/heic" || file.type === "image/heif"
-        ? "image/jpeg"
-        : file.type || "image/jpeg";
-
-    const path = `kp-cover/${master.id}/${Date.now()}.${blobExt}`;
-    const blob = await put(path, file, { access: "public", contentType, addRandomSuffix: true });
+    // Обложка печатается на A4 — 1600px хватает; сырые 3 МБ раздували PDF (27.10.2026)
+    const photo = await compressPhoto(file);
+    if (photo.heic) {
+      return NextResponse.json({ error: HEIC_UPLOAD_ERROR }, { status: 400 });
+    }
+    const path = `kp-cover/${master.id}/${Date.now()}.${photo.ext}`;
+    const blob = await put(path, photo.body, { access: "public", contentType: photo.contentType, addRandomSuffix: true });
 
     await prisma.master.update({
       where: { id: master.id },

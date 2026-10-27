@@ -33,7 +33,9 @@ export async function GET(
 
     // Собираем все нужные данные одним вызовом — мастер, портфолио, отзывы,
     // тема, шрифты, QR-код. Внутри проверяется что КП принадлежит мастеру.
+    const t0 = Date.now();
     const data = await buildPdfData(id, scope.masterIds);
+    const tData = Date.now() - t0;
 
     // Если КП был создан как «быстрый» (мастер пометил calc.quickEstimate
     // в /dashboard/quick-estimate или через assistant) — рендерим 1 страницу.
@@ -41,7 +43,10 @@ export async function GET(
       data.config = { ...data.config, format: "quick" };
     }
 
+    const t1 = Date.now();
     const buffer = await renderToBuffer(KpDocument({ data }));
+    // Тайминги в логи Vercel — чтобы «КП долго открывается» разбирать по цифрам
+    console.log(`[kp pdf] ${id.slice(0, 8)} data=${tData}ms render=${Date.now() - t1}ms size=${Math.round(buffer.length / 1024)}KB rooms=${data.estimate.rooms.length} gallery=${data.gallery.length}`);
 
     const filename = sanitizeFilename(
       `KP-${data.master.companyName}-${data.estimate.clientName || data.estimate.id.slice(0, 8)}.pdf`

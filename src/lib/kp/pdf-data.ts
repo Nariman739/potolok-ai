@@ -6,6 +6,7 @@ import { themeFor } from "./themes";
 import type { PlanRoom } from "@/lib/work-order-plan";
 import { kindFromItemName, kindsFromRoom, mergeKinds, type KpKind } from "./kinds";
 import { pickGalleryPhotos, type GalleryPhoto } from "./library";
+import { inlinePdfImages } from "./pdf-images";
 import { DEFAULT_KP_CONFIG } from "./templates";
 import { asPriceView, asPlanStyle, type KpConfig, type KpTheme, type FontPair, type KpSection, type KpPriceView } from "./types";
 
@@ -157,7 +158,8 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
           portfolioWorks: {
             where: { isPublished: true },
             orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-            take: 6,
+            // берём с запасом: работы без фото (видео) в PDF не попадают
+            take: 12,
           },
           reviews: {
             where: { isPublished: true },
@@ -191,7 +193,9 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
 
   const gallery = await buildGallery(estimate.id, estimate.roomsData, rooms, extraItems);
 
-  return {
+  // Фото мастера (портфолио, обложка, логотип) ужимаются до печатного размера —
+  // иначе КП весит до 14 МБ (см. pdf-images.ts)
+  return inlinePdfImages({
     master: mapBranding(estimate.master),
     estimate: {
       id: estimate.id,
@@ -213,7 +217,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
       isQuick,
       priceView: asPriceView(estimate.priceView),
     },
-    portfolio: estimate.master.portfolioWorks.map(mapPortfolio),
+    portfolio: estimate.master.portfolioWorks.map(mapPortfolio).filter((p) => p.photoUrl).slice(0, 6),
     reviews: estimate.master.reviews.map(mapReview),
     gallery,
     qrDataUrl,
@@ -221,7 +225,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
     config,
     theme,
     fonts,
-  };
+  });
 }
 
 // ============================================
@@ -289,7 +293,13 @@ export function normalizeConfig(raw: unknown): KpConfig {
 export function planRoomOf(raw: unknown): PlanRoom | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  const walls = r.walls;
+  let walls = r.walls;
+  // Старый веб-калькулятор пишет комнату как ширина × длина (в метрах) без стен —
+  // рисуем прямоугольник, чтобы и у таких КП был план
+  if (!Array.isArray(walls) && typeof r.width === "number" && typeof r.length === "number" && r.width > 0 && r.length > 0 && Number.isFinite(r.width) && Number.isFinite(r.length)) {
+    const w = Math.round(r.width * 100), l = Math.round(r.length * 100);
+    walls = [w, l, w, l];
+  }
   if (!Array.isArray(walls) || walls.length < 3 || !walls.every((w) => typeof w === "number" && Number.isFinite(w) && w > 0)) return null;
   // Числовые массивы берём только целиком «здоровые»: один undefined в angles
   // давал NaN во всех вершинах и пустой план вместо старой иконки
@@ -410,11 +420,13 @@ function mapPortfolio(p: {
   ceilingType: string | null;
   photos: string[];
 }): PdfPortfolioItem {
+  // В photos бывают и видео (mp4/mov) — в PDF такое не вставить, берём первое фото
+  const photo = (p.photos ?? []).find((u) => !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(u));
   return {
     id: p.id,
     title: p.title,
     ceilingType: p.ceilingType,
-    photoUrl: p.photos?.[0] ?? null,
+    photoUrl: photo ?? null,
   };
 }
 

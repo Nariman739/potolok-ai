@@ -28,12 +28,17 @@ export function PortfolioPage({
   const hero = pics[0];
   const rest = pics.slice(1);
 
-  // Геометрия асимметричной сетки
+  // Геометрия асимметричной сетки. Пустых ячеек не рисуем (27.10.2026):
+  // 1 фото — на всю ширину, 2 — две колонки, 3–4 — крупное + столбик справа,
+  // 5 — крупное + сетка 2×2.
   const gap = 8;
-  const heroW = Math.round(pageInnerW * 0.6 - gap / 2);
   const heroH = 360;
+  const heroW = rest.length === 0 ? pageInnerW : rest.length === 1 ? Math.round((pageInnerW - gap) / 2) : Math.round(pageInnerW * 0.6 - gap / 2);
   const smallW = pageInnerW - heroW - gap;
   const smallH = (heroH - gap) / 2;
+  // Столбик справа при 2–3 фото: каждое во всю ширину столбика
+  const stacked = rest.length === 2 || rest.length === 3;
+  const stackH = (heroH - gap * (rest.length - 1)) / rest.length;
 
   return (
     <Page size="A4" style={styles.page}>
@@ -59,7 +64,22 @@ export function PortfolioPage({
               large
             />
           </View>
-          {/* RIGHT — 2×2 grid (4 фото) или меньше */}
+          {/* RIGHT — одно фото рядом, столбик (2–3) или сетка 2×2 (4) */}
+          {rest.length === 1 && (
+            <View style={{ width: smallW }}>
+              <PortfolioCard item={rest[0]} width={smallW} height={heroH} theme={theme} fonts={fonts} large />
+            </View>
+          )}
+          {stacked && (
+            <View style={{ width: smallW, flexDirection: "column" }}>
+              {rest.map((item, i) => (
+                <View key={item.id} style={{ width: smallW, marginBottom: i < rest.length - 1 ? gap : 0 }}>
+                  <PortfolioCard item={item} width={smallW} height={stackH} theme={theme} fonts={fonts} />
+                </View>
+              ))}
+            </View>
+          )}
+          {rest.length >= 4 && (
           <View style={{ width: smallW, flexDirection: "column" }}>
             {[0, 1].map((row) => (
               <View
@@ -106,6 +126,7 @@ export function PortfolioPage({
               </View>
             ))}
           </View>
+          )}
         </View>
       )}
 

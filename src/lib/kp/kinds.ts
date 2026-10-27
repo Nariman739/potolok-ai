@@ -85,20 +85,27 @@ export function kindFromItemName(name: string): KpKind | null {
   const n = name.toLowerCase().replace("ё", "е");
   if (/закладн/.test(n) && /софит|спот|светильник/.test(n)) return "spot_platform";
   if (/закладн/.test(n) && /люстр/.test(n)) return "chandelier";
-  if (/трек|track/.test(n)) return "track";
+  if (/трек|трэк|track/.test(n)) return "track";
   if (/свет\.?\s*лини|световая|световые|light ?line/.test(n)) return "lightline";
-  if (/теневой|теневая|тенев\b|shadow|eurokraab|euro ?kraab/.test(n) && !/вытяж/.test(n)) return "shadow";
-  if (/вытяжк|вентиляц|диффузор/.test(n)) return "vent";
+  // «Теневой диффузор», «теневая вытяжка», «теневая решётка» — это вытяжка, не профиль.
+  // Обычная «вытяжка»/«диффузор» без слова «теневой» — фото не даём: в библиотеке
+  // именно теневая, обычную кухонную вытяжку такой картинкой не показываем
+  // \b в JS не знает кириллицы — границы слова через lookaround
+  const shadowWord = /теневой|теневая|теневое|тенев(?![а-я])/.test(n);
+  if (shadowWord && /вытяж|диффуз|дефуз|решетк/.test(n)) return "vent";
+  if (shadowWord || /shadow|eurokraab|euro ?kraab/.test(n)) return "shadow";
   if (/парящ|floating/.test(n)) return "floating";
   if (/шторк|душев/.test(n)) return "shower_curtain";
   if (/подшторн/.test(n)) return "subcurtain";
-  if (/гардин|карниз|пк-?14/.test(n)) return "curtain";
+  if (/гардин|гордин|карниз|пк[\s-]?14(?!\d)/.test(n)) return "curtain";
   if (/люстр/.test(n)) return "chandelier";
-  if (/софит|спот|светильник|led|лед/.test(n)) {
-    if (/gx ?53|гх ?53|жк ?53|gx53/.test(n)) return "spot_gx53";
-    if (/gu ?10|gu ?5\.?3|mr ?16|утоплен|встроен|встраив|скрыт/.test(n)) return "spot_recessed";
+  const bh53 = /(?<![a-zа-я])(bh|вн)\s?53(?!\d)/, bh10 = /(?<![a-zа-я])(bh|вн)\s?10(?!\d)/;
+  if (/софит|соф(?![а-я])|спот|светильник|(?<![a-zа-я])(led|лед)(?![a-zа-я])/.test(n) || bh53.test(n) || bh10.test(n)) {
+    if (/gx ?53|гх ?53|жк ?53/.test(n) || bh53.test(n)) return "spot_gx53";
+    if (/gu ?10|gu ?5\.?3|mr ?16|утоплен|встроен|встраив|скрыт/.test(n) || bh10.test(n)) return "spot_recessed";
     return "spot";
   }
+  if (/без вставк/.test(n)) return null;
   if (/вставк|маскировоч/.test(n)) return "insert";
   if (/галтел|плинтус/.test(n)) return "galtel";
   if (/полотн|пленк|плёнк|msd|bauf|pongs|ткан/.test(n)) {

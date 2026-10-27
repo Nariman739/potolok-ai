@@ -36,8 +36,12 @@ export function GalleryPage({
   const styles = makeStyles(theme, fonts);
   const gap = 14;
   const contentW = 595 - 36 * 2;
-  const cardW = (contentW - gap) / 2;
-  const imgH = 150;
+  // Один-два типа — карточки на всю ширину, иначе страница выглядит пустой
+  const single = items.length <= 2;
+  const cardW = single ? contentW : (contentW - gap) / 2;
+  // 118pt: три ряда по две карточки влезают в A4 с шапкой и сноской;
+  // при 150 третий ряд уезжал на почти пустую вторую страницу
+  const imgH = single ? 230 : 118;
 
   return (
     <Page size="A4" style={styles.page}>
@@ -56,8 +60,8 @@ export function GalleryPage({
             key={g.kind}
             style={{
               width: cardW,
-              marginRight: i % 2 === 0 ? gap : 0,
-              marginBottom: 16,
+              marginRight: !single && i % 2 === 0 ? gap : 0,
+              marginBottom: single ? 22 : 16,
             }}
             wrap={false}
           >
@@ -88,7 +92,7 @@ export function GalleryPage({
               </Text>
               {g.own && (
                 <Text style={{ fontFamily: fonts.body.family, fontSize: 6.5, color: theme.palette.accent, marginLeft: 6, letterSpacing: 1, textTransform: "uppercase" }}>
-                  наша работа
+                  наш вариант
                 </Text>
               )}
             </View>

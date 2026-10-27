@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { requireAuth } from "@/lib/auth";
+import { compressPhoto, HEIC_UPLOAD_ERROR } from "@/lib/compress-photo";
 
 export async function POST(request: Request) {
   try {
@@ -37,17 +38,23 @@ export async function POST(request: Request) {
     }
 
     const timestamp = Date.now();
-    const blobExt = (ext === "heic" || ext === "heif") ? "jpg" : (ext || "jpg");
-    const path = `portfolio/${master.id}/${timestamp}.${blobExt}`;
+    // Фото с телефона по 3–4 МБ раздували PDF КП до 14 МБ (27.10.2026) —
+    // ужимаем до 1600px как фото позиций прайса; видео не трогаем
+    const photo = isImage && ext !== "gif"
+      ? await compressPhoto(file)
+      : {
+          body: file,
+          contentType: file.type === "image/heic" || file.type === "image/heif" ? "image/jpeg" : file.type || "image/jpeg",
+          ext: ext === "heic" || ext === "heif" ? "jpg" : ext || "jpg",
+        };
+    if (photo.heic) {
+      return NextResponse.json({ error: HEIC_UPLOAD_ERROR }, { status: 400 });
+    }
+    const path = `portfolio/${master.id}/${timestamp}.${photo.ext}`;
 
-    const contentType =
-      file.type === "image/heic" || file.type === "image/heif"
-        ? "image/jpeg"
-        : file.type || "image/jpeg";
-
-    const blob = await put(path, file, {
+    const blob = await put(path, photo.body, {
       access: "public",
-      contentType,
+      contentType: photo.contentType,
       addRandomSuffix: true,
     });
 
