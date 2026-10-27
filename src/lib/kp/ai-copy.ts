@@ -1,6 +1,7 @@
 import { AI_MODEL, getOpenRouter } from "@/lib/openrouter";
 import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type { KpTemplateId } from "./types";
+import type { Jurisdiction } from "@/lib/currency";
 
 // ============================================
 // AI-помощник для подсказки текстов в конструкторе КП.
@@ -36,6 +37,8 @@ export type CopyContext = {
   companyName?: string;
   ownerName?: string;
   city?: string;
+  // Страна мастера (по валюте): RUB → Россия. Ставит сервер, не клиент.
+  jurisdiction?: Jurisdiction;
   currentValue?: string; // если мастер хочет «улучшить то что есть»
   // Доп.контекст для конкретных полей
   client?: { name?: string; address?: string; area?: number; rooms?: number };
@@ -76,9 +79,9 @@ const FIELD_SPECS: Record<CopyFieldKind, FieldSpec> = {
     rules:
       "5-9 слов. Один тезис: чем занимаемся + где/с какого года/особенность. Никаких «лучшие в городе», «премиум-качество», «индивидуальный подход» — это пустые штампы.",
     examples: [
-      "Натяжные потолки в Астане с 2018",
+      "Натяжные потолки в вашем городе с 2018",
       "Делаем потолки, которые не стыдно показать гостям",
-      "Бесшовные потолки в новостройках Алматы",
+      "Бесшовные потолки в новостройках",
     ],
   },
   bio: {
@@ -264,8 +267,11 @@ function buildSystemPrompt({
   const examples = spec.examples
     ? `\n\nПримеры удачных формулировок (НЕ копируй буквально, бери идею):\n${spec.examples.map((e) => `— ${e}`).join("\n")}`
     : "";
+  const ru = context.jurisdiction === "RU";
+  const country = ru ? "России" : "Казахстане";
+  const region = ru ? "Россия" : "Казахстан";
 
-  return `Ты — копирайтер для мастеров натяжных потолков в Казахстане. Пишешь тексты для коммерческих предложений (КП), которые мастер отправляет клиенту в WhatsApp.
+  return `Ты — копирайтер для мастеров натяжных потолков в ${country}. Пишешь тексты для коммерческих предложений (КП), которые мастер отправляет клиенту в WhatsApp.
 
 ТОН для этой темы:
 ${tone}
@@ -276,7 +282,8 @@ ${tone}
 — Не используй эмодзи.
 — Не выдумывай факты (точные сроки, бренды, цифры), если их нет в контексте.
 — Учитывай что клиент мастера — обычный человек (физлицо), заказывающий потолок домой.
-— Регион: Казахстан, городская аудитория.
+— Регион: ${region}, городская аудитория.
+— Город бери ТОЛЬКО из контекста. Если города в контексте нет — не называй никакой город, область и регион.
 
 ЗАДАЧА: сгенерировать ${n} разных варианта текста для поля "${spec.description}"
 
@@ -303,7 +310,7 @@ function buildUserPrompt({
   const lines: string[] = ["Контекст для генерации:"];
   if (context.companyName) lines.push(`— Название компании: ${context.companyName}`);
   if (context.ownerName) lines.push(`— Мастер: ${context.ownerName}`);
-  if (context.city) lines.push(`— Город: ${context.city}`);
+  lines.push(`— Город: ${context.city || "не указан — НЕ упоминай город и регион"}`);
   if (context.client?.name) lines.push(`— Имя клиента: ${context.client.name}`);
   if (context.client?.address) lines.push(`— Адрес клиента: ${context.client.address}`);
   if (context.client?.area)

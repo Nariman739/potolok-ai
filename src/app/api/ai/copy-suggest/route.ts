@@ -5,6 +5,7 @@ import { suggestCopy, type CopyFieldKind, type CopyContext } from "@/lib/kp/ai-c
 import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 import { aiLogOnce } from "@/lib/ai-log";
 import { reportAiError } from "@/lib/report-error";
+import { jurisdictionOf } from "@/lib/currency";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
         body.context?.ownerName ||
         `${master.firstName} ${master.lastName ?? ""}`.trim(),
       city: body.context?.city || master.address || undefined,
+      jurisdiction: jurisdictionOf(master.currency),
     };
 
     // Анонимный журнал: без имени владельца и названия компании (09.10.2026)

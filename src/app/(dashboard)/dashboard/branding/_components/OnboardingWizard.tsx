@@ -80,10 +80,13 @@ export function OnboardingWizard({
   const [q2, setQ2] = useState("");
   const [q3, setQ3] = useState("");
 
+  // Город обязателен: без него ИИ подставлял свой (мастеру из Петербурга
+  // написал «выезд по Алматы», 27.10.2026).
   const canGoNext = (): boolean => {
-    if (step === 1) return companyName.trim().length > 0;
+    if (step === 1) return companyName.trim().length > 0 && city.trim().length > 0;
     return true;
   };
+  const cityPlaceholder = master.currency === "RUB" ? "Санкт-Петербург" : "Астана";
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -177,12 +180,15 @@ export function OnboardingWizard({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Город</Label>
+                <Label>Город *</Label>
                 <Input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Астана"
+                  placeholder={cityPlaceholder}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Попадёт в тексты КП: «выезд по …», «работаем в …».
+                </p>
               </div>
             </div>
           )}

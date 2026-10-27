@@ -10,6 +10,7 @@ import { checkAiBudget, recordAiUsage, masterRole } from "@/lib/ai-cost-cap";
 import { userFacingAiError } from "@/lib/ai-errors";
 import { aiLogOnce } from "@/lib/ai-log";
 import { reportAiError } from "@/lib/report-error";
+import { jurisdictionOf } from "@/lib/currency";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
     let result;
     let aiError: unknown = undefined;
     try {
-      result = await generateKpConfigFromBrief(brief);
+      result = await generateKpConfigFromBrief(brief, jurisdictionOf(master.currency));
     } catch (aiErr) {
       reportAiError(aiErr, "ai/kp-onboarding", "[kp-onboarding] AI недоступен");
       result = buildFallbackConfigFromBrief(brief);

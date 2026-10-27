@@ -8,6 +8,7 @@ import type {
   QuickIncludedItem,
 } from "./types";
 import { getDefaultConfigForTemplate } from "./templates";
+import type { Jurisdiction } from "@/lib/currency";
 
 // ============================================
 // AI-онбординг конструктора КП.
@@ -123,13 +124,18 @@ export function buildFallbackConfigFromBrief(brief: MasterBrief): OnboardingResu
 // Основная функция
 // ============================================
 export async function generateKpConfigFromBrief(
-  brief: MasterBrief
+  brief: MasterBrief,
+  // Страна мастера = его валюта (RUB → Россия). Раньше промпт жёстко говорил
+  // «в Казахстане», и мастеру из Петербурга ИИ написал «выезд по Алматы»
+  // (Максим MAGIC, 27.10.2026).
+  jurisdiction: Jurisdiction = "KZ"
 ): Promise<OnboardingResult> {
   const template = suggestTemplate(brief);
   const baseConfig = getDefaultConfigForTemplate(template);
+  const country = jurisdiction === "RU" ? "России" : "Казахстане";
 
   // Готовим промпт для AI — он заполняет всё содержимое одним вызовом
-  const systemPrompt = `Ты — копирайтер для мастеров натяжных потолков в Казахстане. На основе короткого брифа от мастера ты собираешь персональный пакет текстов для его коммерческого предложения.
+  const systemPrompt = `Ты — копирайтер для мастеров натяжных потолков в ${country}. На основе короткого брифа от мастера ты собираешь персональный пакет текстов для его коммерческого предложения.
 
 Тон ответа выбирается по сегменту и стилю:
 — premium → серьёзный, бутиковый, как Sotheby's
@@ -142,7 +148,8 @@ export async function generateKpConfigFromBrief(
 — Пиши на русском, естественно, без штампов («индивидуальный подход», «премиум-качество», «лучшие на рынке»)
 — Не используй эмодзи
 — Не выдумывай цифры, если их нет в брифе
-— Учитывай что клиент мастера — обычный человек в Казахстане
+— Город и регион бери ТОЛЬКО из брифа. Если город не указан — не называй никакой город, область и регион ни в одном тексте (пиши «по городу», «у вас дома», без названий)
+— Учитывай что клиент мастера — обычный человек в ${country}
 — Все тексты должны звучать как от живого человека, а не от шаблона
 
 ОТВЕТ строго в JSON:
@@ -173,7 +180,8 @@ export async function generateKpConfigFromBrief(
 
   const userPrompt = `Бриф мастера:
 — Компания: ${brief.companyName}
-${brief.ownerName ? `— Мастер: ${brief.ownerName}\n` : ""}${brief.city ? `— Город: ${brief.city}\n` : ""}${brief.yearsActive ? `— Работает с ${brief.yearsActive} года\n` : ""}— Сегмент клиентов: ${brief.segment}
+${brief.ownerName ? `— Мастер: ${brief.ownerName}\n` : ""}— Город: ${brief.city ?? "не указан — НЕ упоминай город и регион"}
+${brief.yearsActive ? `— Работает с ${brief.yearsActive} года\n` : ""}— Сегмент клиентов: ${brief.segment}
 ${brief.communicationStyle ? `— Стиль общения: ${brief.communicationStyle}\n` : ""}${brief.materialsUsed ? `— Какие материалы использует: ${brief.materialsUsed}\n` : ""}— Гарантия на плёнку: ${brief.warrantyMaterialsYears ?? 10} лет
 — Гарантия на работы: ${brief.warrantyInstallYears ?? 2} лет
 ${brief.differentiator ? `— Чем отличается от других: ${brief.differentiator}\n` : ""}${brief.commonQuestions?.length ? `— Частые вопросы клиентов:\n${brief.commonQuestions.map((q) => `  — ${q}`).join("\n")}\n` : ""}

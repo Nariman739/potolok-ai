@@ -7,6 +7,7 @@ export type InitialMaster = {
   companyName: string | null;
   brandColor: string;
   address: string | null;
+  currency?: string;
   logoUrl: string | null;
   tagline: string | null;
   coverPhotoUrl: string | null;
