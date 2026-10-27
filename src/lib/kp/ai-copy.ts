@@ -230,8 +230,16 @@ export async function suggestCopy(
   const costUsd = computeCostFromUsage(completion.usage, AI_MODEL);
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
+  // Claude через OpenRouter игнорирует response_format и заворачивает JSON в
+  // ```json … ``` — все подсказки отдавали «Ошибка парсинга» (журнал ИИ, 26–27.10.2026).
+  // Та же обёртка снимается в ai-onboarding.ts с 26.05.
+  const cleaned = (() => {
+    const t = raw.trim();
+    const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+    return m ? m[1].trim() : t;
+  })();
   try {
-    const parsed = JSON.parse(raw) as { suggestions?: CopySuggestion[] };
+    const parsed = JSON.parse(cleaned) as { suggestions?: CopySuggestion[] };
     const suggestions = (parsed.suggestions ?? [])
       .filter((s) => s && typeof s.text === "string" && s.text.trim().length > 0)
       .slice(0, n);
