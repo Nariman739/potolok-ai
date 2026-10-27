@@ -46,6 +46,8 @@ export default function ProfilePage() {
   const [address, setAddress] = useState("");
   // Валюта цен мастера: ₸ или ₽ (07.10.2026). Цифры не пересчитываются, меняется только знак.
   const [currency, setCurrency] = useState<CurrencyCode>("KZT");
+  // Рубли = мастер из России: подписи реквизитов по правилам РФ (27.10.2026).
+  const rf = currency === "RUB";
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -558,13 +560,14 @@ export default function ProfilePage() {
             <>
               <Separator />
               <p className="text-sm font-medium text-muted-foreground">Реквизиты ИП</p>
+              {/* Рубли = мастер из России: ОГРНИП/ИНН, расчётный счёт, без КБе (27.10.2026) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>БИН</Label>
-                  <Input value={bin} onChange={(e) => setBin(e.target.value)} placeholder="123456789012" maxLength={12} />
+                  <Label>{rf ? "ОГРНИП" : "БИН"}</Label>
+                  <Input value={bin} onChange={(e) => setBin(e.target.value)} placeholder={rf ? "312345678901234" : "123456789012"} maxLength={rf ? 15 : 12} />
                 </div>
                 <div className="space-y-2">
-                  <Label>ИИН</Label>
+                  <Label>{rf ? "ИНН" : "ИИН"}</Label>
                   <Input value={iin} onChange={(e) => setIin(e.target.value)} placeholder="012345678901" maxLength={12} />
                 </div>
               </div>
@@ -574,26 +577,28 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label>Юридический адрес</Label>
-                <Input value={legalAddress} onChange={(e) => setLegalAddress(e.target.value)} placeholder="г. Караганда, ул. Ермекова 1" />
+                <Input value={legalAddress} onChange={(e) => setLegalAddress(e.target.value)} placeholder={rf ? "г. Санкт-Петербург, ул. Ленина 1" : "г. Караганда, ул. Ермекова 1"} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Банк</Label>
-                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="АО Каспи Банк" />
+                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder={rf ? "ПАО Сбербанк" : "АО Каспи Банк"} />
                 </div>
                 <div className="space-y-2">
-                  <Label>IBAN</Label>
-                  <Input value={iban} onChange={(e) => setIban(e.target.value)} placeholder="KZ12345678901234567" />
+                  <Label>{rf ? "Расчётный счёт" : "IBAN"}</Label>
+                  <Input value={iban} onChange={(e) => setIban(e.target.value)} placeholder={rf ? "40802810000000000000" : "KZ12345678901234567"} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>КБе</Label>
-                  <Input value={kbe} onChange={(e) => setKbe(e.target.value)} placeholder="19" maxLength={2} />
-                </div>
+                {!rf && (
+                  <div className="space-y-2">
+                    <Label>КБе</Label>
+                    <Input value={kbe} onChange={(e) => setKbe(e.target.value)} placeholder="19" maxLength={2} />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>БИК</Label>
-                  <Input value={bik} onChange={(e) => setBik(e.target.value)} placeholder="CASPKZKA" />
+                  <Input value={bik} onChange={(e) => setBik(e.target.value)} placeholder={rf ? "044525225" : "CASPKZKA"} />
                 </div>
               </div>
             </>
@@ -605,7 +610,7 @@ export default function ProfilePage() {
               <Separator />
               <p className="text-sm font-medium text-muted-foreground">Данные физического лица</p>
               <div className="space-y-2">
-                <Label>ИИН</Label>
+                <Label>{rf ? "ИНН" : "ИИН"}</Label>
                 <Input value={iin} onChange={(e) => setIin(e.target.value)} placeholder="012345678901" maxLength={12} />
               </div>
               <div className="space-y-2">
@@ -613,8 +618,8 @@ export default function ProfilePage() {
                 <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Иванов Иван Иванович" />
               </div>
               <div className="space-y-2">
-                <Label>Удостоверение личности (серия и номер)</Label>
-                <Input value={passportData} onChange={(e) => setPassportData(e.target.value)} placeholder="№ 012345678" />
+                <Label>{rf ? "Паспорт (серия и номер)" : "Удостоверение личности (серия и номер)"}</Label>
+                <Input value={passportData} onChange={(e) => setPassportData(e.target.value)} placeholder={rf ? "4512 345678" : "№ 012345678"} />
               </div>
             </>
           )}

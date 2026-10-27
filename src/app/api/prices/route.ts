@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { getScope } from "@/lib/company";
+import { getScope, currencyFor } from "@/lib/company";
 import { PRODUCT_BY_CODE } from "@/lib/constants";
 import { legacyPricesView, loadPriceItems, priceBookCompanyId, upsertTemplateItem } from "@/lib/price-items";
 
@@ -13,8 +13,8 @@ export async function GET() {
     // Прайс общий на компанию — читаем и пишем у владельца (Этап 3).
     const scope = await getScope(master);
     const companyId = await priceBookCompanyId(scope.ownerId);
-    const rows = await loadPriceItems(companyId);
-    return NextResponse.json(legacyPricesView(rows));
+    const [rows, currency] = await Promise.all([loadPriceItems(companyId), currencyFor(scope.ownerId)]);
+    return NextResponse.json(legacyPricesView(rows, currency));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

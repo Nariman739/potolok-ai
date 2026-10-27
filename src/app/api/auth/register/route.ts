@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
     // Дефолтный прайс компании — одним createMany в PriceItem («Мой прайс», 01.10.2026).
     // Вложенный create гнал по инсерту на позицию (50+ round-trip'ов) — регистрация тянулась ~10 секунд.
-    if (company) await seedTemplateItems(company.id).catch((e) => console.warn("seedTemplateItems:", e));
+    if (company) await seedTemplateItems(company.id, currencyForPhone(phone)).catch((e) => console.warn("seedTemplateItems:", e));
 
     await createSession(master.id);
 

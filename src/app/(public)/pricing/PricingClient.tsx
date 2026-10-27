@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { BillingStatus } from "@/lib/billing-client";
+import { formatMoney, type CurrencyCode } from "@/lib/currency";
 
 type PaymentStatus = "PENDING" | "APPROVED" | "REJECTED";
 type Period = "month" | "year";
@@ -19,6 +20,8 @@ type Period = "month" | "year";
 type Config = {
   kaspiPhone: string;
   kaspiReceiverName: string;
+  /** Валюта цен: RUB — мастер из России, платит переводом (27.10.2026). */
+  currency: CurrencyCode;
   priceMonth: number;
   priceYear: number;
   launchPriceMonth: number;
@@ -71,6 +74,7 @@ type AuthedMaster = {
 type RecentPayment = {
   id: string;
   amount: number;
+  currency: string;
   status: PaymentStatus;
   createdAt: string;
   days: number;
@@ -80,10 +84,6 @@ type RecentPayment = {
 type Props =
   | { mode: "public"; config: Config; master: null }
   | { mode: "authed"; config: Config; master: AuthedMaster; recentPayments: RecentPayment[] };
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
-}
 
 // Явная зона: сервер Vercel живёт в UTC, и «23 ноября 00:00 Алматы» там ещё
 // 22-е — без timeZone сервер и браузер рисуют разные даты (hydration #418).
@@ -122,6 +122,10 @@ export function PricingClient(props: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const cfg = props.config;
+  const fmt = (n: number) => formatMoney(n, cfg.currency);
+  // Из России: карты РФ через TipTop не проходят, Kaspi у них нет — только
+  // перевод на карту Kaspi (Золотая Корона по номеру, Сбер / Т-Банк «в Казахстан»).
+  const fromRf = cfg.currency === "RUB";
   const master = props.mode === "authed" ? props.master : null;
   const recentPayments = props.mode === "authed" ? props.recentPayments : [];
 
@@ -332,7 +336,7 @@ export function PricingClient(props: Props) {
             <h2 className="text-xl font-bold">Бесплатно</h2>
             <Badge variant="secondary">Для начала</Badge>
           </div>
-          <div className="text-3xl font-bold mb-1">0 ₸</div>
+          <div className="text-3xl font-bold mb-1">{fmt(0)}</div>
           <div className="text-sm text-muted-foreground mb-4">первые {cfg.freeObjects} объектов</div>
           <ul className="text-sm space-y-2 mb-6">
             {FREE_FEATURES.map((f) => (
@@ -404,7 +408,7 @@ export function PricingClient(props: Props) {
             </Button>
           )}
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            Kaspi или карта. Без автосписания — продлеваете сами, когда удобно.
+            {fromRf ? "Перевод из России за 5 минут." : "Kaspi или карта."} Без автосписания — продлеваете сами, когда удобно.
           </p>
         </Card>
       </div>
@@ -422,7 +426,7 @@ export function PricingClient(props: Props) {
             {recentPayments.map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2 border-b last:border-0">
                 <div>
-                  <div className="font-medium">{fmt(p.amount)} · {p.days >= 365 ? "год" : "месяц"}</div>
+                  <div className="font-medium">{formatMoney(p.amount, p.currency)} · {p.days >= 365 ? "год" : "месяц"}</div>
                   <div className="text-xs text-muted-foreground">{fmtDate(p.createdAt)}</div>
                 </div>
                 {statusBadge(p.status, p.card)}
@@ -460,9 +464,11 @@ export function PricingClient(props: Props) {
               <DialogHeader>
                 <DialogTitle>PRO на {period === "year" && !launchOpen ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
                 <DialogDescription>
-                  {cfg.cardEnabled
-                    ? "Картой — PRO включится сразу. Или переводом Kaspi: переведите на номер ниже и загрузите чек, либо попросите счёт."
-                    : "Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi."}
+                  {fromRf
+                    ? "Карты банков России через нашу платёжку не проходят. Переведите на карту Kaspi по номеру ниже и загрузите чек — PRO включим после проверки, обычно в течение часа."
+                    : cfg.cardEnabled
+                      ? "Картой — PRO включится сразу. Или переводом Kaspi: переведите на номер ниже и загрузите чек, либо попросите счёт."
+                      : "Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
@@ -475,27 +481,44 @@ export function PricingClient(props: Props) {
                   <div>
                     <div className="text-xs text-muted-foreground">Сумма</div>
                     <div className="text-2xl font-bold">{fmt(amountToPay)}</div>
+                    {fromRf && <div className="text-xs text-muted-foreground">в рублях — получателю придут тенге по курсу перевода</div>}
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Номер для Kaspi-перевода</div>
+                    <div className="text-xs text-muted-foreground">{fromRf ? "Номер телефона получателя (карта Kaspi, Казахстан)" : "Номер для Kaspi-перевода"}</div>
                     <div className="text-lg font-mono font-semibold select-all">{cfg.kaspiPhone}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Получатель</div>
                     <div>{cfg.kaspiReceiverName}</div>
                   </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">В комментарии перевода</div>
-                    <div className="text-sm">укажите телефон от аккаунта</div>
-                  </div>
+                  {fromRf ? (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Как перевести из России</div>
+                      <ol className="text-sm list-decimal pl-4 space-y-1 mt-1">
+                        <li>
+                          <b>Золотая Корона</b> (koronapay.com или приложение «Золотая Корона — Денежные переводы»): перевод в Казахстан на карту Kaspi по номеру телефона. Приходит за минуты.
+                        </li>
+                        <li>
+                          <b>Сбер или Т-Банк</b>: «Перевод за рубеж → Казахстан» на карту Kaspi по номеру телефона.
+                        </li>
+                      </ol>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-xs text-muted-foreground">В комментарии перевода</div>
+                      <div className="text-sm">укажите телефон от аккаунта</div>
+                    </div>
+                  )}
                 </div>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <DialogFooter className="flex-col sm:flex-col gap-2">
                 <Button className="w-full" variant={cfg.cardEnabled ? "outline" : "default"} onClick={() => setStep("form")}>Я перевёл → загрузить чек</Button>
-                <Button className="w-full" variant="secondary" disabled={submitting} onClick={() => handleSubmit("invoice")}>
-                  {submitting ? "Отправляем…" : "Пришлите мне счёт в Kaspi"}
-                </Button>
+                {!fromRf && (
+                  <Button className="w-full" variant="secondary" disabled={submitting} onClick={() => handleSubmit("invoice")}>
+                    {submitting ? "Отправляем…" : "Пришлите мне счёт в Kaspi"}
+                  </Button>
+                )}
                 <Button className="w-full" variant="ghost" onClick={() => setPayOpen(false)}>Закрыть</Button>
               </DialogFooter>
             </>
@@ -504,7 +527,7 @@ export function PricingClient(props: Props) {
               <DialogHeader>
                 <DialogTitle>Подтверждение оплаты</DialogTitle>
                 <DialogDescription>
-                  Загрузите скрин чека из Kaspi — проверим и включим PRO.
+                  {fromRf ? "Загрузите скрин чека о переводе — проверим и включим PRO." : "Загрузите скрин чека из Kaspi — проверим и включим PRO."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
@@ -524,7 +547,7 @@ export function PricingClient(props: Props) {
                     id="comment"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Например: перевёл с карты Halyk"
+                    placeholder={fromRf ? "Например: перевёл через Золотую Корону с карты Сбера" : "Например: перевёл с карты Halyk"}
                     rows={3}
                     className="mt-1.5"
                   />

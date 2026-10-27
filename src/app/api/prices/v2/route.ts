@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope } from "@/lib/company";
+import { getScope, currencyFor } from "@/lib/company";
 import { PRODUCT_ITEMS } from "@/lib/constants";
 import {
   CATEGORY_ROLES,
@@ -28,13 +28,14 @@ export async function GET() {
     const master = await requireAuth();
     const scope = await getScope(master);
     const companyId = await priceBookCompanyId(scope.ownerId);
+    const currency = await currencyFor(scope.ownerId);
     // Новые каталожные коды (pk14, diffuser…) появляются у компании при первом
     // открытии «Моего прайса» — чтобы у каждой строки был id. В стабильном
     // состоянии записи нет: сидим только если чего-то не хватает.
     let rows = await loadPriceItems(companyId);
     const have = new Set(rows.map((r) => r.code));
     if (PRODUCT_ITEMS.some((tpl) => !have.has(tpl.code))) {
-      await seedTemplateItems(companyId);
+      await seedTemplateItems(companyId, currency);
       rows = await loadPriceItems(companyId);
     }
     // Legacy-коды вне каталога (spot_gu10…) мастеру не показываем — они и раньше были невидимы.
@@ -48,7 +49,7 @@ export async function GET() {
         const ib = b.templateCode ? order.get(b.templateCode) ?? 999 : 1000;
         return ia - ib || a.sortOrder - b.sortOrder || a.createdAt.getTime() - b.createdAt.getTime();
       })
-      .map(toV2);
+      .map((r) => toV2(r, currency));
     return NextResponse.json({ items, isOwner: scope.isOwner, companyName: scope.companyName });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     const dup = await prisma.priceItem.findFirst({
       where: { companyId, deletedAt: null, name: { equals: name, mode: "insensitive" } },
     });
-    if (dup) return NextResponse.json({ item: toV2(dup), duplicate: true });
+    if (dup) return NextResponse.json({ item: toV2(dup, await currencyFor(scope.ownerId)), duplicate: true });
 
     const category = categoryFor(role, appliesTo, typeof body.category === "string" ? body.category : undefined);
     const created = await createOwnItem(companyId, {
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
       created.role !== role || appliesTo.length > 0
         ? await prisma.priceItem.update({ where: { id: created.id }, data: { role, appliesTo: appliesTo.length ? appliesTo : created.appliesTo, needsReview: false } })
         : created;
-    return NextResponse.json({ item: toV2(item), duplicate: false });
+    return NextResponse.json({ item: toV2(item, await currencyFor(scope.ownerId)), duplicate: false });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

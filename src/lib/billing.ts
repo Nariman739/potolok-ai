@@ -22,6 +22,8 @@
  *    (31 декабря 2026), только помесячно; после — обычная цена для всех.
  */
 import { prisma } from "@/lib/prisma";
+import { currencyFor } from "@/lib/company";
+import { asCurrency, type CurrencyCode } from "@/lib/currency";
 
 export const BILLING_ENABLED = process.env.BILLING_ENABLED === "true";
 /**
@@ -40,6 +42,22 @@ export const PRICE_MONTH = Number(process.env.STANDARD_PRICE ?? 4990);
 export const PRICE_YEAR = Number(process.env.YEAR_PRICE ?? 39900);
 /** Стартовая цена за месяц — действует на оплаты до LAUNCH_PRICE_UNTIL. */
 export const LAUNCH_PRICE_MONTH = Number(process.env.LAUNCH_PRICE ?? 1990);
+
+// ── Цены в рублях для мастеров из России (27.10.2026). Предложение окна
+// рекламы, ждёт подтверждения Наримана: старт 390 ₽, стандарт 990 ₽, год 7 900 ₽
+// (≈ наши 1 990 / 4 990 / 39 900 ₸). Меняются через env без деплоя.
+export const PRICE_MONTH_RUB = Number(process.env.STANDARD_PRICE_RUB ?? 990);
+export const PRICE_YEAR_RUB = Number(process.env.YEAR_PRICE_RUB ?? 7900);
+export const LAUNCH_PRICE_MONTH_RUB = Number(process.env.LAUNCH_PRICE_RUB ?? 390);
+
+export type BillingPrices = { month: number; year: number; launchMonth: number };
+
+/** Цены подписки в валюте мастера: ₸ — как было, ₽ — рублёвые. */
+export function pricesFor(currency: CurrencyCode | string | null | undefined): BillingPrices {
+  return asCurrency(currency) === "RUB"
+    ? { month: PRICE_MONTH_RUB, year: PRICE_YEAR_RUB, launchMonth: LAUNCH_PRICE_MONTH_RUB }
+    : { month: PRICE_MONTH, year: PRICE_YEAR, launchMonth: LAUNCH_PRICE_MONTH };
+}
 
 // ── Даты ─────────────────────────────────────────────────────────────────
 /**
@@ -100,20 +118,25 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
     launchPriceUntil: LAUNCH_PRICE_UNTIL.toISOString(),
     objectsLimit: FREE_OBJECTS_LIMIT,
     graceObjects: FREE_GRACE_OBJECTS,
-    prices: { month: PRICE_MONTH, year: PRICE_YEAR, launchMonth: LAUNCH_PRICE_MONTH },
+    currency: "KZT" as CurrencyCode,
+    prices: pricesFor("KZT"),
   };
   const launched = now >= BILLING_LAUNCH_AT;
   const enforced = BILLING_ENABLED && launched;
   const announce = BILLING_ENABLED && !launched;
 
   try {
-    const [m, objectsUsed] = await Promise.all([
+    const [m, objectsUsed, currency] = await Promise.all([
       prisma.master.findUnique({
         where: { id: masterId },
         select: { isOwner: true, paidUntil: true },
       }),
       countObjectsSinceLaunch(masterId),
+      // Валюта компании (у участника — владельца): цены подписки в ₽ для России (27.10.2026).
+      currencyFor(masterId).catch(() => "KZT" as CurrencyCode),
     ]);
+    base.currency = currency;
+    base.prices = pricesFor(currency);
     const paidUntil = m?.paidUntil ?? null;
     const paid = !!paidUntil && paidUntil > now;
 
@@ -198,14 +221,15 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
   ]);
   // Текст показывает мобилка как есть (Alert), в т.ч. на iPhone — без цены и
   // ссылки. Обещаем только тот канал, который у мастера реально есть.
+  const rf = s.currency === "RUB" ? " Из России — переводом, за 5 минут." : "";
   const where =
     ch.telegram && ch.push
-      ? "Ссылку на оплату отправили вам в Telegram и уведомлением."
+      ? `Ссылку на оплату отправили вам в Telegram и уведомлением.${rf}`
       : ch.telegram
-        ? "Ссылку на оплату отправили вам в Telegram."
+        ? `Ссылку на оплату отправили вам в Telegram.${rf}`
         : ch.push
-          ? "Ссылку на оплату отправили вам уведомлением."
-          : "Оформить PRO можно на сайте potolok.ai, раздел «Тарифы» — вход по вашему номеру телефона.";
+          ? `Ссылку на оплату отправили вам уведомлением.${rf}`
+          : `Оформить PRO можно на сайте potolok.ai, раздел «Тарифы» — вход по вашему номеру телефона.${rf}`;
   return {
     status: 402,
     body: {

@@ -6,6 +6,7 @@ import { quotePayment } from "@/lib/payment";
 import { PAYMENTS_OPEN, type BillingPeriod } from "@/lib/billing";
 import { getTiptopConfig } from "@/lib/tiptop";
 import { reportError } from "@/lib/report-error";
+import { currencyFor } from "@/lib/company";
 
 /**
  * Шаг 1 оплаты картой: заявка в базе + данные для виджета TipTop.
@@ -26,6 +27,15 @@ export async function POST(request: Request) {
     const rl = await checkRateLimit(`tiptop-create:${me.id}`, 10, 10 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json({ error: "Слишком много попыток. Попробуйте позже." }, { status: 429 });
+    }
+
+    // Российские карты через TipTop (CloudPayments KZ) не проходят — Максим
+    // MAGIC (СПб) 26.10: PENDING и отказ банка. Рублёвым — только перевод.
+    if ((await currencyFor(me.id)) === "RUB") {
+      return NextResponse.json(
+        { error: "Карты банков России через нашу платёжку не проходят. Оплатите переводом из России — инструкция ниже." },
+        { status: 400 },
+      );
     }
 
     const body = await request.json().catch(() => ({}));

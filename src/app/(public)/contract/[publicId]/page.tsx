@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
 import { renderContract } from "@/lib/contract-render";
-import { asLang, tFor, localeOf, type Lang } from "@/lib/i18n";
-import "@/lib/i18n/contract";
+import { asLang, localeOf, type Lang } from "@/lib/i18n";
+import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
@@ -57,6 +57,7 @@ export default async function ContractPublicPage({
           warrantyInstall: true,
           contractCity: true,
           language: true,
+          currency: true,
         },
       },
     },
@@ -71,7 +72,8 @@ export default async function ContractPublicPage({
   // а документ, который человек подписывает, он должен читать на своём языке
   // (26.09.2026).
   const lang: Lang = langParam === "ru" || langParam === "kk" ? langParam : asLang(estimate.master.language);
-  const t = tFor(lang);
+  // Тексты страницы по стране мастера: рубли → ссылки на ГК РФ (27.10.2026).
+  const t = contractT(lang, estimate.master.currency);
   const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
   const calc = estimate.calculationData as unknown as CalculationResult;
@@ -160,7 +162,7 @@ export default async function ContractPublicPage({
             </p>
           </div>
         ) : (
-          <SignSection publicId={publicId} lang={lang} />
+          <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} />
         )}
       </div>
     </div>

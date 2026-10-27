@@ -3,8 +3,8 @@ import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
 import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
 import { PrintButton } from "../../contract/[publicId]/print-button";
-import { asLang, tFor, localeOf, type Lang } from "@/lib/i18n";
-import "@/lib/i18n/contract";
+import { asLang, localeOf, type Lang } from "@/lib/i18n";
+import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
@@ -48,7 +48,7 @@ export default async function ActPublicPage({
   // Язык акта — как и у договора: язык мастера, но заказчик переключает сам
   // ссылкой ?lang= (26.09.2026).
   const lang: Lang = langParam === "ru" || langParam === "kk" ? langParam : asLang(estimate.master.language);
-  const t = tFor(lang);
+  const t = contractT(lang, estimate.master.currency);
   const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
   const calc = estimate.calculationData as unknown as CalculationResult;

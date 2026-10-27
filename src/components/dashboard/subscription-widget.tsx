@@ -4,10 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { BILLING_ENABLED, PAYMENTS_OPEN, getBillingStatus } from "@/lib/billing";
-
-function fmtTenge(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
-}
+import { formatMoney } from "@/lib/currency";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "Asia/Almaty" });
@@ -44,6 +41,9 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
   // уже можно — иначе с рабочего стола к /pricing нет пути (Нариман 24.10
   // сам не нашёл, набирал адрес руками).
   const s = (BILLING_ENABLED || PAYMENTS_OPEN) && !m.isOwner ? await getBillingStatus(masterId) : null;
+  // Цены в валюте мастера: ₽ у мастеров из России (27.10.2026).
+  const fmtTenge = (n: number) => formatMoney(n, s?.currency ?? "KZT");
+  const fromRf = s?.currency === "RUB";
 
   const payBtn = (label: string, tone: "default" | "amber" = "default") =>
     fromIos ? null : (
@@ -81,7 +81,7 @@ export async function SubscriptionWidget({ masterId }: { masterId: string }) {
                 {s.launchPrice && `, стартовая цена до ${fmtLastDay(s.launchPriceUntil)}`}
               </p>
               <p className="text-xs text-amber-800">
-                Сейчас всё бесплатно. Оплата — картой или Kaspi, PRO включается сразу.
+                {fromRf ? "Сейчас всё бесплатно. Оплата — переводом из России, PRO включаем после проверки." : "Сейчас всё бесплатно. Оплата — картой или Kaspi, PRO включается сразу."}
               </p>
             </div>
             {payBtn("Оплатить")}

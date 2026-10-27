@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaymentConfig } from "@/lib/payment";
 import { BILLING_ENABLED, PAYMENTS_OPEN, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
 import { TIPTOP_ENABLED } from "@/lib/tiptop";
+import { currencyFor } from "@/lib/company";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
@@ -31,12 +32,15 @@ export default async function PricingPage() {
   }
 
   const me = await getCurrentMaster();
+  // Валюта мастера решает всё на странице (27.10.2026): рублёвому — цены в ₽,
+  // без карты TipTop и счёта Kaspi (карты РФ не проходят), а «перевод из России».
+  const currency = me ? await currencyFor(me.id).catch(() => "KZT" as const) : "KZT";
   const config = {
-    ...getPaymentConfig(),
+    ...getPaymentConfig(currency),
     freeObjects: FREE_OBJECTS_LIMIT,
     billingEnabled: BILLING_ENABLED,
     paymentsOpen: PAYMENTS_OPEN,
-    cardEnabled: PAYMENTS_OPEN && TIPTOP_ENABLED,
+    cardEnabled: PAYMENTS_OPEN && TIPTOP_ENABLED && currency !== "RUB",
   };
 
   if (!me) {
@@ -55,7 +59,7 @@ export default async function PricingPage() {
       where: { masterId: master.id },
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, amount: true, status: true, createdAt: true, activatedDays: true, comment: true },
+      select: { id: true, amount: true, currency: true, status: true, createdAt: true, activatedDays: true, comment: true },
     }),
   ]);
 
@@ -72,6 +76,7 @@ export default async function PricingPage() {
       recentPayments={recent.map((p) => ({
         id: p.id,
         amount: p.amount,
+        currency: p.currency,
         status: p.status,
         createdAt: p.createdAt.toISOString(),
         days: p.activatedDays ?? 30,

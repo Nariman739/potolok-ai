@@ -3,7 +3,7 @@ import { put, del } from "@vercel/blob";
 import { compressPhoto } from "@/lib/compress-photo";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope } from "@/lib/company";
+import { getScope, currencyFor } from "@/lib/company";
 import { priceBookCompanyId, updateOwnItem, isOwnVariant, toV2 } from "@/lib/price-items";
 
 /**
@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       if (existing.role === "canvas" && name !== undefined) data.name = name; else delete data.name;
       updated = await prisma.priceItem.update({ where: { id }, data });
     }
-    return NextResponse.json({ item: toV2(updated) });
+    return NextResponse.json({ item: toV2(updated, await currencyFor(scope.ownerId)) });
   } catch (error) {
     if (error instanceof RangeError) return NextResponse.json({ error: error.message }, { status: 400 });
     if (error instanceof Error && error.message === "Unauthorized") {

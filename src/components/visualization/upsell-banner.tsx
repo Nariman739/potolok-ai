@@ -46,7 +46,7 @@ export function UpsellBanner({ billing }: UpsellBannerProps) {
 
   const sub = isProUpgrade
     ? "Лимит обновится в начале месяца. Нужно больше прямо сейчас — напишите нам, добавим."
-    : "Закрывайте больше сделок прямо на замере. PRO за 4 990 ₸/мес — 30 AI-рендеров в месяц.";
+    : "Закрывайте больше сделок прямо на замере. В PRO — 30 AI-рендеров в месяц.";
 
   const ctaLabel = isProUpgrade ? null : "Открыть PRO";
 

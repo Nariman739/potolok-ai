@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { ensureOwnCompany, companyIdFor } from "./company";
-import { DEFAULT_PRICES, PRODUCT_BY_CODE, PRODUCT_ITEMS } from "./constants";
+import { DEFAULT_PRICES, PRODUCT_BY_CODE, PRODUCT_ITEMS, defaultPricesFor } from "./constants";
 import type { CustomItemInfo } from "./calculate";
 
 /**
@@ -88,11 +88,14 @@ export type LegacyPriceItem = {
 };
 
 /** Ответ старого GET /prices: каталог с переопределениями + бывшие CustomItem. */
-export function legacyPricesView(rows: PriceItemRow[]): LegacyPriceItem[] {
+export function legacyPricesView(rows: PriceItemRow[], currency?: string | null): LegacyPriceItem[] {
   const byTemplate = new Map<string, PriceItemRow>();
   for (const r of rows) if (r.templateCode) byTemplate.set(r.templateCode, r);
+  // Дефолт — в валюте мастера (27.10.2026): у рублёвого «сбросить к 450», а не к 1500.
+  const defaults = defaultPricesFor(currency);
   const items: LegacyPriceItem[] = PRODUCT_ITEMS.map((item) => {
     const row = byTemplate.get(item.code);
+    const def = defaults[item.code] ?? item.defaultPrice;
     return {
       code: item.code,
       // Полотно мастер может переименовать («Германская матовая») — отдаём его имя.
@@ -100,12 +103,12 @@ export function legacyPricesView(rows: PriceItemRow[]): LegacyPriceItem[] {
       unit: item.unit,
       category: item.category,
       description: item.description,
-      defaultPrice: item.defaultPrice,
-      price: row?.price ?? item.defaultPrice,
+      defaultPrice: def,
+      price: row?.price ?? def,
       installerPrice: row?.installerPrice ?? null,
       photoUrl: row?.photoUrl ?? null,
       isHidden: row?.isHidden ?? false,
-      isCustom: row != null && row.price !== item.defaultPrice,
+      isCustom: row != null && row.price !== def,
     };
   });
   for (const r of rows) {
@@ -234,7 +237,9 @@ export async function upsertTemplateItem(
 }
 
 /** Прайс новой компании: все каталожные позиции по дефолту (замена createMany MasterPrice при регистрации). */
-export async function seedTemplateItems(companyId: string) {
+export async function seedTemplateItems(companyId: string, currency?: string | null) {
+  // Рублёвому мастеру — рублёвые стартовые цены (27.10.2026).
+  const defaults = defaultPricesFor(currency);
   await prisma.priceItem.createMany({
     data: PRODUCT_ITEMS.map((tpl) => {
       const meta = templateRole(tpl.code);
@@ -249,7 +254,7 @@ export async function seedTemplateItems(companyId: string) {
         category: tpl.category,
         name: tpl.name,
         unit: tpl.unit,
-        price: tpl.defaultPrice,
+        price: defaults[tpl.code] ?? tpl.defaultPrice,
       };
     }),
     skipDuplicates: true,
@@ -386,8 +391,9 @@ export type PriceItemV2 = {
   maxWidthCm: number | null;
 };
 
-export function toV2(r: PriceItemRow): PriceItemV2 {
+export function toV2(r: PriceItemRow, currency?: string | null): PriceItemV2 {
   const tpl = r.templateCode ? PRODUCT_BY_CODE[r.templateCode] : undefined;
+  const def = tpl ? (defaultPricesFor(currency)[tpl.code] ?? tpl.defaultPrice) : null;
   return {
     id: r.id,
     code: r.code,
@@ -399,14 +405,14 @@ export function toV2(r: PriceItemRow): PriceItemV2 {
     name: r.name,
     unit: r.unit,
     price: r.price,
-    defaultPrice: tpl?.defaultPrice ?? null,
+    defaultPrice: def,
     installerPrice: r.installerPrice ?? null,
     photoUrl: r.photoUrl ?? null,
     isHidden: r.isHidden,
     needsReview: r.needsReview,
     sortOrder: r.sortOrder,
     isTemplate: r.templateCode !== null,
-    isCustom: tpl ? r.price !== tpl.defaultPrice : false,
+    isCustom: def != null ? r.price !== def : false,
     maxWidthCm: r.maxWidthCm ?? null,
   };
 }

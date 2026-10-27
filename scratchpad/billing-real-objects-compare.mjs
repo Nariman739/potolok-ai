@@ -36,5 +36,10 @@ for (const r of rows) {
   );
 }
 console.log(`мастеров: ${rows.length}; объектов было ${sumWas} → стало ${sumNow}`);
+// Разбивка KZ/RU по номеру (27.10.2026): реклама только на Казахстан, Россия приходит сама.
+const ru = rows.filter((r) => /^\+79\d{9}$/.test(r.phone));
+const kz = rows.filter((r) => !/^\+79\d{9}$/.test(r.phone));
+const sum = (a, k) => a.reduce((s, r) => s + r[k], 0);
+console.log(`KZ: ${kz.length} мастеров, объектов ${sum(kz, "was")} → ${sum(kz, "now")}; RU (+79): ${ru.length} мастеров, ${sum(ru, "was")} → ${sum(ru, "now")}`);
 const atLimit = rows.filter((r) => r.was >= 10);
 console.log("упирались в лимит по-старому (≥10):", atLimit.map((r) => `${r.firstName} ${r.was}→${r.now}`).join(", ") || "никто");

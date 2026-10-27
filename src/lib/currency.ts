@@ -60,6 +60,18 @@ export function currencyForPhone(phone: string | null | undefined): CurrencyCode
   return /^\+79\d{9}$/.test(phone ?? "") ? "RUB" : "KZT";
 }
 
+/**
+ * Страна правил по валюте (27.10.2026): рубли = мастер из России — договор по
+ * ГК РФ, реквизиты ИНН/ОГРНИП/расчётный счёт, оплата переводом из РФ. Своего
+ * поля «страна» нет: валюта и так выбирается при регистрации по номеру и
+ * меняется в профиле, второй переключатель мастеру ни к чему.
+ */
+export type Jurisdiction = "KZ" | "RU";
+
+export function jurisdictionOf(code: CurrencyCode | string | null | undefined): Jurisdiction {
+  return asCurrency(code) === "RUB" ? "RU" : "KZ";
+}
+
 /** Форма слова по числу: 1 рубль, 2 рубля, 5 рублей; тенге всегда тенге. */
 export function currencyWord(amount: number, code: CurrencyCode | string | null | undefined, lang: "ru" | "kk" = "ru"): string {
   const info = CURRENCIES[asCurrency(code)];

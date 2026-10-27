@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileSignature } from "lucide-react";
-import { tFor, type Lang } from "@/lib/i18n";
-import "@/lib/i18n/contract";
+import { type Lang } from "@/lib/i18n";
+import { contractT } from "@/lib/i18n/contract";
 
-export function SignSection({ publicId, lang = "ru" }: { publicId: string; lang?: Lang }) {
-  const t = tFor(lang);
+export function SignSection({ publicId, lang = "ru", currency }: { publicId: string; lang?: Lang; currency?: string | null }) {
+  // Рублёвый мастер → подпись и паспорт по правилам РФ (27.10.2026).
+  const t = contractT(lang, currency);
   const router = useRouter();
   const [name, setName] = useState("");
   const [passport, setPassport] = useState("");

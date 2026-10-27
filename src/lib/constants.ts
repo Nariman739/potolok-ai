@@ -144,6 +144,79 @@ export const DEFAULT_PRICES: Record<string, number> = Object.fromEntries(
   PRODUCT_ITEMS.map((item) => [item.code, item.defaultPrice])
 );
 
+/**
+ * Стартовые цены в рублях (27.10.2026) — для мастеров из России (валюта RUB).
+ * До этого новичок из РФ получал «полотно 1500» и читал это как 1500 ₽/м² —
+ * втрое выше рынка. Ориентиры рынка РФ 2026 (Авито/Яндекс, оценка окна
+ * рекламы): полотно 450/650/900 ₽/м², пластиковый профиль 150 ₽/м.п.,
+ * теневой 1 200, парящий 1 800, LED 900, софит 400/900, люстра 1 000,
+ * световая линия 3 500. Остальное — те же пропорции (≈ ÷6, круглые числа).
+ * Коэффициент высоты без валюты. Мастер правит всё в «Моём прайсе».
+ */
+export const DEFAULT_PRICES_RUB: Record<string, number> = {
+  canvas_320: 450,
+  canvas_550: 650,
+  canvas_over: 900,
+  profile_plastic: 150,
+  insert: 100,
+  profile_shadow: 1200,
+  profile_floating: 1800,
+  profile_aluminum: 450,
+  led_strip: 900,
+  spot_client: 400,
+  spot_ours: 900,
+  spot_pair_client: 800,
+  spot_pair_ours: 1500,
+  pendant: 300,
+  pendant_install: 500,
+  vent: 2500,
+  chandelier: 400,
+  chandelier_install: 1000,
+  transformer: 1500,
+  track_magnetic: 3500,
+  light_line: 3500,
+  curtain_ldsp: 600,
+  curtain_aluminum: 900,
+  gardina_plastic: 700,
+  gardina_aluminum: 1800,
+  gardina_single: 2500,
+  pk14: 2500,
+  podshtornik_plastic: 450,
+  podshtornik_ldsp: 900,
+  podshtornik_aluminum: 1400,
+  corner_plastic: 150,
+  corner_aluminum: 800,
+  corner_rounded: 800,
+  corner_furniture_bypass: 350,
+  corner_furniture_planned: 250,
+  pipe_bypass: 500,
+  eurobrus: 900,
+  diffuser: 2500,
+  vent_grille: 2500,
+  demontage: 100,
+  min_order: 15000,
+  height_coefficient: 1.3,
+  install_canvas: 150,
+  install_profile: 50,
+  install_spot: 150,
+  install_chandelier: 500,
+  install_track: 900,
+  install_lightline: 700,
+  install_curtain: 250,
+  install_gardina: 350,
+  install_corner: 100,
+  install_pipe: 150,
+};
+
+/** Дефолтные цены каталога в валюте мастера: тенге — как в PRODUCT_ITEMS, рубли — DEFAULT_PRICES_RUB. */
+export function defaultPricesFor(currency: string | null | undefined): Record<string, number> {
+  return currency === "RUB" ? { ...DEFAULT_PRICES, ...DEFAULT_PRICES_RUB } : DEFAULT_PRICES;
+}
+
+export function defaultPriceFor(code: string, currency: string | null | undefined): number | undefined {
+  return defaultPricesFor(currency)[code];
+}
+
 export const PRODUCT_BY_CODE: Record<string, ProductItem> = Object.fromEntries(
   PRODUCT_ITEMS.map((item) => [item.code, item])
 );

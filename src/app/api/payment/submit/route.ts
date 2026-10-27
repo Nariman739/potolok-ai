@@ -6,6 +6,7 @@ import { quotePayment, notifyAdminAboutPayment } from "@/lib/payment";
 import type { BillingPeriod } from "@/lib/billing";
 import type { PaymentMethod } from "@/lib/payment";
 import { reportError } from "@/lib/report-error";
+import { currencyFor } from "@/lib/company";
 
 /**
  * Заявка на оплату вручную (Kaspi-перевод + скрин чека). Срок и сумма
@@ -43,12 +44,14 @@ export async function POST(request: Request) {
     }
 
     // Пока стартовая цена — всегда месяц, даже если клиент прислал "year".
-    const quote = quotePayment(period);
+    // Сумма в валюте мастера: ₽ для России (27.10.2026).
+    const quote = quotePayment(period, new Date(), await currencyFor(master.id));
 
     const payment = await prisma.pendingPayment.create({
       data: {
         masterId: master.id,
         amount: quote.amount,
+        currency: quote.currency,
         activatedDays: quote.days,
         screenshotUrl: screenshotUrl?.trim() || null,
         comment: (comment ?? "").trim() || null,

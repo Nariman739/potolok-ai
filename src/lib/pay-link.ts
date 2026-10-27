@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
-import { LAUNCH_PRICE_MONTH, PRICE_MONTH, isLaunchPriceOpen } from "@/lib/billing";
+import { isLaunchPriceOpen, pricesFor } from "@/lib/billing";
+import { currencyFor } from "@/lib/company";
+import { formatMoney } from "@/lib/currency";
 
 /**
  * Ссылка на оплату с автовходом (25.10.2026). Мастер нажимает её в Telegram
@@ -31,10 +33,6 @@ export async function mintPayLink(masterId: string, ttlMs = PAY_LINK_TTL_MS): Pr
     data: { masterId, token, platform: null, expiresAt: new Date(Date.now() + ttlMs) },
   });
   return `${siteUrl()}/api/auth/bridge?bt=${token}&redirect=${encodeURIComponent("/pricing")}`;
-}
-
-function fmtTenge(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n) + " ₸";
 }
 
 export type NudgeKind = "grace" | "blocked";
@@ -66,7 +64,12 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
   if (!m.telegramChatId && devices === 0) return false;
 
   const url = await mintPayLink(masterId);
-  const price = fmtTenge(isLaunchPriceOpen() ? LAUNCH_PRICE_MONTH : PRICE_MONTH);
+  // Цена и способ — по валюте: из России платят переводом (Золотая Корона,
+  // Сбер, Т-Банк), карты РФ и Kaspi у них не работают (27.10.2026).
+  const currency = await currencyFor(masterId).catch(() => "KZT" as const);
+  const prices = pricesFor(currency);
+  const price = formatMoney(isLaunchPriceOpen() ? prices.launchMonth : prices.month, currency);
+  const how = currency === "RUB" ? "оплата переводом из России за 5 минут" : "оплата картой или Kaspi за минуту";
   const name = m.firstName ? `${m.firstName}, ` : "";
 
   // Сначала отметка, потом отправка: если пуш/Telegram упадут, повтор будет
@@ -76,10 +79,10 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
   const tgText =
     kind === "grace"
       ? `${name}бесплатные объекты закончились — этот замер мы сохранили «в долг», следующий будет только с PRO.\n\n` +
-        `PRO — ${price} в месяц. Нажмите, войдёте сразу под своим аккаунтом, оплата картой или Kaspi за минуту:\n${url}\n\n` +
+        `PRO — ${price} в месяц. Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}\n\n` +
         `Всё, что вы уже сделали, остаётся открытым в любом случае.`
       : `${name}для нового объекта нужен тариф PRO — ${price} в месяц.\n\n` +
-        `Нажмите, войдёте сразу под своим аккаунтом, оплата картой или Kaspi за минуту:\n${url}\n\n` +
+        `Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}\n\n` +
         `Старые замеры и КП открыты, ничего не пропадёт.`;
 
   if (m.telegramChatId) {

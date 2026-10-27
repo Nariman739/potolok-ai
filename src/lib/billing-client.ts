@@ -46,6 +46,8 @@ export type BillingStatus = {
   graceUsed: boolean;
   /** Можно ли создать новый объект прямо сейчас. */
   canCreateObject: boolean;
+  /** Валюта цен ниже: KZT — тенге, RUB — рубли (мастер из России, 27.10.2026). */
+  currency: "KZT" | "RUB";
   prices: {
     month: number;
     year: number;

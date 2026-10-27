@@ -1320,7 +1320,9 @@ model LogoGeneration {
 model PendingPayment {
   id            String        @id @default(uuid())
   masterId      String
-  amount        Int // ₸: 3000 (Founder mo 1-3) / 9999 (Standard)
+  amount        Int // сумма в currency: ₸ 1990/4990 или ₽ 390/990 (27.10.2026)
+  /// Валюта суммы: KZT или RUB (мастер из России платит переводом в ₽)
+  currency      String        @default("KZT")
   promocode     String? // POTOLOKFEST и т.д.
   screenshotUrl String? // Vercel Blob URL чека
   comment       String? // от юзера
@@ -1561,4 +1563,23 @@ model GeometryArchive {
   createdAt     DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Библиотека фото элементов потолка для КП (26.10.2026): трек, световая линия,
+/// теневой профиль, парящий, шторка для ванны, вытяжка, софиты… Фото показываются
+/// на странице «Как это будет выглядеть», если у мастера нет своего фото к позиции.
+/// Выбор фото случайный, но закреплён за КП (seed = id КП).
+model KpLibraryPhoto {
+  id        String   @id @default(uuid())
+  kind      String // ключ типа из src/lib/kp/kinds.ts
+  url       String // Vercel Blob
+  width     Int?
+  height    Int?
+  caption   String? // подпись к конкретному фото (необязательно)
+  source    String? // откуда (pinterest pin / мастер / своё)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([kind, active])
 }

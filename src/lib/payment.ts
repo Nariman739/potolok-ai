@@ -9,10 +9,15 @@ import {
   PRICE_MONTH,
   PRICE_YEAR,
   LAUNCH_PRICE_MONTH,
+  PRICE_MONTH_RUB,
+  PRICE_YEAR_RUB,
+  LAUNCH_PRICE_MONTH_RUB,
   LAUNCH_PRICE_UNTIL,
   isLaunchPriceOpen,
+  pricesFor,
   type BillingPeriod,
 } from "@/lib/billing";
+import { asCurrency, formatMoney, type CurrencyCode } from "@/lib/currency";
 import type { Master, PendingPayment } from "@/generated/prisma/client";
 
 /** Сколько дней подписки даёт одна оплата. */
@@ -53,19 +58,23 @@ function getWhatsappGroupUrl(): string | null {
   return process.env.WHATSAPP_GROUP_INVITE_URL ?? null;
 }
 
-export function getPaymentConfig() {
+/** Цены и реквизиты для /pricing — в валюте мастера (₽ для России, 27.10.2026). */
+export function getPaymentConfig(currency: CurrencyCode | string | null | undefined = "KZT") {
+  const cur = asCurrency(currency);
+  const p = pricesFor(cur);
   return {
     kaspiPhone: getKaspiPhone(),
     kaspiReceiverName: getKaspiReceiverName(),
-    priceMonth: PRICE_MONTH,
-    priceYear: PRICE_YEAR,
-    launchPriceMonth: LAUNCH_PRICE_MONTH,
+    currency: cur,
+    priceMonth: p.month,
+    priceYear: p.year,
+    launchPriceMonth: p.launchMonth,
     launchPriceUntil: LAUNCH_PRICE_UNTIL.toISOString(),
   };
 }
 
 /**
- * Сумма и срок одной оплаты. Зависит только от даты, не от мастера
+ * Сумма и срок одной оплаты. Зависит от даты и валюты мастера, не от него самого
  * (Master.monthlyPrice не участвует: у 505 мастеров там 9 999 с прошлой эпохи).
  * Пока открыта стартовая цена — только месяц по LAUNCH_PRICE_MONTH: годовой
  * оплаты нет, чтобы не фиксировать низкую цену на год (решение 14.10).
@@ -73,16 +82,20 @@ export function getPaymentConfig() {
 export function quotePayment(
   period: BillingPeriod = "month",
   now = new Date(),
-): { amount: number; days: number; period: BillingPeriod; launch: boolean } {
+  currency: CurrencyCode | string | null | undefined = "KZT",
+): { amount: number; days: number; period: BillingPeriod; launch: boolean; currency: CurrencyCode } {
+  const cur = asCurrency(currency);
+  const rub = cur === "RUB";
   if (isLaunchPriceOpen(now)) {
-    return { amount: LAUNCH_PRICE_MONTH, days: DAYS_MONTH, period: "month", launch: true };
+    return { amount: rub ? LAUNCH_PRICE_MONTH_RUB : LAUNCH_PRICE_MONTH, days: DAYS_MONTH, period: "month", launch: true, currency: cur };
   }
-  if (period === "year") return { amount: PRICE_YEAR, days: DAYS_YEAR, period, launch: false };
-  return { amount: PRICE_MONTH, days: DAYS_MONTH, period, launch: false };
+  if (period === "year") return { amount: rub ? PRICE_YEAR_RUB : PRICE_YEAR, days: DAYS_YEAR, period, launch: false, currency: cur };
+  return { amount: rub ? PRICE_MONTH_RUB : PRICE_MONTH, days: DAYS_MONTH, period, launch: false, currency: cur };
 }
 
-function formatTenge(amount: number): string {
-  return new Intl.NumberFormat("ru-RU").format(amount) + "₸";
+/** «1 990 ₸» / «390 ₽» — по валюте заявки. */
+function fmtAmount(payment: Pick<PendingPayment, "amount" | "currency">): string {
+  return formatMoney(payment.amount, payment.currency);
 }
 
 function formatDate(d: Date | null | undefined): string {
@@ -113,17 +126,22 @@ export async function notifyAdminAboutPayment(
   const m = payment.master;
   const days = payment.activatedDays ?? DAYS_MONTH;
   const founderInfo = payment.createdAt < LAUNCH_PRICE_UNTIL ? " · стартовая цена" : "";
+  // Мастер из России переводит рубли на Kaspi (Золотая Корона / Сбер / Т-Банк):
+  // на карту приходят тенге по курсу, сумма в ₽ — ориентир (27.10.2026).
+  const fromRf = payment.currency === "RUB";
 
   const lines = [
     method === "invoice"
-      ? `🧾 <b>Выставь счёт в Kaspi Pay</b>\nНомер: <code>${m.phone}</code>, сумма: <b>${formatTenge(payment.amount)}</b>. Оплатит — жми ✅.`
-      : `💰 <b>Новая оплата</b>`,
+      ? `🧾 <b>Выставь счёт в Kaspi Pay</b>\nНомер: <code>${m.phone}</code>, сумма: <b>${fmtAmount(payment)}</b>. Оплатит — жми ✅.`
+      : fromRf
+        ? `💰 <b>Новая оплата — перевод из России</b>`
+        : `💰 <b>Новая оплата</b>`,
     ``,
     `<b>От:</b> ${m.firstName ?? ""} ${m.lastName ?? ""}`.trim(),
     `<b>Телефон:</b> <code>${m.phone}</code>`,
     m.email ? `<b>Email:</b> ${m.email}` : null,
     m.companyName ? `<b>Компания:</b> ${m.companyName}` : null,
-    `<b>Сумма:</b> ${formatTenge(payment.amount)} за ${days === DAYS_YEAR ? "год" : "месяц"}${founderInfo}`,
+    `<b>Сумма:</b> ${fmtAmount(payment)} за ${days === DAYS_YEAR ? "год" : "месяц"}${founderInfo}${fromRf ? " · на Kaspi придут тенге по курсу" : ""}`,
     `<b>Сейчас:</b> ${m.paidUntil ? `оплачено до ${formatDate(m.paidUntil)}` : "без подписки"}`,
     payment.comment ? `<b>Комментарий:</b> ${payment.comment}` : null,
   ].filter(Boolean) as string[];
@@ -150,7 +168,7 @@ export async function notifyAdminAboutPayment(
   const who = [m.firstName, m.lastName].filter(Boolean).join(" ").trim() || m.phone;
   await notifyOwnerPush(
     method === "invoice" ? "🧾 Выставь счёт в Kaspi Pay" : "💰 Чек об оплате — проверь",
-    `${who} · ${formatTenge(payment.amount)}. Подтверди в Telegram-боте.`,
+    `${who} · ${fmtAmount(payment)}${fromRf ? " · перевод из РФ" : ""}. Подтверди в Telegram-боте.`,
   ).catch((err) => console.error("notifyOwnerPush failed:", err));
 }
 
@@ -286,7 +304,7 @@ export async function notifyUserAboutPaymentDecision(params: {
       await sendTelegramMessage(
         chatId,
         `❌ <b>Оплата не подтверждена</b>\n\n` +
-        `Сумма: ${formatTenge(payment.amount)}\n` +
+        `Сумма: ${fmtAmount(payment)}\n` +
         (payment.reviewNotes ? `Причина: ${payment.reviewNotes}\n` : ``) +
         `\nСвяжитесь с поддержкой: ${getKaspiPhone()}`,
       );
@@ -306,11 +324,11 @@ export async function notifyUserAboutPaymentDecision(params: {
   const lines = [
     `✅ <b>Оплата принята!</b>`,
     ``,
-    `Сумма: ${formatTenge(payment.amount)}`,
+    `Сумма: ${fmtAmount(payment)}`,
     `PRO активен до: <b>${until}</b>`,
   ];
   if (isLaunchPriceOpen()) {
-    lines.push(``, `До ${formatDate(LAUNCH_PRICE_UNTIL)} продление — тоже ${formatTenge(LAUNCH_PRICE_MONTH)}/мес.`);
+    lines.push(``, `До ${formatDate(LAUNCH_PRICE_UNTIL)} продление — тоже ${formatMoney(pricesFor(payment.currency).launchMonth, payment.currency)}/мес.`);
   }
 
   await sendTelegramMessage(chatId, lines.join("\n"));

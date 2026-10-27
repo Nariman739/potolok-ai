@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope } from "@/lib/company";
-import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
+import { getScope, currencyFor } from "@/lib/company";
+import { checkTemplate, explainCheck, contractPlaceholdersFor } from "@/lib/contract-template";
+import { jurisdictionOf } from "@/lib/currency";
 import { asLang } from "@/lib/i18n";
 import { reportError } from "@/lib/report-error";
 
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
       // Своего текста ещё нет — мастер работает по типовому из кода.
       template: active,
       history,
-      placeholders: CONTRACT_PLACEHOLDERS,
+      // Пояснения к меткам по стране мастера: ИНН/ОГРНИП для России (27.10.2026).
+      placeholders: contractPlaceholdersFor(jurisdictionOf(await currencyFor(scope.ownerId))),
       canEdit: scope.isOwner,
     });
   } catch (error) {

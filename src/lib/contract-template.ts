@@ -39,6 +39,19 @@ export const CONTRACT_PLACEHOLDERS = [
 export type PlaceholderKey = (typeof CONTRACT_PLACEHOLDERS)[number]["key"];
 
 /**
+ * Пояснения к меткам по стране мастера (27.10.2026): в России у заказчика
+ * ИНН или паспорт, у исполнителя — ИНН/ОГРНИП, расчётный счёт, БИК.
+ */
+export function contractPlaceholdersFor(jurisdiction: "KZ" | "RU"): { key: PlaceholderKey; about: string }[] {
+  if (jurisdiction !== "RU") return [...CONTRACT_PLACEHOLDERS];
+  const ru: Partial<Record<PlaceholderKey, string>> = {
+    иин_клиента: "ИНН или паспорт заказчика",
+    реквизиты_исполнителя: "ИНН/ОГРНИП, расчётный счёт, банк, БИК",
+  };
+  return CONTRACT_PLACEHOLDERS.map((p) => ({ key: p.key, about: ru[p.key] ?? p.about }));
+}
+
+/**
  * Метки, без которых договор не документ. Остальные мастер вправе убрать:
  * кто-то не указывает срок, кто-то работает без предоплаты.
  */

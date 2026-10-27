@@ -176,7 +176,7 @@ export default async function EstimateDetailPage({
         contractSignerName={estimate.contractSignerName}
         clientPhone={estimate.clientPhone}
         contractConfigured={isContractConfigured(master)}
-        missingRequisites={missingContractFields(master)}
+        missingRequisites={missingContractFields(master, master.currency)}
         defaultPrepaymentPercent={master.prepaymentPercent ?? 50}
         workStartDate={estimate.workStartDate ? estimate.workStartDate.toISOString() : null}
         workDurationDays={estimate.workDurationDays}

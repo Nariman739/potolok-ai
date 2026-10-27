@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { currencyFor, getScope } from "@/lib/company";
-import { currencySymbol } from "@/lib/currency";
+import { currencySymbol, jurisdictionOf } from "@/lib/currency";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { checkAiBudget, recordAiUsage, masterRole, computeCostFromUsage } from "@/lib/ai-cost-cap";
-import { checkTemplate, explainCheck, CONTRACT_PLACEHOLDERS } from "@/lib/contract-template";
+import { checkTemplate, explainCheck, contractPlaceholdersFor } from "@/lib/contract-template";
 import { asLang } from "@/lib/i18n";
 import { aiLogStart, aiLogFinish } from "@/lib/ai-log";
 import { reportError } from "@/lib/report-error";
@@ -70,10 +70,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const tags = CONTRACT_PLACEHOLDERS.map((p) => `{${p.key}} — ${p.about}`).join("\n");
     // Пример суммы в промпте — в валюте мастера, иначе модель вставит «₸» в рублёвый договор (07.10.2026)
-    const sym = currencySymbol(await currencyFor(scope.ownerId));
-    const system = `Ты правишь ДОГОВОР мастера натяжных потолков в Казахстане. Мастер говорит, что поменять, ты возвращаешь договор целиком с учётом правки.
+    const currency = await currencyFor(scope.ownerId);
+    const sym = currencySymbol(currency);
+    // Рубли = мастер из России: договор по ГК РФ, реквизиты ИНН/ОГРНИП (27.10.2026).
+    const jur = jurisdictionOf(currency);
+    const tags = contractPlaceholdersFor(jur).map((p) => `{${p.key}} — ${p.about}`).join("\n");
+    const country =
+      jur === "RU"
+        ? "в России. Договор — по законодательству Российской Федерации (ГК РФ, Закон «О защите прав потребителей»); ссылок на законы Казахстана быть не должно"
+        : "в Казахстане";
+    const system = `Ты правишь ДОГОВОР мастера натяжных потолков ${country}. Мастер говорит, что поменять, ты возвращаешь договор целиком с учётом правки.
 
 ЖЁСТКИЕ ПРАВИЛА
 1. Верни ТОЛЬКО текст договора. Без пояснений, без «вот ваш договор», без разметки кода.

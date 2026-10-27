@@ -1,8 +1,8 @@
 import type { CalculationResult, RoomResult } from "./types";
 import { asLang, tFor, formatDocDate, type Lang } from "./i18n";
-import "./i18n/contract";
+import { contractT } from "./i18n/contract";
 import { fillTemplate, type PlaceholderKey } from "./contract-template";
-import { asCurrency, currencySymbol, currencyWord, type CurrencyCode } from "./currency";
+import { asCurrency, currencySymbol, currencyWord, jurisdictionOf, type CurrencyCode } from "./currency";
 
 export interface MasterData {
   /** Валюта владельца компании (KZT/RUB); пусто — тенге (07.10.2026) */
@@ -260,7 +260,7 @@ export function generateContractHtml(
   language: Lang | string = "ru"
 ): string {
   const lang = asLang(language);
-  const t = tFor(lang);
+  const t = contractT(lang, master.currency);
   const isIp = master.contractType === "ip";
   const kind = isIp ? "ip" : "ind";
   const contractNum = estimate.publicId.slice(0, 8).toUpperCase();
@@ -315,7 +315,7 @@ export function generateContractHtml(
       ${master.legalAddress ? `<p>${t("ct.lbl.address")}: ${esc(master.legalAddress)}</p>` : ""}
       ${master.bankName ? `<p>${t("ct.lbl.bank")}: ${esc(master.bankName)}</p>` : ""}
       ${master.iban ? `<p>${t("ct.lbl.iban")}: ${esc(master.iban)}</p>` : ""}
-      ${master.kbe ? `<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>` : ""}
+      ${master.kbe && jurisdictionOf(master.currency) === "KZ" ? `<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>` : ""}
       ${master.bik ? `<p>${t("ct.lbl.bik")}: ${esc(master.bik)}</p>` : ""}
       <p>${t("ct.lbl.phone")}: ${esc(getMasterPhone(master))}</p>
       <br>
@@ -511,7 +511,7 @@ export function generateActHtml(
   language: Lang | string = "ru"
 ): string {
   const lang = asLang(language);
-  const t = tFor(lang);
+  const t = contractT(lang, master.currency);
   const kind = master.contractType === "ip" ? "ip" : "ind";
   const contractNum = act.publicId.slice(0, 8).toUpperCase();
   const actDate = fmtDate(act.actDate, lang);
@@ -842,7 +842,8 @@ function executorRequisites(master: MasterData, t: T): string {
     if (master.legalAddress) lines.push(`<p>${t("ct.lbl.address")}: ${esc(master.legalAddress)}</p>`);
     if (master.bankName) lines.push(`<p>${t("ct.lbl.bank")}: ${esc(master.bankName)}</p>`);
     if (master.iban) lines.push(`<p>${t("ct.lbl.iban")}: ${esc(master.iban)}</p>`);
-    if (master.kbe) lines.push(`<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>`);
+    // КБе — казахстанский код; в российских реквизитах его нет (27.10.2026).
+    if (master.kbe && jurisdictionOf(master.currency) === "KZ") lines.push(`<p>${t("ct.lbl.kbe")}: ${esc(master.kbe)}</p>`);
     if (master.bik) lines.push(`<p>${t("ct.lbl.bik")}: ${esc(master.bik)}</p>`);
   } else {
     if (master.iin) lines.push(`<p>${t("ct.lbl.iin")}: ${esc(master.iin)}</p>`);
@@ -870,7 +871,7 @@ export function contractPlaceholderValues(
   language: Lang | string = "ru",
 ): Record<PlaceholderKey, string> {
   const lang = asLang(language);
-  const t = tFor(lang);
+  const t = contractT(lang, master.currency);
   const total = estimate.total;
   const cur = asCurrency(master.currency);
   const schedule = scheduleOf(master, estimate, t);
@@ -926,7 +927,7 @@ export function renderContractTemplate(
   language: Lang | string = "ru",
 ): string {
   const lang = asLang(language);
-  const t = tFor(lang);
+  const t = contractT(lang, master.currency);
   const total = estimate.total;
   const cur = asCurrency(master.currency);
   const schedule = scheduleOf(master, estimate, t);
