@@ -20,6 +20,8 @@ const INSTALL_MAP: Record<string, string> = {
   profile_plastic: "install_profile",
   insert: "install_profile",
   profile_shadow: "install_profile",
+  profile_gapless: "install_profile",
+  profile_aluminum: "install_profile",
   profile_floating: "install_profile",
   spot_client: "install_spot",
   spot_ours: "install_spot",

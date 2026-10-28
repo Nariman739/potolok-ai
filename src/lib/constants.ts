@@ -38,6 +38,8 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "profile_plastic", name: "Пластиковый профиль", unit: "м.п.", defaultPrice: 500, category: "profile", description: "Багет (под галтель или вставку)" },
   { code: "insert", name: "Вставка", unit: "м.п.", defaultPrice: 600, category: "profile", description: "Маскировочная лента" },
   { code: "profile_shadow", name: "Теневой профиль", unit: "м.п.", defaultPrice: 5000, category: "profile", description: "Алюминиевый теневой зазор" },
+  // Нариман 28.10.2026: бесщелевой — алюминиевый профиль, полотно заходит вплотную, без щели.
+  { code: "profile_gapless", name: "Бесщелевой профиль", unit: "м.п.", defaultPrice: 9000, category: "profile", description: "Алюминиевый без щели, полотно вплотную к стене" },
   { code: "profile_floating", name: "Парящий профиль", unit: "м.п.", defaultPrice: 9000, category: "profile", description: "Алюминиевый с подсветкой" },
   // Серик 2026-05-20: добавлены алюминиевый профиль и подсветка
   // для расчёта новых типов профиля периметра (билд 53).
@@ -171,6 +173,7 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   profile_plastic: 200,
   insert: 70,
   profile_shadow: 1200,
+  profile_gapless: 1800,
   profile_floating: 1800,
   profile_aluminum: 350,
   led_strip: 800,
@@ -264,6 +267,7 @@ export const PROFILE_TYPES = [
   { code: "profile_galtel", label: "Под галтель", description: "Только профиль" },
   { code: "profile_insert", label: "Со вставкой", description: "Профиль + вставка" },
   { code: "profile_shadow", label: "Теневой", description: "Алюминиевый" },
+  { code: "profile_gapless", label: "Бесщелевой", description: "Алюминиевый, без щели" },
   { code: "profile_floating", label: "Парящий", description: "Алюминиевый" },
 ] as const;
 
@@ -284,6 +288,7 @@ export const PROFILE_CORNER_MAP: Record<string, string> = {
   profile_galtel: "corner_plastic",
   profile_insert: "corner_plastic",
   profile_shadow: "corner_aluminum",
+  profile_gapless: "corner_aluminum",
   profile_floating: "corner_aluminum",
 };
 

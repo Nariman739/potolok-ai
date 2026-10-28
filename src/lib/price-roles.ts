@@ -39,6 +39,7 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   profile_plastic: { role: "wall", appliesTo: ["pvc_insert", "pvc"], wallKind: { withInsert: true } },
   insert: { role: "wall", appliesTo: ["pvc_insert", "aluminum_insert"], wallKind: { companion: true } },
   profile_shadow: { role: "wall", appliesTo: ["shadow"], wallKind: { aluminumCorners: true } },
+  profile_gapless: { role: "wall", appliesTo: ["gapless"], wallKind: { aluminumCorners: true } },
   profile_floating: { role: "wall", appliesTo: ["floating"], wallKind: { aluminumCorners: true } },
   profile_aluminum: { role: "wall", appliesTo: ["aluminum_insert", "aluminum"], wallKind: { withInsert: true, aluminumCorners: true } },
   led_strip: { role: "wall", appliesTo: ["subcurtain_light"], wallKind: { companion: true } },
