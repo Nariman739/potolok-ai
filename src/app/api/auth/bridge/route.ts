@@ -156,7 +156,7 @@ function linkPreviewCard(redirect: string) {
   const isPay = redirect.startsWith("/pricing");
   const title = isPay ? "Оплата PotolokAI PRO" : "Вход в PotolokAI";
   const desc = isPay
-    ? "Откройте ссылку — вход выполнится сам, оплата картой или Kaspi за минуту."
+    ? "Откройте ссылку — вход выполнится сам, оплата картой за минуту."
     : "Откройте ссылку — вход выполнится автоматически.";
   const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title>` +
     `<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">` +

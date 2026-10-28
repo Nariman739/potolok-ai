@@ -3,6 +3,6 @@ let res = await fetch(`${API}/auth/login`, { method:"POST", headers:{"Content-Ty
 const cookie = res.headers.get("set-cookie")?.split(";")[0];
 console.log("логин на проде:", res.status);
 const H = { "Content-Type":"application/json", Cookie: cookie };
-res = await fetch(`${API}/objects`, { headers: H });
+res = await fetch(`${API}/today`, { headers: H });
 const t = await res.text();
-console.log("GET /objects:", res.status, res.status === 200 ? `✅ НОВЫЙ КОД В ПРОДЕ, строк: ${JSON.parse(t).length}` : `❌ ${t.slice(0,80)}`);
+console.log("GET /today:", res.status, res.status === 200 ? `✅ НОВЫЙ КОД В ПРОДЕ, toWorkshop: ${JSON.parse(t).toWorkshop.length}` : `❌ ${t.slice(0,80)}`);
