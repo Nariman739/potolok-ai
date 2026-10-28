@@ -65,6 +65,9 @@ export interface RoomElement {
    * AI-промпт включает spec и опционально фото товара как reference.
    */
   priceVariantId?: string;
+  /** Софит: код стандартного типа из каталога (spot_ours = GX53, spot_bh53, spot_bh10).
+   *  Свой софит — через priceVariantId. Пусто — без типа, как раньше (28.10.2026, см. lib/spot-types.ts). */
+  spotType?: string;
   /**
    * @deprecated Legacy-поля для подшторника «через выступы». Текущая
    * single-anchor модель хранит сторону через `wallIndex` (anchor) +

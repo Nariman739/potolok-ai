@@ -6,6 +6,7 @@ import { getScope } from "@/lib/company";
 import {
   VARIANT_CATEGORIES,
   createOwnItem,
+  isOwnVariant,
   legacyVariantsView,
   loadPriceItems,
   priceBookCompanyId,
@@ -138,6 +139,15 @@ export async function POST(request: NextRequest) {
     }
 
     const companyId = await priceBookCompanyId(scope.ownerId);
+    // Двойное сохранение (28.10.2026): в базе «Софит3650» × 11, «спот» × 5 у одного
+    // мастера — повторные POST с тем же именем. Такая позиция в категории уже есть →
+    // возвращаем её, а не плодим дубли (как делает /prices/v2).
+    const existing = (await loadPriceItems(companyId)).find(
+      (r) => isOwnVariant(r) && r.category === category && r.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (existing) {
+      return NextResponse.json(toLegacyVariant(existing, scope.ownerId));
+    }
     const item = await createOwnItem(companyId, {
       category,
       name,

@@ -78,6 +78,9 @@ export interface RoomInput {
   spotPairsCount?: number;
   /** Кол-во троек софитов — отдельной позицией в КП. */
   spotTriplesCount?: number;
+  /** «Наши» софиты с типом (28.10.2026): строка КП на каждый тип. code — стандартный
+   *  (spot_bh53…), variantId — свой софит из прайса. Софиты без типа остаются в spotsCount. */
+  spotsByType?: { code?: string; variantId?: string; count: number }[];
   trackMagneticLength: number;
   lightLineLength: number;
   curtainRodLength: number;
@@ -152,6 +155,8 @@ export interface LineItem {
   variantId?: string;
   /** Прямая ссылка на фото варианта, чтобы публичная страница не делала лишних запросов */
   photoUrl?: string;
+  /** Код монтажной позиции для наряда монтажнику, когда itemCode не каталожный (свой софит → install_spot). */
+  installCode?: string;
 }
 
 export interface RoomResult {

@@ -45,6 +45,8 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
 
   spot_client: { role: "point", appliesTo: ["spot"] },
   spot_ours: { role: "point", appliesTo: ["spot"] },
+  spot_bh53: { role: "point", appliesTo: ["spot"] },
+  spot_bh10: { role: "point", appliesTo: ["spot"] },
   spot_pair_client: { role: "point", appliesTo: ["spot_pair"] },
   spot_pair_ours: { role: "point", appliesTo: ["spot_pair"] },
   pendant: { role: "point", appliesTo: ["pendant"] },

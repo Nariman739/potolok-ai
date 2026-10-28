@@ -15,6 +15,7 @@ export interface CustomItemInfo {
   name: string;
   unit: string;
   price: number;
+  photoUrl?: string | null;
 }
 
 function getPrice(prices: PriceMap, code: string): number {
@@ -60,7 +61,8 @@ function getCanvasCode(room: RoomInput): string {
 function calculateRoom(
   room: RoomInput,
   prices: PriceMap,
-  customItemsMap?: Record<string, CustomItemInfo>
+  customItemsMap?: Record<string, CustomItemInfo>,
+  ownItemsById?: Record<string, CustomItemInfo>
 ): RoomResult {
   // Площадь натяжного потолка: вычитаем мебель «до потолка» (она съедает площадь).
   const furnitureArea = room.furnitureCeilingArea ?? 0;
@@ -120,6 +122,30 @@ function calculateRoom(
     const spotCode = room.spotType || "spot_ours";
     const spotItem = makeLineItem(spotCode, room.spotsCount, prices);
     if (spotItem) items.push(spotItem);
+  }
+  // Типы софитов (28.10.2026): строка на каждый тип, как в мобилке. Свой софит —
+  // позиция прайса по id (ownItemsById); удалённый из прайса считается как GX53.
+  for (const g of room.spotsByType ?? []) {
+    if (g.count <= 0) continue;
+    if (g.variantId) {
+      const info = ownItemsById?.[g.variantId];
+      if (info) {
+        items.push({
+          itemCode: info.code,
+          itemName: info.name,
+          quantity: g.count,
+          unit: info.unit || "шт.",
+          unitPrice: info.price,
+          total: Math.round(info.price * g.count),
+          variantId: g.variantId,
+          photoUrl: info.photoUrl ?? undefined,
+          installCode: "install_spot",
+        });
+        continue;
+      }
+    }
+    const it = makeLineItem(g.code && PRODUCT_BY_CODE[g.code] ? g.code : "spot_ours", g.count, prices);
+    if (it) items.push(it);
   }
   const spotPairs = room.spotPairsCount ?? 0;
   if (spotPairs > 0) {
@@ -304,7 +330,9 @@ export function calculate(
   rooms: RoomInput[],
   prices: PriceMap,
   customItemsMap?: Record<string, CustomItemInfo>,
-  extraItems?: ExtraItem[]
+  extraItems?: ExtraItem[],
+  /** Свои позиции прайса по id — для софитов с типом «свой вариант» (28.10.2026). */
+  ownItemsById?: Record<string, CustomItemInfo>
 ): CalculationResult {
   const totalArea = rooms.reduce((sum, r) => sum + computeArea(r), 0);
   const totalPerimeter = rooms.reduce(
@@ -317,7 +345,7 @@ export function calculate(
     0
   );
 
-  const roomResults = rooms.map((room) => calculateRoom(room, prices, customItemsMap));
+  const roomResults = rooms.map((room) => calculateRoom(room, prices, customItemsMap, ownItemsById));
 
   const roomsSubtotal = roomResults.reduce(
     (sum, rr) => sum + rr.subtotalAfterHeight,

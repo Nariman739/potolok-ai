@@ -8,7 +8,7 @@ import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
 import type { CalculationResult, RoomInput } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
-import { priceBookCompanyId, priceMapFor, customItemsMapFor } from "@/lib/price-items";
+import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 
 interface DesignerPayload {
@@ -96,12 +96,15 @@ export async function POST(
     const companyId = await priceBookCompanyId(scope.ownerId);
     const priceMap = await priceMapFor(companyId);
     const customItemsMap = await customItemsMapFor(companyId);
+    const ownItemsById = await ownItemsByIdFor(companyId);
 
     const existingForAdjust = estimate;
     const baseCalc: CalculationResult = calculate(
       newRoomsData,
       priceMap,
-      customItemsMap
+      customItemsMap,
+      undefined,
+      ownItemsById
     );
     // calculate() даёт цены по прайсу (без посредника) — накладываем скидку и
     // посредника КП заново, иначе пересчёт одной комнаты сбрасывал бы оба.

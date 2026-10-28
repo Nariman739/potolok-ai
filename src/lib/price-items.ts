@@ -56,6 +56,17 @@ export async function priceMapFor(companyId: string): Promise<Record<string, num
   return map;
 }
 
+/** Свои позиции прайса (бывшие PriceVariant) по id — для софитов с типом «свой вариант» (28.10.2026). */
+export async function ownItemsByIdFor(companyId: string): Promise<Record<string, CustomItemInfo>> {
+  const rows = await prisma.priceItem.findMany({
+    where: { companyId, deletedAt: null, templateCode: null, code: { startsWith: "own:" } },
+    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true },
+  });
+  const map: Record<string, CustomItemInfo> = {};
+  for (const r of rows) map[r.id] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl };
+  return map;
+}
+
 /** Свои штучные позиции веб-калькулятора (бывший CustomItem) по коду. */
 export async function customItemsMapFor(companyId: string): Promise<Record<string, CustomItemInfo>> {
   const rows = await prisma.priceItem.findMany({

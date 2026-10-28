@@ -51,6 +51,10 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // Лишние строки только мешали в прайсе.
   { code: "spot_client", name: "Софиты клиентские (установка)", unit: "шт.", defaultPrice: 2500, category: "spot", description: "Клиент даёт софит — мы только устанавливаем" },
   { code: "spot_ours", name: "Софиты GX53 с установкой", unit: "шт.", defaultPrice: 3500, category: "spot", description: "Наш софит + установка" },
+  // Нариман 28.10.2026: типы софитов. Абзал весь свет писал в КП руками («Сафиты скрытые 18 × 7000»),
+  // потому что в каталоге был только GX53. Тип выбирается в дизайнере ДО постановки, в КП — строка на тип.
+  { code: "spot_bh53", name: "Софит BH53 с установкой", unit: "шт.", defaultPrice: 7000, category: "spot", description: "Наш софит BH53 + установка" },
+  { code: "spot_bh10", name: "Софит BH10 с установкой", unit: "шт.", defaultPrice: 7000, category: "spot", description: "Наш софит BH10 + установка" },
 
   // Серик 2026-05-21: двойные софиты — отдельная категория, чтобы мастер
   // мог в прайсе грузить фото своих парных моделей и выставлять цену
@@ -172,6 +176,8 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   led_strip: 800,
   spot_client: 400,
   spot_ours: 900,
+  spot_bh53: 1800,
+  spot_bh10: 1800,
   spot_pair_client: 800,
   spot_pair_ours: 1500,
   pendant: 300,
@@ -264,6 +270,8 @@ export const PROFILE_TYPES = [
 export const SPOT_TYPES = [
   { code: "spot_client", label: "Клиентские" },
   { code: "spot_ours", label: "GX53 (наши)" },
+  { code: "spot_bh53", label: "BH53 (наши)" },
+  { code: "spot_bh10", label: "BH10 (наши)" },
 ] as const;
 
 export const CORNER_TYPES = [

@@ -23,6 +23,8 @@ const INSTALL_MAP: Record<string, string> = {
   profile_floating: "install_profile",
   spot_client: "install_spot",
   spot_ours: "install_spot",
+  spot_bh53: "install_spot",
+  spot_bh10: "install_spot",
   spot_double: "install_spot",
   chandelier: "install_chandelier",
   chandelier_install: "install_chandelier",
@@ -126,9 +128,13 @@ export async function GET(
       const seen = new Set<string>();
 
       for (const item of (rr.items ?? []) as LineItem[]) {
-        const installCode = INSTALL_MAP[item.itemCode];
-        if (!installCode || seen.has(installCode)) continue;
-        seen.add(installCode);
+        const installCode = item.installCode ?? INSTALL_MAP[item.itemCode];
+        if (!installCode) continue;
+        // Софиты разных типов (28.10.2026) — каждая строка монтируется отдельно;
+        // для остального дубли по коду монтажа схлопываем (профиль + вставка = один монтаж).
+        const seenKey = installCode === "install_spot" ? `${installCode}:${item.itemCode}` : installCode;
+        if (seen.has(seenKey)) continue;
+        seen.add(seenKey);
 
         const price = getInstallPrice(installCode);
         if (price <= 0) continue;

@@ -11,6 +11,7 @@ import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 // Только серверно-безопасные модули: room-designer.tsx — "use client", и в
 // Next 16 его функции с сервера звать нельзя (500 в recalc-room, 27.10.2026).
 import { getVertices } from "@/lib/room-geometry";
+import { spotTypeKey, parseSpotTypeKey } from "@/lib/spot-types";
 import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
 
 interface DesignerRoom {
@@ -36,6 +37,9 @@ interface DesignerElement {
   length?: number;
   variant?: "ours" | "client";
   ceilingMode?: "decor" | "to-ceiling" | "planned";
+  /** Софит: тип (28.10.2026) — стандартный код или свой вариант из прайса. */
+  spotType?: string;
+  priceVariantId?: string;
 }
 
 /**
@@ -63,9 +67,31 @@ export function buildRoomInputFromDesigner(
     else if (size >= 3) spotTriplesCount++;
   }
   const singleSpots = allSpots.filter((s) => !(s as { groupId?: string }).groupId);
-  const spotsOurs = singleSpots.filter((e) => e.variant !== "client").length;
+  // Типы софитов (28.10.2026): «наши» с типом на элементе (spotType / priceVariantId)
+  // идут отдельными строками по типу; без типа — как раньше, через spotsCount/spotType.
+  const typedGroups = new Map<string, { code?: string; variantId?: string; count: number }>();
+  let spotsOurs = 0;
+  for (const e of singleSpots) {
+    if (e.variant === "client") continue;
+    const key = spotTypeKey(e);
+    if (!key) { spotsOurs++; continue; }
+    const ref = parseSpotTypeKey(key)!;
+    const g = typedGroups.get(key) ?? (ref.kind === "code" ? { code: ref.code, count: 0 } : { variantId: ref.variantId, count: 0 });
+    g.count++;
+    typedGroups.set(key, g);
+  }
   const spotsClient = singleSpots.filter((e) => e.variant === "client").length;
+  const legacySpotType: string | undefined =
+    existing?.spotType ??
+    (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined);
+  // Типизированные GX53 сливаем со старой строкой, если она и так GX53 — иначе две одинаковые строки.
+  const gx = typedGroups.get("t:spot_ours");
+  if (gx && (legacySpotType === "spot_ours" || legacySpotType === undefined)) {
+    spotsOurs += gx.count;
+    typedGroups.delete("t:spot_ours");
+  }
   const spotsCount = spotsOurs + spotsClient;
+  const spotsByType = [...typedGroups.values()];
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
   const ventCount = els.filter((e) => e.type === "vent").length;
@@ -131,13 +157,8 @@ export function buildRoomInputFromDesigner(
     canvasType: (existing?.canvasType ?? "matte") as CanvasType,
     profileType: profileTypeForRoom,
     spotsCount,
-    spotType:
-      existing?.spotType ??
-      (spotsClient > 0 && spotsOurs === 0
-        ? "spot_client"
-        : spotsOurs > 0
-          ? "spot_ours"
-          : undefined),
+    spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,
+    spotsByType: spotsByType.length > 0 ? spotsByType : undefined,
     chandelierCount,
     chandelierInstallCount:
       existing?.chandelierInstallCount ?? chandelierCount,
