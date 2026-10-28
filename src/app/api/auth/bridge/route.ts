@@ -46,6 +46,14 @@ export async function GET(request: Request) {
 
   // ── Modern path: single-use bridge token ─────────────────────────────
   if (bridgeToken) {
+    // Превью ссылки в мессенджере (28.10.2026): WhatsApp/Telegram сами
+    // открывают ссылку при вставке, чтобы нарисовать карточку, — и сжигали
+    // одноразовый токен, мастер попадал на форму пароля вместо оплаты.
+    // Ботам превью отдаём карточку, токен не трогаем.
+    if (isLinkPreviewBot(request.headers.get("user-agent") ?? "")) {
+      return linkPreviewCard(safeRedirect);
+    }
+
     // Single-use consume: delete-by-token, then check expiry on the deleted row.
     // Race-safe: if two requests arrive concurrently, only one delete returns a row.
     const consumed = await prisma.bridgeToken
@@ -134,6 +142,29 @@ async function setPlatformCookie(platform: string | null) {
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24,
+  });
+}
+
+const PREVIEW_BOT_UA =
+  /WhatsApp|facebookexternalhit|Facebot|TelegramBot|Twitterbot|Slackbot|Discordbot|vkShare|Viber|SkypeUriPreview|LinkedInBot|Googlebot|bingbot|YandexBot|Applebot/i;
+
+function isLinkPreviewBot(ua: string): boolean {
+  return PREVIEW_BOT_UA.test(ua);
+}
+
+function linkPreviewCard(redirect: string) {
+  const isPay = redirect.startsWith("/pricing");
+  const title = isPay ? "Оплата PotolokAI PRO" : "Вход в PotolokAI";
+  const desc = isPay
+    ? "Откройте ссылку — вход выполнится сам, оплата картой или Kaspi за минуту."
+    : "Откройте ссылку — вход выполнится автоматически.";
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title>` +
+    `<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">` +
+    `<meta property="og:site_name" content="potolok.ai"><meta name="robots" content="noindex"></head>` +
+    `<body>${title}</body></html>`;
+  return new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
 
