@@ -29,7 +29,11 @@ async function main() {
       if (existing.has(source)) { skipped++; continue; }
       // ужать: sips -Z 1600 → во временный файл (jpeg)
       const tmp = path.join(os.tmpdir(), `kp-lib-${sha}.jpg`);
-      execFileSync("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "85", "-Z", "1600", src, "--out", tmp], { stdio: "ignore" });
+      // sips -Z растягивает маленькие картинки до 1600 — ужимаем только большие
+      const srcDims = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", src]).toString();
+      const srcMax = Math.max(Number(/pixelWidth: (\d+)/.exec(srcDims)?.[1]), Number(/pixelHeight: (\d+)/.exec(srcDims)?.[1]));
+      const resize = srcMax > 1600 ? ["-Z", "1600"] : [];
+      execFileSync("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "85", ...resize, src, "--out", tmp], { stdio: "ignore" });
       const dims = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", tmp]).toString();
       const width = Number(/pixelWidth: (\d+)/.exec(dims)?.[1]), height = Number(/pixelHeight: (\d+)/.exec(dims)?.[1]);
       const blob = await put(`kp-library/${kind}/${sha}.jpg`, fs.readFileSync(tmp), { access: "public", contentType: "image/jpeg", addRandomSuffix: false });

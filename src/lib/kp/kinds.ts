@@ -14,6 +14,7 @@ export type KpKind =
   | "track"
   | "lightline"
   | "shadow"
+  | "seamless"
   | "floating"
   | "curtain"
   | "shower_curtain"
@@ -31,7 +32,7 @@ export type KpKind =
   | "canvas_gloss";
 
 export const KP_KINDS: KpKind[] = [
-  "track", "lightline", "shadow", "floating", "curtain", "shower_curtain", "subcurtain",
+  "track", "lightline", "shadow", "seamless", "floating", "curtain", "shower_curtain", "subcurtain",
   "vent", "chandelier", "spot_gx53", "spot_recessed", "spot", "spot_platform",
   "insert", "galtel", "canvas_matte", "canvas_satin", "canvas_gloss",
 ];
@@ -41,6 +42,7 @@ export const KIND_INFO: Record<KpKind, { label: string; caption: string }> = {
   track: { label: "Магнитный трек", caption: "Шина в потолке, по которой свободно двигаются светильники: споты, линейные, подвесы — меняются без электрика" },
   lightline: { label: "Световая линия", caption: "Ровная полоса света прямо в полотне, без видимых светильников — освещает мягко и равномерно" },
   shadow: { label: "Теневой профиль", caption: "Потолок не касается стены: по периметру тонкий тёмный зазор вместо плинтуса — выглядит как дорогой гипсокартон" },
+  seamless: { label: "Безщелевой профиль", caption: "Потолок подходит к стене вплотную: ни зазора, ни вставки, ни плинтуса — чистая линия стыка" },
   floating: { label: "Парящий потолок", caption: "Подсветка по периметру из-под кромки полотна — потолок будто висит в воздухе" },
   curtain: { label: "Гардина", caption: "Ниша под шторы прямо в потолке: карниз спрятан, шторы идут от самого потолка" },
   shower_curtain: { label: "Шторка для ванны", caption: "Потолочная направляющая под шторку в душевой — без штанги между стенами" },
@@ -63,6 +65,7 @@ export const FOLDER_TO_KIND: Record<string, KpKind> = {
   "трек": "track",
   "световая-линия": "lightline",
   "теневой": "shadow",
+  "безщелевой": "seamless",
   "парящий": "floating",
   "гардина": "curtain",
   "гардина-ванная": "shower_curtain",
@@ -82,9 +85,13 @@ export const FOLDER_TO_KIND: Record<string, KpKind> = {
 
 /** Тип по названию позиции расчёта; null — не распознали. */
 export function kindFromItemName(name: string): KpKind | null {
-  // «Профиль (без вставки)» — не вставка; само «без вставки» просто вычёркиваем,
-  // чтобы «Полотно матовое без вставки» осталось полотном
-  const n = name.toLowerCase().replace(/ё/g, "е").replace(/без\s+вставк\S*/g, "");
+  const raw = name.toLowerCase().replace(/ё/g, "е");
+  // Безщелевой — только по слову (28.10.2026). «Профиль (без вставки)» — это
+  // НЕ безщелевой: Нариман — обычный пластиковый багет без вставки ставят под
+  // галтель. «Без вставки» вычёркиваем, чтобы не поймалось как вставка
+  // («Полотно матовое без вставки» — полотно)
+  if (/бе[сз]\s*щелев|без\s*щел/.test(raw)) return "seamless";
+  const n = raw.replace(/без\s+вставк\S*/g, "");
   if (/закладн/.test(n) && /софит|спот|светильник/.test(n)) return "spot_platform";
   if (/закладн/.test(n) && /люстр/.test(n)) return "chandelier";
   if (/трек|трэк|track/.test(n)) return "track";
