@@ -44,6 +44,10 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
         const v = form.get("noInsert");
         updates.noInsert = v === "1" || v === "true";
       }
+      if (form.has("withInsert")) {
+        const v = form.get("withInsert");
+        updates.withInsert = v === "1" || v === "true";
+      }
       if (form.has("category")) {
         const cat = String(form.get("category") || "");
         if (!VARIANT_CATEGORIES.includes(cat)) {
@@ -92,6 +96,7 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
       }
       if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
       if (body.noInsert !== undefined) updates.noInsert = body.noInsert === true || body.noInsert === "true";
+      if (body.withInsert !== undefined) updates.withInsert = body.withInsert === true || body.withInsert === "true";
       if (body.category !== undefined) {
         const cat = String(body.category);
         if (!VARIANT_CATEGORIES.includes(cat)) {

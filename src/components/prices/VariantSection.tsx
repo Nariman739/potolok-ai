@@ -43,6 +43,8 @@ export interface PriceVariant {
   photoUrl: string | null;
   sortOrder: number;
   noInsert?: boolean;
+  /** свой багет: на него ставится вставка (30.10.2026) */
+  withInsert?: boolean;
   // 3D / AI-визуализация
   physicalWidthMm?: number | null;
   physicalHeightMm?: number | null;
@@ -191,6 +193,7 @@ export function VariantDialog({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
   const [noInsert, setNoInsert] = useState(false);
+  const [withInsert, setWithInsert] = useState(false);
   // 3D-параметры (опц.)
   const [physicalWidthMm, setPhysicalWidthMm] = useState<string>("");
   const [physicalHeightMm, setPhysicalHeightMm] = useState<string>("");
@@ -212,6 +215,7 @@ export function VariantDialog({
       setRemovePhoto(false);
       setCategory(state.variant.category);
       setNoInsert(!!state.variant.noInsert);
+      setWithInsert(!!state.variant.withInsert);
       setPhysicalWidthMm(state.variant.physicalWidthMm != null ? String(state.variant.physicalWidthMm) : "");
       setPhysicalHeightMm(state.variant.physicalHeightMm != null ? String(state.variant.physicalHeightMm) : "");
       setColorHex(state.variant.colorHex ?? "");
@@ -232,6 +236,7 @@ export function VariantDialog({
       setRemovePhoto(false);
       setCategory(state.category);
       setNoInsert(false);
+      setWithInsert(false);
       setPhysicalWidthMm("");
       setPhysicalHeightMm("");
       setColorHex("");
@@ -285,6 +290,7 @@ export function VariantDialog({
       form.append("unit", unit);
       form.append("price", String(priceNum));
       form.append("noInsert", noInsert ? "1" : "0");
+      form.append("withInsert", withInsert ? "1" : "0");
       if (photoFile) form.append("photo", photoFile);
       if (removePhoto && state.mode === "edit") form.append("removePhoto", "1");
       // 3D-параметры (опц.) — отправляем только если заполнены, иначе null
@@ -470,20 +476,25 @@ export function VariantDialog({
             </div>
           </div>
 
-          {/* noInsert flag — только для профилей */}
+          {/* Вставка на свой багет (30.10.2026): по умолчанию нет — свои профили чаще
+              теневые/парящие/на керамогранит. Галочка добавит строку «Вставка» на
+              стены с этим профилем. */}
           {(state?.mode === "edit" ? category : state?.category) === "profile" && (
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={noInsert}
-                  onChange={(e) => setNoInsert(e.target.checked)}
+                  checked={withInsert}
+                  onChange={(e) => {
+                    setWithInsert(e.target.checked);
+                    if (e.target.checked) setNoInsert(false);
+                  }}
                   className="h-4 w-4 rounded border-input"
                 />
-                <span className="text-sm">Без вставки (для теневых и парящих профилей)</span>
+                <span className="text-sm">На него ставится вставка</span>
               </label>
               <p className="text-xs text-muted-foreground">
-                В КП при выборе этого варианта позиция «Вставка» не будет добавлена.
+                Стены с этим багетом получат в КП отдельную строку «Вставка» (если вставка не убрана на объекте).
               </p>
             </div>
           )}

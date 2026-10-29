@@ -154,6 +154,8 @@ export type LegacyVariant = {
   installerPrice: number | null;
   photoUrl: string | null;
   noInsert: boolean;
+  /** Свой багет: на него ставится вставка (30.10.2026). Телефон добавляет «Вставка» на такие стены. */
+  withInsert: boolean;
   sortOrder: number;
   physicalWidthMm: number | null;
   physicalHeightMm: number | null;
@@ -188,6 +190,7 @@ export function toLegacyVariant(r: PriceItemRow, masterId: string): LegacyVarian
     installerPrice: r.installerPrice ?? null,
     photoUrl: r.photoUrl ?? null,
     noInsert: wk.noInsert === true,
+    withInsert: wk.withInsert === true,
     sortOrder: r.sortOrder,
     physicalWidthMm: r.physicalWidthMm ?? null,
     physicalHeightMm: r.physicalHeightMm ?? null,
@@ -281,6 +284,8 @@ export type OwnItemInput = {
   photoUrl?: string | null;
   sortOrder?: number;
   noInsert?: boolean;
+  /** свой багет: на него ставится вставка (по умолчанию нет) */
+  withInsert?: boolean;
   physicalWidthMm?: number | null;
   physicalHeightMm?: number | null;
   colorHex?: string | null;
@@ -293,7 +298,7 @@ export type OwnItemInput = {
 /** Своя позиция (бывший PriceVariant.create). Роль — по категории и имени. */
 export async function createOwnItem(companyId: string, input: OwnItemInput) {
   const id = crypto.randomUUID();
-  const inferred = inferRole(input.category, input.name, input.noInsert ?? false);
+  const inferred = inferRole(input.category, input.name, input.noInsert ?? false, input.withInsert ?? false);
   return prisma.priceItem.create({
     data: {
       id,
@@ -336,10 +341,11 @@ export async function updateOwnItem(existing: PriceItemRow, updates: Partial<Own
   const category = updates.category ?? existing.category ?? "other";
   const name = updates.name ?? existing.name;
   const noInsert = updates.noInsert ?? wk.noInsert ?? false;
+  const withInsert = updates.withInsert ?? wk.withInsert ?? false;
   // Бывший CustomItem живёт в category "custom" — на него ссылаются room.customItems веб-калькулятора,
   // роль и категорию не пересчитываем (ревью 01.10.2026).
-  if (existing.category !== "custom" && (updates.category !== undefined || updates.name !== undefined || updates.noInsert !== undefined)) {
-    const inferred = inferRole(category, name, noInsert);
+  if (existing.category !== "custom" && (updates.category !== undefined || updates.name !== undefined || updates.noInsert !== undefined || updates.withInsert !== undefined)) {
+    const inferred = inferRole(category, name, noInsert, withInsert);
     data.role = inferred.role;
     data.appliesTo = inferred.appliesTo ?? [];
     data.wallKind = inferred.wallKind ?? null;

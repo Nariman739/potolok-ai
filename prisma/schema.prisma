@@ -751,6 +751,10 @@ model MeasurementObject {
   /// считаются из главного КП по ставкам раздела «Для бригады». Формат —
   /// WorkOrderLinesDoc в src/lib/work-order-lines.ts; installerFee = их сумма.
   workOrderLines     Json?
+  /// «Убрать вставку везде» (30.10.2026): по умолчанию вставка идёт на пластиковый,
+  /// алюминиевый багет и евробрус во всех комнатах; этот флаг выключает её на
+  /// объекте целиком, точечно комната включает обратно через MeasurementRoom.withInsert.
+  noInsert           Boolean   @default(false)
 
   measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
   installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)
@@ -802,9 +806,14 @@ model MeasurementRoom {
   elements         Json     @default("[]") // RoomElement[] — софиты, люстры, гардины и т.д.
   // Per-стена тип профиля периметра: Record<wallIndex, WallProfileType>.
   // "floating" = парящий, "subcurtain" = подшторник, ldsp/eurobrus и т.д.
-  // Default = "pvc_insert" для отсутствующих ключей. Хранить надо чтобы
+  // Default = "pvc" (пластиковый багет) для отсутствующих ключей. Хранить надо чтобы
   // выбор «парящий на стене 1» переживал save→load с сервера (раньше терялся).
+  // С 30.10.2026 «со вставкой / без» — не тип стены, а флаг withInsert ниже;
+  // старые значения pvc_insert/aluminum_insert телефон мигрирует при загрузке.
   wallProfiles     Json? // Record<number, WallProfileType | variantId>
+  // Вставка в этой комнате: null — как на объекте (MeasurementObject.noInsert),
+  // true/false — мастер решил для комнаты отдельно («везде галтели, в туалете вставка»).
+  withInsert       Boolean?
   // Per-комната выбор кастомных вариантов из прайса мастера:
   // Record<positionType, variantId>. При расчёте КП в estimate.tsx
   // переопределяет дефолтные позиции (canvas, profile, spot, etc.).

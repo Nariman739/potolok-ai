@@ -16,7 +16,8 @@
 export type PriceRole = "canvas" | "wall" | "point" | "linear" | "corner" | "extra" | "param" | "install";
 
 export type WallKind = {
-  /** стена идёт со вставкой (пластик/алюминий со вставкой) */
+  /** На этот багет ставится вставка (30.10.2026: пластик, алюминий, евробрус — да;
+   *  свой профиль мастера — только если он сам поставил галочку, по умолчанию нет). */
   withInsert?: boolean;
   /** углы в комнате алюминиевые (теневой/парящий/алюминий) */
   aluminumCorners?: boolean;
@@ -36,12 +37,14 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   canvas_550: { role: "canvas", maxWidthCm: 550 },
   canvas_over: { role: "canvas", maxWidthCm: null },
 
-  profile_plastic: { role: "wall", appliesTo: ["pvc_insert", "pvc"], wallKind: { withInsert: true } },
-  insert: { role: "wall", appliesTo: ["pvc_insert", "aluminum_insert"], wallKind: { companion: true } },
+  // «Со вставкой / без» — больше не тип стены (30.10.2026): вставка идёт отдельной
+  // позицией на pvc/aluminum/eurobrus, если не снята на объекте или в комнате.
+  profile_plastic: { role: "wall", appliesTo: ["pvc"], wallKind: { withInsert: true } },
+  insert: { role: "wall", appliesTo: ["pvc", "aluminum", "eurobrus"], wallKind: { companion: true } },
   profile_shadow: { role: "wall", appliesTo: ["shadow"], wallKind: { aluminumCorners: true } },
   profile_gapless: { role: "wall", appliesTo: ["gapless"], wallKind: { aluminumCorners: true } },
   profile_floating: { role: "wall", appliesTo: ["floating"], wallKind: { aluminumCorners: true } },
-  profile_aluminum: { role: "wall", appliesTo: ["aluminum_insert", "aluminum"], wallKind: { withInsert: true, aluminumCorners: true } },
+  profile_aluminum: { role: "wall", appliesTo: ["aluminum"], wallKind: { withInsert: true, aluminumCorners: true } },
   led_strip: { role: "wall", appliesTo: ["subcurtain_light"], wallKind: { companion: true } },
 
   spot_client: { role: "point", appliesTo: ["spot"] },
@@ -141,14 +144,20 @@ export function parseRollWidthCm(name: string): number | null {
   return null;
 }
 
-export function inferRole(category: string, name: string, noInsert = false): RoleMeta & { needsReview: boolean; category: string } {
+export function inferRole(
+  category: string,
+  name: string,
+  noInsert = false,
+  /** Свой багет: мастер сказал «на него ставится вставка». По умолчанию — нет (Нариман 30.10.2026). */
+  withInsert = false,
+): RoleMeta & { needsReview: boolean; category: string } {
   if (EXTRA_NAME_RE.test(name)) {
     return { role: "extra", needsReview: category !== "other" && category !== "custom", category };
   }
   const base = CATEGORY_ROLES[category] ?? CATEGORY_ROLES.other;
   const meta: RoleMeta = { ...base, wallKind: base.wallKind ? { ...base.wallKind } : undefined };
   if (meta.role === "wall") {
-    meta.wallKind = { ...(meta.wallKind ?? {}), noInsert, withInsert: category === "profile" ? !noInsert : false };
+    meta.wallKind = { ...(meta.wallKind ?? {}), noInsert, withInsert: category === "profile" ? withInsert : false };
   }
   return { ...meta, needsReview: false, category };
 }

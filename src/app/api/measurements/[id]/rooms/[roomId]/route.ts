@@ -12,7 +12,7 @@ export async function PATCH(
     const scope = await getScope(master);
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d, withInsert } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
@@ -28,6 +28,8 @@ export async function PATCH(
       wallProfiles?: Record<number, string>;
       variantOverrides?: Record<string, string>;
       previewUrl3d?: string | null;
+      /** Вставка в комнате: true/false — решение мастера, null — как на объекте (30.10.2026) */
+      withInsert?: boolean | null;
     };
 
     // Verify ownership
@@ -56,6 +58,7 @@ export async function PATCH(
     if (wallProfiles !== undefined) data.wallProfiles = wallProfiles;
     if (variantOverrides !== undefined) data.variantOverrides = variantOverrides;
     if (previewUrl3d !== undefined) data.previewUrl3d = previewUrl3d;
+    if (withInsert !== undefined) data.withInsert = typeof withInsert === "boolean" ? withInsert : null;
 
     const result = await prisma.measurementRoom.updateMany({
       where: { id: roomId, objectId: id },

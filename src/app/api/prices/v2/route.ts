@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Позиции в прайс компании добавляет её владелец" }, { status: 403 });
     }
     const body = (await request.json().catch(() => ({}))) as {
-      name?: unknown; unit?: unknown; price?: unknown; role?: unknown; appliesTo?: unknown; category?: unknown; installerPrice?: unknown; noInsert?: unknown; maxWidthCm?: unknown;
+      name?: unknown; unit?: unknown; price?: unknown; role?: unknown; appliesTo?: unknown; category?: unknown; installerPrice?: unknown; noInsert?: unknown; withInsert?: unknown; maxWidthCm?: unknown;
     };
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
     const unit = typeof body.unit === "string" ? body.unit : "шт.";
@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
       price,
       installerPrice: installerPrice !== null && Number.isFinite(installerPrice) ? installerPrice : null,
       noInsert: body.noInsert === true,
+      withInsert: body.withInsert === true,
       // Полотно: ширина рулона в см; null — «любая»; не передали — из названия
       ...(body.maxWidthCm === null ? { maxWidthCm: null } : typeof body.maxWidthCm === "number" && body.maxWidthCm >= 100 && body.maxWidthCm <= 600 ? { maxWidthCm: Math.round(body.maxWidthCm) } : {}),
     });

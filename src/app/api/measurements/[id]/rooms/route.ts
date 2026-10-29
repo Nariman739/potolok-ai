@@ -44,6 +44,7 @@ export async function POST(
         elements?: any;
         wallProfiles?: Record<number, string>;
         variantOverrides?: Record<string, string>;
+        withInsert?: boolean | null;
         previewUrl3d?: string;
       };
 
@@ -64,6 +65,7 @@ export async function POST(
           elements: r.elements ?? [],
           wallProfiles: r.wallProfiles ?? undefined,
           variantOverrides: r.variantOverrides ?? undefined,
+          withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
           previewUrl3d: r.previewUrl3d ?? undefined,
           sortOrder: obj._count.rooms + i,
         },

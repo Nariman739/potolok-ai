@@ -57,7 +57,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
   const master = { id: masterId };
   try {
     const body = await request.json();
-    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt } = body as {
+    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt, noInsert } = body as {
       address?: string;
       status?: string;
       latitude?: number;
@@ -66,8 +66,10 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       clientName?: string;
       clientPhone?: string;
       measuredAt?: string; // ISO — когда мастер замерял на объекте (1-я комната)
+      /** «Убрать вставку везде» на объекте (30.10.2026) */
+      noInsert?: boolean;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null }[];
     };
 
     const totalArea = rooms
@@ -128,6 +130,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
         // Дата замера (когда был на объекте). Если клиент не прислал —
         // остаётся null, и в списке fallback на createdAt.
         ...(measuredAt && { measuredAt: new Date(measuredAt) }),
+        ...(typeof noInsert === "boolean" && { noInsert }),
         rooms: rooms
           ? {
               create: rooms.map((r, i) => ({
@@ -145,6 +148,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
                 elements: r.elements || [],
                 wallProfiles: r.wallProfiles ?? undefined,
                 variantOverrides: r.variantOverrides ?? undefined,
+                withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
                 sortOrder: i,
               })),
             }

@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     let photoUrl: string | null = null;
     let sortOrder = 0;
     let noInsert = false;
+    let withInsert = false;
     // 3D-spec поля (опц.)
     let physicalWidthMm: number | null = null;
     let physicalHeightMm: number | null = null;
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
       }
       sortOrder = parseInt(String(form.get("sortOrder") || "0"), 10) || 0;
       noInsert = form.get("noInsert") === "1" || form.get("noInsert") === "true";
+      withInsert = form.get("withInsert") === "1" || form.get("withInsert") === "true";
       if (form.has("physicalWidthMm")) {
         const v = parseInt(String(form.get("physicalWidthMm")), 10);
         physicalWidthMm = Number.isFinite(v) ? v : null;
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
       }
       sortOrder = body.sortOrder ?? 0;
       noInsert = body.noInsert === true || body.noInsert === "true";
+      withInsert = body.withInsert === true || body.withInsert === "true";
       physicalWidthMm = typeof body.physicalWidthMm === "number" ? body.physicalWidthMm : null;
       physicalHeightMm = typeof body.physicalHeightMm === "number" ? body.physicalHeightMm : null;
       colorHex = typeof body.colorHex === "string" ? body.colorHex : null;
@@ -157,6 +160,7 @@ export async function POST(request: NextRequest) {
       photoUrl,
       sortOrder,
       noInsert,
+      withInsert,
       physicalWidthMm,
       physicalHeightMm,
       colorHex,

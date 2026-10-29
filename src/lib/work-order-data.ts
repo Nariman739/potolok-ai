@@ -11,7 +11,7 @@ import { formatMoney, type CurrencyCode } from "@/lib/currency";
 import { summarizeMaterials, type MaterialLine } from "@/lib/object-materials";
 import { pickPrimaryEstimate } from "@/lib/object-stage";
 import type { CalculationResult } from "@/lib/types";
-import { summarizeRoom, mergeSummaries, summaryLines, type PlanRoom } from "@/lib/work-order-plan";
+import { summarizeRoom, mergeSummaries, summaryLines, legacyInsertFlag, type PlanRoom } from "@/lib/work-order-plan";
 import { parseWorkOrderDoc } from "@/lib/work-order-lines";
 
 const include = {
@@ -92,13 +92,19 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     for (const v of Object.values(wp)) if (typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v)) profileIds.add(v);
   }
   const profileNames: Record<string, string> = {};
+  // Свои багеты «со вставкой» (галочка в прайсе, 30.10.2026) — на них в «что ставить» идёт вставка.
+  const profileInsert: Record<string, boolean> = {};
   if (profileIds.size > 0) {
-    const items = await prisma.priceItem.findMany({ where: { id: { in: [...profileIds] } }, select: { id: true, name: true } });
-    for (const it of items) profileNames[it.id] = it.name;
+    const items = await prisma.priceItem.findMany({ where: { id: { in: [...profileIds] } }, select: { id: true, name: true, wallKind: true } });
+    for (const it of items) {
+      profileNames[it.id] = it.name;
+      if ((it.wallKind as { withInsert?: boolean } | null)?.withInsert === true) profileInsert[it.id] = true;
+    }
   }
 
   const planRooms: PlanRoom[] = obj.rooms.map((r) => ({
     profileNames,
+    profileInsert,
     walls: (r.walls as number[]) ?? [],
     angles: r.angles as number[] | null,
     normalCorners: r.normalCorners as boolean[] | null,
@@ -106,6 +112,8 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     cornerRadii: r.cornerRadii as number[] | null,
     elements: r.elements,
     wallProfiles: r.wallProfiles,
+    // Решение комнаты → старые метки «со вставкой/без» в типах стен → настройка объекта.
+    withInsert: r.withInsert ?? legacyInsertFlag(r.wallProfiles) ?? !obj.noInsert,
   }));
   const summaries = planRooms.map(summarizeRoom);
 

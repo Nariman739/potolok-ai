@@ -41,7 +41,7 @@ export async function PATCH(
     const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms } = body as {
+    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms, noInsert } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
@@ -50,8 +50,10 @@ export async function PATCH(
       clientId?: string | null;
       clientName?: string;
       clientPhone?: string;
+      /** «Убрать вставку везде» на объекте (30.10.2026) */
+      noInsert?: boolean;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string> }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null }[];
     };
 
     // Привязка клиента: явный clientId → валидируем; иначе auto-create по имени/телефону.
@@ -97,6 +99,7 @@ export async function PATCH(
         ...(latitude != null && { latitude }),
         ...(longitude != null && { longitude }),
         ...(safeClientId !== undefined && { clientId: safeClientId }),
+        ...(typeof noInsert === "boolean" && { noInsert }),
       },
     });
 
@@ -136,6 +139,8 @@ export async function PATCH(
           elements: r.elements || [],
           wallProfiles: r.wallProfiles ?? undefined,
           variantOverrides: r.variantOverrides ?? undefined,
+          // null = «как на объекте»; телефон шлёт поле всегда, чтобы снятая галочка комнаты доезжала.
+          withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
           sortOrder: i,
         };
         const rid = (r as { id?: string }).id;

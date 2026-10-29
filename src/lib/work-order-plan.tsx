@@ -31,7 +31,33 @@ export type PlanRoom = {
   wallProfiles?: unknown;
   /** Имена своих профилей из прайса по id (wallProfiles хранит id PriceItem) — иначе на чертеже «Профиль свой» (29.10.2026). */
   profileNames?: Record<string, string>;
+  /** Вставка в комнате (30.10.2026): true/false — решено; null/undefined — вывести из старых типов стен, иначе да. */
+  withInsert?: boolean | null;
+  /** Свои профили из прайса, на которые ставится вставка (id → true). */
+  profileInsert?: Record<string, boolean>;
 };
+
+/** Стены, на которые ставится вставка (пластиковый/алюминиевый багет, евробрус). */
+export const INSERT_PROFILE_TYPES = new Set(["pvc", "aluminum", "eurobrus"]);
+
+/**
+ * Старые замеры (до 30.10.2026) хранили «со вставкой / без» в типе стены:
+ * pvc_insert/galtel/aluminum_insert — со вставкой, pvc/no_insert — без.
+ * Возвращает решение комнаты, если такие метки есть; null — меток нет (новые данные).
+ * Без вставки — только когда ВСЕ пластиковые стены помечены «без»: смешанную
+ * комнату (часть стен явно «без», остальные по умолчанию) считаем со вставкой.
+ */
+export function legacyInsertFlag(wallProfiles: unknown): boolean | null {
+  const raw = wallProfiles && typeof wallProfiles === "object" ? Object.values(wallProfiles as Record<string, unknown>) : [];
+  let sawInsert = false, sawNoInsert = false;
+  for (const v of raw) {
+    if (v === "pvc_insert" || v === "galtel" || v === "aluminum_insert") sawInsert = true;
+    else if (v === "pvc" || v === "no_insert") sawNoInsert = true;
+  }
+  if (sawInsert) return true;
+  if (sawNoInsert) return false;
+  return null;
+}
 
 export type Pt = { x: number; y: number };
 
@@ -136,9 +162,8 @@ const LINE_PENCIL: Record<string, { dash?: string; double?: boolean; mul?: numbe
 };
 /** Профили стен карандашом: толщина и рисунок вместо цвета. */
 const PROFILE_PENCIL: Record<string, { dash?: string; double?: boolean; mul: number }> = {
-  pvc: { dash: "6 4", mul: 1 },
-  aluminum_insert: { mul: 1.4 },
-  aluminum: { dash: "6 4", mul: 1.4 },
+  pvc: { mul: 1 },
+  aluminum: { mul: 1.4 },
   shadow: { mul: 2.4 },
   gapless: { mul: 2.4 },
   floating: { double: true, mul: 2.4 },
@@ -170,11 +195,10 @@ const COLORS = {
 } as const;
 
 /** Профили стен: цвет и пунктир как в дизайнере (src/lib/wall-profiles.ts мобилки). */
+// «Со вставкой / без» — больше не тип стены (30.10.2026), вставка — строка в «что ставить».
 const PROFILE_STYLE: Record<string, { color: string; dashed: boolean; mul: number }> = {
-  pvc_insert: { color: "#64748b", dashed: false, mul: 1 },
-  pvc: { color: "#64748b", dashed: true, mul: 1 },
-  aluminum_insert: { color: "#94a3b8", dashed: false, mul: 1.2 },
-  aluminum: { color: "#94a3b8", dashed: true, mul: 1.2 },
+  pvc: { color: "#64748b", dashed: false, mul: 1 },
+  aluminum: { color: "#94a3b8", dashed: false, mul: 1.2 },
   shadow: { color: "#1a1a1a", dashed: false, mul: 1.8 },
   gapless: { color: "#0f766e", dashed: false, mul: 1.8 },
   floating: { color: "#F97316", dashed: false, mul: 1.8 },
@@ -186,8 +210,10 @@ const PROFILE_STYLE: Record<string, { color: string; dashed: boolean; mul: numbe
 const PROFILE_TYPES = Object.keys(PROFILE_STYLE);
 
 export function normalizeProfile(p: unknown): string {
-  if (p === undefined || p === null || p === "" || p === "galtel") return "pvc_insert";
-  if (p === "no_insert") return "pvc";
+  // Дефолт — пластиковый багет; старые «со вставкой / без» сводятся к типу багета,
+  // вставка решается флагом комнаты (legacyInsertFlag / PlanRoom.withInsert).
+  if (p === undefined || p === null || p === "" || p === "galtel" || p === "pvc_insert" || p === "no_insert") return "pvc";
+  if (p === "aluminum_insert") return "aluminum";
   return String(p);
 }
 
@@ -296,12 +322,14 @@ export type RoomSummary = {
   profileWalls: Record<string, string[]>;
   /** Имена своих профилей по id — для подписи в «Итого по объекту». */
   profileNames: Record<string, string>;
+  /** Вставка, см — по стенам с пластиком/алюминием/евробрусом (и своими багетами «со вставкой»), если в комнате она не снята. */
+  insertCm: number;
 };
 
 function emptySummary(): RoomSummary {
   return {
     spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, vents: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
-    curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {}, profileNames: {},
+    curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {}, profileNames: {}, insertCm: 0,
   };
 }
 
@@ -349,10 +377,12 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
   }
   const prof = profilesOf(room);
   const n = room.walls.length;
+  const insertOn = typeof room.withInsert === "boolean" ? room.withInsert : (legacyInsertFlag(room.wallProfiles) ?? true);
   room.walls.forEach((len, i) => {
     const p = prof[i];
     s.profileCm[p] = (s.profileCm[p] ?? 0) + len;
     (s.profileWalls[p] ??= []).push(`${cornerLetter(i)}${cornerLetter((i + 1) % n)}`);
+    if (insertOn && (INSERT_PROFILE_TYPES.has(p) || room.profileInsert?.[p] === true)) s.insertCm += len;
   });
   if (room.profileNames) s.profileNames = { ...room.profileNames };
   return s;
@@ -368,6 +398,7 @@ export function mergeSummaries(list: RoomSummary[]): RoomSummary {
     out.subcurtainCount += s.subcurtainCount; out.subcurtainCm += s.subcurtainCm;
     for (const [k, v] of Object.entries(s.profileCm)) out.profileCm[k] = (out.profileCm[k] ?? 0) + v;
     Object.assign(out.profileNames, s.profileNames);
+    out.insertCm += s.insertCm;
   }
   return out;
 }
@@ -388,12 +419,14 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   if (s.curtainCount) out.push(`${t("wo.el.curtainOnly")}: ${s.curtainCount} ${pcs}${s.curtainCm ? ` · ${m(s.curtainCm)}` : ""}`);
   if (s.subcurtainCount) out.push(`${t("wo.el.subcurtainEl")}: ${s.subcurtainCount} ${pcs}${s.subcurtainCm ? ` · ${m(s.subcurtainCm)}` : ""}`);
   // Профили стен: сначала особые (теневой, парящий, подшторник…), обычный пластик — последним.
-  const types = Object.keys(s.profileCm).sort((a, b) => (a === "pvc_insert" ? 1 : 0) - (b === "pvc_insert" ? 1 : 0));
+  const types = Object.keys(s.profileCm).sort((a, b) => (a === "pvc" ? 1 : 0) - (b === "pvc" ? 1 : 0));
   for (const p of types) {
     const name = profileLabel(p, t, s.profileNames);
     const walls = opts.withWalls && s.profileWalls[p]?.length ? ` (${s.profileWalls[p].join(", ")})` : "";
     out.push(`${name}: ${m(s.profileCm[p])}${walls}`);
   }
+  // Вставка — отдельной строкой, как и в КП (30.10.2026: «багет — одна позиция, вставка — другая»).
+  if (s.insertCm > 0) out.push(`${t("wo.insert")}: ${m(s.insertCm)}`);
   return out;
 }
 
@@ -628,7 +661,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   // 1. Стены с профилем (цвет/пунктир по типу), поверх контура
   walls.forEach((_, i) => {
     const p = prof[i];
-    if (p === "pvc_insert") return; // обычный пластик — просто контур
+    if (p === "pvc") return; // обычный пластик — просто контур
     const { a, b } = wallFrame(i);
     used.add(`prof:${p}`);
     // Клиенту — одна толщина стен: разная толщина читалась как ошибка рендера,
