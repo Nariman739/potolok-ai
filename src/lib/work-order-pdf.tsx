@@ -182,7 +182,7 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
           {model.clientName && <View style={s.row}><Text style={s.k}>{t("wo.client")}:</Text><Text>{model.clientName}</Text></View>}
           {model.clientPhone && <View style={s.row}><Text style={s.k}>{t("wo.clientPhone")}:</Text><Text>{model.clientPhone}</Text></View>}
           {model.masterPhone && <View style={s.row}><Text style={s.k}>{t("wo.questions")}:</Text><Text>{model.masterPhone} ({model.company})</Text></View>}
-          {model.fee && <View style={s.row}><Text style={s.k}>{t("wo.fee")}:</Text><Text style={{ fontWeight: 800 }}>{model.fee}</Text></View>}
+          {model.fee && model.payLines.length === 0 && <View style={s.row}><Text style={s.k}>{t("wo.fee")}:</Text><Text style={{ fontWeight: 800 }}>{model.fee}</Text></View>}
           {model.workshop && <Text style={{ color: "#64748b", marginTop: 2 }}>{model.workshop}</Text>}
         </View>
 
@@ -191,7 +191,7 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
           <View style={s.card}>
             <Text style={s.cardTitle}>{t("wo.payTitle")}</Text>
             {model.payLines.map((l, i) => (
-              <View key={i} style={s.payRow}>
+              <View key={i} style={s.payRow} wrap={false}>
                 <View style={{ flex: 1 }}>
                   <Text>{l.name}</Text>
                   {l.room ? <Text style={s.payRoom}>{l.room}</Text> : null}

@@ -12,8 +12,7 @@ import { summarizeMaterials, type MaterialLine } from "@/lib/object-materials";
 import { pickPrimaryEstimate } from "@/lib/object-stage";
 import type { CalculationResult } from "@/lib/types";
 import { summarizeRoom, mergeSummaries, summaryLines, type PlanRoom } from "@/lib/work-order-plan";
-import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
-import { autoWorkOrderLines, parseWorkOrderDoc, workOrderTotal } from "@/lib/work-order-lines";
+import { parseWorkOrderDoc } from "@/lib/work-order-lines";
 
 const include = {
   rooms: { orderBy: { sortOrder: "asc" as const } },
@@ -99,22 +98,17 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     : null;
   const materials = summarizeMaterials(primaryCalc?.calculationData as CalculationResult | null)?.lines ?? [];
 
-  // Оплата монтажнику построчно (29.10.2026). Приоритет: строки, которые мастер
-  // правил в приложении → одна цифра, вбитая раньше вручную → авто-расчёт по КП.
-  // Иначе мастер, поставивший «50 000» руками, увидел бы в наряде другую сумму.
+  // Оплата монтажнику построчно (29.10.2026): только строки, которые мастер
+  // видел на экране наряда и отправил (или правил). Без них — одна цифра,
+  // вбитая руками, или ничего: ставки, которых мастер не проверял, монтажнику
+  // по старой ссылке не показываем.
   const money = (n: number) => formatMoney(n, currency, localeOf(lang));
   const qtyStr = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ""));
   const doc = parseWorkOrderDoc(obj.workOrderLines);
-  const lines = doc
-    ? doc.lines
-    : obj.installerFee != null
-      ? []
-      : autoWorkOrderLines(primaryCalc?.calculationData as CalculationResult | null, await priceMapFor(await priceBookCompanyIdForMaster(obj.masterId)));
-  const linesTotal = workOrderTotal(lines);
-  const fee = lines.length > 0 ? money(linesTotal) : obj.installerFee != null ? money(obj.installerFee) : null;
-  const payLines: PayLine[] = lines
-    .filter((l) => l.qty > 0 && l.price > 0)
-    .map((l) => ({ room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) }));
+  const paid = (doc?.lines ?? []).filter((l) => l.qty > 0 && l.price > 0);
+  const payLines: PayLine[] = paid.map((l) => ({ room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) }));
+  const payTotal = Math.round(paid.reduce((s, l) => s + l.qty * l.price, 0));
+  const fee = payLines.length > 0 ? money(payTotal) : obj.installerFee != null ? money(obj.installerFee) : null;
 
   const ws = obj.workshopOrders[0];
   return {

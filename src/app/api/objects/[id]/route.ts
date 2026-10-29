@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { syncClientStatusForObject } from "@/lib/clients";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { getScope, inScope } from "@/lib/company";
 import {
   resolveStage,
@@ -253,6 +254,7 @@ export async function PATCH(
       installAt?: Date | null;
       materialCost?: number | null;
       installerPaidAt?: Date | null;
+      workOrderLines?: typeof Prisma.DbNull;
     } = {};
     if ("materialCost" in body) {
       const v = body.materialCost;
@@ -289,6 +291,9 @@ export async function PATCH(
         return NextResponse.json({ error: "Сумма монтажа некорректна" }, { status: 400 });
       }
       data.installerFee = v === null ? null : Math.round(v as number);
+      // Сумма одной цифрой перебивает построчный наряд (29.10.2026) — иначе
+      // «Деньги» и ссылка монтажнику показывали бы разное.
+      data.workOrderLines = Prisma.DbNull;
     }
     if ("installAt" in body) {
       const v = body.installAt;

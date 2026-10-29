@@ -59,7 +59,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
           {m.masterPhone && (
             <p><span className="text-slate-500">{t("wo.questions")}:</span> <a className="text-blue-700 underline" href={`https://wa.me/${m.masterPhone.replace(/\D/g, "")}`}>{m.masterPhone}</a> ({m.company})</p>
           )}
-          {m.fee && (
+          {m.fee && m.payLines.length === 0 && (
             <p className="pt-1 text-lg"><span className="text-slate-500">{t("wo.fee")}:</span> <b>{m.fee}</b></p>
           )}
           {m.workshop && <p className="text-sm text-slate-500">{m.workshop}</p>}
@@ -69,26 +69,22 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
         {m.payLines.length > 0 && (
           <section className="rounded-xl bg-white border border-slate-200 p-4">
             <h2 className="text-lg font-semibold mb-2">{t("wo.payTitle")}</h2>
-            <table className="w-full text-sm">
-              <tbody>
-                {m.payLines.map((l, i) => (
-                  <tr key={i} className="border-t border-slate-100">
-                    <td className="py-1.5 pr-2">
-                      {l.name}
-                      {l.room && <span className="block text-xs text-slate-400">{l.room}</span>}
-                    </td>
-                    <td className="py-1.5 pr-2 text-right text-slate-500 whitespace-nowrap">{l.qty} {l.unit} × {l.price}</td>
-                    <td className="py-1.5 text-right font-semibold whitespace-nowrap">{l.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-200">
-                  <td className="pt-2 font-semibold" colSpan={2}>{t("wo.payTotal")}</td>
-                  <td className="pt-2 text-right text-lg font-bold whitespace-nowrap">{m.fee}</td>
-                </tr>
-              </tfoot>
-            </table>
+            {/* Не таблица: монтажник открывает это на телефоне, три колонки не влезают */}
+            <ul className="text-sm divide-y divide-slate-100">
+              {m.payLines.map((l, i) => (
+                <li key={i} className="py-2 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p>{l.name}</p>
+                    <p className="text-xs text-slate-500">{l.room ? `${l.room} · ` : ""}{l.qty} {l.unit} × {l.price}</p>
+                  </div>
+                  <p className="font-semibold whitespace-nowrap">{l.total}</p>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 pt-2 border-t-2 border-slate-200 flex items-baseline justify-between">
+              <span className="font-semibold">{t("wo.payTotal")}</span>
+              <span className="text-lg font-bold whitespace-nowrap">{m.fee}</span>
+            </div>
           </section>
         )}
 
