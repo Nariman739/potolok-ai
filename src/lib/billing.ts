@@ -231,7 +231,7 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
         ? `Ссылку на оплату отправили вам в Telegram.${rf}`
         : ch.push
           ? `Ссылку на оплату отправили вам уведомлением.${rf}`
-          : `Оформить PRO можно на сайте potolok.ai, раздел «Тарифы» — вход по вашему номеру телефона.${rf}`;
+          : `Состояние тарифа — в профиле приложения.${rf}`;
   return {
     status: 402,
     body: {

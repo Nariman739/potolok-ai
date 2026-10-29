@@ -89,12 +89,16 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
     await sendTelegramMessage(m.telegramChatId, tgText).catch((err) => console.error("pay nudge tg failed:", err));
   }
 
+  // Обещаем только то, что у мастера есть: Telegram у большинства не привязан,
+  // а «ссылка в Telegram» без Telegram — тупик (Болат, 29.10.2026). Android
+  // открывает payUrl из data по тапу, на iPhone пуш ведёт в профиль со счётчиком.
+  const link = m.telegramChatId ? "Ссылка для подключения — в Telegram и по тапу на это уведомление." : "Подробнее — по тапу на это уведомление.";
   await sendPushToMaster(masterId, {
     title: kind === "grace" ? "Этот замер — сверх бесплатных" : "Для нового объекта нужен PRO",
     body:
       kind === "grace"
-        ? "Сохранили его в долг. Следующий — только с PRO. Ссылка для подключения ждёт в Telegram и в профиле."
-        : "Старые замеры и КП открыты. Ссылка для подключения PRO — в Telegram и в профиле.",
+        ? `Сохранили его в долг. Следующий — только с PRO. ${link}`
+        : `Старые замеры и КП открыты. ${link}`,
     data: { screen: "/(tabs)/profile", payUrl: url },
   });
 
