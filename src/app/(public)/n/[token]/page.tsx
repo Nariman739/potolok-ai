@@ -65,6 +65,33 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
           {m.workshop && <p className="text-sm text-slate-500">{m.workshop}</p>}
         </section>
 
+        {/* За что платят — построчно, как мастер проверил в приложении (29.10.2026) */}
+        {m.payLines.length > 0 && (
+          <section className="rounded-xl bg-white border border-slate-200 p-4">
+            <h2 className="text-lg font-semibold mb-2">{t("wo.payTitle")}</h2>
+            <table className="w-full text-sm">
+              <tbody>
+                {m.payLines.map((l, i) => (
+                  <tr key={i} className="border-t border-slate-100">
+                    <td className="py-1.5 pr-2">
+                      {l.name}
+                      {l.room && <span className="block text-xs text-slate-400">{l.room}</span>}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right text-slate-500 whitespace-nowrap">{l.qty} {l.unit} × {l.price}</td>
+                    <td className="py-1.5 text-right font-semibold whitespace-nowrap">{l.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200">
+                  <td className="pt-2 font-semibold" colSpan={2}>{t("wo.payTotal")}</td>
+                  <td className="pt-2 text-right text-lg font-bold whitespace-nowrap">{m.fee}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </section>
+        )}
+
         {m.totals.length > 0 && (
           <section className="rounded-xl bg-white border border-slate-200 p-4">
             <h2 className="text-lg font-semibold mb-2">{t("wo.totalsTitle")}</h2>

@@ -745,6 +745,11 @@ model MeasurementObject {
   installAt          DateTime?
   // Токен публичного наряда монтажнику (/n/[token]) — открывается без установки
   workOrderToken     String?   @unique
+  /// Строки оплаты монтажнику, как их поправил мастер (29.10.2026, Башарлан:
+  /// «чтоб сразу монтажникам скидывать полную детализацию»). null — строки
+  /// считаются из главного КП по ставкам раздела «Для бригады». Формат —
+  /// WorkOrderLinesDoc в src/lib/work-order-lines.ts; installerFee = их сумма.
+  workOrderLines     Json?
 
   measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
   installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)

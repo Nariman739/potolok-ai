@@ -12,6 +12,8 @@ import { summarizeMaterials, type MaterialLine } from "@/lib/object-materials";
 import { pickPrimaryEstimate } from "@/lib/object-stage";
 import type { CalculationResult } from "@/lib/types";
 import { summarizeRoom, mergeSummaries, summaryLines, type PlanRoom } from "@/lib/work-order-plan";
+import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
+import { autoWorkOrderLines, parseWorkOrderDoc, workOrderTotal } from "@/lib/work-order-lines";
 
 const include = {
   rooms: { orderBy: { sortOrder: "asc" as const } },
@@ -42,6 +44,9 @@ export type WorkOrderRoom = {
   lines: string[];
 };
 
+/** Строка оплаты монтажнику, уже с отформатированными суммами. */
+export type PayLine = { room: string; name: string; qty: string; unit: string; price: string; total: string };
+
 export type WorkOrderModel = {
   lang: Lang;
   currency: CurrencyCode;
@@ -55,6 +60,8 @@ export type WorkOrderModel = {
   clientPhone: string | null;
   masterPhone: string | null;
   fee: string | null;
+  /** Детализация «за что»: строки, которые мастер проверил/поправил в приложении (29.10.2026). */
+  payLines: PayLine[];
   workshop: string | null;
   totals: string[];
   materials: MaterialLine[];
@@ -92,6 +99,23 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     : null;
   const materials = summarizeMaterials(primaryCalc?.calculationData as CalculationResult | null)?.lines ?? [];
 
+  // Оплата монтажнику построчно (29.10.2026). Приоритет: строки, которые мастер
+  // правил в приложении → одна цифра, вбитая раньше вручную → авто-расчёт по КП.
+  // Иначе мастер, поставивший «50 000» руками, увидел бы в наряде другую сумму.
+  const money = (n: number) => formatMoney(n, currency, localeOf(lang));
+  const qtyStr = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ""));
+  const doc = parseWorkOrderDoc(obj.workOrderLines);
+  const lines = doc
+    ? doc.lines
+    : obj.installerFee != null
+      ? []
+      : autoWorkOrderLines(primaryCalc?.calculationData as CalculationResult | null, await priceMapFor(await priceBookCompanyIdForMaster(obj.masterId)));
+  const linesTotal = workOrderTotal(lines);
+  const fee = lines.length > 0 ? money(linesTotal) : obj.installerFee != null ? money(obj.installerFee) : null;
+  const payLines: PayLine[] = lines
+    .filter((l) => l.qty > 0 && l.price > 0)
+    .map((l) => ({ room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) }));
+
   const ws = obj.workshopOrders[0];
   return {
     lang,
@@ -105,7 +129,8 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     clientName: obj.client?.name ?? null,
     clientPhone: obj.client?.phone ?? null,
     masterPhone: obj.master.whatsappPhone || obj.master.phone || null,
-    fee: obj.installerFee != null ? formatMoney(obj.installerFee, currency, localeOf(lang)) : null,
+    fee,
+    payLines,
     workshop: ws ? `${t("wo.toWorkshop", { date: formatDocDate(almaty(ws.sentAt), lang) })} · ${ws.roomsCount} ${t("wo.rooms")}` : null,
     totals: summaryLines(mergeSummaries(summaries), lang, { withWalls: false }),
     materials,

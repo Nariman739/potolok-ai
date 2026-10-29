@@ -39,6 +39,12 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", marginRight: 8, marginBottom: 2 },
   legendText: { fontSize: 7.5, color: "#475569" },
   footer: { position: "absolute", bottom: 18, left: 36, right: 36, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: "#94a3b8" },
+  // Оплата монтажнику построчно (29.10.2026)
+  payRow: { flexDirection: "row", alignItems: "flex-start", borderTopWidth: 0.5, borderTopColor: "#e2e8f0", paddingTop: 3, paddingBottom: 3 },
+  payRoom: { fontSize: 7.5, color: "#94a3b8" },
+  payQty: { width: 150, textAlign: "right", color: "#64748b", paddingRight: 8 },
+  paySum: { width: 80, textAlign: "right", fontWeight: 600 },
+  payTotalRow: { flexDirection: "row", alignItems: "center", borderTopWidth: 1.2, borderTopColor: "#cbd5e1", paddingTop: 4, marginTop: 2 },
 });
 
 function PlanSvg({ plan, side = PLAN }: { plan: RoomPlan; side?: number }) {
@@ -179,6 +185,27 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
           {model.fee && <View style={s.row}><Text style={s.k}>{t("wo.fee")}:</Text><Text style={{ fontWeight: 800 }}>{model.fee}</Text></View>}
           {model.workshop && <Text style={{ color: "#64748b", marginTop: 2 }}>{model.workshop}</Text>}
         </View>
+
+        {/* За что платят — построчно (29.10.2026) */}
+        {model.payLines.length > 0 && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>{t("wo.payTitle")}</Text>
+            {model.payLines.map((l, i) => (
+              <View key={i} style={s.payRow}>
+                <View style={{ flex: 1 }}>
+                  <Text>{l.name}</Text>
+                  {l.room ? <Text style={s.payRoom}>{l.room}</Text> : null}
+                </View>
+                <Text style={s.payQty}>{l.qty} {l.unit} × {l.price}</Text>
+                <Text style={s.paySum}>{l.total}</Text>
+              </View>
+            ))}
+            <View style={s.payTotalRow}>
+              <Text style={{ flex: 1, fontWeight: 800 }}>{t("wo.payTotal")}</Text>
+              <Text style={{ fontSize: 12, fontWeight: 800 }}>{model.fee}</Text>
+            </View>
+          </View>
+        )}
 
         {model.totals.length > 0 && (
           <View style={s.card}>

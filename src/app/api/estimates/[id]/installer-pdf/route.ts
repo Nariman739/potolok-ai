@@ -10,36 +10,8 @@ import { DEFAULT_PRICES } from "@/lib/constants";
 import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
-
-// ── Install price code mapping ──
-// Maps client item codes to install item codes
-const INSTALL_MAP: Record<string, string> = {
-  canvas_320: "install_canvas",
-  canvas_550: "install_canvas",
-  canvas_over: "install_canvas",
-  profile_plastic: "install_profile",
-  insert: "install_profile",
-  profile_shadow: "install_profile",
-  profile_gapless: "install_profile",
-  profile_aluminum: "install_profile",
-  profile_floating: "install_profile",
-  spot_client: "install_spot",
-  spot_ours: "install_spot",
-  spot_bh53: "install_spot",
-  spot_bh10: "install_spot",
-  spot_double: "install_spot",
-  chandelier: "install_chandelier",
-  chandelier_install: "install_chandelier",
-  track_magnetic: "install_track",
-  light_line: "install_lightline",
-  curtain_ldsp: "install_curtain",
-  curtain_aluminum: "install_curtain",
-  gardina_plastic: "install_gardina",
-  gardina_aluminum: "install_gardina",
-  corner_plastic: "install_corner",
-  corner_aluminum: "install_corner",
-  pipe_bypass: "install_pipe",
-};
+// Клиентская позиция → монтажная ставка: одна карта с нарядом (29.10.2026)
+import { INSTALL_MAP } from "@/lib/work-order-lines";
 
 const C = {
   primary: "#374151",
