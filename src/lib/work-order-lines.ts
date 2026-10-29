@@ -87,6 +87,8 @@ export type WorkOrderLine = {
   qty: number;
   unit: string;
   price: number;
+  /** Вид работы (install_canvas…): по нему мастер меняет ставку сразу во всех комнатах. */
+  code?: string;
 };
 
 export type WorkOrderLinesDoc = {
@@ -138,7 +140,7 @@ export function autoWorkOrderLines(
         const rate = code ? priceOf(code) : 0;
         if (rate > 0 && price === Math.round(rate * 0.3)) price = Math.round(rate);
         else if (rate > 0 && price === Math.round(rate * 0.3) * 2) price = Math.round(rate) * 2;
-        out.push({ key: `${roomKey}:ii:${i}:${it.itemCode}`, room: roomName, name: it.itemName, qty: round2(it.quantity), unit: it.unit, price });
+        out.push({ key: `${roomKey}:ii:${i}:${it.itemCode}`, room: roomName, name: it.itemName, qty: round2(it.quantity), unit: it.unit, price, code });
       });
       continue;
     }
@@ -153,7 +155,7 @@ export function autoWorkOrderLines(
       seen.add(seenKey);
       const price = priceOf(installCode);
       if (price <= 0 || item.quantity <= 0) continue;
-      out.push({ key: `${roomKey}:${seenKey}`, room: roomName, name: `${item.itemName} (монтаж)`, qty: round2(item.quantity), unit: item.unit, price });
+      out.push({ key: `${roomKey}:${seenKey}`, room: roomName, name: `${item.itemName} (монтаж)`, qty: round2(item.quantity), unit: item.unit, price, code: installCode });
     }
   }
 
@@ -206,6 +208,7 @@ export function sanitizeWorkOrderLines(raw: unknown): WorkOrderLine[] | { error:
       qty: round2(r.qty),
       unit: String(r.unit || "шт.").slice(0, 10),
       price: Math.round(r.price),
+      ...(typeof r.code === "string" && r.code ? { code: r.code.slice(0, 40) } : {}),
     };
     total += line.qty * line.price;
     if (total > MAX_NUM) return { error: "Сумма наряда слишком большая" };
@@ -221,7 +224,8 @@ function isLine(r: unknown): r is WorkOrderLine {
     && typeof l.qty === "number" && Number.isFinite(l.qty) && l.qty >= 0 && l.qty <= MAX_NUM
     && typeof l.price === "number" && Number.isFinite(l.price) && l.price >= 0 && l.price <= MAX_NUM
     && (l.room === undefined || typeof l.room === "string")
-    && (l.unit === undefined || typeof l.unit === "string");
+    && (l.unit === undefined || typeof l.unit === "string")
+    && (l.code === undefined || typeof l.code === "string");
 }
 
 function round2(n: number): number {

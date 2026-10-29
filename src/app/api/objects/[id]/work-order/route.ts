@@ -101,9 +101,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       const fee = obj.installer?.defaultFee;
       if (lines.length === 0 && fee) lines = [{ key: "fee", room: "", name: "Оплата за монтаж", qty: 1, unit: "усл.", price: fee }];
     }
+    // Ставки из прайса по видам работ, которые есть в наряде: мобилка сравнивает
+    // с ними и предлагает «сохранить в прайс», если мастер поменял (29.10.2026).
+    const priceBook = await priceMapFor(await priceBookCompanyId(scope.ownerId));
+    const rates: Record<string, number> = {};
+    for (const l of lines) if (l.code && rates[l.code] === undefined) rates[l.code] = priceBook[l.code] ?? 0;
     return NextResponse.json({
       url: obj.workOrderToken ? `https://potolok.ai/n/${obj.workOrderToken}` : null,
       lines,
+      rates,
       edited,
       stale,
       hasEstimate: !!primary,
