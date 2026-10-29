@@ -37,8 +37,11 @@ export type Pt = { x: number; y: number };
 
 /** Подпись типа стены: каталожный → словарь, свой из прайса → его имя, иначе «свой». */
 function profileLabel(p: string, t: (k: string) => string, names?: Record<string, string>): string {
-  if (PROFILE_TYPES.includes(p)) return t(`wo.prof.${p}`);
-  return names?.[p] ?? t("wo.prof.custom");
+  if (PROFILE_TYPES.includes(p)) return `${t("wo.profile")} ${t(`wo.prof.${p}`)}`;
+  const name = names?.[p];
+  if (!name) return `${t("wo.profile")} ${t("wo.prof.custom")}`;
+  // «Профиль на керамогранит» — не дублировать слово «Профиль»
+  return /^профил/i.test(name) ? name : `${t("wo.profile")} ${name}`;
 }
 
 /**
@@ -389,7 +392,7 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   for (const p of types) {
     const name = profileLabel(p, t, s.profileNames);
     const walls = opts.withWalls && s.profileWalls[p]?.length ? ` (${s.profileWalls[p].join(", ")})` : "";
-    out.push(`${t("wo.profile")} ${name}: ${m(s.profileCm[p])}${walls}`);
+    out.push(`${name}: ${m(s.profileCm[p])}${walls}`);
   }
   return out;
 }
@@ -782,7 +785,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: C.curtain, kind: "line", ...ln("curtain") });
       else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: C.subcurtain, kind: "line", ...ln("subcurtain") });
     } else {
-      const label = `${t("wo.profile")} ${profileLabel(name, t, room.profileNames)}`;
+      const label = profileLabel(name, t, room.profileNames);
       if (pencil) {
         const ps = PROFILE_PENCIL[name] ?? { dash: "4 3", mul: 1.4 };
         legend.push({ key: label, color: INK, kind: "line", dash: ps.dash, double: ps.double, mul: ps.mul });
