@@ -130,9 +130,11 @@ export function autoWorkOrderLines(
     const roomKey = rr.roomId ?? roomName;
     const saved = Array.isArray(rr.installerItems) ? rr.installerItems : [];
     if (saved.length > 0) {
+      // Нулевую ставку оставляем строкой с 0 (Нариман 29.10.2026): «вдруг со
+      // временем захотят добавить». Монтажнику такие строки не показываются.
       saved.forEach((it, i) => {
-        if (!(it.quantity > 0) || !(it.unitPrice > 0)) return;
-        let price = Math.round(it.unitPrice);
+        if (!(it.quantity > 0)) return;
+        let price = Math.max(0, Math.round(it.unitPrice || 0));
         // КП, посчитанные мобилкой до 29.10.2026, несут баг: ставка «Для бригады»
         // умножена на 30 % (900 → 270; у пары софитов — ×2). Узнаём его по точному
         // совпадению и берём ставку из прайса; свои правки мастера так не выглядят.
@@ -153,8 +155,8 @@ export function autoWorkOrderLines(
       const seenKey = installCode === "install_spot" ? `${installCode}:${item.itemCode}` : installCode;
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
-      const price = priceOf(installCode);
-      if (price <= 0 || item.quantity <= 0) continue;
+      const price = Math.max(0, priceOf(installCode));
+      if (item.quantity <= 0) continue;
       out.push({ key: `${roomKey}:${seenKey}`, room: roomName, name: `${item.itemName} (монтаж)`, qty: round2(item.quantity), unit: item.unit, price, code: installCode });
     }
   }
