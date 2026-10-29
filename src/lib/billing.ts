@@ -212,6 +212,12 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
     if (s.inGrace) {
       // Этот объект — последний, «в долг». Ссылку шлём сейчас, пока он у клиента.
       await sendPayNudge(masterId, "grace").catch((err) => console.error("pay nudge (grace) failed:", err));
+    } else if (s.freeLeft === 1) {
+      // Этот объект — последний бесплатный: предупреждаем заранее (29.10.2026).
+      await sendPayNudge(masterId, "last").catch((err) => console.error("pay nudge (last) failed:", err));
+    } else if (s.freeLeft <= 3) {
+      // После этого объекта останется 1–2 бесплатных — пора подумать об оплате.
+      await sendPayNudge(masterId, "soon", { left: s.freeLeft - 1 }).catch((err) => console.error("pay nudge (soon) failed:", err));
     }
     return null;
   }

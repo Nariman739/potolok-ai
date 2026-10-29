@@ -35,7 +35,13 @@ export async function mintPayLink(masterId: string, ttlMs = PAY_LINK_TTL_MS): Pr
   return `${siteUrl()}/api/auth/bridge?bt=${token}&redirect=${encodeURIComponent("/pricing")}`;
 }
 
-export type NudgeKind = "grace" | "blocked";
+/**
+ * Шаги напоминания о тарифе (29.10.2026): soon — осталось 1–2 бесплатных,
+ * last — этот объект последний бесплатный, grace — объект «в долг»,
+ * blocked — больше нельзя. Идея Наримана: предупреждать заранее, чтобы
+ * мастер мог оплатить до того, как упрётся на объекте.
+ */
+export type NudgeKind = "soon" | "last" | "grace" | "blocked";
 
 /** Куда у мастера вообще может дойти ссылка — чтобы текст ошибки не обещал лишнего. */
 export async function payChannels(masterId: string): Promise<{ telegram: boolean; push: boolean }> {
@@ -51,13 +57,16 @@ export async function payChannels(masterId: string): Promise<{ telegram: boolean
  * (в долг), blocked — уже нет. Telegram (если привязан) и пуш в приложение.
  * Текст пуша без цены и без ссылки — цена и ссылка в data/Telegram.
  */
-export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<boolean> {
+export async function sendPayNudge(masterId: string, kind: NudgeKind, opts: { left?: number } = {}): Promise<boolean> {
   const m = await prisma.master.findUnique({
     where: { id: masterId },
-    select: { firstName: true, telegramChatId: true, payNudgeSentAt: true },
+    select: { firstName: true, telegramChatId: true, payNudgeSentAt: true, payNudgeKind: true },
   });
   if (!m) return false;
-  if (m.payNudgeSentAt && Date.now() - m.payNudgeSentAt.getTime() < NUDGE_COOLDOWN_MS) return false;
+  // Новый шаг (soon → last → grace → blocked) уходит сразу; тот же шаг — не чаще раза в 3 дня.
+  const sameKindRecently =
+    m.payNudgeKind === kind && !!m.payNudgeSentAt && Date.now() - m.payNudgeSentAt.getTime() < NUDGE_COOLDOWN_MS;
+  if (sameKindRecently) return false;
   const devices = await prisma.pushDevice.count({ where: { masterId, disabledAt: null } });
   // Некуда слать — не тратим ссылку и не ставим отметку: текст ошибки в
   // приложении сам объяснит, где оформить PRO.
@@ -74,16 +83,27 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
 
   // Сначала отметка, потом отправка: если пуш/Telegram упадут, повтор будет
   // не раньше, чем через 3 дня — лучше недослать, чем задолбать.
-  await prisma.master.update({ where: { id: masterId }, data: { payNudgeSentAt: new Date() } });
+  await prisma.master.update({ where: { id: masterId }, data: { payNudgeSentAt: new Date(), payNudgeKind: kind } });
 
+  const left = Math.max(1, opts.left ?? 1);
+  const leftWord = left === 1 ? "1 бесплатный объект" : `${left} бесплатных объекта`;
+  const payLine = `PRO — ${price} в месяц. Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}`;
   const tgText =
-    kind === "grace"
-      ? `${name}бесплатные объекты закончились — этот замер мы сохранили «в долг», следующий будет только с PRO.\n\n` +
-        `PRO — ${price} в месяц. Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}\n\n` +
-        `Всё, что вы уже сделали, остаётся открытым в любом случае.`
-      : `${name}для нового объекта нужен тариф PRO — ${price} в месяц.\n\n` +
-        `Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}\n\n` +
-        `Старые замеры и КП открыты, ничего не пропадёт.`;
+    kind === "soon"
+      ? `${name}у вас остался ${leftWord} — дальше тариф PRO.\n\n` +
+        `Можно подключить заранее, чтобы не прерываться на объекте. ${payLine}\n\n` +
+        `Всё, что уже сделано, остаётся открытым в любом случае.`
+      : kind === "last"
+        ? `${name}этот объект — последний бесплатный. Следующий замер — уже с PRO.\n\n` +
+          `${payLine}\n\n` +
+          `Старые замеры и КП останутся открытыми, ничего не пропадёт.`
+        : kind === "grace"
+          ? `${name}бесплатные объекты закончились — этот замер мы сохранили «в долг», следующий будет только с PRO.\n\n` +
+            `${payLine}\n\n` +
+            `Всё, что вы уже сделали, остаётся открытым в любом случае.`
+          : `${name}для нового объекта нужен тариф PRO — ${price} в месяц.\n\n` +
+            `Нажмите, войдёте сразу под своим аккаунтом, ${how}:\n${url}\n\n` +
+            `Старые замеры и КП открыты, ничего не пропадёт.`;
 
   if (m.telegramChatId) {
     await sendTelegramMessage(m.telegramChatId, tgText).catch((err) => console.error("pay nudge tg failed:", err));
@@ -93,14 +113,17 @@ export async function sendPayNudge(masterId: string, kind: NudgeKind): Promise<b
   // а «ссылка в Telegram» без Telegram — тупик (Болат, 29.10.2026). Android
   // открывает payUrl из data по тапу, на iPhone пуш ведёт в профиль со счётчиком.
   const link = m.telegramChatId ? "Ссылка для подключения — в Telegram и по тапу на это уведомление." : "Подробнее — по тапу на это уведомление.";
-  await sendPushToMaster(masterId, {
-    title: kind === "grace" ? "Этот замер — сверх бесплатных" : "Для нового объекта нужен PRO",
-    body:
-      kind === "grace"
-        ? `Сохранили его в долг. Следующий — только с PRO. ${link}`
-        : `Старые замеры и КП открыты. ${link}`,
-    data: { screen: "/(tabs)/profile", payUrl: url },
-  });
+  // Пуш без цены и ссылки в тексте (iPhone, App Store 3.1.1); на Android
+  // приложение откроет payUrl из data по тапу.
+  const push =
+    kind === "soon"
+      ? { title: `Остался ${leftWord}`, body: `Дальше — тариф PRO. Можно подключить заранее, чтобы не прерываться на объекте. ${link}` }
+      : kind === "last"
+        ? { title: "Это последний бесплатный объект", body: `Следующий замер — уже с PRO. Старые замеры и КП останутся открытыми. ${link}` }
+        : kind === "grace"
+          ? { title: "Этот замер — сверх бесплатных", body: `Сохранили его в долг. Следующий — только с PRO. ${link}` }
+          : { title: "Для нового объекта нужен PRO", body: `Старые замеры и КП открыты. ${link}` };
+  await sendPushToMaster(masterId, { ...push, data: { screen: "/(tabs)/profile", payUrl: url } });
 
   return true;
 }
