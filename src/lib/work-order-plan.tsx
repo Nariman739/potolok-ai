@@ -29,9 +29,17 @@ export type PlanRoom = {
   cornerRadii?: number[] | null;
   elements?: unknown;
   wallProfiles?: unknown;
+  /** Имена своих профилей из прайса по id (wallProfiles хранит id PriceItem) — иначе на чертеже «Профиль свой» (29.10.2026). */
+  profileNames?: Record<string, string>;
 };
 
 export type Pt = { x: number; y: number };
+
+/** Подпись типа стены: каталожный → словарь, свой из прайса → его имя, иначе «свой». */
+function profileLabel(p: string, t: (k: string) => string, names?: Record<string, string>): string {
+  if (PROFILE_TYPES.includes(p)) return t(`wo.prof.${p}`);
+  return names?.[p] ?? t("wo.prof.custom");
+}
 
 /**
  * `tag` — что это за фигура (wall, profile, spot, chandelier, curtain, track,
@@ -283,12 +291,14 @@ export type RoomSummary = {
   profileCm: Record<string, number>;
   /** Стены по типу профиля — буквами, например «AB, CD». */
   profileWalls: Record<string, string[]>;
+  /** Имена своих профилей по id — для подписи в «Итого по объекту». */
+  profileNames: Record<string, string>;
 };
 
 function emptySummary(): RoomSummary {
   return {
     spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, vents: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
-    curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {},
+    curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {}, profileNames: {},
   };
 }
 
@@ -341,6 +351,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
     s.profileCm[p] = (s.profileCm[p] ?? 0) + len;
     (s.profileWalls[p] ??= []).push(`${cornerLetter(i)}${cornerLetter((i + 1) % n)}`);
   });
+  if (room.profileNames) s.profileNames = { ...room.profileNames };
   return s;
 }
 
@@ -353,6 +364,7 @@ export function mergeSummaries(list: RoomSummary[]): RoomSummary {
     out.curtainCount += s.curtainCount; out.curtainCm += s.curtainCm;
     out.subcurtainCount += s.subcurtainCount; out.subcurtainCm += s.subcurtainCm;
     for (const [k, v] of Object.entries(s.profileCm)) out.profileCm[k] = (out.profileCm[k] ?? 0) + v;
+    Object.assign(out.profileNames, s.profileNames);
   }
   return out;
 }
@@ -375,7 +387,7 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   // Профили стен: сначала особые (теневой, парящий, подшторник…), обычный пластик — последним.
   const types = Object.keys(s.profileCm).sort((a, b) => (a === "pvc_insert" ? 1 : 0) - (b === "pvc_insert" ? 1 : 0));
   for (const p of types) {
-    const name = PROFILE_TYPES.includes(p) ? t(`wo.prof.${p}`) : t("wo.prof.custom");
+    const name = profileLabel(p, t, s.profileNames);
     const walls = opts.withWalls && s.profileWalls[p]?.length ? ` (${s.profileWalls[p].join(", ")})` : "";
     out.push(`${t("wo.profile")} ${name}: ${m(s.profileCm[p])}${walls}`);
   }
@@ -770,7 +782,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: C.curtain, kind: "line", ...ln("curtain") });
       else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: C.subcurtain, kind: "line", ...ln("subcurtain") });
     } else {
-      const label = `${t("wo.profile")} ${PROFILE_TYPES.includes(name) ? t(`wo.prof.${name}`) : t("wo.prof.custom")}`;
+      const label = `${t("wo.profile")} ${profileLabel(name, t, room.profileNames)}`;
       if (pencil) {
         const ps = PROFILE_PENCIL[name] ?? { dash: "4 3", mul: 1.4 };
         legend.push({ key: label, color: INK, kind: "line", dash: ps.dash, double: ps.double, mul: ps.mul });

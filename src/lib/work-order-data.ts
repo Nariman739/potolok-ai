@@ -80,7 +80,21 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     : null;
   const totalArea = Math.round(obj.rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
 
+  // Свои профили из прайса: на стенах лежат id PriceItem — подписываем их именами
+  // («Профиль на керамогранит», «ЛДСП с подсветкой»), а не «Профиль свой» (29.10.2026).
+  const profileIds = new Set<string>();
+  for (const r of obj.rooms) {
+    const wp = r.wallProfiles && typeof r.wallProfiles === "object" ? (r.wallProfiles as Record<string, unknown>) : {};
+    for (const v of Object.values(wp)) if (typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v)) profileIds.add(v);
+  }
+  const profileNames: Record<string, string> = {};
+  if (profileIds.size > 0) {
+    const items = await prisma.priceItem.findMany({ where: { id: { in: [...profileIds] } }, select: { id: true, name: true } });
+    for (const it of items) profileNames[it.id] = it.name;
+  }
+
   const planRooms: PlanRoom[] = obj.rooms.map((r) => ({
+    profileNames,
     walls: (r.walls as number[]) ?? [],
     angles: r.angles as number[] | null,
     normalCorners: r.normalCorners as boolean[] | null,
