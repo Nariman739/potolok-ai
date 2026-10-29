@@ -63,7 +63,7 @@ function installCodeFor(itemCode: string): string | undefined {
 }
 
 /** Строки монтажнику в КП мобилки без кода (itemCode = "custom") — узнаём работу по имени. */
-function installCodeByName(name: string): string | undefined {
+export function installCodeByName(name: string): string | undefined {
   const n = name.toLowerCase();
   if (n.startsWith("монтаж полотна")) return "install_canvas";
   if (n.includes("софит")) return "install_spot";
@@ -179,7 +179,9 @@ export function parseWorkOrderDoc(raw: unknown): WorkOrderLinesDoc | null {
   if (doc.v !== 1 || !Array.isArray(doc.lines)) return null;
   return {
     v: 1,
-    lines: doc.lines.filter(isLine),
+    // Наряды, сохранённые до появления code (29.10.2026), — вид работы по имени,
+    // иначе блок «Ставки по работам» для них пустой.
+    lines: doc.lines.filter(isLine).map((l) => (l.code ? l : { ...l, code: installCodeByName(l.name) })),
     updatedAt: typeof doc.updatedAt === "string" ? doc.updatedAt : "",
     estimateId: typeof doc.estimateId === "string" ? doc.estimateId : undefined,
     estimateUpdatedAt: typeof doc.estimateUpdatedAt === "string" ? doc.estimateUpdatedAt : undefined,
