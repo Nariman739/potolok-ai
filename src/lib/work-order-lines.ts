@@ -65,6 +65,8 @@ function installCodeFor(itemCode: string): string | undefined {
 /** Строки монтажнику в КП мобилки без кода (itemCode = "custom") — узнаём работу по имени. */
 export function installCodeByName(name: string): string | undefined {
   const n = name.toLowerCase();
+  // Вставка и LED-лента — без ставки в прайсе: не цеплять к профилю/световой линии.
+  if (n.startsWith("монтаж вставки") || n.startsWith("монтаж led") || n.startsWith("монтаж: вставка") || n.startsWith("монтаж: led")) return undefined;
   if (n.startsWith("монтаж полотна")) return "install_canvas";
   if (n.includes("софит")) return "install_spot";
   if (n.includes("люстр")) return "install_chandelier";
@@ -99,6 +101,27 @@ export type WorkOrderLinesDoc = {
   estimateId?: string;
   estimateUpdatedAt?: string;
 };
+
+/**
+ * Позиции КП, у которых нет своей ставки в прайсе «Для бригады» (вставка идёт
+ * в монтаж профиля, LED-лента — в подшторник). Нариман 29.10.2026: «все
+ * позиции, которые есть в КП, должны появляться и в наряде» — мастер сам
+ * ставит цену или убирает строку. Поэтому они идут отдельной строкой с 0.
+ */
+function noRateKind(item: { itemCode?: string; itemName: string }): "insert" | "led" | null {
+  const n = item.itemName.toLowerCase();
+  if (item.itemCode === "insert" || n.startsWith("вставка")) return "insert";
+  if (item.itemCode === "led_strip" || n.startsWith("led")) return "led";
+  return null;
+}
+/** Мобилка с 30.10.2026 сама кладёт «Монтаж вставки» / «Монтаж LED-подсветки» в installerItems. */
+function hasNoRateLine(saved: LineItem[], kind: "insert" | "led"): boolean {
+  const prefix = kind === "insert" ? "монтаж вставки" : "монтаж led";
+  return saved.some((s) => s.itemName.toLowerCase().startsWith(prefix));
+}
+function noRateName(item: LineItem): string {
+  return `Монтаж: ${item.itemName}`;
+}
 
 const MAX_LINES = 60;
 const MAX_NAME = 80;
@@ -144,10 +167,22 @@ export function autoWorkOrderLines(
         else if (rate > 0 && price === Math.round(rate * 0.3) * 2) price = Math.round(rate) * 2;
         out.push({ key: `${roomKey}:ii:${i}:${it.itemCode}`, room: roomName, name: it.itemName, qty: round2(it.quantity), unit: it.unit, price, code });
       });
+      // КП, сохранённые мобилкой до 30.10.2026: вставки и LED-ленты в
+      // installerItems нет — добавляем строкой с 0, чтобы мастер её увидел.
+      ((rr.items ?? []) as LineItem[]).forEach((item, i) => {
+        const kind = noRateKind(item);
+        if (!kind || !(item.quantity > 0) || hasNoRateLine(saved, kind)) return;
+        out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(item), qty: round2(item.quantity), unit: item.unit, price: 0 });
+      });
       continue;
     }
     const seen = new Set<string>();
-    for (const item of (rr.items ?? []) as LineItem[]) {
+    for (const [i, item] of ((rr.items ?? []) as LineItem[]).entries()) {
+      const kind = noRateKind(item);
+      if (kind) {
+        if (item.quantity > 0) out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(item), qty: round2(item.quantity), unit: item.unit, price: 0 });
+        continue;
+      }
       const installCode = item.installCode ?? installCodeFor(item.itemCode);
       if (!installCode) continue;
       // Софиты разных типов монтируются отдельно; остальное по коду монтажа схлопываем
