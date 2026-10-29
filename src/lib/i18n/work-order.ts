@@ -68,6 +68,7 @@ registerDict("ru", {
   // Оплата построчно (29.10.2026)
   "wo.payTitle": "Работы и оплата",
   "wo.payTotal": "Итого",
+  "wo.liveLink": "Актуальный наряд",
 });
 
 registerDict("kk", {
@@ -127,4 +128,5 @@ registerDict("kk", {
   // Төлем жолма-жол (29.10.2026)
   "wo.payTitle": "Жұмыстар мен төлем",
   "wo.payTotal": "Барлығы",
+  "wo.liveLink": "Өзекті наряд",
 });

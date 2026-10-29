@@ -52,6 +52,8 @@ export type WorkOrderModel = {
   company: string;
   title: string;
   when: string | null;
+  /** Ссылка на живой наряд — в PDF, чтобы с файла можно было перейти к актуальной версии. */
+  url: string | null;
   roomsCount: number;
   totalArea: number;
   installerName: string | null;
@@ -131,6 +133,7 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     company,
     title: obj.address || obj.client?.name || t("wo.object"),
     when,
+    url: obj.workOrderToken ? `https://potolok.ai/n/${obj.workOrderToken}` : null,
     roomsCount: obj.rooms.length,
     totalArea,
     installerName: obj.installer?.name ?? null,

@@ -37,7 +37,8 @@ const plan: PlanRoom = {
 const s = summarizeRoom(plan);
 const model: WorkOrderModel = {
   lang: "ru",
-  payLines: [], currency: "KZT", company: "QA Потолки", title: "ул. Тестовая 1, кв. 7", when: "25 октября, 10:00",
+  payLines: [],
+  url: null, currency: "KZT", company: "QA Потолки", title: "ул. Тестовая 1, кв. 7", when: "25 октября, 10:00",
   roomsCount: 1, totalArea: 24.4, installerName: "Бригада №1", clientName: "Рава", clientPhone: "+7 777 000 00 77",
   masterPhone: "+7 700 000 00 77", fee: "45 000 ₸", workshop: null,
   totals: summaryLines(s, "ru", { withWalls: false }), materials: [],

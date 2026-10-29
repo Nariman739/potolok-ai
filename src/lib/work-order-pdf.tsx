@@ -174,6 +174,7 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
         <Text style={s.eyebrow}>{t("wo.title")} · {model.company}</Text>
         <Text style={s.h1}>{model.title}</Text>
         {model.when && <Text style={s.when}>{model.when}</Text>}
+        {model.url && <Text style={{ fontSize: 8, color: "#64748b", marginTop: 2 }}>{t("wo.liveLink")}: {model.url}</Text>}
         <Text style={s.sub}>
           {model.roomsCount} {t("wo.rooms")} · {model.totalArea} м²{model.installerName ? ` · ${t("wo.install")}: ${model.installerName}` : ""}
         </Text>
