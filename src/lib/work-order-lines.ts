@@ -119,8 +119,9 @@ function hasNoRateLine(saved: LineItem[], kind: "insert" | "led"): boolean {
   const prefix = kind === "insert" ? "монтаж вставки" : "монтаж led";
   return saved.some((s) => s.itemName.toLowerCase().startsWith(prefix));
 }
-function noRateName(item: LineItem): string {
-  return `Монтаж: ${item.itemName}`;
+/** Имена как у мобилки: «просто монтаж вставки», без «(алюм.)» (Нариман 30.10.2026). */
+function noRateName(kind: "insert" | "led"): string {
+  return kind === "insert" ? "Монтаж вставки" : "Монтаж LED-подсветки";
 }
 
 const MAX_LINES = 60;
@@ -172,7 +173,7 @@ export function autoWorkOrderLines(
       ((rr.items ?? []) as LineItem[]).forEach((item, i) => {
         const kind = noRateKind(item);
         if (!kind || !(item.quantity > 0) || hasNoRateLine(saved, kind)) return;
-        out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(item), qty: round2(item.quantity), unit: item.unit, price: 0 });
+        out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(kind), qty: round2(item.quantity), unit: item.unit, price: 0 });
       });
       continue;
     }
@@ -180,7 +181,7 @@ export function autoWorkOrderLines(
     for (const [i, item] of ((rr.items ?? []) as LineItem[]).entries()) {
       const kind = noRateKind(item);
       if (kind) {
-        if (item.quantity > 0) out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(item), qty: round2(item.quantity), unit: item.unit, price: 0 });
+        if (item.quantity > 0) out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(kind), qty: round2(item.quantity), unit: item.unit, price: 0 });
         continue;
       }
       const installCode = item.installCode ?? installCodeFor(item.itemCode);
