@@ -69,6 +69,8 @@ registerDict("ru", {
   "wo.payTitle": "Работы и оплата",
   "wo.payTotal": "Итого",
   "wo.liveLink": "Актуальный наряд",
+  "wo.payObject": "По объекту",
+  "wo.payRoomTotal": "Итого по комнате",
 });
 
 registerDict("kk", {
@@ -129,4 +131,6 @@ registerDict("kk", {
   "wo.payTitle": "Жұмыстар мен төлем",
   "wo.payTotal": "Барлығы",
   "wo.liveLink": "Өзекті наряд",
+  "wo.payObject": "Нысан бойынша",
+  "wo.payRoomTotal": "Бөлме бойынша барлығы",
 });

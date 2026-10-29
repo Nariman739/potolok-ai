@@ -63,6 +63,8 @@ export type WorkOrderModel = {
   fee: string | null;
   /** Детализация «за что»: строки, которые мастер проверил/поправил в приложении (29.10.2026). */
   payLines: PayLine[];
+  /** То же по комнатам, с итогом комнаты — так читает монтажник («Комната 6: …, итого»). */
+  payGroups: { room: string; lines: PayLine[]; total: string }[];
   workshop: string | null;
   totals: string[];
   materials: MaterialLine[];
@@ -125,6 +127,20 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
   const payLines: PayLine[] = paid.map((l) => ({ room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) }));
   const payTotal = Math.round(paid.reduce((s, l) => s + l.qty * l.price, 0));
   const fee = payLines.length > 0 ? money(payTotal) : obj.installerFee != null ? money(obj.installerFee) : null;
+  const payGroups: WorkOrderModel["payGroups"] = [];
+  for (const l of paid) {
+    const room = l.room || "";
+    let g = payGroups.find((x) => x.room === room);
+    if (!g) { g = { room, lines: [], total: "" }; payGroups.push(g); }
+    g.lines.push({ room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) });
+  }
+  // Допы без комнаты — в конец
+  payGroups.sort((a, b) => (a.room === "" ? 1 : 0) - (b.room === "" ? 1 : 0));
+  for (const g of payGroups) {
+    const sum = paid.filter((l) => (l.room || "") === g.room).reduce((s, l) => s + l.qty * l.price, 0);
+    g.total = money(Math.round(sum));
+    if (!g.room) g.room = t("wo.payObject");
+  }
 
   const ws = obj.workshopOrders[0];
   return {
@@ -142,6 +158,7 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     masterPhone: obj.master.whatsappPhone || obj.master.phone || null,
     fee,
     payLines,
+    payGroups,
     workshop: ws ? `${t("wo.toWorkshop", { date: formatDocDate(almaty(ws.sentAt), lang) })} · ${ws.roomsCount} ${t("wo.rooms")}` : null,
     totals: summaryLines(mergeSummaries(summaries), lang, { withWalls: false }),
     materials,

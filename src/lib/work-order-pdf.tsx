@@ -42,6 +42,8 @@ const s = StyleSheet.create({
   // Оплата монтажнику построчно (29.10.2026)
   payRow: { flexDirection: "row", alignItems: "flex-start", borderTopWidth: 0.5, borderTopColor: "#e2e8f0", paddingTop: 3, paddingBottom: 3 },
   payRoom: { fontSize: 7.5, color: "#94a3b8" },
+  payRoomHead: { fontSize: 8, color: "#64748b", letterSpacing: 0.8, textTransform: "uppercase", marginTop: 4, marginBottom: 2 },
+  payRoomTotal: { fontSize: 9, color: "#475569", textAlign: "right", marginTop: 2 },
   payQty: { width: 150, textAlign: "right", color: "#64748b", paddingRight: 8 },
   paySum: { width: 80, textAlign: "right", fontWeight: 600 },
   payTotalRow: { flexDirection: "row", alignItems: "center", borderTopWidth: 1.2, borderTopColor: "#cbd5e1", paddingTop: 4, marginTop: 2 },
@@ -191,14 +193,20 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
         {model.payLines.length > 0 && (
           <View style={s.card}>
             <Text style={s.cardTitle}>{t("wo.payTitle")}</Text>
-            {model.payLines.map((l, i) => (
-              <View key={i} style={s.payRow} wrap={false}>
-                <View style={{ flex: 1 }}>
-                  <Text>{l.name}</Text>
-                  {l.room ? <Text style={s.payRoom}>{l.room}</Text> : null}
-                </View>
-                <Text style={s.payQty}>{l.qty} {l.unit} × {l.price}</Text>
-                <Text style={s.paySum}>{l.total}</Text>
+            {/* По комнатам, как в КП (Нариман 29.10.2026) */}
+            {model.payGroups.map((g) => (
+              <View key={g.room} style={{ marginBottom: 6 }}>
+                <Text style={s.payRoomHead} wrap={false}>{g.room}</Text>
+                {g.lines.map((l, i) => (
+                  <View key={i} style={s.payRow} wrap={false}>
+                    <Text style={{ flex: 1 }}>{l.name}</Text>
+                    <Text style={s.payQty}>{l.qty} {l.unit} × {l.price}</Text>
+                    <Text style={s.paySum}>{l.total}</Text>
+                  </View>
+                ))}
+                {model.payGroups.length > 1 && (
+                  <Text style={s.payRoomTotal}>{t("wo.payRoomTotal")}: {g.total}</Text>
+                )}
               </View>
             ))}
             <View style={s.payTotalRow}>

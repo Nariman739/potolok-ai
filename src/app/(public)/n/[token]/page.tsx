@@ -69,18 +69,26 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
         {m.payLines.length > 0 && (
           <section className="rounded-xl bg-white border border-slate-200 p-4">
             <h2 className="text-lg font-semibold mb-2">{t("wo.payTitle")}</h2>
-            {/* Не таблица: монтажник открывает это на телефоне, три колонки не влезают */}
-            <ul className="text-sm divide-y divide-slate-100">
-              {m.payLines.map((l, i) => (
-                <li key={i} className="py-2 flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p>{l.name}</p>
-                    <p className="text-xs text-slate-500">{l.room ? `${l.room} · ` : ""}{l.qty} {l.unit} × {l.price}</p>
-                  </div>
-                  <p className="font-semibold whitespace-nowrap">{l.total}</p>
-                </li>
-              ))}
-            </ul>
+            {/* По комнатам, как в КП (Нариман 29.10.2026). Не таблица: на телефоне три колонки не влезают */}
+            {m.payGroups.map((g) => (
+              <div key={g.room} className="mb-3">
+                <p className="text-xs uppercase tracking-wider text-slate-500 mb-1">{g.room}</p>
+                <ul className="text-sm divide-y divide-slate-100">
+                  {g.lines.map((l, i) => (
+                    <li key={i} className="py-1.5 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p>{l.name}</p>
+                        <p className="text-xs text-slate-500">{l.qty} {l.unit} × {l.price}</p>
+                      </div>
+                      <p className="font-semibold whitespace-nowrap">{l.total}</p>
+                    </li>
+                  ))}
+                </ul>
+                {m.payGroups.length > 1 && (
+                  <p className="text-sm text-right text-slate-600 pt-1">{t("wo.payRoomTotal")}: <b>{g.total}</b></p>
+                )}
+              </div>
+            ))}
             <div className="mt-2 pt-2 border-t-2 border-slate-200 flex items-baseline justify-between">
               <span className="font-semibold">{t("wo.payTotal")}</span>
               <span className="text-lg font-bold whitespace-nowrap">{m.fee}</span>
