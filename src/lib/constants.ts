@@ -80,6 +80,9 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // и может грузить варианты с фото; в дизайнере picker «Трек» / «Свет.линия»
   // подтянет именно эти варианты, а не люстровые.
   { code: "track_magnetic", name: "Трек магнитный", unit: "м.п.", defaultPrice: 20000, category: "track" },
+  // Накладной трек (Нариман 30.10.2026: «люди просят»). Тип выбирается на треке в
+  // дизайнере мобилки, как тип софита (потолок-ai-app: shared/track-types.ts).
+  { code: "track_surface", name: "Накладной трек", unit: "м.п.", defaultPrice: 15000, category: "track" },
   { code: "light_line", name: "Световая линия", unit: "м.п.", defaultPrice: 15000, category: "lightline" },
 
   // Карнизы (за м.п.)
@@ -190,6 +193,7 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   chandelier_install: 800,
   transformer: 1500,
   track_magnetic: 3500,
+  track_surface: 2800,
   light_line: 3000,
   curtain_ldsp: 600,
   curtain_aluminum: 900,

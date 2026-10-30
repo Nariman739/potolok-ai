@@ -61,6 +61,7 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   vent: { role: "point", appliesTo: ["vent"] },
 
   track_magnetic: { role: "linear", appliesTo: ["track"] },
+  track_surface: { role: "linear", appliesTo: ["track"] },
   light_line: { role: "linear", appliesTo: ["lightline"] },
   curtain_ldsp: { role: "linear", appliesTo: ["curtain"] },
   curtain_aluminum: { role: "linear", appliesTo: ["curtain"] },

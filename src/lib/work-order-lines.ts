@@ -35,6 +35,7 @@ export const INSTALL_MAP: Record<string, string> = {
   chandelier: "install_chandelier",
   chandelier_install: "install_chandelier",
   track_magnetic: "install_track",
+  track_surface: "install_track",
   light_line: "install_lightline",
   curtain_ldsp: "install_curtain",
   curtain_aluminum: "install_curtain",
