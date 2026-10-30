@@ -231,6 +231,8 @@ async function createEstimate(request: Request): Promise<NextResponse> {
           name?: string; walls?: number[]; angles?: number[]; bulges?: number[];
           cornerRadii?: number[]; area?: number; perimeter?: number; elements?: unknown[];
           columns?: unknown[]; wallProfiles?: Record<string, string>; variantOverrides?: Record<string, string>;
+          /** Решение по вставке в комнате — телефон кладёт его в roomsData с 30.10.2026. */
+          withInsert?: boolean | null;
         };
         const rooms = (roomsData as RawRoom[]).filter(
           (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
@@ -353,6 +355,10 @@ async function createEstimate(request: Request): Promise<NextResponse> {
                   columns: (r.columns as object[] | undefined) ?? undefined,
                   wallProfiles: r.wallProfiles ?? undefined,
                   variantOverrides: r.variantOverrides ?? undefined,
+                  // Вставка снята в КП («Без вставки везде» / галочка комнаты) — иначе
+                  // объект родится со вставкой по умолчанию, и чертёж наряда покажет
+                  // «Вставка: N м», которой в КП нет (ревью 30.10.2026).
+                  withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
                   sortOrder: i,
                 })),
               },

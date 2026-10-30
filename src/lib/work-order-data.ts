@@ -113,7 +113,7 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     elements: r.elements,
     wallProfiles: r.wallProfiles,
     // Решение комнаты → старые метки «со вставкой/без» в типах стен → настройка объекта.
-    withInsert: r.withInsert ?? legacyInsertFlag(r.wallProfiles) ?? !obj.noInsert,
+    withInsert: r.withInsert ?? legacyInsertFlag(r.wallProfiles, ((r.walls as number[]) ?? []).length) ?? !obj.noInsert,
   }));
   const summaries = planRooms.map(summarizeRoom);
 

@@ -44,19 +44,25 @@ export const INSERT_PROFILE_TYPES = new Set(["pvc", "aluminum", "eurobrus"]);
  * Старые замеры (до 30.10.2026) хранили «со вставкой / без» в типе стены:
  * pvc_insert/galtel/aluminum_insert — со вставкой, pvc/no_insert — без.
  * Возвращает решение комнаты, если такие метки есть; null — меток нет (новые данные).
- * Без вставки — только когда ВСЕ пластиковые стены помечены «без»: смешанную
- * комнату (часть стен явно «без», остальные по умолчанию) считаем со вставкой.
+ * Без вставки — только когда ВСЕ стены помечены «без»: старый дизайнер дефолт
+ * «со вставкой» не записывал (ключ удалялся), поэтому стена без ключа — старое
+ * «со вставкой», и смешанную комнату (часть стен явно «без», остальные без ключа)
+ * считаем со вставкой (ревью 30.10.2026: в проде 4 такие комнаты у 4 мастеров).
+ * wallsCount — сколько стен в комнате; без него стены без ключа не учитываются.
  */
-export function legacyInsertFlag(wallProfiles: unknown): boolean | null {
-  const raw = wallProfiles && typeof wallProfiles === "object" ? Object.values(wallProfiles as Record<string, unknown>) : [];
+export function legacyInsertFlag(wallProfiles: unknown, wallsCount?: number): boolean | null {
+  const wp = wallProfiles && typeof wallProfiles === "object" ? (wallProfiles as Record<string, unknown>) : {};
   let sawInsert = false, sawNoInsert = false;
-  for (const v of raw) {
+  for (const v of Object.values(wp)) {
     if (v === "pvc_insert" || v === "galtel" || v === "aluminum_insert") sawInsert = true;
     else if (v === "pvc" || v === "no_insert") sawNoInsert = true;
   }
   if (sawInsert) return true;
-  if (sawNoInsert) return false;
-  return null;
+  if (!sawNoInsert) return null;
+  if (wallsCount) {
+    for (let i = 0; i < wallsCount; i++) if (wp[String(i)] === undefined) return true;
+  }
+  return false;
 }
 
 export type Pt = { x: number; y: number };
@@ -377,7 +383,7 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
   }
   const prof = profilesOf(room);
   const n = room.walls.length;
-  const insertOn = typeof room.withInsert === "boolean" ? room.withInsert : (legacyInsertFlag(room.wallProfiles) ?? true);
+  const insertOn = typeof room.withInsert === "boolean" ? room.withInsert : (legacyInsertFlag(room.wallProfiles, room.walls.length) ?? true);
   room.walls.forEach((len, i) => {
     const p = prof[i];
     s.profileCm[p] = (s.profileCm[p] ?? 0) + len;

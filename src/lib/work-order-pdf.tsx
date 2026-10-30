@@ -232,8 +232,9 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
             <View style={s.cols}>
               {[0, 1].map((c) => (
                 <View key={c} style={s.col}>
-                  {model.materials.filter((_, i) => i % 2 === c).map((m) => (
-                    <Text key={m.code} style={s.li}>• {m.name} — {Number.isInteger(m.quantity) ? m.quantity : m.quantity.toFixed(1)} {m.unit}</Text>
+                  {model.materials.filter((_, i) => i % 2 === c).map((m, i) => (
+                    // Код не уникален: у старых КП «Вставка» и «Вставка (алюм.)» оба insert.
+                    <Text key={`${m.code}-${i}`} style={s.li}>• {m.name} — {Number.isInteger(m.quantity) ? m.quantity : m.quantity.toFixed(1)} {m.unit}</Text>
                   ))}
                 </View>
               ))}
