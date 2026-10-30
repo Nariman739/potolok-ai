@@ -113,11 +113,15 @@ export async function PUT(
     const inputs = readAdjustInputs(body);
     const touchesMoney =
       calculationData !== undefined || inputs.discount !== undefined || inputs.partner !== undefined;
+    // calcIsBase (мобилка, 30.10.2026): пришёл свежий расчёт по прайсу после правки
+    // чертежа из сохранённого КП — посредник в нём ещё не размазан, старый
+    // коэффициент снимать нельзя.
     const adjust = touchesMoney
       ? resolveAdjust(
           (calculationData ?? existing.calculationData) as CalculationResult,
           inputs,
-          existing
+          existing,
+          { calcIsBase: body.calcIsBase === true },
         )
       : null;
 
