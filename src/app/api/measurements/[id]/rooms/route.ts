@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+
+type Master = Awaited<ReturnType<typeof requireAuth>>;
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { withIdempotency } from "@/lib/idempotency";
 
 export async function POST(
   request: Request,
@@ -9,8 +12,22 @@ export async function POST(
 ) {
   try {
     const master = await requireAuth();
-    const scope = await getScope(master);
     const { id } = await params;
+    // Автосохранение черновика (мобилка 31.10.2026) шлёт комнату с X-Op-Id:
+    // если ответ потерялся, повтор отдаёт ту же комнату, а не вторую копию.
+    return await withIdempotency(request, master.id, `POST /measurements/${id}/rooms`, () => addRooms(request, master, id));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    console.error("Add room error:", error);
+    return NextResponse.json({ error: "Ошибка добавления комнаты" }, { status: 500 });
+  }
+}
+
+async function addRooms(request: Request, master: Master, id: string) {
+  try {
+    const scope = await getScope(master);
     const body = await request.json();
 
     // Verify ownership
