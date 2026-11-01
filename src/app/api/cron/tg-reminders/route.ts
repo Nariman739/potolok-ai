@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 
+// 01.11.2026: ВЫКЛЮЧЕН из vercel.json — за 90 дней 0 напоминаний (мастера не
+// ставят события со временем), а крон каждые 5 минут не давал Neon засыпать
+// ночью (~$7/мес). Роут оставлен: вернуть = строка в vercel.json.
+//
 // Vercel Cron (каждые 5 минут): напоминания за час до scheduledAt
 // Окно [now+60min .. now+65min], чтобы попадать ровно один раз.
 //

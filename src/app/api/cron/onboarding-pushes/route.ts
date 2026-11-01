@@ -39,10 +39,11 @@ const MIN_GAP_MS = 12 * HOUR_MS;
 type Step = "h2" | "d1" | "d3";
 type Lang = "ru" | "kk";
 
+// 01.11.2026: шаг d3 выключен — за месяц 23 пуша, 0 замеров после него
+// (h2 и d1 дают ~12%). Тексты оставлены, вернуть — одна строка.
 const STEPS: { step: Step; minAgeH: number; maxAgeH: number }[] = [
   { step: "h2", minAgeH: 2, maxAgeH: 18 },
   { step: "d1", minAgeH: 20, maxAgeH: 44 },
-  { step: "d3", minAgeH: 68, maxAgeH: 96 },
 ];
 
 const TEXTS: Record<Step, Record<Lang, { title: string; body: string }> & { screen: string }> = {
