@@ -5,6 +5,7 @@ import { put } from "@vercel/blob";
 import { getOpenRouter, AI_MODEL } from "./openrouter";
 import { computeCostFromUsage } from "./ai-cost-cap";
 import { normalizeLogo } from "./logo-image";
+import { compressLogo } from "./compress-logo";
 
 export type LogoChatMessage = {
   role: "assistant" | "user";
@@ -181,12 +182,15 @@ export async function generateLogo(
   // лежал как .png с байтами WebP и в КП молча не печатался. Теперь настоящий
   // PNG, внешний белый фон прозрачный, поля срезаны (см. logo-image.ts).
   const { png } = await normalizeLogo(buffer);
+  // 02.11.2026: PNG 1024 px с градиентами весил 1–2 МБ и шёл в каждый PDF —
+  // ужимаем до 800 px с палитрой (compress-logo).
+  const packed = await compressLogo(png);
 
   const timestamp = Date.now();
-  const path = `logos/${masterId}/${timestamp}.png`;
-  const blob = await put(path, png, {
+  const path = `logos/${masterId}/${timestamp}.${packed.ext}`;
+  const blob = await put(path, packed.body, {
     access: "public",
-    contentType: "image/png",
+    contentType: packed.contentType,
   });
 
   return { url: blob.url, promptUsed: promptEnglish };

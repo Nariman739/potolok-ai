@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import sharp from "sharp";
-import { sniffImageFormat } from "@/lib/logo-image";
+import { compressLogo } from "@/lib/compress-logo";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -51,23 +50,19 @@ export async function POST(request: Request) {
 
     // Формат смотрим по байтам, а не по расширению (07.10.2026). WebP и HEIC
     // раньше просто переименовывались: PDF КП их не читает, Chrome HEIC не
-    // показывает. JPG/PNG кладём как есть, остальное конвертируем в PNG.
+    // показывает. 02.11.2026: любой формат ужимаем до 800 px (compress-logo) —
+    // файлы по 2–3 МБ раздували каждый PDF КП.
     const raw = Buffer.from(await file.arrayBuffer());
-    const fmt = sniffImageFormat(raw);
-    let body: Buffer = raw;
-    let ext = fmt === "jpeg" ? "jpg" : "png";
-    let contentType = fmt === "jpeg" ? "image/jpeg" : "image/png";
-    if (fmt !== "jpeg" && fmt !== "png") {
-      try {
-        body = await sharp(raw).png().toBuffer();
-        ext = "png";
-        contentType = "image/png";
-      } catch {
-        return NextResponse.json(
-          { error: "Не удалось прочитать картинку. Сохраните логотип как PNG или JPG и загрузите снова." },
-          { status: 400 },
-        );
-      }
+    let body: Buffer;
+    let ext: string;
+    let contentType: string;
+    try {
+      ({ body, ext, contentType } = await compressLogo(raw));
+    } catch {
+      return NextResponse.json(
+        { error: "Не удалось прочитать картинку. Сохраните логотип как PNG или JPG и загрузите снова." },
+        { status: 400 },
+      );
     }
 
     const blob = await put(`logos/${master.id}/${Date.now()}.${ext}`, body, {
