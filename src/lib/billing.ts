@@ -183,6 +183,39 @@ export async function getBillingStatus(masterId: string): Promise<BillingStatus>
   }
 }
 
+/** Рабочий WhatsApp Наримана — показываем мастерам из России в окне лимита. */
+const OWNER_WHATSAPP = process.env.OWNER_WHATSAPP ?? "+7 775 069 6739";
+const OWNER_BLOCKED_PING_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Владельцу в Telegram: «мастер упёрся в лимит». Первый раз — сразу, дальше
+ * не чаще раза в сутки (мастер может тыкать «Готово» много раз подряд).
+ * Отметка — Master.payNudgeKind/payNudgeSentAt, те же поля, что у sendPayNudge
+ * (он их тут же перепишет тем же значением «blocked»).
+ */
+async function notifyOwnerAboutBlocked(masterId: string, currency: string): Promise<void> {
+  const chatId = process.env.ADMIN_TG_CHAT_ID;
+  if (!chatId) return;
+  const m = await prisma.master.findUnique({
+    where: { id: masterId },
+    select: { firstName: true, phone: true, companyName: true, payNudgeKind: true, payNudgeSentAt: true, telegramChatId: true },
+  });
+  if (!m) return;
+  const recently =
+    m.payNudgeKind === "blocked" && !!m.payNudgeSentAt && Date.now() - m.payNudgeSentAt.getTime() < OWNER_BLOCKED_PING_COOLDOWN_MS;
+  if (recently) return;
+  // Отметку ставим сами: у мастера без Telegram и пушей sendPayNudge её не
+  // поставит, и сигнал уходил бы на каждый тап.
+  await prisma.master.update({ where: { id: masterId }, data: { payNudgeSentAt: new Date(), payNudgeKind: "blocked" } });
+  const { sendTelegramMessage } = await import("@/lib/telegram");
+  const ru = currency === "RUB";
+  const name = [m.firstName, m.companyName].filter(Boolean).join(", ") || "Мастер";
+  const text = ru
+    ? `🇷🇺 <b>${name}</b> ${m.phone} упёрся в лимит объектов. Из России оплатить не может — напиши ему и продли вручную.`
+    : `🧱 <b>${name}</b> ${m.phone} упёрся в лимит объектов${m.telegramChatId ? " (ссылку на оплату получил в Telegram)" : ""}.`;
+  await sendTelegramMessage(chatId, text);
+}
+
 export type ObjectLimitResponse = {
   status: 402;
   body: {
@@ -222,6 +255,11 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
     return null;
   }
 
+  // 02.11.2026 (Нариман): «главное — чтобы мы сразу заметили, что мастер
+  // упёрся». Сигнал владельцу в Telegram при первом упоре и не чаще раза в
+  // сутки, пока мастер долбится. Из России карта не проходит — там вручную
+  // продлеваем, поэтому пометка 🇷🇺 и телефон, чтобы сразу написать.
+  await notifyOwnerAboutBlocked(masterId, s.currency).catch((err) => console.error("owner blocked notify failed:", err));
   await sendPayNudge(masterId, "blocked").catch((err) => console.error("pay nudge (blocked) failed:", err));
   const [payUrl, ch] = await Promise.all([
     mintPayLink(masterId).catch(() => null),
@@ -229,7 +267,9 @@ export async function checkObjectLimit(masterId: string): Promise<null | ObjectL
   ]);
   // Текст показывает мобилка как есть (Alert), в т.ч. на iPhone — без цены и
   // ссылки. Обещаем только тот канал, который у мастера реально есть.
-  const rf = s.currency === "RUB" ? " Из России — переводом, за 5 минут." : "";
+  // Россия (02.11.2026): способа взять оплату картой пока нет — зовём написать
+  // нам, продлеваем вручную, пока не решим, как брать деньги из РФ.
+  const rf = s.currency === "RUB" ? ` Из России: напишите нам в WhatsApp ${OWNER_WHATSAPP} — продлим вручную.` : "";
   const where =
     ch.telegram && ch.push
       ? `Ссылку на оплату отправили вам в Telegram и уведомлением.${rf}`
