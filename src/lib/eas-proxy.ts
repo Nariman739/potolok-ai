@@ -84,10 +84,21 @@ export function proxyToExpo(request: Request, upstreamUrl: string, kind: Kind): 
       (res) => {
         clearTimeout(timer);
         const status = res.statusCode ?? 502;
-        // Лог — только статус, размер и длительность; заголовки (в т.ч. authorization) не пишем.
+        // Лог — только статус, размер и длительность; значения заголовков (в т.ч. authorization) не пишем.
         const size = res.headers["content-length"] ?? "chunked";
-        if (status >= 400) console.warn(`[eas-proxy] ${kind} upstream ${status} ${Date.now() - started}ms`);
-        else if (kind === "asset") {
+        if (status >= 400) {
+          // Ошибка апстрима: тело (текст от Expo, до 1 КБ) и ИМЕНА пробрасываемых заголовков —
+          // чтобы понять, чего не хватает клиенту; тело всё равно отдаём клиенту как есть.
+          const chunks: Buffer[] = [];
+          res.on("data", (c: Buffer) => chunks.length < 64 && chunks.push(c));
+          res.on("end", () => {
+            const body = Buffer.concat(chunks).toString("utf8").replace(/\s+/g, " ").slice(0, 1000);
+            console.warn(`[eas-proxy] ${kind} upstream ${status} ${Date.now() - started}ms headers=[${Object.keys(pickRequestHeaders(request.headers, kind)).join(",")}] body=${JSON.stringify(body)}`);
+            finish(new Response(method === "HEAD" ? null : Buffer.concat(chunks), { status, headers: pickResponseHeaders(res.headers) }));
+          });
+          return;
+        }
+        if (kind === "asset") {
           res.once("close", () => console.log(`[eas-proxy] asset ${status} ${size} ${res.complete ? "done" : "aborted"} ${Date.now() - started}ms`));
         }
         if (method === "HEAD") {
