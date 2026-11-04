@@ -11,6 +11,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Прокси EAS Update (04.11.2026, «OTA-Россия», src/lib/eas-proxy.ts).
+  // eas-cli умеет подменять только ХОСТ: updates.url = https://potolok.ai/<projectId>,
+  // ассеты = https://potolok.ai/<hash>?project=…. Корневых динамических страниц
+  // на сайте нет; afterFiles — существующие страницы и файлы приоритетнее.
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: "/6823c39a-b031-4e6c-945e-39a2d1d06c51",
+          destination: "/api/eas/manifest",
+        },
+        {
+          // Ключ ассета EAS — 43 символа base64url; «?project=» отличает его от чего угодно ещё.
+          source: "/:hash([A-Za-z0-9_-]{43})",
+          has: [{ type: "query", key: "project" }],
+          destination: "/api/eas/assets/:hash",
+        },
+      ],
+      fallback: [],
+    };
+  },
   async redirects() {
     return [
       {
