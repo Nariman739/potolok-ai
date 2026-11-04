@@ -81,7 +81,9 @@ export function proxyToExpo(request: Request, upstreamUrl: string, kind: Kind): 
     };
     const req = https.request(
       { hostname: u.hostname, path: u.pathname + u.search, method, headers: pickRequestHeaders(request.headers, kind) },
-      (res) => {
+      (res) => { try { onResponse(res); } catch (e) { console.warn(`[eas-proxy] ${kind} handler error`, e instanceof Error ? e.message : e); res.resume(); finish(new Response("proxy error", { status: 502 })); } },
+    );
+    const onResponse = (res: import("node:http").IncomingMessage) => {
         clearTimeout(timer);
         const status = res.statusCode ?? 502;
         // Лог — только статус, размер и длительность; значения заголовков (в т.ч. authorization) не пишем.
@@ -101,14 +103,15 @@ export function proxyToExpo(request: Request, upstreamUrl: string, kind: Kind): 
         if (kind === "asset") {
           res.once("close", () => console.log(`[eas-proxy] asset ${status} ${size} ${res.complete ? "done" : "aborted"} ${Date.now() - started}ms`));
         }
-        if (method === "HEAD") {
+        // HEAD и статусы без тела (204 «обновления нет», 205, 304): Response с потоком
+        // при таких статусах бросает исключение — функция падала, клиент ждал таймаут.
+        if (method === "HEAD" || status === 204 || status === 205 || status === 304) {
           res.resume();
           finish(new Response(null, { status, headers: pickResponseHeaders(res.headers) }));
           return;
         }
         finish(new Response(Readable.toWeb(res) as ReadableStream, { status, headers: pickResponseHeaders(res.headers) }));
-      },
-    );
+    };
     // Таймаут — на ожидание заголовков апстрима. Когда ответ пошёл, тело
     // стримится без ограничения (медленный клиент — не ошибка апстрима).
     const timer = setTimeout(() => req.destroy(new Error("upstream timeout")), UPSTREAM_TIMEOUT_MS);
