@@ -7,7 +7,9 @@ import { proxyToExpo } from "@/lib/eas-proxy";
 // cache-control immutable — он пробрасывается, Vercel CDN может кэшировать.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Vercel Pro + Fluid: максимум 800 с. Длительность включает отдачу потока —
+// медленный клиент из РФ может качать бандл минуту и больше.
+export const maxDuration = 800;
 
 const HASH_RE = /^[A-Za-z0-9_-]{43}$/;
 

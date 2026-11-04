@@ -84,7 +84,12 @@ export function proxyToExpo(request: Request, upstreamUrl: string, kind: Kind): 
       (res) => {
         clearTimeout(timer);
         const status = res.statusCode ?? 502;
+        // Лог — только статус, размер и длительность; заголовки (в т.ч. authorization) не пишем.
+        const size = res.headers["content-length"] ?? "chunked";
         if (status >= 400) console.warn(`[eas-proxy] ${kind} upstream ${status} ${Date.now() - started}ms`);
+        else if (kind === "asset") {
+          res.once("close", () => console.log(`[eas-proxy] asset ${status} ${size} ${res.complete ? "done" : "aborted"} ${Date.now() - started}ms`));
+        }
         if (method === "HEAD") {
           res.resume();
           finish(new Response(null, { status, headers: pickResponseHeaders(res.headers) }));

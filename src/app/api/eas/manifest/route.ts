@@ -5,7 +5,7 @@ import { proxyToExpo } from "@/lib/eas-proxy";
 // updates.url = https://potolok.ai/<projectId>, как требует eas-cli.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const EAS_PROJECT_ID = "6823c39a-b031-4e6c-945e-39a2d1d06c51";
 
