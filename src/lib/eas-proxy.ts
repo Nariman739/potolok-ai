@@ -15,78 +15,93 @@
  *   ассеты   → assets.eascdn.net, то же + authorization и a-im (ассеты
  *              отдаются только с timed-HMAC authorization из манифеста,
  *              иначе 403 «Unauthorized asset request»).
- * Ответ отдаём потоком, без буферизации (бандл > 4,5 МБ лимита Vercel для
- * небуферизованных ответов), статус апстрима — как есть.
+ *
+ * Почему node:https, а не fetch: fetch в Node сам распаковывает gzip, и мы бы
+ * отдавали 6,8 МБ сырого JS, которые Vercel на краю заново жал бы в brotli
+ * (замер 04.11: 24–67 с на бандл). Здесь байты апстрима идут как есть вместе
+ * с его content-encoding (eascdn хранит бандл gzip-ом, 3,35 МБ) — Vercel
+ * повторно не сжимает, клиент (NSURLSession/OkHttp) распаковывает сам, хэш
+ * expo-updates считает по распакованному файлу. Ответ стримится, без
+ * буферизации; статус апстрима — как есть.
  */
+import https from "node:https";
+import { Readable } from "node:stream";
 
 const UPSTREAM_TIMEOUT_MS = 25_000;
 
+type Kind = "manifest" | "asset";
+
 /** Заголовки запроса, которые уходят апстриму. */
-function pickRequestHeaders(src: Headers, kind: "manifest" | "asset"): Headers {
-  const out = new Headers();
+function pickRequestHeaders(src: Headers, kind: Kind): Record<string, string> {
+  const out: Record<string, string> = {};
   src.forEach((value, key) => {
     const k = key.toLowerCase();
-    if (k.startsWith("expo-") || k.startsWith("eas-")) out.set(k, value);
-    else if (k === "accept" || k === "user-agent") out.set(k, value);
-    else if (kind === "asset" && (k === "authorization" || k === "a-im")) out.set(k, value);
+    if (k.startsWith("expo-") || k.startsWith("eas-")) out[k] = value;
+    else if (k === "accept" || k === "user-agent" || k === "accept-encoding") out[k] = value;
+    else if (kind === "asset" && (k === "authorization" || k === "a-im")) out[k] = value;
   });
-  // Апстрим отдаёт сырые байты: fetch в Node сам бы распаковал gzip, а мы бы
-  // отдали клиенту распакованное тело с чужими content-encoding/length.
-  out.set("accept-encoding", "identity");
   return out;
 }
 
-/** Заголовки ответа, которые возвращаем клиенту. */
+/** Заголовки ответа, которые возвращаем клиенту (плюс все expo-*). */
 const PASS_RESPONSE = new Set([
   "content-type",
   "content-length",
+  "content-encoding",
   "cache-control",
   "etag",
   "last-modified",
   "expires",
   "vary",
+  "location",
 ]);
 
-function pickResponseHeaders(src: Headers): Headers {
+function pickResponseHeaders(src: NodeJS.Dict<string | string[]>): Headers {
   const out = new Headers();
-  src.forEach((value, key) => {
+  for (const [key, value] of Object.entries(src)) {
+    if (value === undefined) continue;
     const k = key.toLowerCase();
-    if (k.startsWith("expo-") || PASS_RESPONSE.has(k)) out.set(k, value);
-  });
-  // content-encoding мы не пробрасываем (просили identity), поэтому и
-  // content-length апстрима относится к тому же телу, что отдаём.
-  if (src.get("content-encoding") && src.get("content-encoding") !== "identity") {
-    out.delete("content-length");
+    if (!k.startsWith("expo-") && !PASS_RESPONSE.has(k)) continue;
+    out.set(k, Array.isArray(value) ? value.join(", ") : value);
   }
   return out;
 }
 
-export async function proxyToExpo(request: Request, upstreamUrl: string, kind: "manifest" | "asset"): Promise<Response> {
-  const controller = new AbortController();
-  // Таймаут — на ожидание заголовков апстрима. Когда ответ пошёл, тело
-  // стримится без ограничения (медленный клиент — не ошибка апстрима).
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+export function proxyToExpo(request: Request, upstreamUrl: string, kind: Kind): Promise<Response> {
+  const u = new URL(upstreamUrl);
+  const method = request.method === "HEAD" ? "HEAD" : "GET";
   const started = Date.now();
-  let upstream: Response;
-  try {
-    upstream = await fetch(upstreamUrl, {
-      method: request.method === "HEAD" ? "HEAD" : "GET",
-      headers: pickRequestHeaders(request.headers, kind),
-      signal: controller.signal,
-      redirect: "follow",
-      cache: "no-store",
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (r: Response) => {
+      if (!settled) {
+        settled = true;
+        resolve(r);
+      }
+    };
+    const req = https.request(
+      { hostname: u.hostname, path: u.pathname + u.search, method, headers: pickRequestHeaders(request.headers, kind) },
+      (res) => {
+        clearTimeout(timer);
+        const status = res.statusCode ?? 502;
+        if (status >= 400) console.warn(`[eas-proxy] ${kind} upstream ${status} ${Date.now() - started}ms`);
+        if (method === "HEAD") {
+          res.resume();
+          finish(new Response(null, { status, headers: pickResponseHeaders(res.headers) }));
+          return;
+        }
+        finish(new Response(Readable.toWeb(res) as ReadableStream, { status, headers: pickResponseHeaders(res.headers) }));
+      },
+    );
+    // Таймаут — на ожидание заголовков апстрима. Когда ответ пошёл, тело
+    // стримится без ограничения (медленный клиент — не ошибка апстрима).
+    const timer = setTimeout(() => req.destroy(new Error("upstream timeout")), UPSTREAM_TIMEOUT_MS);
+    req.on("error", (e) => {
+      clearTimeout(timer);
+      const timeout = e.message === "upstream timeout";
+      console.warn(`[eas-proxy] ${kind} upstream ${timeout ? "timeout" : "error"} ${Date.now() - started}ms`, timeout ? "" : e.message);
+      finish(new Response(timeout ? "upstream timeout" : "upstream error", { status: timeout ? 504 : 502 }));
     });
-  } catch (e) {
-    clearTimeout(timer);
-    const aborted = e instanceof Error && e.name === "AbortError";
-    console.warn(`[eas-proxy] ${kind} upstream ${aborted ? "timeout" : "error"} ${Date.now() - started}ms`, aborted ? "" : e);
-    return new Response(aborted ? "upstream timeout" : "upstream error", { status: aborted ? 504 : 502 });
-  }
-  clearTimeout(timer);
-
-  const headers = pickResponseHeaders(upstream.headers);
-  if (upstream.status >= 400) {
-    console.warn(`[eas-proxy] ${kind} upstream ${upstream.status} ${Date.now() - started}ms`);
-  }
-  return new Response(request.method === "HEAD" ? null : upstream.body, { status: upstream.status, headers });
+    req.end();
+  });
 }
