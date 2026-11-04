@@ -1450,6 +1450,11 @@ model AppEvent {
   props      Json?
   platform   String?  // "ios" | "android"
   appVersion String?
+  // Какой код исполнялся (04.11.2026): первые 8 символов id OTA-обновления и
+  // «запущен встроенный бандл» — мастера из России неделями сидят на коде стора,
+  // потому что u.expo.dev до них не доезжает. Старые клиенты полей не шлют → null.
+  updateId   String?
+  embedded   Boolean?
   createdAt  DateTime @default(now())
 
   @@index([name, createdAt])

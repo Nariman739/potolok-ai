@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
   }
 
-  let body: { platform?: unknown; appVersion?: unknown; events?: unknown };
+  let body: { platform?: unknown; appVersion?: unknown; updateId?: unknown; embedded?: unknown; events?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -35,6 +35,11 @@ export async function POST(request: Request) {
 
   const platform = str(body.platform, 10);
   const appVersion = str(body.appVersion, 30);
+  // Какой код исполняется (04.11.2026): id OTA-обновления и флаг встроенного
+  // бандла — чтобы видеть, кто застрял на коде стора (Россия). Старые клиенты
+  // этих полей не шлют — остаются null.
+  const updateId = str(body.updateId, 16);
+  const embedded = typeof body.embedded === "boolean" ? body.embedded : null;
   const raw = Array.isArray(body.events) ? body.events.slice(0, MAX_EVENTS) : [];
 
   const rows = raw.flatMap((e) => {
@@ -52,6 +57,8 @@ export async function POST(request: Request) {
       props: propsStr && propsStr.length <= 4000 ? (props as Prisma.InputJsonValue) : undefined,
       platform,
       appVersion,
+      updateId,
+      embedded,
       ...(createdAt ? { createdAt } : {}),
     };
     return [row];
