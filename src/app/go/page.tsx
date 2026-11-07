@@ -34,9 +34,9 @@ const mastersCount = unstable_cache(
 );
 
 const FEATURES: { title: string; text: string }[] = [
-  { title: "Замер", text: "Вбей стены — комната начертится сама" },
-  { title: "КП", text: "Цена клиенту ещё на объекте" },
-  { title: "Договор", text: "Договор и наряд из того же замера" },
+  { title: "Замер", text: "Стены вбил — чертёж готов" },
+  { title: "КП", text: "Цена клиенту на объекте" },
+  { title: "Договор", text: "Договор и наряд из замера" },
 ];
 
 export default async function GoPage() {
@@ -44,8 +44,8 @@ export default async function GoPage() {
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#0B1220] text-[#F1F5F9]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1E3A8A_0%,_#0B1220_55%)]" />
-      <div className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#60A5FA]/20 blur-[120px]" />
+      {/* Только градиент, без blur-блока: на бюджетных Android фильтр 120px даёт рывки при скролле. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1E3A8A_0%,_#13244F_22%,_#0B1220_58%)]" />
 
       <div className="relative mx-auto flex min-h-screen max-w-[440px] flex-col px-5 pb-10 pt-12">
         <header className="flex flex-col items-center text-center">
@@ -63,28 +63,26 @@ export default async function GoPage() {
           <h1 className="mt-5 text-[30px] font-extrabold tracking-tight">
             potolok<span className="text-[#60A5FA]">.ai</span>
           </h1>
-          <p className="mt-2 max-w-[320px] text-[16px] leading-relaxed text-[#CBD5E1]">
-            Приложение мастера натяжных потолков.{" "}
-            <span className="text-[#F1F5F9]">Замер, чертёж и КП — в телефоне.</span>
-          </p>
+          <p className="mt-2 text-[15px] text-[#94A3B8]">Приложение мастера натяжных потолков</p>
+          <p className="mt-1 whitespace-nowrap text-[17px] font-semibold text-[#F1F5F9]">Замер, чертёж и КП — в телефоне</p>
         </header>
 
         <ul className="mt-7 grid grid-cols-3 gap-2">
           {FEATURES.map((f) => (
             <li key={f.title} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
               <div className="text-[13px] font-bold text-[#93C5FD]">{f.title}</div>
-              <div className="mt-1 text-[12px] leading-snug text-[#94A3B8]">{f.text}</div>
+              <div className="mt-1 text-[13px] leading-snug text-[#94A3B8]">{f.text}</div>
             </li>
           ))}
         </ul>
 
         <GoLinks masters={masters} />
 
-        <footer className="mt-10 flex flex-col items-center gap-1 text-center text-[12px] text-[#64748B]">
-          <span>Казахстан и Россия · Astana, 2026</span>
+        <footer className="mt-10 text-center text-[12px] text-[#64748B]">
           <a href="https://potolok.ai" className="text-[#94A3B8] underline-offset-4 hover:underline">
-            potolok.ai
+            © 2026 potolok.ai
           </a>
+          {" · "}Астана · Казахстан и Россия
         </footer>
       </div>
     </main>

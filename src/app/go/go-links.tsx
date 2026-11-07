@@ -56,10 +56,8 @@ function PlayIcon({ className }: { className?: string }) {
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none" />
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 2.2c2.7 0 3 0 4 .1 1 0 1.6.2 2 .4.5.2.9.4 1.3.8.4.4.6.8.8 1.3.2.4.3 1 .4 2 .1 1 .1 1.3.1 4s0 3-.1 4c0 1-.2 1.6-.4 2-.2.5-.4.9-.8 1.3-.4.4-.8.6-1.3.8-.4.2-1 .3-2 .4-1 .1-1.3.1-4 .1s-3 0-4-.1c-1 0-1.6-.2-2-.4-.5-.2-.9-.4-1.3-.8-.4-.4-.6-.8-.8-1.3-.2-.4-.3-1-.4-2-.1-1-.1-1.3-.1-4s0-3 .1-4c0-1 .2-1.6.4-2 .2-.5.4-.9.8-1.3.4-.4.8-.6 1.3-.8.4-.2 1-.3 2-.4 1-.1 1.3-.1 4-.1Zm0 1.8c-2.6 0-2.9 0-4 .1-.9 0-1.4.2-1.7.3-.4.2-.7.4-1 .7-.3.3-.5.6-.7 1-.1.3-.3.8-.3 1.7-.1 1.1-.1 1.4-.1 4s0 2.9.1 4c0 .9.2 1.4.3 1.7.2.4.4.7.7 1 .3.3.6.5 1 .7.3.1.8.3 1.7.3 1.1.1 1.4.1 4 .1s2.9 0 4-.1c.9 0 1.4-.2 1.7-.3.4-.2.7-.4 1-.7.3-.3.5-.6.7-1 .1-.3.3-.8.3-1.7.1-1.1.1-1.4.1-4s0-2.9-.1-4c0-.9-.2-1.4-.3-1.7-.2-.4-.4-.7-.7-1-.3-.3-.6-.5-1-.7-.3-.1-.8-.3-1.7-.3-1.1-.1-1.4-.1-4-.1Zm0 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4Zm5.2-2.9a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z" />
     </svg>
   );
 }
@@ -68,6 +66,25 @@ function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
       <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8Zm-3.3 4.4c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5 0 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3l-2-1c-.3-.1-.5-.2-.7.2l-.9 1.1c-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.5.3-.5v-.5l-.9-2.2c-.2-.5-.5-.5-.7-.5h-.3Z" />
+    </svg>
+  );
+}
+
+function Chevron({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function PeopleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.8 19c.4-3.3 3-5 6.2-5s5.8 1.7 6.2 5" />
+      <circle cx="17" cy="9" r="2.6" />
+      <path d="M15.6 14.2c2.9.2 5.1 1.8 5.6 4.8" />
     </svg>
   );
 }
@@ -104,7 +121,7 @@ function StoreButton({
         </span>
         <span className="text-[17px] font-bold">{label}</span>
       </span>
-      <span className={primary ? "ml-auto text-[#94A3B8] transition group-hover:translate-x-0.5" : "ml-auto text-[#64748B] transition group-hover:translate-x-0.5"}>→</span>
+      <Chevron className={primary ? "ml-auto h-5 w-5 shrink-0 text-[#94A3B8] transition group-hover:translate-x-0.5" : "ml-auto h-5 w-5 shrink-0 text-[#64748B] transition group-hover:translate-x-0.5"} />
     </a>
   );
 }
@@ -134,9 +151,9 @@ function LinkCard({
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent}`}>{icon}</span>
       <span className="flex min-w-0 flex-col leading-tight">
         <span className="text-[16px] font-semibold text-[#F1F5F9]">{title}</span>
-        <span className="mt-0.5 truncate text-[13px] text-[#94A3B8]">{subtitle}</span>
+        <span className="mt-0.5 text-[13px] leading-snug text-[#94A3B8]">{subtitle}</span>
       </span>
-      <span className="ml-auto text-[#64748B] transition group-hover:translate-x-0.5">→</span>
+      <Chevron className="ml-auto h-5 w-5 shrink-0 text-[#64748B] transition group-hover:translate-x-0.5" />
     </a>
   );
 }
@@ -173,7 +190,7 @@ export function GoLinks({ masters }: { masters: number }) {
       <section className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#93C5FD]">Приложение</h2>
-          <span className="text-[12px] text-[#94A3B8]">{masters.toLocaleString("ru-RU")} мастеров уже в деле</span>
+          <span className="text-[13px] text-[#94A3B8]"><b className="font-bold text-[#F1F5F9]">{masters.toLocaleString("ru-RU")}</b> мастеров уже в деле</span>
         </div>
         {platform === "android" ? [android, ios] : [ios, android]}
       </section>
@@ -182,9 +199,9 @@ export function GoLinks({ masters }: { masters: number }) {
         <h2 className="px-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#93C5FD]">Мы на связи</h2>
         <LinkCard
           href={GROUP_URL}
-          icon={<WhatsAppIcon className="h-6 w-6 text-[#25D366]" />}
+          icon={<PeopleIcon className="h-6 w-6 text-[#25D366]" />}
           title="Группа мастеров"
-          subtitle="WhatsApp · вопросы и опыт коллег"
+          subtitle="WhatsApp · опыт коллег"
           accent="bg-[#25D366]/15"
         />
         <LinkCard
@@ -200,7 +217,7 @@ export function GoLinks({ masters }: { masters: number }) {
           external
           icon={<WhatsAppIcon className="h-6 w-6 text-[#60A5FA]" />}
           title="Написать нам"
-          subtitle="WhatsApp · ответим в течение часа"
+          subtitle="WhatsApp · ответим за час"
           accent="bg-[#60A5FA]/15"
         />
       </section>
