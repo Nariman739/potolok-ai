@@ -69,7 +69,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       /** «Убрать вставку везде» на объекте (30.10.2026) */
       noInsert?: boolean;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null }[];
     };
 
     const totalArea = rooms
@@ -149,6 +149,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
                 wallProfiles: r.wallProfiles ?? undefined,
                 variantOverrides: r.variantOverrides ?? undefined,
                 withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
+                insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
                 sortOrder: i,
               })),
             }

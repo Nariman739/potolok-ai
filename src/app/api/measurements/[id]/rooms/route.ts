@@ -62,6 +62,7 @@ async function addRooms(request: Request, master: Master, id: string) {
         wallProfiles?: Record<number, string>;
         variantOverrides?: Record<string, string>;
         withInsert?: boolean | null;
+        insertColor?: string | null;
         previewUrl3d?: string;
       };
 
@@ -83,6 +84,7 @@ async function addRooms(request: Request, master: Master, id: string) {
           wallProfiles: r.wallProfiles ?? undefined,
           variantOverrides: r.variantOverrides ?? undefined,
           withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
+          insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
           previewUrl3d: r.previewUrl3d ?? undefined,
           sortOrder: obj._count.rooms + i,
         },

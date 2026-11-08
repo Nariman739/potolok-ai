@@ -814,6 +814,8 @@ model MeasurementRoom {
   // Вставка в этой комнате: null — как на объекте (MeasurementObject.noInsert),
   // true/false — мастер решил для комнаты отдельно («везде галтели, в туалете вставка»).
   withInsert       Boolean?
+  // Цвет вставки (09.11.2026, для 3D и строки КП «Вставка (чёрная)»): "white" | "black", null — белая.
+  insertColor      String?
   // Per-комната выбор кастомных вариантов из прайса мастера:
   // Record<positionType, variantId>. При расчёте КП в estimate.tsx
   // переопределяет дефолтные позиции (canvas, profile, spot, etc.).
