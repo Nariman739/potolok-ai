@@ -17,6 +17,7 @@
  */
 import React from "react";
 import { getVertices, roomOutlinePath, roomPolygonDense } from "@/lib/room-geometry";
+import { calcRoomLevel2, level2Path, type RoomLevel2 } from "@/lib/level2-geometry";
 import type { RoomElement } from "@/lib/room-types";
 import type { Lang } from "@/lib/i18n";
 import { tFor } from "@/lib/i18n";
@@ -156,13 +157,14 @@ const INK = "#2f2f35";
 const GRID = "#dde5ee";
 const GRID_MAJOR = "#c3d0de";
 const PENCIL_COLORS: Palette = {
-  spot: INK, pendant: INK, chandelier: INK, vent: INK, track: INK, lightline: INK, curtain: INK,
+  spot: INK, pendant: INK, chandelier: INK, vent: INK, track: INK, lightline: INK, level2: INK, curtain: INK,
   subcurtain: INK, floating: INK, wall: INK, roomFill: "none", label: INK,
 };
 /** Рисунок линий элементов в карандашном стиле (паттерны в единицах u). */
 const LINE_PENCIL: Record<string, { dash?: string; double?: boolean; mul?: number }> = {
   track: { double: true },
   lightline: { dash: "7 3 1.5 3" },
+  level2: { mul: 1.6 },
   curtain: { dash: "9 4" },
   subcurtain: { dash: "1.5 3", mul: 1.5 },
 };
@@ -192,6 +194,8 @@ const COLORS = {
   vent: "#475569",
   track: "#EF4444",
   lightline: "#CA8A04",
+  /** «2 уровня» — фиолетовый, как в дизайнере мобилки (не спорит с жёлтой линией и красным треком). */
+  level2: "#7C3AED",
   curtain: "#10B981",
   subcurtain: "#0F172A",
   floating: "#F97316",
@@ -330,13 +334,27 @@ export type RoomSummary = {
   profileNames: Record<string, string>;
   /** Вставка, см — по стенам с пластиком/алюминием/евробрусом (и своими багетами «со вставкой»), если в комнате она не снята. */
   insertCm: number;
+  /** Двухуровневый (08.11.2026): контуров, верхнее полотно м², борт м, подсветка м, перепад см. */
+  level2Count: number;
+  level2UpperM2: number;
+  level2BortM: number;
+  level2LedM: number;
+  level2DropCm: number;
 };
 
 function emptySummary(): RoomSummary {
   return {
     spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, vents: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
     curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {}, profileNames: {}, insertCm: 0,
+    level2Count: 0, level2UpperM2: 0, level2BortM: 0, level2LedM: 0, level2DropCm: 0,
   };
+}
+
+/** Контуры «2 уровня» комнаты с расчётом (null — их нет). Вершины комнаты нужны для борта у стены. */
+function level2Of(room: PlanRoom): RoomLevel2 | null {
+  const els = elementsOf(room);
+  if (!els.some((e) => String(e.type) === "level2")) return null;
+  return calcRoomLevel2(els, verticesOf(room));
 }
 
 /** Точечный светильник или пара софитов (общий groupId) — одна «единица» с центром. */
@@ -391,6 +409,14 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
     if (insertOn && (INSERT_PROFILE_TYPES.has(p) || room.profileInsert?.[p] === true)) s.insertCm += len;
   });
   if (room.profileNames) s.profileNames = { ...room.profileNames };
+  const lvl = level2Of(room);
+  if (lvl) {
+    s.level2Count = lvl.count;
+    s.level2UpperM2 = lvl.upperM2;
+    s.level2BortM = lvl.bortM;
+    s.level2LedM = lvl.ledM;
+    s.level2DropCm = lvl.dropCm;
+  }
   return s;
 }
 
@@ -405,11 +431,18 @@ export function mergeSummaries(list: RoomSummary[]): RoomSummary {
     for (const [k, v] of Object.entries(s.profileCm)) out.profileCm[k] = (out.profileCm[k] ?? 0) + v;
     Object.assign(out.profileNames, s.profileNames);
     out.insertCm += s.insertCm;
+    out.level2Count += s.level2Count; out.level2UpperM2 += s.level2UpperM2; out.level2BortM += s.level2BortM; out.level2LedM += s.level2LedM;
+    out.level2DropCm = Math.max(out.level2DropCm, s.level2DropCm);
   }
+  out.level2UpperM2 = Math.round(out.level2UpperM2 * 100) / 100;
+  out.level2BortM = Math.round(out.level2BortM * 100) / 100;
+  out.level2LedM = Math.round(out.level2LedM * 100) / 100;
   return out;
 }
 
 const m = (cm: number) => `${(Math.round(cm / 10) / 10).toLocaleString("ru-RU")} м`;
+const m2 = (sqm: number) => `${(Math.round(sqm * 10) / 10).toLocaleString("ru-RU")} м²`;
+const mFromM = (meters: number) => `${(Math.round(meters * 10) / 10).toLocaleString("ru-RU")} м`;
 
 /** Строки «что ставить» — для комнаты и для итога по объекту. */
 export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: boolean }): string[] {
@@ -424,6 +457,18 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
   if (s.lightlineCount) out.push(`${t("wo.el.lightline")}: ${s.lightlineCount} ${pcs}${s.lightlineCm ? ` · ${m(s.lightlineCm)}` : ""}`);
   if (s.curtainCount) out.push(`${t("wo.el.curtainOnly")}: ${s.curtainCount} ${pcs}${s.curtainCm ? ` · ${m(s.curtainCm)}` : ""}`);
   if (s.subcurtainCount) out.push(`${t("wo.el.subcurtainEl")}: ${s.subcurtainCount} ${pcs}${s.subcurtainCm ? ` · ${m(s.subcurtainCm)}` : ""}`);
+  // Двухуровневый (08.11.2026): монтажнику — сколько верхнего полотна, сколько борта,
+  // какой перепад и есть ли подсветка в ступеньке.
+  if (s.level2Count) {
+    const parts = [
+      `${s.level2Count} ${pcs}`,
+      `${t("wo.level2.upper")} ${m2(s.level2UpperM2)}`,
+      `${t("wo.level2.bort")} ${mFromM(s.level2BortM)}`,
+      t("wo.level2.drop", { n: s.level2DropCm }),
+      s.level2LedM > 0 ? `${t("wo.level2.led")} ${mFromM(s.level2LedM)}` : t("wo.level2.noLed"),
+    ];
+    out.push(`${t("wo.el.level2")}: ${parts.join(" · ")}`);
+  }
   // Профили стен: сначала особые (теневой, парящий, подшторник…), обычный пластик — последним.
   const types = Object.keys(s.profileCm).sort((a, b) => (a === "pvc" ? 1 : 0) - (b === "pvc" ? 1 : 0));
   for (const p of types) {
@@ -605,7 +650,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   const C: Palette = client
     ? {
         spot: client.ink, pendant: client.ink, chandelier: client.accent, vent: client.ink, track: client.accent,
-        lightline: client.accent, curtain: client.ink, subcurtain: client.ink, floating: client.accent,
+        lightline: client.accent, level2: client.accent, curtain: client.ink, subcurtain: client.ink, floating: client.accent,
         wall: client.accent, roomFill: client.fill, label: client.ink,
       }
     : pencil ? PENCIL_COLORS : COLORS;
@@ -724,6 +769,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
   // 3. Свободные ломаные (трек, свет.линия, гардина по точкам) и круги
   for (const el of els) {
     const type = String(el.type);
+    if (type === "level2") continue; // контур борта — ниже, своим блоком
     if (String(el.shape) === "circle" && typeof (el as { cx?: number }).cx === "number") {
       const c = el as unknown as { cx: number; cy: number; radius: number };
       used.add(`el:${legendKey(type)}`);
@@ -739,6 +785,60 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
     if (cm > 0 && !client) {
       const mid = p[Math.floor(p.length / 2)];
       shapes.push({ k: "text", x: mid.x, y: mid.y - fs, text: String(cm), size: fs, weight: 600, fill: color, halo: true, tag: "dim-el" });
+    }
+  }
+
+  // 3a. Двухуровневый потолок (08.11.2026): замкнутый контур борта со скруглёнными
+  // углами, тонкая линия полки внутри, длины сторон и отступы до стен — монтажнику
+  // надо знать, где ставить короб. Клиенту — только контур.
+  const lvl = level2Of(room);
+  if (lvl) {
+    used.add("el:level2");
+    const color = pencil ? INK : C.level2;
+    for (const it of lvl.items) {
+      const { calc } = it;
+      const contour = calc.contour; // плотная ломаная (дуги разложены), концы линии притянуты к стенам
+      const closed = calc.closed;
+      const w = calc.params.shelfCm;
+      const d = level2Path(contour.map(S), calc.contourRadii.map((x) => x * scale), closed);
+      if (d) shapes.push({ k: "path", d, fill: "none", stroke: color, sw: strokeW * (pencil ? (LINE_PENCIL.level2.mul ?? 1) : 1.3), tag: "level2" });
+      if (calc.upper && w > 0) {
+        const du = level2Path(calc.upper.map(S), calc.upperRadii.map((x) => x * scale), closed);
+        if (du) shapes.push({ k: "path", d: du, fill: "none", stroke: color, sw: strokeW * 0.45, tag: "level2-shelf" });
+      }
+      if (client) continue;
+      // Центр нижней области: от него размеры и подпись уходят «наружу» — в сторону низа у острова
+      // и в сторону верха у линии (там свободнее, низ у линии — обычно узкая половина).
+      const ref = closed ? contour : calc.lowPolygon.length >= 3 ? calc.lowPolygon : contour;
+      const ccx = ref.reduce((s, p) => s + p.x, 0) / ref.length, ccy = ref.reduce((s, p) => s + p.y, 0) / ref.length;
+      for (const side of calc.sides) {
+        const a = side.from, b = side.to;
+        const len = side.chordCm;
+        if (len < 1) continue;
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        // Перпендикуляр наружу от центра контура (у линии — от центра нижней области, т.е. в сторону верха)
+        let px = -(b.y - a.y) / len, py = (b.x - a.x) / len;
+        if ((mx - ccx) * px + (my - ccy) * py < 0) { px = -px; py = -py; }
+        // Длина стороны — у самой стороны, чуть внутрь; у дуги — по дуге у её вершины, со значком ⌒.
+        // У открытой линии из одной стороны длина уже есть в подписи — не дублируем.
+        if (closed || calc.sides.length > 1) {
+          const anchor = side.apex ? S(side.apex) : S({ x: mx, y: my });
+          const lenTxt = side.bulge ? `⌒${Math.round(side.lengthCm)}` : String(Math.round(len));
+          shapes.push({ k: "text", x: anchor.x - px * fs * 0.95, y: anchor.y - py * fs * 0.95, text: lenTxt, size: fs * 0.9, weight: 600, fill: color, halo: true, tag: "dim-level2" });
+        }
+        // Отступ до стены — пунктиром наружу с цифрой; у стороны на стене и у дуги отступа нет
+        if (side.onWall || side.bulge) continue;
+        const dist = rayToWall({ x: mx, y: my }, { x: px, y: py }, v);
+        if (dist === null || dist < 1) continue;
+        const M = S({ x: mx, y: my }), Q = S({ x: mx + px * dist, y: my + py * dist });
+        shapes.push({ k: "line", x1: M.x, y1: M.y, x2: Q.x, y2: Q.y, stroke: DIM, sw: 0.7 * u, dash: `${3 * u} ${2 * u}`, tag: "dim-level2" });
+        shapes.push({ k: "text", x: (M.x + Q.x) / 2 - py * 5.5 * u, y: (M.y + Q.y) / 2 + px * 5.5 * u, text: String(Math.round(dist)), size: fs * 0.85, weight: 600, fill: DIM_TEXT, halo: true, tag: "dim-level2" });
+      }
+      // Подпись: «2 уровня ↓10 · LED» — чуть выше центра нижней области, чтобы не лечь на люстру;
+      // у открытой линии — ещё и длина борта.
+      const lenTxt = !closed ? ` · ${Math.round(calc.bortM * 100)}` : "";
+      const label = `${t("wo.el.level2")} ↓${Math.round(calc.params.dropCm)}${calc.params.led ? " · LED" : ""}${lenTxt}`;
+      shapes.push({ k: "text", x: sx(ccx), y: sy(ccy) - fs * 1.4, text: label, size: fs, weight: 700, fill: color, halo: true, tag: "level2-label" });
     }
   }
 
@@ -821,6 +921,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       else if (name === "vent") legend.push({ key: t("wo.el.vent"), color: C.vent, kind: "vent" });
       else if (name === "track") legend.push({ key: t("wo.el.track"), color: C.track, kind: "line", ...ln("track") });
       else if (name === "lightline") legend.push({ key: t("wo.el.lightline"), color: C.lightline, kind: "line", ...ln("lightline") });
+      else if (name === "level2") legend.push({ key: t("wo.el.level2"), color: C.level2, kind: "line", ...ln("level2") });
       else if (name === "curtain") legend.push({ key: t("wo.el.curtainOnly"), color: C.curtain, kind: "line", ...ln("curtain") });
       else if (name === "subcurtain") legend.push({ key: t("wo.el.subcurtainEl"), color: C.subcurtain, kind: "line", ...ln("subcurtain") });
     } else {

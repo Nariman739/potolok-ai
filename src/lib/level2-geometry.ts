@@ -544,6 +544,8 @@ export type Level2Side = {
   /** Стрелка дуги, см («+» к нижнему уровню), 0 — прямая. */
   bulge: number;
   onWall: boolean;
+  /** Вершина дуги (самая далёкая от хорды точка), см — для подписи длины; у прямой нет. */
+  apex?: Pt;
 };
 
 export type Level2Calc = {
@@ -606,6 +608,7 @@ function sidesOf(shape: Level2Shape, dense: DenseShape, onWallEdges: boolean[]):
     const from = shape.points[i], to = shape.points[(i + 1) % n];
     let lengthCm = 0;
     let onWall = true, any = false;
+    let apex: Pt | undefined, apexDist = 0;
     for (let k = 0; k < dense.pts.length; k++) {
       if (dense.segOf[k] !== i) continue;
       if (!dense.closed && k === dense.pts.length - 1) continue;
@@ -613,8 +616,12 @@ function sidesOf(shape: Level2Shape, dense: DenseShape, onWallEdges: boolean[]):
       lengthCm += Math.hypot(b.x - a.x, b.y - a.y);
       any = true;
       if (!onWallEdges[k]) onWall = false;
+      if (!dense.isCorner[k]) {
+        const d = distToLine(a, from, to);
+        if (d > apexDist) { apexDist = d; apex = a; }
+      }
     }
-    out.push({ from, to, chordCm: Math.hypot(to.x - from.x, to.y - from.y), lengthCm, bulge: shape.bulges[i] || 0, onWall: any && onWall });
+    out.push({ from, to, chordCm: Math.hypot(to.x - from.x, to.y - from.y), lengthCm, bulge: shape.bulges[i] || 0, onWall: any && onWall, ...(apex ? { apex } : {}) });
   }
   return out;
 }
