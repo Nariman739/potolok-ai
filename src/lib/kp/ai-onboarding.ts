@@ -120,6 +120,38 @@ export function buildFallbackConfigFromBrief(brief: MasterBrief): OnboardingResu
   };
 }
 
+// Модель иногда дописывает к JSON пояснение после закрывающей скобки
+// (08.11.26: «Unexpected non-whitespace character after JSON at position 1697» —
+// мастер получил стандартные тексты вместо сгенерированных). Если ответ целиком
+// не парсится — вырезаем первый сбалансированный объект {…} с учётом строк.
+function parseJsonObjectLenient(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const start = text.indexOf("{");
+    if (start < 0) throw err;
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === "\\") esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') inStr = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) return JSON.parse(text.slice(start, i + 1));
+      }
+    }
+    throw err;
+  }
+}
+
 // ============================================
 // Основная функция
 // ============================================
@@ -212,7 +244,7 @@ ${brief.differentiator ? `— Чем отличается от других: ${b
     const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
     return m ? m[1].trim() : t;
   })();
-  const parsed = JSON.parse(cleaned) as Partial<{
+  const parsed = parseJsonObjectLenient(cleaned) as Partial<{
     tagline: string;
     warranties: WarrantyItem[];
     faq: FaqItem[];
