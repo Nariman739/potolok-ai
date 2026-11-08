@@ -110,6 +110,8 @@ export const CATEGORY_ROLES: Record<string, RoleMeta> = {
   chandelier: { role: "point", appliesTo: ["chandelier"] },
   track: { role: "linear", appliesTo: ["track"] },
   lightline: { role: "linear", appliesTo: ["lightline"] },
+  /** «2 уровня»: своих вариантов в v1 не планируем, но категория должна разрешаться (ревью 08.11.2026). */
+  level2: { role: "linear", appliesTo: ["level2"] },
   curtain: { role: "linear", appliesTo: ["curtain"] },
   gardina: { role: "linear", appliesTo: ["gardina"] },
   corner: { role: "corner" },

@@ -71,10 +71,11 @@ export function installCodeByName(name: string): string | undefined {
   const n = name.toLowerCase();
   // Вставка и LED-лента — без ставки в прайсе: не цеплять к профилю/световой линии.
   if (n.startsWith("монтаж вставки") || n.startsWith("монтаж led") || n.startsWith("монтаж: вставка") || n.startsWith("монтаж: led")) return undefined;
-  // «Монтаж 2-го уровня» / «Подсветка в ступеньке» — ставки нет; раньше «свет» в слове
-  // «подсветка» уводило бы строку в install_lightline (08.11.2026).
-  if (n.includes("2-го уровня") || n.includes("ступеньк")) return undefined;
+  // «Монтаж полотна 2-го уровня» — всё же полотно (до guard'а ниже, ревью 08.11.2026).
   if (n.startsWith("монтаж полотна")) return "install_canvas";
+  // «Монтаж 2-го уровня» / «Подсветка в ступеньке» — ставки нет; иначе «свет» в слове
+  // «подсветка» увело бы строку в install_lightline (08.11.2026).
+  if (n.includes("2-го уровня") || n.includes("ступеньк")) return undefined;
   if (n.includes("софит")) return "install_spot";
   if (n.includes("люстр")) return "install_chandelier";
   if (n.includes("трек")) return "install_track";
@@ -198,9 +199,9 @@ export function autoWorkOrderLines(
       }
       const installCode = item.installCode ?? installCodeFor(item.itemCode);
       if (!installCode) continue;
-      // Софиты разных типов монтируются отдельно; остальное по коду монтажа схлопываем
-      // (профиль + вставка = один монтаж профиля).
-      const seenKey = installCode === "install_spot" ? `${installCode}:${item.itemCode}` : installCode;
+      // Софиты разных типов монтируются отдельно, полотно 2-го уровня — отдельно от
+      // основного; остальное по коду монтажа схлопываем (профиль + вставка = один монтаж профиля).
+      const seenKey = installCode === "install_spot" || item.itemCode === "level2_canvas" ? `${installCode}:${item.itemCode}` : installCode;
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
       const price = Math.max(0, priceOf(installCode));
