@@ -84,7 +84,7 @@ function profileLabel(p: string, t: (k: string) => string, names?: Record<string
  */
 export type Shape = (
   | { k: "path"; d: string; fill: string; stroke: string; sw: number }
-  | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number }
+  | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number; /** прозрачность заливки (область нижнего уровня) */ opacity?: number }
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash?: string; round?: boolean }
   | { k: "polyline"; points: Pt[]; stroke: string; sw: number; dash?: string }
   | { k: "circle"; cx: number; cy: number; r: number; fill: string; stroke: string; sw: number }
@@ -340,13 +340,16 @@ export type RoomSummary = {
   level2BortM: number;
   level2LedM: number;
   level2DropCm: number;
+  /** Где нижний уровень: остров — по периметру; открытая линия — буквы стен («AB»). Для итога по объекту не сводится. */
+  level2LowWalls: string[];
+  level2HasIsland: boolean;
 };
 
 function emptySummary(): RoomSummary {
   return {
     spots: 0, spotPairs: 0, pendants: 0, chandeliers: 0, vents: 0, trackCm: 0, trackCount: 0, lightlineCm: 0, lightlineCount: 0,
     curtainCount: 0, curtainCm: 0, subcurtainCount: 0, subcurtainCm: 0, profileCm: {}, profileWalls: {}, profileNames: {}, insertCm: 0,
-    level2Count: 0, level2UpperM2: 0, level2BortM: 0, level2LedM: 0, level2DropCm: 0,
+    level2Count: 0, level2UpperM2: 0, level2BortM: 0, level2LedM: 0, level2DropCm: 0, level2LowWalls: [], level2HasIsland: false,
   };
 }
 
@@ -416,6 +419,11 @@ export function summarizeRoom(room: PlanRoom): RoomSummary {
     s.level2BortM = lvl.bortM;
     s.level2LedM = lvl.ledM;
     s.level2DropCm = lvl.dropCm;
+    s.level2HasIsland = lvl.items.some((it) => it.calc.closed);
+    const nW = room.walls.length;
+    const walls = new Set<number>();
+    for (const it of lvl.items) for (const w of it.calc.lowWalls) walls.add(w);
+    s.level2LowWalls = [...walls].sort((a, b) => a - b).map((i) => `${cornerLetter(i)}${cornerLetter((i + 1) % nW)}`);
   }
   return s;
 }
@@ -467,6 +475,12 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
       t("wo.level2.drop", { n: s.level2DropCm }),
       s.level2LedM > 0 ? `${t("wo.level2.led")} ${mFromM(s.level2LedM)}` : t("wo.level2.noLed"),
     ];
+    // Где низ — только в строке комнаты (в итоге по объекту стены не сводятся).
+    if (opts.withWalls) {
+      if (s.level2HasIsland) parts.push(t("wo.level2.lowPerimeter"));
+      if (s.level2LowWalls.length === 1) parts.push(t("wo.level2.lowAtWall", { w: s.level2LowWalls[0] }));
+      else if (s.level2LowWalls.length > 1) parts.push(t("wo.level2.lowAtWalls", { w: s.level2LowWalls.join(", ") }));
+    }
     out.push(`${t("wo.el.level2")}: ${parts.join(" · ")}`);
   }
   // Профили стен: сначала особые (теневой, парящий, подшторник…), обычный пластик — последним.
@@ -484,6 +498,21 @@ export function summaryLines(s: RoomSummary, lang: Lang, opts: { withWalls: bool
 // ============================================
 // Размерные цепочки для монтажника
 // ============================================
+
+/** Ближайшая точка открытой ломаной к p (см) — для раскладки подписи у линии борта. */
+function nearestOnPath(p: Pt, pts: Pt[]): { q: Pt; dist: number } {
+  let best = { q: pts[0], dist: Infinity };
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    const q = { x: a.x + t * dx, y: a.y + t * dy };
+    const dist = Math.hypot(p.x - q.x, p.y - q.y);
+    if (dist < best.dist) best = { q, dist };
+  }
+  return best;
+}
 
 /** Длина луча из p по dir до контура (см) — ближайшее пересечение со стеной. */
 function rayToWall(p: Pt, dir: Pt, v: Pt[]): number | null {
@@ -800,6 +829,10 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const contour = calc.contour; // плотная ломаная (дуги разложены), концы линии притянуты к стенам
       const closed = calc.closed;
       const w = calc.params.shelfCm;
+      // Область нижнего уровня — лёгкой заливкой: монтажнику видно, с какой стороны борта короб.
+      if (calc.lowPolygon.length >= 3) {
+        shapes.push({ k: "polygon", points: calc.lowPolygon.map(S), fill: color, stroke: "none", sw: 0, opacity: pencil ? 0.08 : client ? 0.08 : 0.1, tag: "level2-low" });
+      }
       const d = level2Path(contour.map(S), calc.contourRadii.map((x) => x * scale), closed);
       if (d) shapes.push({ k: "path", d, fill: "none", stroke: color, sw: strokeW * (pencil ? (LINE_PENCIL.level2.mul ?? 1) : 1.3), tag: "level2" });
       if (calc.upper && w > 0) {
@@ -834,11 +867,29 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
         shapes.push({ k: "line", x1: M.x, y1: M.y, x2: Q.x, y2: Q.y, stroke: DIM, sw: 0.7 * u, dash: `${3 * u} ${2 * u}`, tag: "dim-level2" });
         shapes.push({ k: "text", x: (M.x + Q.x) / 2 - py * 5.5 * u, y: (M.y + Q.y) / 2 + px * 5.5 * u, text: String(Math.round(dist)), size: fs * 0.85, weight: 600, fill: DIM_TEXT, halo: true, tag: "dim-level2" });
       }
-      // Подпись: «2 уровня ↓10 · LED» — чуть выше центра нижней области, чтобы не лечь на люстру;
-      // у открытой линии — ещё и длина борта.
-      const lenTxt = !closed ? ` · ${Math.round(calc.bortM * 100)}` : "";
-      const label = `${t("wo.el.level2")} ↓${Math.round(calc.params.dropCm)}${calc.params.led ? " · LED" : ""}${lenTxt}`;
-      shapes.push({ k: "text", x: sx(ccx), y: sy(ccy) - fs * 1.4, text: label, size: fs, weight: 700, fill: color, halo: true, tag: "level2-label" });
+      // Подпись: «2 уровня ↓10 · LED» — в центре нижней области (у острова чуть выше центра,
+      // чтобы не лечь на люстру). Длина борта — в сводке, в подписи её нет: у узкой полосы вдоль
+      // стены она не помещалась. Если текст лёг бы на линию борта — отодвигаем от неё.
+      const tail = `↓${Math.round(calc.params.dropCm)}${calc.params.led ? " · LED" : ""}`;
+      // Узкая полоса вдоль стены: подпись в одну строку шире области низа — переносим.
+      const lowXs = calc.lowPolygon.map((p) => p.x), lowYs = calc.lowPolygon.map((p) => p.y);
+      const lowW = calc.lowPolygon.length ? Math.min(Math.max(...lowXs) - Math.min(...lowXs), Math.max(...lowYs) - Math.min(...lowYs)) : Infinity;
+      const oneLine = `${t("wo.el.level2")} ${tail}`;
+      const lines = (oneLine.length * fs * 0.55) / scale <= lowW * 0.9 ? [oneLine] : [t("wo.el.level2"), tail];
+      let lx = ccx, ly = closed ? ccy - (fs * 1.4) / scale : ccy;
+      if (!closed) {
+        const halfW = (Math.max(...lines.map((l) => l.length)) * fs * 0.55) / 2 / scale; // полуширина текста, см
+        const near = nearestOnPath({ x: lx, y: ly }, contour);
+        const gap = halfW + (fs * 0.6) / scale - near.dist;
+        if (gap > 0 && near.dist > 0.01) {
+          lx += ((lx - near.q.x) / near.dist) * gap;
+          ly += ((ly - near.q.y) / near.dist) * gap;
+        }
+      }
+      lines.forEach((text, li) => {
+        const dy = (li - (lines.length - 1) / 2) * fs * 1.25;
+        shapes.push({ k: "text", x: sx(lx), y: sy(ly) + dy, text, size: fs, weight: 700, fill: color, halo: true, tag: "level2-label" });
+      });
     }
   }
 
@@ -967,7 +1018,7 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
         {shapes.map((s, i) => {
           switch (s.k) {
             case "path": return <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
-            case "polygon": return <polygon key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
+            case "polygon": return <polygon key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={s.fill} fillOpacity={s.opacity} stroke={s.stroke} strokeWidth={s.sw} />;
             case "line": return <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap={s.round ? "round" : "butt"} />;
             case "polyline": return <polyline key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap="round" strokeLinejoin="round" />;
             case "circle": return <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;

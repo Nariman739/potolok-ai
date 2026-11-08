@@ -1,5 +1,5 @@
 import React from "react";
-import { Svg, Path, Line, Rect, Text as SvgText, View } from "@react-pdf/renderer";
+import { Svg, Path, Line, Rect, Text as SvgText, View, Defs, ClipPath, G, Polygon } from "@react-pdf/renderer";
 import { buildRoomPlan, type PlanRoom, type Pt, type Shape } from "@/lib/work-order-plan";
 
 /**
@@ -167,8 +167,30 @@ export function SketchRoomPlan({
       }
       continue;
     }
-    // Двухуровневый (08.11.2026): борт — плотный двойной штрих (как стена, но тоньше),
-    // кромка полки — один лёгкий проход.
+    // Двухуровневый (08.11.2026): область нижнего уровня — редкая косая штриховка карандашом
+    // (обрезана по многоугольнику), чтобы было видно, с какой стороны борта короб.
+    if (tag === "level2-low" && sh.k === "polygon") {
+      const pts = sh.points;
+      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const step = 7 * u;
+      const lines: React.ReactNode[] = [];
+      // Линии под 45°: x + y = c, c от x0+y0 до x1+y1
+      for (let c = x0 + y0 + step; c < x1 + y1; c += step) {
+        const a = { x: Math.max(x0, c - y1), y: Math.min(y1, c - x0) };
+        const b = { x: Math.min(x1, c - y0), y: Math.max(y0, c - x1) };
+        lines.push(<Line key={`${key}-h${c.toFixed(0)}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={ink} strokeWidth={0.5 * u} strokeOpacity={0.45} />);
+      }
+      const clipId = `l2low-${key}`;
+      nodes.push(
+        <React.Fragment key={key}>
+          <Defs><ClipPath id={clipId}><Polygon points={pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} /></ClipPath></Defs>
+          <G clipPath={`url(#${clipId})`}>{lines}</G>
+        </React.Fragment>,
+      );
+      continue;
+    }
+    // Борт — плотный двойной штрих (как стена, но тоньше), кромка полки — один лёгкий проход.
     if ((tag === "level2" || tag === "level2-shelf") && sh.k === "path") {
       const heavy = tag === "level2";
       nodes.push(<Path key={`${key}-a`} d={sh.d} fill="none" stroke={ink} strokeWidth={sh.sw * (heavy ? 0.95 : 0.9)} strokeOpacity={heavy ? 0.88 : 0.5} strokeLinejoin="round" strokeLinecap="round" />);

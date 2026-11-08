@@ -486,6 +486,24 @@ function distToPolygon(p: Pt, poly: Pt[]): number {
   return nearestOnBoundary(p, poly).dist;
 }
 
+function onBoundary(p: Pt, poly: Pt[], tol = 0.5): boolean {
+  return poly.length >= 2 && nearestOnBoundary(p, poly).dist < tol;
+}
+
+/** Расстояние от точки до ломаной (открытой или замкнутой), см — для раскладки подписей на чертеже. */
+export function distToPath(p: Pt, pts: Pt[], closed: boolean): number {
+  let best = Infinity;
+  const segs = closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < segs; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return best;
+}
+
 /**
  * SVG-путь борта: замкнутый контур или открытая ломаная, углы со скруглением radii
  * (по вершинам, в единицах точек). Дуги уже разложены в точки (densify).
@@ -574,6 +592,8 @@ export type Level2Calc = {
   upperPolygon: Pt[] | null;
   /** Многоугольник нижнего уровня, см (остров — сам контур; линия — область со стороны lowSide). */
   lowPolygon: Pt[];
+  /** Открытая линия: индексы стен комнаты, вдоль которых лежит нижний уровень (для сводки «низ у стены AB»). У острова пусто. */
+  lowWalls: number[];
   /** Исходные стороны борта с длинами и признаком «на стене». */
   sides: Level2Side[];
   closed: boolean;
@@ -676,6 +696,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
     upperRadii,
     upperPolygon: upper,
     lowPolygon: D.map((p) => ({ ...p })),
+    lowWalls: [],
     sides,
     closed: true,
     warnings,
@@ -700,7 +721,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     const len = pathLength(line, false);
     return {
       upperM2: 0, cutM2: 0, bortM: r2(len / 100), ledM: params.led ? r2(len / 100) : 0, shelfM2: 0, contourM: r2(len / 100), sidesOnWall: 0,
-      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [],
+      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
       sides: sidesOf(shape, dense, noWall), closed: false, warnings: [...warnings, "open_no_room"], params,
     };
   };
@@ -778,6 +799,20 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   lowCm2 = Math.max(0, lowCm2);
   upperCm2 = Math.max(0, Math.min(upperCm2, roomCm2 - lowCm2));
 
+  // Стены, вдоль которых лежит низ: те, что низ закрывает хотя бы наполовину (полоса вдоль
+  // стены BC задевает и соседние AB/CD краями — их не называем); если таких нет — любые задетые.
+  const coverage = room.map((p, j) => {
+    const q = room[(j + 1) % m];
+    let hit = 0;
+    for (let k = 1; k <= 9; k++) {
+      const t = k / 10;
+      if (onBoundary({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }, lowPoly)) hit++;
+    }
+    return hit / 9;
+  });
+  let lowWalls = coverage.map((c, j) => (c >= 0.5 ? j : -1)).filter((j) => j >= 0);
+  if (lowWalls.length === 0) lowWalls = coverage.map((c, j) => (c > 0 ? j : -1)).filter((j) => j >= 0);
+
   return {
     upperM2: r2(upperCm2 / 10000),
     cutM2: r2(lowCm2 / 10000),
@@ -792,6 +827,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     upperRadii,
     upperPolygon,
     lowPolygon: lowPoly,
+    lowWalls,
     sides: sidesOf({ ...shape, points: [ends[0].q, ...shape.points.slice(1, -1), ends[1].q] }, dense, noWall),
     closed: false,
     warnings,
