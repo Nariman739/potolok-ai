@@ -549,6 +549,61 @@ export function level2Path(pts: Pt[], radii: number[], closed: boolean): string 
   return closed ? `${d} Z` : d;
 }
 
+/**
+ * Путь борта БЕЗ сторон, лежащих на стене (там борта нет): непрерывные участки
+ * открытых рёбер рисуются отдельными ломаными со скруглением. Если ни одно ребро
+ * не на стене — обычный замкнутый/открытый путь.
+ */
+export function level2RunsPath(pts: Pt[], radii: number[], edgeOnWall: boolean[], closed: boolean): string {
+  const n = pts.length;
+  if (n < 2) return "";
+  const segs = closed ? n : n - 1;
+  if (!edgeOnWall.some((v, i) => v && i < segs)) return level2Path(pts, radii, closed);
+  // Начинаем обход с ребра после стены, чтобы участок не рвался на индексе 0.
+  let start = 0;
+  if (closed) {
+    for (let i = 0; i < n; i++) if (edgeOnWall[i] && !edgeOnWall[(i + 1) % n]) { start = (i + 1) % n; break; }
+  }
+  const parts: string[] = [];
+  let run: Pt[] = [], runR: number[] = [];
+  const flush = () => {
+    if (run.length >= 2) parts.push(level2Path(run, runR, false));
+    run = []; runR = [];
+  };
+  for (let k = 0; k < segs; k++) {
+    const i = closed ? (start + k) % n : k;
+    if (edgeOnWall[i]) { flush(); continue; }
+    if (run.length === 0) { run.push(pts[i]); runR.push(0); }
+    const j = (i + 1) % n;
+    run.push(pts[j]);
+    // Радиус в вершине j — только если следующее ребро тоже открыто (иначе угол у стены — прямой).
+    const nextOpen = (closed || j < n - 1) && !edgeOnWall[j];
+    runR.push(nextOpen ? radii[j] || 0 : 0);
+  }
+  flush();
+  return parts.join(" ");
+}
+
+/** Простой путь по вершинам (для контура комнаты под заливку). */
+export function polygonPath(pts: Pt[]): string {
+  if (pts.length < 3) return "";
+  return `M ${pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ")} Z`;
+}
+
+/**
+ * Заливка нижнего уровня: у острова — КОЛЬЦО между стенами и бортом (комната минус
+ * остров, fill-rule evenodd), у открытой линии — область со стороны lowSide.
+ * Дизайн-ревью 09.11.2026: заливка внутри острова читалась как «опущен остров».
+ */
+export function level2LowFillPath(calc: Pick<Level2Calc, "closed" | "contour" | "contourRadii" | "lowPolygon">, roomPts: Pt[]): { d: string; evenOdd: boolean } {
+  if (calc.closed) {
+    const room = polygonPath(roomPts);
+    const hole = level2Path(calc.contour, calc.contourRadii, true);
+    return { d: room && hole ? `${room} ${hole}` : "", evenOdd: true };
+  }
+  return { d: polygonPath(calc.lowPolygon), evenOdd: false };
+}
+
 // ============================================
 // Расчёт
 // ============================================
@@ -600,6 +655,8 @@ export type Level2Calc = {
   contourRadii: number[];
   /** По точкам contour: true — настоящая вершина борта, false — точка дуги (для подписей и таблиц в цех). */
   contourCorners: boolean[];
+  /** По рёбрам contour (ребро i → i+1): true — ребро лежит на стене, борта и полки там нет; рисовать не надо. */
+  edgeOnWall: boolean[];
   /** Кромка верхнего полотна (граница полки), см: замкнутая у острова, открытая у линии. null — полка не поместилась. */
   upper: Pt[] | null;
   upperRadii: number[];
@@ -663,7 +720,9 @@ function sidesOf(shape: Level2Shape, dense: DenseShape, onWallEdges: boolean[]):
 
 function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params): Level2Calc {
   const warnings: Level2Warning[] = [];
-  const r = Math.max(0, params.radiusCm), w = Math.max(0, params.shelfCm);
+  const r = Math.max(0, params.radiusCm);
+  // Полка — ниша под ленту: без подсветки её нет (дизайн-ревью 09.11.2026), верх идёт до борта.
+  const w = params.led ? Math.max(0, params.shelfCm) : 0;
   const dense = densify(shape, params.lowSide ?? "left");
   const D = dense.pts;
   const onWall = sidesOnWallMask(D, room, ON_WALL_TOL_CM, true);
@@ -708,6 +767,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
     contour: D,
     contourRadii: radii,
     contourCorners: dense.isCorner,
+    edgeOnWall: onWall,
     upper,
     upperRadii,
     upperPolygon: upper,
@@ -727,7 +787,9 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
  */
 function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): Level2Calc {
   const warnings: Level2Warning[] = [];
-  const r = Math.max(0, params.radiusCm), w = Math.max(0, params.shelfCm);
+  const r = Math.max(0, params.radiusCm);
+  // Полка — ниша под ленту: без подсветки её нет (дизайн-ревью 09.11.2026), верх идёт до борта.
+  const w = params.led ? Math.max(0, params.shelfCm) : 0;
   const lowSide = params.lowSide ?? "left";
   const dense = densify(shape, lowSide);
   const line = dense.pts.map((p) => ({ ...p }));
@@ -737,7 +799,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     const len = pathLength(line, false);
     return {
       upperM2: 0, cutM2: 0, bortM: r2(len / 100), ledM: params.led ? r2(len / 100) : 0, shelfM2: 0, contourM: r2(len / 100), sidesOnWall: 0,
-      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), contourCorners: dense.isCorner, upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
+      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), contourCorners: dense.isCorner, edgeOnWall: dense.pts.map(() => false), upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
       sides: sidesOf(shape, dense, noWall), closed: false, warnings: [...warnings, "open_no_room"], params,
     };
   };
@@ -840,6 +902,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     contour: line,
     contourRadii: radii,
     contourCorners: dense.isCorner,
+    edgeOnWall: line.map(() => false),
     upper,
     upperRadii,
     upperPolygon,

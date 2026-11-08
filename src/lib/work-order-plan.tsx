@@ -17,7 +17,7 @@
  */
 import React from "react";
 import { getVertices, roomOutlinePath, roomPolygonDense } from "@/lib/room-geometry";
-import { calcRoomLevel2, level2Path, type RoomLevel2 } from "@/lib/level2-geometry";
+import { calcRoomLevel2, level2Path, level2RunsPath, level2LowFillPath, type RoomLevel2 } from "@/lib/level2-geometry";
 import type { RoomElement } from "@/lib/room-types";
 import type { Lang } from "@/lib/i18n";
 import { tFor } from "@/lib/i18n";
@@ -83,7 +83,7 @@ function profileLabel(p: string, t: (k: string) => string, names?: Record<string
  * (волнистая гардина, кружок с лучиками у люстры), а не по геометрии.
  */
 export type Shape = (
-  | { k: "path"; d: string; fill: string; stroke: string; sw: number }
+  | { k: "path"; d: string; fill: string; stroke: string; sw: number; /** заливка нижнего уровня: прозрачность, evenodd (кольцо), и многоугольники для штриховки карандашом */ opacity?: number; evenOdd?: boolean; hatch?: { outer: Pt[]; hole?: Pt[] } }
   | { k: "polygon"; points: Pt[]; fill: string; stroke: string; sw: number; /** прозрачность заливки (область нижнего уровня) */ opacity?: number }
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash?: string; round?: boolean }
   | { k: "polyline"; points: Pt[]; stroke: string; sw: number; dash?: string }
@@ -829,14 +829,20 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       const contour = calc.contour; // плотная ломаная (дуги разложены), концы линии притянуты к стенам
       const closed = calc.closed;
       const w = calc.params.shelfCm;
-      // Область нижнего уровня — лёгкой заливкой: монтажнику видно, с какой стороны борта короб.
-      if (calc.lowPolygon.length >= 3) {
-        shapes.push({ k: "polygon", points: calc.lowPolygon.map(S), fill: color, stroke: "none", sw: 0, opacity: pencil ? 0.08 : client ? 0.08 : 0.1, tag: "level2-low" });
+      // Область нижнего уровня — лёгкой заливкой: у острова КОЛЬЦО между стенами и бортом
+      // (дизайн-ревью 09.11.2026: заливка внутри острова читалась как «опущен остров»),
+      // у линии — сторона lowSide. Карандашу — многоугольники для штриховки.
+      const scaledCalc = { closed, contour: contour.map(S), contourRadii: calc.contourRadii.map((x) => x * scale), lowPolygon: calc.lowPolygon.map(S) };
+      const fill = level2LowFillPath(scaledCalc, sv);
+      if (fill.d) {
+        shapes.push({ k: "path", d: fill.d, fill: color, stroke: "none", sw: 0, opacity: pencil ? 0.08 : client ? 0.08 : 0.1, evenOdd: fill.evenOdd, tag: "level2-low",
+          hatch: closed ? { outer: sv, hole: scaledCalc.contour } : { outer: scaledCalc.lowPolygon } });
       }
-      const d = level2Path(contour.map(S), calc.contourRadii.map((x) => x * scale), closed);
+      // Борт и кромка полки — без сторон на стене (там их нет); полка — только при подсветке.
+      const d = level2RunsPath(scaledCalc.contour, scaledCalc.contourRadii, calc.edgeOnWall, closed);
       if (d) shapes.push({ k: "path", d, fill: "none", stroke: color, sw: strokeW * (pencil ? (LINE_PENCIL.level2.mul ?? 1) : 1.3), tag: "level2" });
-      if (calc.upper && w > 0) {
-        const du = level2Path(calc.upper.map(S), calc.upperRadii.map((x) => x * scale), closed);
+      if (calc.upper && calc.params.led && w > 0) {
+        const du = level2RunsPath(calc.upper.map(S), calc.upperRadii.map((x) => x * scale), calc.edgeOnWall, closed);
         if (du) shapes.push({ k: "path", d: du, fill: "none", stroke: color, sw: strokeW * 0.45, tag: "level2-shelf" });
       }
       if (client) continue;
@@ -871,12 +877,28 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
       // чтобы не лечь на люстру). Длина борта — в сводке, в подписи её нет: у узкой полосы вдоль
       // стены она не помещалась. Если текст лёг бы на линию борта — отодвигаем от неё.
       const tail = `↓${Math.round(calc.params.dropCm)}${calc.params.led ? " · LED" : ""}`;
+      // У острова подпись — в самом широком участке кольца (между бортом и стеной), не внутри.
+      let ringX = ccx, ringY = ccy, ringBest = -1;
+      if (closed) {
+        for (const side of calc.sides) {
+          if (side.onWall || side.chordCm < 1) continue;
+          const a = side.from, b = side.to, len = side.chordCm;
+          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+          let px = -(b.y - a.y) / len, py = (b.x - a.x) / len;
+          if ((mx - ccx) * px + (my - ccy) * py < 0) { px = -px; py = -py; }
+          const dist = rayToWall({ x: mx, y: my }, { x: px, y: py }, v);
+          if (dist !== null && dist > ringBest) { ringBest = dist; ringX = mx + (px * dist) / 2; ringY = my + (py * dist) / 2; }
+        }
+        // В середине полосы — пунктир отступа с цифрой: подпись выше него.
+        if (ringBest > 0) ringY -= (fs * 1.4) / scale;
+      }
       // Узкая полоса вдоль стены: подпись в одну строку шире области низа — переносим.
       const lowXs = calc.lowPolygon.map((p) => p.x), lowYs = calc.lowPolygon.map((p) => p.y);
       const lowW = calc.lowPolygon.length ? Math.min(Math.max(...lowXs) - Math.min(...lowXs), Math.max(...lowYs) - Math.min(...lowYs)) : Infinity;
-      const oneLine = `${t("wo.el.level2")} ${tail}`;
-      const lines = (oneLine.length * fs * 0.55) / scale <= lowW * 0.9 ? [oneLine] : [t("wo.el.level2"), tail];
-      let lx = ccx, ly = closed ? ccy - (fs * 1.4) / scale : ccy;
+      const oneLine = `${t("wo.level2.caption")} ${tail}`;
+      const bandW = closed && ringBest > 0 ? ringBest : lowW;
+      const lines = (oneLine.length * fs * 0.55) / scale <= bandW * 0.9 ? [oneLine] : [t("wo.level2.caption"), tail];
+      let lx = closed && ringBest > 0 ? ringX : ccx, ly = closed && ringBest > 0 ? ringY : ccy;
       if (!closed) {
         const halfW = (Math.max(...lines.map((l) => l.length)) * fs * 0.55) / 2 / scale; // полуширина текста, см
         const near = nearestOnPath({ x: lx, y: ly }, contour);
@@ -1017,7 +1039,7 @@ export function RoomPlanSvg({ room, lang }: { room: PlanRoom; lang: Lang }): Rea
       <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="bg-white rounded-lg border border-slate-200 block">
         {shapes.map((s, i) => {
           switch (s.k) {
-            case "path": return <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={s.sw} />;
+            case "path": return <path key={i} d={s.d} fill={s.fill} fillOpacity={s.opacity} fillRule={s.evenOdd ? "evenodd" : undefined} stroke={s.stroke === "none" ? undefined : s.stroke} strokeWidth={s.sw} />;
             case "polygon": return <polygon key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={s.fill} fillOpacity={s.opacity} stroke={s.stroke} strokeWidth={s.sw} />;
             case "line": return <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap={s.round ? "round" : "butt"} />;
             case "polyline": return <polyline key={i} points={s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={s.stroke} strokeWidth={s.sw} strokeDasharray={s.dash} strokeLinecap="round" strokeLinejoin="round" />;

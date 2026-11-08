@@ -56,7 +56,7 @@ export function PlanShapes({ plan, side, crop = false }: { plan: RoomPlan; side:
     <Svg width={w} height={h} viewBox={viewBox}>
       {shapes.map((sh, i) => {
         switch (sh.k) {
-          case "path": return <Path key={i} d={sh.d} fill={sh.fill} stroke={sh.stroke} strokeWidth={sh.sw} strokeLinejoin="round" />;
+          case "path": return <Path key={i} d={sh.d} fill={sh.fill} fillOpacity={sh.opacity} fillRule={sh.evenOdd ? "evenodd" : undefined} stroke={sh.stroke === "none" ? undefined : sh.stroke} strokeWidth={sh.sw} strokeLinejoin="round" />;
           case "polygon": return <Polygon key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={sh.fill} fillOpacity={sh.opacity} stroke={sh.stroke === "none" ? undefined : sh.stroke} strokeWidth={sh.sw} strokeLinejoin="round" />;
           case "line": return <Line key={i} x1={sh.x1} y1={sh.y1} x2={sh.x2} y2={sh.y2} stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap={sh.round ? "round" : "butt"} />;
           case "polyline": return <Polyline key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap="round" strokeLinejoin="round" />;

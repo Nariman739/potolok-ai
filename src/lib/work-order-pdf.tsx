@@ -55,7 +55,7 @@ function PlanSvg({ plan, side = PLAN }: { plan: RoomPlan; side?: number }) {
     <Svg width={side} height={side} viewBox={`0 0 ${size} ${size}`}>
       {shapes.map((sh, i) => {
         switch (sh.k) {
-          case "path": return <Path key={i} d={sh.d} fill={sh.fill} stroke={sh.stroke} strokeWidth={sh.sw} />;
+          case "path": return <Path key={i} d={sh.d} fill={sh.fill} fillOpacity={sh.opacity} fillRule={sh.evenOdd ? "evenodd" : undefined} stroke={sh.stroke === "none" ? undefined : sh.stroke} strokeWidth={sh.sw} />;
           case "polygon": return <Polygon key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill={sh.fill} fillOpacity={sh.opacity} stroke={sh.stroke === "none" ? undefined : sh.stroke} strokeWidth={sh.sw} />;
           case "line": return <Line key={i} x1={sh.x1} y1={sh.y1} x2={sh.x2} y2={sh.y2} stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap={sh.round ? "round" : "butt"} />;
           case "polyline": return <Polyline key={i} points={sh.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={sh.stroke} strokeWidth={sh.sw} strokeDasharray={sh.dash} strokeLinecap="round" strokeLinejoin="round" />;

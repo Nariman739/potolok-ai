@@ -169,22 +169,43 @@ export function SketchRoomPlan({
     }
     // Двухуровневый (08.11.2026): область нижнего уровня — редкая косая штриховка карандашом
     // (обрезана по многоугольнику), чтобы было видно, с какой стороны борта короб.
-    if (tag === "level2-low" && sh.k === "polygon") {
-      const pts = sh.points;
-      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    if (tag === "level2-low" && sh.k === "path" && sh.hatch) {
+      // Штрихуем область низа: обрезка по внешнему многоугольнику через ClipPath, а остров
+      // (дыра кольца) вырезаем из каждой линии математически — ClipPath с evenodd в react-pdf ненадёжен.
+      const outer = sh.hatch.outer, hole = sh.hatch.hole;
+      const xs = outer.map((p) => p.x), ys = outer.map((p) => p.y);
       const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
       const step = 7 * u;
       const lines: React.ReactNode[] = [];
-      // Линии под 45°: x + y = c, c от x0+y0 до x1+y1
+      /** Параметры t ∈ [0,1] пересечений отрезка a→b с многоугольником, по возрастанию. */
+      const cuts = (a: Pt, b: Pt, poly: Pt[]): number[] => {
+        const out: number[] = [];
+        for (let i = 0; i < poly.length; i++) {
+          const p = poly[i], q = poly[(i + 1) % poly.length];
+          const den = (b.x - a.x) * (q.y - p.y) - (b.y - a.y) * (q.x - p.x);
+          if (Math.abs(den) < 1e-9) continue;
+          const t = ((p.x - a.x) * (q.y - p.y) - (p.y - a.y) * (q.x - p.x)) / den;
+          const s = ((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) / den;
+          if (t >= 0 && t <= 1 && s >= 0 && s <= 1) out.push(t);
+        }
+        return out.sort((m, n) => m - n);
+      };
+      let li = 0;
       for (let c = x0 + y0 + step; c < x1 + y1; c += step) {
         const a = { x: Math.max(x0, c - y1), y: Math.min(y1, c - x0) };
         const b = { x: Math.min(x1, c - y0), y: Math.max(y0, c - x1) };
-        lines.push(<Line key={`${key}-h${c.toFixed(0)}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={ink} strokeWidth={0.5 * u} strokeOpacity={0.45} />);
+        // Куски линии вне дыры: между чётными/нечётными пересечениями с контуром острова — внутри, их пропускаем.
+        const ts = hole ? [0, ...cuts(a, b, hole), 1] : [0, 1];
+        for (let k = 0; k + 1 < ts.length; k += 2) {
+          const t0 = ts[k], t1 = ts[k + 1];
+          if (t1 - t0 < 1e-4) continue;
+          lines.push(<Line key={`${key}-h${li++}`} x1={a.x + (b.x - a.x) * t0} y1={a.y + (b.y - a.y) * t0} x2={a.x + (b.x - a.x) * t1} y2={a.y + (b.y - a.y) * t1} stroke={ink} strokeWidth={0.5 * u} strokeOpacity={0.45} />);
+        }
       }
       const clipId = `l2low-${key}`;
       nodes.push(
         <React.Fragment key={key}>
-          <Defs><ClipPath id={clipId}><Polygon points={pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} /></ClipPath></Defs>
+          <Defs><ClipPath id={clipId}><Polygon points={outer.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} /></ClipPath></Defs>
           <G clipPath={`url(#${clipId})`}>{lines}</G>
         </React.Fragment>,
       );
