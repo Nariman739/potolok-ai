@@ -887,10 +887,13 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
           let px = -(b.y - a.y) / len, py = (b.x - a.x) / len;
           if ((mx - ccx) * px + (my - ccy) * py < 0) { px = -px; py = -py; }
           const dist = rayToWall({ x: mx, y: my }, { x: px, y: py }, v);
-          if (dist !== null && dist > ringBest) { ringBest = dist; ringX = mx + (px * dist) / 2; ringY = my + (py * dist) / 2; }
+          if (dist !== null && dist > ringBest) {
+            ringBest = dist;
+            // На четверти стороны: в середине — пунктир отступа с цифрой и длина стороны.
+            const ax = (b.x - a.x) / len, ay = (b.y - a.y) / len;
+            ringX = mx + (px * dist) / 2 + ax * len * 0.27; ringY = my + (py * dist) / 2 + ay * len * 0.27;
+          }
         }
-        // В середине полосы — пунктир отступа с цифрой: подпись выше него.
-        if (ringBest > 0) ringY -= (fs * 1.4) / scale;
       }
       // Узкая полоса вдоль стены: подпись в одну строку шире области низа — переносим.
       const lowXs = calc.lowPolygon.map((p) => p.x), lowYs = calc.lowPolygon.map((p) => p.y);
