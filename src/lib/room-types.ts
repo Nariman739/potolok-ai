@@ -105,7 +105,17 @@ export interface RoomElement {
   spanFromVertex?: number;
   /** @deprecated см. spanFromVertex */
   spanToVertex?: number;
+  /** Дверь: разворот (петли × сторона открывания). Пусто — петли у начала стены, внутрь.
+   *  Пишет мобилка с 08.11.2026 (см. DoorSwing). */
+  swing?: DoorSwing;
 }
+
+/**
+ * Разворот двери на чертеже (мобилка, koshak_pp 02.11.2026): "start"/"end" —
+ * петли у вершины wallIndex / wallIndex+1 (по направлению обхода стены),
+ * "in"/"out" — открывается внутрь комнаты / наружу. Пусто = "start-in".
+ */
+export type DoorSwing = "start-in" | "end-in" | "end-out" | "start-out";
 
 export interface Vertex2D {
   x: number;
