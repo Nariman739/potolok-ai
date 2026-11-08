@@ -12,6 +12,8 @@ export type ElementType =
   | "subcurtain"
   | "track"
   | "lightline"
+  /** Двухуровневый потолок: замкнутый контур борта, рисуется как световая линия (08.11.2026). */
+  | "level2"
   | "floating"
   | "door"
   | "window"
@@ -34,6 +36,28 @@ export type FurnitureType =
 
 export type CeilingMode = "decor" | "to-ceiling" | "planned";
 
+/**
+ * Параметры элемента «2 уровня» (08.11.2026). Нарисованный контур (points) — линия
+ * БОРТА: вертикальный переход между уровнями. Внутрь от борта идёт полка шириной
+ * shelfCm (на ней подсветка), дальше — верхнее полотно; от стен до борта — нижний
+ * уровень. Все размеры в см. Нет поля на элементе → дефолты (см. level2-geometry.ts).
+ */
+export interface Level2Params {
+  /** Ширина полки, см (10). */
+  shelfCm: number;
+  /** Перепад уровней, см (10). */
+  dropCm: number;
+  /** Подсветка в ступеньке (LED по кромке борта светит на верхнее полотно). По умолчанию да. */
+  led: boolean;
+  /** Скругление углов контура: 0 (нет) / 10 / 20 см. */
+  radiusCm: number;
+  /**
+   * Зарезервировано для 3D: где верх — внутри контура (up, по умолчанию) или снаружи.
+   * В v1 не показывается и не меняется.
+   */
+  direction?: "up" | "down";
+}
+
 export interface RoomElement {
   id: string;
   type: ElementType;
@@ -52,6 +76,8 @@ export interface RoomElement {
   side?: "left" | "right";
   points?: { x: number; y: number }[];
   closed?: boolean;
+  /** Только у type="level2": полка, перепад, подсветка, радиус. */
+  level2?: Level2Params;
   ceilingMode?: CeilingMode;
   furnitureId?: string;
   edgeIndex?: number;

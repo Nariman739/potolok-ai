@@ -63,6 +63,11 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   track_magnetic: { role: "linear", appliesTo: ["track"] },
   track_surface: { role: "linear", appliesTo: ["track"] },
   light_line: { role: "linear", appliesTo: ["lightline"] },
+  // «2 уровня» (08.11.2026): считаются по контуру элемента level2 — площадь верхнего
+  // полотна (м²), длина борта и подсветки (м.п.). Роль linear: количество — из чертежа.
+  level2_canvas: { role: "linear", appliesTo: ["level2"] },
+  level2_step: { role: "linear", appliesTo: ["level2"] },
+  level2_led: { role: "linear", appliesTo: ["level2"] },
   curtain_ldsp: { role: "linear", appliesTo: ["curtain"] },
   curtain_aluminum: { role: "linear", appliesTo: ["curtain"] },
   gardina_plastic: { role: "linear", appliesTo: ["gardina"] },

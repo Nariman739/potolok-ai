@@ -6,6 +6,8 @@ export type ProductCategory =
   | "chandelier"
   | "track"
   | "lightline"
+  /** Двухуровневый потолок — элемент «2 уровня» на чертеже (08.11.2026). */
+  | "level2"
   | "curtain"
   | "gardina"
   | "podshtornik"
@@ -84,6 +86,14 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   // дизайнере мобилки, как тип софита (потолок-ai-app: shared/track-types.ts).
   { code: "track_surface", name: "Накладной трек", unit: "м.п.", defaultPrice: 15000, category: "track" },
   { code: "light_line", name: "Световая линия", unit: "м.п.", defaultPrice: 15000, category: "lightline" },
+  // Двухуровневый потолок (Нариман 08.11.2026, запрос мастеров в WA-группе 02.11):
+  // элемент «2 уровня» на чертеже → ТРИ строки в КП, не «комплект». Площадь верхнего
+  // полотна, длина борта (переход уровня) и подсветка в ступеньке считаются по контуру
+  // (src/lib/level2-geometry.ts). Стартовые цены — здесь и в DEFAULT_PRICES_RUB ниже;
+  // мастер правит в «Моём прайсе».
+  { code: "level2_canvas", name: "Полотно 2-го уровня", unit: "м²", defaultPrice: 4000, category: "level2", description: "Верхнее полотно внутри контура второго уровня" },
+  { code: "level2_step", name: "Переход уровня (борт)", unit: "м.п.", defaultPrice: 12000, category: "level2", description: "Вертикальная ступенька между уровнями, по контуру" },
+  { code: "level2_led", name: "Подсветка в ступеньке", unit: "м.п.", defaultPrice: 4500, category: "level2", description: "LED-лента по кромке ступеньки" },
 
   // Карнизы (за м.п.)
   { code: "curtain_ldsp", name: "Карниз ЛДСП", unit: "м.п.", defaultPrice: 3500, category: "curtain" },
@@ -195,6 +205,10 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   track_magnetic: 3500,
   track_surface: 2800,
   light_line: 3000,
+  // «2 уровня» (08.11.2026): пара к defaultPrice в PRODUCT_ITEMS выше.
+  level2_canvas: 900,
+  level2_step: 2500,
+  level2_led: 800,
   curtain_ldsp: 600,
   curtain_aluminum: 900,
   gardina_plastic: 700,
@@ -249,6 +263,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   chandelier: "Люстры",
   track: "Треки",
   lightline: "Световая линия",
+  level2: "Двухуровневый потолок",
   curtain: "Карнизы",
   gardina: "Гардины",
   podshtornik: "Подшторник",

@@ -28,7 +28,7 @@ export type MaterialsSummary = {
 /** В каком порядке мастер ходит по магазину: полотно, багет, свет, остальное. */
 const ORDER: ProductCategory[] = [
   "canvas", "profile", "corner", "spot", "spot_pair", "chandelier", "track", "lightline",
-  "curtain", "gardina", "podshtornik", "other",
+  "level2", "curtain", "gardina", "podshtornik", "other",
 ];
 const SKIP = new Set<string>(["install", "special"]);
 

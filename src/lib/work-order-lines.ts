@@ -37,6 +37,9 @@ export const INSTALL_MAP: Record<string, string> = {
   track_magnetic: "install_track",
   track_surface: "install_track",
   light_line: "install_lightline",
+  // Верхнее полотно 2-го уровня натягивается как полотно; борт и подсветка — без своей
+  // ставки (см. noRateKind «level2»).
+  level2_canvas: "install_canvas",
   curtain_ldsp: "install_curtain",
   curtain_aluminum: "install_curtain",
   gardina_plastic: "install_gardina",
@@ -68,6 +71,9 @@ export function installCodeByName(name: string): string | undefined {
   const n = name.toLowerCase();
   // Вставка и LED-лента — без ставки в прайсе: не цеплять к профилю/световой линии.
   if (n.startsWith("монтаж вставки") || n.startsWith("монтаж led") || n.startsWith("монтаж: вставка") || n.startsWith("монтаж: led")) return undefined;
+  // «Монтаж 2-го уровня» / «Подсветка в ступеньке» — ставки нет; раньше «свет» в слове
+  // «подсветка» уводило бы строку в install_lightline (08.11.2026).
+  if (n.includes("2-го уровня") || n.includes("ступеньк")) return undefined;
   if (n.startsWith("монтаж полотна")) return "install_canvas";
   if (n.includes("софит")) return "install_spot";
   if (n.includes("люстр")) return "install_chandelier";
@@ -109,20 +115,25 @@ export type WorkOrderLinesDoc = {
  * позиции, которые есть в КП, должны появляться и в наряде» — мастер сам
  * ставит цену или убирает строку. Поэтому они идут отдельной строкой с 0.
  */
-function noRateKind(item: { itemCode?: string; itemName: string }): "insert" | "led" | null {
+type NoRateKind = "insert" | "led" | "level2";
+function noRateKind(item: { itemCode?: string; itemName: string }): NoRateKind | null {
   const n = item.itemName.toLowerCase();
   if (item.itemCode === "insert" || n.startsWith("вставка")) return "insert";
   if (item.itemCode === "led_strip" || n.startsWith("led")) return "led";
+  // Борт 2-го уровня (08.11.2026): одна строка монтажнику на м.п. борта, подсветка в неё
+  // же — отдельной ставки у подсветки нет.
+  if (item.itemCode === "level2_step" || n.startsWith("переход уровня")) return "level2";
   return null;
 }
+const NO_RATE_PREFIX: Record<NoRateKind, string> = { insert: "монтаж вставки", led: "монтаж led", level2: "монтаж 2-го уровня" };
 /** Мобилка с 30.10.2026 сама кладёт «Монтаж вставки» / «Монтаж LED-подсветки» в installerItems. */
-function hasNoRateLine(saved: LineItem[], kind: "insert" | "led"): boolean {
-  const prefix = kind === "insert" ? "монтаж вставки" : "монтаж led";
+function hasNoRateLine(saved: LineItem[], kind: NoRateKind): boolean {
+  const prefix = NO_RATE_PREFIX[kind];
   return saved.some((s) => s.itemName.toLowerCase().startsWith(prefix));
 }
 /** Имена как у мобилки: «просто монтаж вставки», без «(алюм.)» (Нариман 30.10.2026). */
-function noRateName(kind: "insert" | "led"): string {
-  return kind === "insert" ? "Монтаж вставки" : "Монтаж LED-подсветки";
+function noRateName(kind: NoRateKind): string {
+  return kind === "insert" ? "Монтаж вставки" : kind === "led" ? "Монтаж LED-подсветки" : "Монтаж 2-го уровня";
 }
 
 const MAX_LINES = 60;
