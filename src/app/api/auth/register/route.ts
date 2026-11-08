@@ -8,6 +8,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { PRICE_MONTH } from "@/lib/billing";
 import { seedTemplateItems } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
+import { sendMetaEvent } from "@/lib/meta-capi";
 
 export async function POST(request: Request) {
   try {
@@ -124,6 +125,18 @@ export async function POST(request: Request) {
     if (company) await seedTemplateItems(company.id, currencyForPhone(phone)).catch((e) => console.warn("seedTemplateItems:", e));
 
     await createSession(master.id);
+
+    // Meta Conversions API (08.11.2026): событие «Регистрация» для оптимизации
+    // рекламы на регистрации, а не на просмотры сайта. Не роняет регистрацию.
+    await sendMetaEvent({
+      event: "CompleteRegistration",
+      phone,
+      masterId: master.id,
+      firstName,
+      eventId: master.id,
+      ip,
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       id: master.id,

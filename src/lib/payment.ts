@@ -5,6 +5,7 @@ import {
   sendTelegramPhoto,
 } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
+import { sendMetaEvent } from "@/lib/meta-capi";
 import {
   PRICE_MONTH,
   PRICE_YEAR,
@@ -250,6 +251,18 @@ export async function activateSubscription(params: {
     });
     return { master: fresh.master, payment: fresh, firstApproved: false };
   }
+
+  // Meta Conversions API (08.11.2026): «Оплата» — чтобы в кабинете была видна
+  // цена платящего мастера с рекламы. Идёт после транзакции, оплату не роняет.
+  await sendMetaEvent({
+    event: "Purchase",
+    phone: result.master.phone,
+    masterId: result.master.id,
+    firstName: result.master.firstName,
+    eventId: result.payment.id,
+    value: result.payment.amount,
+    currency: result.payment.currency === "RUB" ? "RUB" : "KZT",
+  });
 
   return result;
 }
