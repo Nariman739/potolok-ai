@@ -76,7 +76,7 @@ function layoutRooms(rooms: TidyRoom[], innerW: number, innerH: number, labelH: 
 
 // ---------- легенда ----------
 
-type LegendKind = "spot" | "chandelier" | "pendant" | "vent" | "track" | "lightline" | "curtain" | "subcurtain";
+type LegendKind = "spot" | "chandelier" | "pendant" | "vent" | "track" | "lightline" | "level2" | "curtain" | "subcurtain";
 const LEGEND_LABEL: Record<LegendKind, string> = {
   spot: "софит",
   chandelier: "люстра",
@@ -84,10 +84,11 @@ const LEGEND_LABEL: Record<LegendKind, string> = {
   vent: "вытяжка",
   track: "трек",
   lightline: "световая линия",
+  level2: "2 уровня",
   curtain: "гардина",
   subcurtain: "подшторник",
 };
-const LEGEND_ORDER: LegendKind[] = ["spot", "chandelier", "pendant", "vent", "track", "lightline", "curtain", "subcurtain"];
+const LEGEND_ORDER: LegendKind[] = ["spot", "chandelier", "pendant", "vent", "track", "lightline", "level2", "curtain", "subcurtain"];
 
 function legendKinds(rooms: TidyRoom[]): LegendKind[] {
   const set = new Set<LegendKind>();
@@ -140,6 +141,12 @@ function LegendIcon({ kind, color, sketch }: { kind: LegendKind; color: string; 
         </>
       )}
       {kind === "lightline" && <Line x1={1} y1={c} x2={s - 1} y2={c} stroke={color} strokeWidth={sw} strokeDasharray="2.2 1.3" />}
+      {kind === "level2" && (
+        <>
+          <Path d={`M 2.5 1.5 H ${s - 2.5} V ${s - 1.5} H 2.5 Z`} fill="none" stroke={color} strokeWidth={sw} strokeLinejoin="round" />
+          <Path d={`M 4 3 H ${s - 4} V ${s - 3} H 4 Z`} fill="none" stroke={color} strokeWidth={sw * 0.5} strokeOpacity={0.6} />
+        </>
+      )}
       {kind === "curtain" &&
         (sketch ? (
           <Path d={`M 1 ${c} Q 2.5 ${c - 2} 4 ${c} Q 5.5 ${c + 2} 7 ${c} Q 8.5 ${c - 2} 10 ${c}`} fill="none" stroke={color} strokeWidth={sw} />

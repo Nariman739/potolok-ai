@@ -167,6 +167,14 @@ export function SketchRoomPlan({
       }
       continue;
     }
+    // Двухуровневый (08.11.2026): борт — плотный двойной штрих (как стена, но тоньше),
+    // кромка полки — один лёгкий проход.
+    if ((tag === "level2" || tag === "level2-shelf") && sh.k === "path") {
+      const heavy = tag === "level2";
+      nodes.push(<Path key={`${key}-a`} d={sh.d} fill="none" stroke={ink} strokeWidth={sh.sw * (heavy ? 0.95 : 0.9)} strokeOpacity={heavy ? 0.88 : 0.5} strokeLinejoin="round" strokeLinecap="round" />);
+      if (heavy) nodes.push(<Path key={`${key}-b`} d={sh.d} fill="none" stroke={ink} strokeWidth={sh.sw * 0.7} strokeOpacity={0.4} strokeLinejoin="round" transform={`translate(${(pen.rnd() - 0.5) * 2 * pen.j} ${(pen.rnd() - 0.5) * 2 * pen.j})`} />);
+      continue;
+    }
     // Профиль стены: теневой/парящий — вторая линия чуть внутрь, как штриховка края
     if (tag.startsWith("profile:") && sh.k === "line") {
       const a = { x: sh.x1, y: sh.y1 }, b = { x: sh.x2, y: sh.y2 };
