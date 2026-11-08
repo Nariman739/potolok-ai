@@ -40,9 +40,22 @@
  * Проверка цифр: scratchpad/level2-geometry-check.mts + level2-review-counterexamples.mts.
  */
 
-import type { Level2Params, RoomElement } from "./room-types";
+import type { Level2Params } from "./room-types";
 
 export type Pt = { x: number; y: number };
+
+/**
+ * Элемент чертежа глазами этого модуля: только нужные поля. Структурный тип, а не
+ * RoomElement — у мобилки свой RoomElement в RoomsContext (с shape "circle"),
+ * у сайта свой в room-types; оба подходят.
+ */
+export type Level2ElementLike = {
+  id?: string;
+  type?: string;
+  points?: { x: number; y: number }[];
+  rotation?: number;
+  level2?: Level2Params;
+};
 
 /** Дефолты элемента; нет поля на элементе — считаем так. Подсветка по умолчанию ДА
  *  (Нариман 08.11.2026: 90 % двухуровневых идут с контурной подсветкой). */
@@ -66,7 +79,7 @@ const ARC_MAX_POINTS = 96;
 /** Соседние точки ближе этого — дубль (двойной тап). */
 const DUP_TOL_CM = 0.5;
 
-export function level2Params(el: Pick<RoomElement, "level2">): Level2Params {
+export function level2Params(el: Pick<Level2ElementLike, "level2">): Level2Params {
   const p = el.level2;
   if (!p) return { ...LEVEL2_DEFAULTS };
   const bulges = Array.isArray(p.bulges) ? p.bulges.map((b) => (typeof b === "number" && Number.isFinite(b) ? b : 0)) : undefined;
@@ -99,7 +112,7 @@ export type Level2Shape = {
  * точек и коллинеарные вершины (между прямыми сегментами) убраны, у замкнутого снята
  * замыкающая точка-дубль. null — не годится (меньше 3 точек у контура, 2 у линии).
  */
-export function level2Shape(el: Pick<RoomElement, "points" | "rotation" | "level2">): Level2Shape | null {
+export function level2Shape(el: Level2ElementLike): Level2Shape | null {
   const params = level2Params(el);
   const closed = params.closed !== false;
   const raw = Array.isArray(el.points) ? el.points : [];
@@ -162,7 +175,7 @@ export function level2Shape(el: Pick<RoomElement, "points" | "rotation" | "level
 }
 
 /** Вершины борта без дуг (совместимость): null — не годится. */
-export function level2Contour(el: Pick<RoomElement, "points" | "rotation" | "level2">): Pt[] | null {
+export function level2Contour(el: Level2ElementLike): Pt[] | null {
   return level2Shape(el)?.points ?? null;
 }
 
@@ -585,6 +598,8 @@ export type Level2Calc = {
   contour: Pt[];
   /** Радиусы скругления по точкам contour (для чертежа). */
   contourRadii: number[];
+  /** По точкам contour: true — настоящая вершина борта, false — точка дуги (для подписей и таблиц в цех). */
+  contourCorners: boolean[];
   /** Кромка верхнего полотна (граница полки), см: замкнутая у острова, открытая у линии. null — полка не поместилась. */
   upper: Pt[] | null;
   upperRadii: number[];
@@ -692,6 +707,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
     sidesOnWall: sides.filter((s) => s.onWall).length,
     contour: D,
     contourRadii: radii,
+    contourCorners: dense.isCorner,
     upper,
     upperRadii,
     upperPolygon: upper,
@@ -721,7 +737,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     const len = pathLength(line, false);
     return {
       upperM2: 0, cutM2: 0, bortM: r2(len / 100), ledM: params.led ? r2(len / 100) : 0, shelfM2: 0, contourM: r2(len / 100), sidesOnWall: 0,
-      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
+      contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), contourCorners: dense.isCorner, upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
       sides: sidesOf(shape, dense, noWall), closed: false, warnings: [...warnings, "open_no_room"], params,
     };
   };
@@ -823,6 +839,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     sidesOnWall: 0,
     contour: line,
     contourRadii: radii,
+    contourCorners: dense.isCorner,
     upper,
     upperRadii,
     upperPolygon,
@@ -844,12 +861,12 @@ export type RoomLevel2 = {
   /** Макс. перепад по контурам (для сводки) и признак «есть подсветка». */
   dropCm: number;
   led: boolean;
-  items: { el: RoomElement; contour: Pt[]; calc: Level2Calc }[];
+  items: { el: Level2ElementLike; contour: Pt[]; calc: Level2Calc }[];
   warnings: Level2Warning[];
 };
 
 /** Все борта «2 уровня» комнаты одной сводкой; остров внутри другого / перекрытие — предупреждение. */
-export function calcRoomLevel2(elements: RoomElement[] | null | undefined, room: Pt[] | null): RoomLevel2 | null {
+export function calcRoomLevel2(elements: ReadonlyArray<Level2ElementLike> | null | undefined, room: Pt[] | null): RoomLevel2 | null {
   const items: RoomLevel2["items"] = [];
   for (const el of elements ?? []) {
     if (!el || el.type !== "level2") continue;
