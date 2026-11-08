@@ -328,6 +328,7 @@ export function planRoomOf(raw: unknown): PlanRoom | null {
     wallProfiles: r.wallProfiles,
     // Телефон с 30.10.2026 пишет в roomsData решённый флаг; старые КП — по типам стен.
     withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
+    insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
   };
 }
 

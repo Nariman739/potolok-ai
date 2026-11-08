@@ -106,6 +106,8 @@ export interface RoomElement {
   polygonPoints?: { x: number; y: number }[];
   /** ID группы (для софитов в паре/тройке) — при drag двигаются вместe. */
   groupId?: string;
+  /** Гардина (curtain / builtin_gardina): цвет профиля для 3D и чертежа. Пусто — чёрная (09.11.2026). */
+  color?: "black" | "white";
   /**
    * Привязка к конкретному товару из прайса мастера (PriceVariant.id).
    * Если задано — в 3D рендерится модель с реальными размерами/цветом,

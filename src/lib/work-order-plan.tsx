@@ -34,6 +34,8 @@ export type PlanRoom = {
   profileNames?: Record<string, string>;
   /** Вставка в комнате (30.10.2026): true/false — решено; null/undefined — вывести из старых типов стен, иначе да. */
   withInsert?: boolean | null;
+  /** Цвет вставки (09.11.2026): пусто — белая. На чертёж пока не выводится, нужен 3D. */
+  insertColor?: "white" | "black" | null;
   /** Свои профили из прайса, на которые ставится вставка (id → true). */
   profileInsert?: Record<string, boolean>;
 };
