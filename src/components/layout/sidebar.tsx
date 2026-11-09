@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -36,15 +36,14 @@ const navItems = [
   // «Дизайн КП» (09.11.2026): страница была только по баннеру на главной —
   // мастер с сайта (Андрей, «Небо в подарок») не нашёл, где настраивать КП.
   { href: "/dashboard/branding", label: "Дизайн КП", icon: Palette },
-  // «Договор» (09.11.2026): настройки договора жили только внизу «Профиля».
-  { href: "/dashboard/profile?section=contract", label: "Договор", icon: ScrollText },
+  // «Договор» (09.11.2026): текст договора, правка и версии — как в приложении.
+  { href: "/dashboard/contract", label: "Договор", icon: ScrollText },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
   { href: "/dashboard/trash", label: "Корзина", icon: Trash2 },
 ];
 
 export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
   const pathname = usePathname();
-  const section = useSearchParams().get("section");
 
   const items = isOwner
     ? [
@@ -61,16 +60,10 @@ export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
 
       <nav className="flex-1 space-y-1 p-3">
         {items.map((item) => {
-          // «Договор» и «Профиль» — одна страница, различаются ?section=contract.
-          const onContract = pathname === "/dashboard/profile" && section === "contract";
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : item.href === "/dashboard/profile?section=contract"
-                ? onContract
-                : item.href === "/dashboard/profile"
-                  ? pathname.startsWith(item.href) && !onContract
-                  : pathname.startsWith(item.href);
+              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
