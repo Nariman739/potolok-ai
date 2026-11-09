@@ -55,6 +55,11 @@ export default async function EstimateDetailPage({
 
   if (!estimate) notFound();
 
+  // Договор и акт оформляются на владельца компании — и готовность проверяем по его реквизитам.
+  const requisites = scope.isOwner
+    ? master
+    : ((await prisma.master.findUnique({ where: { id: scope.ownerId } })) ?? master);
+
   const hasKpBrief = !!kpBrief;
 
   const calc = estimate.calculationData as unknown as CalculationResult;
@@ -144,7 +149,7 @@ export default async function EstimateDetailPage({
           publicId={estimate.publicId}
           clientPhone={estimate.clientPhone}
           status={estimate.status}
-          contractConfigured={isContractConfigured(master)}
+          contractConfigured={isContractConfigured(requisites)}
           validUntil={estimate.validUntil}
           priceView={estimate.priceView}
         />
@@ -178,9 +183,9 @@ export default async function EstimateDetailPage({
         contractSignedAt={estimate.contractSignedAt ? estimate.contractSignedAt.toISOString() : null}
         contractSignerName={estimate.contractSignerName}
         clientPhone={estimate.clientPhone}
-        contractConfigured={isContractConfigured(master)}
-        missingRequisites={missingContractFields(master, master.currency)}
-        defaultPrepaymentPercent={master.prepaymentPercent ?? 50}
+        contractConfigured={isContractConfigured(requisites)}
+        missingRequisites={missingContractFields(requisites, requisites.currency)}
+        defaultPrepaymentPercent={requisites.prepaymentPercent ?? 50}
         workStartDate={estimate.workStartDate ? estimate.workStartDate.toISOString() : null}
         workDurationDays={estimate.workDurationDays}
         paymentSchedule={
@@ -199,7 +204,7 @@ export default async function EstimateDetailPage({
         actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
         clientPhone={estimate.clientPhone}
         estimateStatus={estimate.status}
-        contractConfigured={isContractConfigured(master)}
+        contractConfigured={isContractConfigured(requisites)}
       />
 
       {/* Total summary */}

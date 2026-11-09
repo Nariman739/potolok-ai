@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currencyFor } from "@/lib/company";
+import { currencyFor, getScope, inScope } from "@/lib/company";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { numberToWordsKz } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
@@ -33,14 +33,16 @@ export async function GET(
 ) {
   try {
     const masterAuth = await requireAuth();
+    const scope = await getScope(masterAuth);
     const { id } = await params;
 
-    const master = await prisma.master.findUnique({ where: { id: masterAuth.id } });
+    // Реквизиты в документе — компании (владельца), а не того, кто нажал «Акт».
+    const master = await prisma.master.findUnique({ where: { id: scope.ownerId } });
     if (!master || !master.contractType || master.contractType === "none") {
       return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
     }
 
-    const estimate = await prisma.estimate.findFirst({ where: { id, masterId: master.id, deletedAt: null } });
+    const estimate = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     if (estimate.status !== "CONFIRMED") {
       return NextResponse.json({ error: "Акт доступен только для подтверждённых КП" }, { status: 400 });

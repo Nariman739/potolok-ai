@@ -42,7 +42,8 @@ export async function GET(
     const scope = await getScope(masterAuth);
     const { id } = await params;
 
-    const master = await prisma.master.findUnique({ where: { id: masterAuth.id } });
+    // Реквизиты в документе — компании (владельца), а не того, кто нажал «Договор».
+    const master = await prisma.master.findUnique({ where: { id: scope.ownerId } });
     if (!master || !master.contractType || master.contractType === "none") {
       return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
     }
