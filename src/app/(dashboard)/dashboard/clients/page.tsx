@@ -1,6 +1,5 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getBoardItems } from "@/lib/crm-board";
@@ -11,22 +10,6 @@ import { ClientsBoard } from "./clients-board";
 export const metadata: Metadata = {
   title: "Клиенты",
 };
-
-// Канбан — второй вид для команд; мастеру-одиночке переключатель не показываем.
-function ViewToggle({ view }: { view: "list" | "board" }) {
-  const tab = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${active ? "bg-background shadow-sm" : "text-muted-foreground"}`;
-  return (
-    <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
-      <Link href="/dashboard/clients" className={tab(view === "list")}>
-        Список
-      </Link>
-      <Link href="/dashboard/clients?view=board" className={tab(view === "board")}>
-        Канбан
-      </Link>
-    </div>
-  );
-}
 
 export default async function ClientsPage({
   searchParams,
@@ -41,14 +24,7 @@ export default async function ClientsPage({
   if ((await searchParams).view === "board") {
     const items = await getBoardItems(scope, master.id);
     return (
-      <div data-wide-page className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">Клиенты</h1>
-            <p className="text-sm text-muted-foreground">Всего: {items.length}</p>
-          </div>
-          <ViewToggle view="board" />
-        </div>
+      <div data-wide-page>
         <ClientsBoard initialItems={items} isTeam={scope.isTeam} />
       </div>
     );
@@ -59,6 +35,7 @@ export default async function ClientsPage({
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
+      masterId: true,
       name: true,
       phone: true,
       address: true,
@@ -89,6 +66,7 @@ export default async function ClientsPage({
     updatedAt: c.updatedAt.toISOString(),
     estimatesCount: c._count.estimates,
     totalSum: c.estimates.reduce((acc, e) => acc + (e.total || 0), 0),
+    mine: c.masterId === master.id,
     lastEvent: c.events[0]
       ? {
           type: c.events[0].type,
@@ -98,10 +76,5 @@ export default async function ClientsPage({
       : null,
   }));
 
-  return (
-    <div className="space-y-4">
-      {scope.isTeam && <ViewToggle view="list" />}
-      <ClientsList initialItems={items} />
-    </div>
-  );
+  return <ClientsList initialItems={items} isTeam={scope.isTeam} />;
 }

@@ -4,14 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   Users,
   Phone,
   MessageSquare,
-  Search,
   Calendar,
 } from "lucide-react";
 import {
@@ -24,6 +22,7 @@ import {
   type EventTypeKey,
 } from "./constants";
 import { NewClientDialog } from "./new-client-dialog";
+import { ClientsHeader } from "./clients-header";
 import { useCurrency } from "@/components/currency-provider";
 
 type Item = {
@@ -38,18 +37,23 @@ type Item = {
   updatedAt: string;
   estimatesCount: number;
   totalSum: number;
+  mine: boolean;
   lastEvent: { type: EventTypeKey; content: string | null; createdAt: string } | null;
 };
 
 const STATUS_ORDER: (DealStatusKey | "ALL")[] = [
   "ALL",
   "NEW",
-  "QUALIFIED",
-  "PROPOSAL_SENT",
-  "NEGOTIATING",
+  "IN_PROGRESS",
   "WON",
   "LOST",
 ];
+
+// Старые статусы в базе показываются как «В работе» — и считаются вместе с ним
+const LEGACY_STATUSES: DealStatusKey[] = ["QUALIFIED", "PROPOSAL_SENT", "NEGOTIATING"];
+function canonicalStatus(s: DealStatusKey): DealStatusKey {
+  return LEGACY_STATUSES.includes(s) ? "IN_PROGRESS" : s;
+}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -70,25 +74,28 @@ function formatDate(iso: string) {
   });
 }
 
-export function ClientsList({ initialItems }: { initialItems: Item[] }) {
+export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; isTeam: boolean }) {
   const { format: formatMoney } = useCurrency(); // валюта мастера вместо зашитого «₸» (07.10.2026)
   const [items, setItems] = useState<Item[]>(initialItems);
   const [activeStatus, setActiveStatus] = useState<DealStatusKey | "ALL">("ALL");
   const [search, setSearch] = useState("");
+  const [onlyMine, setOnlyMine] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
   const counts = useMemo(() => {
-    const map: Record<string, number> = { ALL: items.length };
-    for (const i of items) {
-      map[i.status] = (map[i.status] ?? 0) + 1;
+    const scoped = onlyMine ? items.filter((i) => i.mine) : items;
+    const map: Record<string, number> = { ALL: scoped.length };
+    for (const i of scoped) {
+      const status = canonicalStatus(i.status);
+      map[status] = (map[status] ?? 0) + 1;
     }
     return map;
-  }, [items]);
+  }, [items, onlyMine]);
 
   const filtered = useMemo(() => {
-    let list = items;
+    let list = onlyMine ? items.filter((i) => i.mine) : items;
     if (activeStatus !== "ALL") {
-      list = list.filter((i) => i.status === activeStatus);
+      list = list.filter((i) => canonicalStatus(i.status) === activeStatus);
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim();
@@ -100,7 +107,7 @@ export function ClientsList({ initialItems }: { initialItems: Item[] }) {
       });
     }
     return list;
-  }, [items, activeStatus, search]);
+  }, [items, activeStatus, search, onlyMine]);
 
   function handleClientCreated(c: { id: string; name: string; phone: string | null }) {
     const newItem: Item = {
@@ -115,6 +122,7 @@ export function ClientsList({ initialItems }: { initialItems: Item[] }) {
       updatedAt: new Date().toISOString(),
       estimatesCount: 0,
       totalSum: 0,
+      mine: true,
       lastEvent: null,
     };
     setItems((prev) => [newItem, ...prev]);
@@ -123,31 +131,18 @@ export function ClientsList({ initialItems }: { initialItems: Item[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Клиенты</h1>
-          <p className="text-sm text-muted-foreground">
-            Всего: {items.length}
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowNewDialog(true)}
-          className="bg-[#1e3a5f] hover:bg-[#152d4a]"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить
-        </Button>
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Поиск по имени или телефону"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <ClientsHeader
+        total={items.length}
+        search={search}
+        onSearch={setSearch}
+        placeholder="Поиск по имени или телефону"
+        isTeam={isTeam}
+        onlyMine={onlyMine}
+        onOnlyMine={setOnlyMine}
+        view="list"
+        showToggle={isTeam}
+        onAdd={() => setShowNewDialog(true)}
+      />
 
       <div className="flex flex-wrap gap-2">
         {STATUS_ORDER.map((s) => {
