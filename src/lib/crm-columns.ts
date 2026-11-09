@@ -3,6 +3,8 @@
  * Без Prisma — файл импортируется и в клиентские компоненты.
  *
  * Приоритет: Отказ (статус LOST) → ручная Client.crmColumn → расчёт.
+ * Исключения: ручной «Отказ» без статуса LOST не действует (статус вернули в
+ * приложении); ручные колонки монтажа следуют за датой, если расчёт тоже монтаж.
  *
  * | Колонка            | Сама, если                                       | Перенос рукой дополнительно      |
  * |--------------------|--------------------------------------------------|----------------------------------|
@@ -11,7 +13,8 @@
  * | Расчёт / КП        | этап calculated (КП-черновик)                    | —                                |
  * | КП отправлено      | этап sent                                        | —                                |
  * | Согласование       | этапы viewed, confirmed, workshop без договора   | —                                |
- * | Договор            | есть договор у живого КП клиента                 | —                                |
+ * | Договор            | договор у живого КП главного объекта или, если   | —                                |
+ * |                    | объекта нет, у КП клиента                        |                                  |
  * | Закуп материала    | никогда, только рукой                            | —                                |
  * | Планирование       | никогда, только рукой                            | —                                |
  * | Монтаж запланирован| installAt позже сегодняшнего дня                 | диалог даты → installAt объекта  |
@@ -123,8 +126,10 @@ export function autoCrmColumn(input: CrmInput, now: Date = new Date()): CrmColum
   const installAt = mainObject(input.objects)?.installAt;
   if (installAt) return almatyDay(installAt) > almatyDay(now) ? "install_planned" : "install";
 
-  const allEstimates = [...input.estimates, ...input.objects.flatMap((o) => o.estimates)];
-  if (allEstimates.some((e) => !e.deletedAt && e.contractPublicId)) return "contract";
+  // Договор со старого объекта не должен перекрывать новый заказ клиента.
+  const main = mainObject(input.objects);
+  const contractEstimates = main ? main.estimates : input.estimates;
+  if (contractEstimates.some((e) => !e.deletedAt && e.contractPublicId)) return "contract";
 
   switch (stage) {
     case "measured":
@@ -144,5 +149,10 @@ export function autoCrmColumn(input: CrmInput, now: Date = new Date()): CrmColum
 
 export function resolveCrmColumn(input: CrmInput, now: Date = new Date()): CrmColumn {
   if (input.status === "LOST") return "lost";
-  return isCrmColumn(input.crmColumn) ? input.crmColumn : autoCrmColumn(input, now);
+  const auto = autoCrmColumn(input, now);
+  const manual = input.crmColumn;
+  if (!isCrmColumn(manual) || manual === "lost") return auto;
+  // Монтаж наступил — карточка, поставленная в «запланирован», переходит сама.
+  const isInstall = (c: CrmColumn) => c === "install_planned" || c === "install";
+  return isInstall(manual) && isInstall(auto) ? auto : manual;
 }

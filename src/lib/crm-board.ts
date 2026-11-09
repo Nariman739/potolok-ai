@@ -22,6 +22,8 @@ export type BoardItem = {
   updatedAt: string;
 };
 
+const DONE_REASON = "Канбан: Завершён";
+
 const ESTIMATE_SELECT = {
   status: true,
   total: true,
@@ -126,7 +128,7 @@ export async function applyCrmColumn(
     select: { id: true, manualStage: true },
   });
   if (column === "done") {
-    await changeClientStatus(client.id, "WON", "Канбан: Завершён");
+    await changeClientStatus(client.id, "WON", DONE_REASON);
     // «Закрыл» (монтаж + деньги) приложение считает само — его не сбиваем.
     if (main && main.manualStage !== "closed") {
       await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: "installed" } });
@@ -136,8 +138,20 @@ export async function applyCrmColumn(
   if (client.status === "LOST") {
     await changeClientStatus(client.id, "IN_PROGRESS", "Канбан: вернули из отказа");
   }
-  // Убираем только то, что поставил сам канбан; этап, выставленный в приложении, не трогаем.
-  if (client.crmColumn === "done" && main?.manualStage === "installed") {
+  if (client.crmColumn !== "done") return;
+  // Карточку вернули из «Завершён», куда её ставили на доске: «смонтировали» больше
+  // не верно, даже если этап ещё раньше поставили в приложении.
+  if (main?.manualStage === "installed") {
     await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
+  }
+  // WON откатываем, только если его поставил сам канбан: сделка, закрытая раньше
+  // (клиент принял КП), остаётся сделкой. Иначе клиент выпадал из напоминаний.
+  const lastChange = await prisma.clientEvent.findFirst({
+    where: { clientId: client.id, type: "STATUS_CHANGE" },
+    orderBy: { createdAt: "desc" },
+    select: { content: true },
+  });
+  if (client.status === "WON" && lastChange?.content === DONE_REASON) {
+    await changeClientStatus(client.id, "IN_PROGRESS", "Канбан: вернули из «Завершён»");
   }
 }
