@@ -116,6 +116,11 @@ function stageOf(input: CrmInput): ObjectStage | null {
   return primary ? estimateOnlyStage(primary.status) : null;
 }
 
+/** Какая колонка монтажа соответствует дате (сутки — по Астане). */
+export function installColumnFor(installAt: Date, now: Date = new Date()): "install_planned" | "install" {
+  return almatyDay(installAt) > almatyDay(now) ? "install_planned" : "install";
+}
+
 /** Колонка по данным, без учёта ручной. */
 export function autoCrmColumn(input: CrmInput, now: Date = new Date()): CrmColumn {
   if (input.status === "LOST") return "lost";
@@ -124,7 +129,7 @@ export function autoCrmColumn(input: CrmInput, now: Date = new Date()): CrmColum
   if (stage === "installed" || stage === "closed") return "done";
 
   const installAt = mainObject(input.objects)?.installAt;
-  if (installAt) return almatyDay(installAt) > almatyDay(now) ? "install_planned" : "install";
+  if (installAt) return installColumnFor(installAt, now);
 
   // Договор со старого объекта не должен перекрывать новый заказ клиента.
   const main = mainObject(input.objects);

@@ -5,6 +5,8 @@ import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+export const CLIENTS_VIEW_KEY = "clients-view-v1";
+
 // Одна шапка для списка и канбана. Все/Мои — только в команде, у одиночки нечего делить.
 export function ClientsHeader({
   total,
@@ -29,6 +31,13 @@ export function ClientsHeader({
   showToggle: boolean;
   onAdd: () => void;
 }) {
+  // Последний вид помнит только команда: она работает на доске весь день
+  const remember = (v: "list" | "board") => {
+    if (!isTeam) return;
+    try {
+      localStorage.setItem(CLIENTS_VIEW_KEY, v);
+    } catch {}
+  };
   const tab = (active: boolean) =>
     `rounded-md px-3 py-1 text-sm font-medium ${active ? "bg-background shadow-sm" : "text-muted-foreground"}`;
   return (
@@ -58,10 +67,10 @@ export function ClientsHeader({
       <div className="ml-auto flex items-center gap-3">
         {showToggle && (
           <div className="hidden gap-1 rounded-lg bg-muted p-1 md:inline-flex">
-            <Link href="/dashboard/clients" className={tab(view === "list")}>
+            <Link href="/dashboard/clients" onClick={() => remember("list")} className={tab(view === "list")}>
               Список
             </Link>
-            <Link href="/dashboard/clients?view=board" className={tab(view === "board")}>
+            <Link href="/dashboard/clients?view=board" onClick={() => remember("board")} className={tab(view === "board")}>
               Канбан
             </Link>
           </div>

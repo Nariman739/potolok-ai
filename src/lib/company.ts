@@ -202,14 +202,20 @@ export async function companyIdFor(masterId: string): Promise<string | null> {
  * формы, что пришёл из select — подменяются только выбранные поля.
  * id и telegramChatId не трогаем: уведомления должны идти автору КП.
  */
-export async function ownerBrandFor<M extends object>(masterId: string, master: M): Promise<M> {
+export async function ownerBrandFor<M extends object>(masterId: string, master: M, companyId?: string | null): Promise<M> {
   try {
-    const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
-    if (!me?.activeCompanyId) return master;
-    const company = await prisma.company.findFirst({
-      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, joinedAt: { not: null } } } },
-      select: { ownerId: true },
-    });
+    // У документа своя компания: автор мог уйти, а КП осталось у неё и выходит под её брендом.
+    let company: { ownerId: string } | null = null;
+    if (companyId) {
+      company = await prisma.company.findUnique({ where: { id: companyId }, select: { ownerId: true } });
+    } else {
+      const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
+      if (!me?.activeCompanyId) return master;
+      company = await prisma.company.findFirst({
+        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, joinedAt: { not: null } } } },
+        select: { ownerId: true },
+      });
+    }
     if (!company || company.ownerId === masterId) return master;
     const keys = Object.keys(master).filter((k) => k !== "id" && k !== "telegramChatId");
     if (keys.length === 0) return master;

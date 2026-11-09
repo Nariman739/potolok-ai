@@ -172,7 +172,7 @@ export async function buildPdfData(estimateId: string, masterId?: string | strin
   });
   if (!estimate) throw new Error("Estimate not found");
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   const config = normalizeConfig(estimate.master.kpConfig);
   const { theme, fonts } = themeFor({

@@ -96,7 +96,7 @@ export async function POST(
       return NextResponse.json({ error: "КП не найдено" }, { status: 404 });
     }
     // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
     // Условия договора
     const validatedSchedule = paymentSchedule

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
   type EventTypeKey,
 } from "./constants";
 import { NewClientDialog } from "./new-client-dialog";
-import { ClientsHeader } from "./clients-header";
+import { CLIENTS_VIEW_KEY, ClientsHeader } from "./clients-header";
 import { useCurrency } from "@/components/currency-provider";
 
 type Item = {
@@ -80,6 +81,14 @@ export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; is
   const [activeStatus, setActiveStatus] = useState<DealStatusKey | "ALL">("ALL");
   const [search, setSearch] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isTeam) return;
+    try {
+      if (localStorage.getItem(CLIENTS_VIEW_KEY) === "board") router.replace("/dashboard/clients?view=board");
+    } catch {}
+  }, [isTeam, router]);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
   const counts = useMemo(() => {

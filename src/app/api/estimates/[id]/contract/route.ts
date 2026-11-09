@@ -65,7 +65,7 @@ export async function GET(
     }
 
     if (!master.contractType || master.contractType === "none") {
-      return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
+      return NextResponse.json({ error: scope.isOwner ? "Настройте тип договора в разделе Профиль" : "Попросите владельца настроить тип договора" }, { status: 400 });
     }
 
     const calc = estimate.calculationData as unknown as CalculationResult;

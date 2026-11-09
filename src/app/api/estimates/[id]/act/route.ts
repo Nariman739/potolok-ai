@@ -39,7 +39,7 @@ export async function GET(
     // Реквизиты в документе — компании (владельца), а не того, кто нажал «Акт».
     const master = await prisma.master.findUnique({ where: { id: scope.ownerId } });
     if (!master || !master.contractType || master.contractType === "none") {
-      return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
+      return NextResponse.json({ error: scope.isOwner ? "Настройте тип договора в разделе Профиль" : "Попросите владельца настроить тип договора" }, { status: 400 });
     }
 
     const estimate = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null } });

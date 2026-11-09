@@ -67,7 +67,7 @@ export async function GET(
       return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     }
     // Бренд/реквизиты (и валюта) — владельца компании, если КП делал участник бригады (Этап 3)
-    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+    estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
     const cur = asCurrency(estimate.master.currency);
 
     // Load master's install prices (overrides)

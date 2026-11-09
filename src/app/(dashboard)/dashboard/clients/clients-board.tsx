@@ -13,6 +13,7 @@ import {
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -26,7 +27,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCurrency } from "@/components/currency-provider";
-import { CRM_COLUMNS, CRM_COLUMN_LABELS, isCrmColumn, type CrmColumn } from "@/lib/crm-columns";
+import {
+  CRM_COLUMNS,
+  CRM_COLUMN_LABELS,
+  installColumnFor,
+  isCrmColumn,
+  type CrmColumn,
+} from "@/lib/crm-columns";
 import type { BoardItem } from "@/lib/crm-board";
 import { ClientsHeader } from "./clients-header";
 import { NewClientDialog } from "./new-client-dialog";
@@ -131,24 +138,13 @@ function CardBody({ item, showOwner }: { item: BoardItem; showOwner: boolean }) 
   );
 }
 
-function DraggableCard({
-  item,
-  showOwner,
-  suppressClick,
-}: {
-  item: BoardItem;
-  showOwner: boolean;
-  suppressClick: React.RefObject<boolean>;
-}) {
+function DraggableCard({ item, showOwner }: { item: BoardItem; showOwner: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.id });
   return (
     <Link
       ref={setNodeRef}
       href={`/dashboard/clients/${item.id}`}
       draggable={false}
-      onClick={(e) => {
-        if (suppressClick.current) e.preventDefault();
-      }}
       {...listeners}
       {...attributes}
       className={`block rounded-md border bg-background px-2.5 py-2 touch-none transition-colors hover:border-[#1e3a5f]/40 ${
@@ -229,7 +225,11 @@ export function ClientsBoard({
   const [onlyMine, setOnlyMine] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [pendingInstall, setPendingInstall] = useState<{ item: BoardItem; from: CrmColumn } | null>(null);
+  const [pendingInstall, setPendingInstall] = useState<{
+    item: BoardItem;
+    from: CrmColumn;
+    target: "install_planned" | "install";
+  } | null>(null);
   const [installValue, setInstallValue] = useState("");
   const [savingDate, setSavingDate] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -263,6 +263,16 @@ export function ClientsBoard({
     if (el) setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }
 
+  // Только на document и в capture: dnd-kit глушит click там же, React до него не доходит,
+  // и без preventDefault браузер переходит по ссылке карточки, отпущенной на своём месте.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (suppressClick.current) e.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   useEffect(() => {
     updateEdge();
     const el = boardRef.current;
@@ -278,6 +288,15 @@ export function ClientsBoard({
     if (board && el) board.scrollTo({ left: el.offsetLeft - board.offsetLeft, behavior: "smooth" });
   }
 
+  // По курсору: карточка шире развёрнутой пустой колонки и иначе падала в соседнюю.
+  // И только внутри доски: прокрученные колонки лежат и под боковым меню, в них падать нельзя.
+  const collisionDetection: CollisionDetection = (args) => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    const p = args.pointerCoordinates;
+    if (!rect || !p || p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom) return [];
+    return pointerWithin(args);
+  };
+
   const activeItem = activeId ? items.find((i) => i.id === activeId) ?? null : null;
 
   function setColumn(id: string, column: CrmColumn) {
@@ -291,13 +310,14 @@ export function ClientsBoard({
 
   function releaseClick() {
     setActiveId(null);
-    // click приходит сразу после pointerup
+    // click приходит после pointerup, держим с запасом на перерисовку доски
     setTimeout(() => {
       suppressClick.current = false;
-    }, 0);
+    }, 300);
   }
 
-  async function commitMove(item: BoardItem, from: CrmColumn, target: CrmColumn, installAt?: string) {
+  // installAt: строка — новая дата, null — убрать дату, undefined — не трогать
+  async function commitMove(item: BoardItem, from: CrmColumn, target: CrmColumn, installAt?: string | null) {
     setColumn(item.id, target);
     try {
       const res = await fetch(`/api/clients/${item.id}`, {
@@ -311,7 +331,7 @@ export function ClientsBoard({
       toast.error("Не удалось перенести карточку");
       return;
     }
-    if (!installAt || !item.objectId) return;
+    if (installAt === undefined || !item.objectId) return;
     try {
       const res = await fetch(`/api/objects/${item.objectId}`, {
         method: "PATCH",
@@ -320,7 +340,11 @@ export function ClientsBoard({
       });
       if (!res.ok) throw new Error();
       setItems((list) =>
-        list.map((i) => (i.id === item.id ? { ...i, installAt, date: { kind: "install", at: installAt } } : i)),
+        list.map((i) => {
+          if (i.id !== item.id) return i;
+          if (installAt) return { ...i, installAt, date: { kind: "install", at: installAt } };
+          return { ...i, installAt: null, date: i.date?.kind === "install" ? null : i.date };
+        }),
       );
     } catch {
       toast.error("Карточка перенесена, но дату сохранить не удалось");
@@ -333,11 +357,16 @@ export function ClientsBoard({
     const item = items.find((i) => i.id === e.active.id);
     if (!item || !isCrmColumn(target) || target === item.column) return;
 
+    // Монтаж следует за датой: перенос, расходящийся с датой, без её правки откатился бы при перезагрузке
+    const dateDisagrees = item.installAt && installColumnFor(new Date(item.installAt)) !== target;
+    const needsDate = target === "install_planned" || (target === "install" && dateDisagrees);
     // Перенос с датой записываем только после ответа в диалоге: крестик и Esc его отменяют
-    if (target === "install_planned" && item.objectId) {
+    if (needsDate && item.objectId) {
       setColumn(item.id, target);
-      setInstallValue(item.installAt ? almatyInput(item.installAt) : almatyPreset(1));
-      setPendingInstall({ item, from: item.column });
+      setInstallValue(
+        item.installAt && !dateDisagrees ? almatyInput(item.installAt) : almatyPreset(target === "install" ? 0 : 1),
+      );
+      setPendingInstall({ item, from: item.column, target });
       return;
     }
     commitMove(item, item.column, target);
@@ -351,8 +380,14 @@ export function ClientsBoard({
   async function confirmInstall(withDate: boolean) {
     if (!pendingInstall) return;
     setSavingDate(true);
-    const installAt = withDate ? new Date(`${installValue}:00+05:00`).toISOString() : undefined;
-    await commitMove(pendingInstall.item, pendingInstall.from, "install_planned", installAt);
+    const { item, from, target } = pendingInstall;
+    if (withDate) {
+      const at = new Date(`${installValue}:00+05:00`);
+      // Колонка по выбранной дате: «запланирован» на сегодня — это уже «Монтаж»
+      await commitMove(item, from, installColumnFor(at), at.toISOString());
+    } else {
+      await commitMove(item, from, target, item.installAt ? null : undefined);
+    }
     setSavingDate(false);
     setPendingInstall(null);
   }
@@ -420,8 +455,7 @@ export function ClientsBoard({
         <DndContext
           id="clients-board"
           sensors={sensors}
-          // По курсору: карточка шире развёрнутой пустой колонки и иначе падала в соседнюю
-          collisionDetection={pointerWithin}
+          collisionDetection={collisionDetection}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
@@ -435,12 +469,7 @@ export function ClientsBoard({
                 return (
                   <Column key={column} column={column} shown={shown.length} total={all.length} dragging={!!activeId}>
                     {shown.map((item) => (
-                      <DraggableCard
-                        key={item.id}
-                        item={item}
-                        showOwner={isTeam && !onlyMine}
-                        suppressClick={suppressClick}
-                      />
+                      <DraggableCard key={item.id} item={item} showOwner={isTeam && !onlyMine} />
                     ))}
                   </Column>
                 );
@@ -479,6 +508,9 @@ export function ClientsBoard({
             {pendingLines?.address ? ` · ${pendingLines.address}` : ""}
           </p>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setInstallValue(almatyPreset(0))}>
+              Сегодня
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setInstallValue(almatyPreset(1))}>
               Завтра
             </Button>
