@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureOwnCompany, getScope, transferOwnDataTo } from "@/lib/company";
+import { ensureOwnCompany, getScope, transferOwnDataOps } from "@/lib/company";
 
 /**
  * Переход между компаниями по СОГЛАСИЮ мастера (21.09.2026).
@@ -32,11 +32,29 @@ export async function POST(request: Request) {
     });
     if (!membership) return NextResponse.json({ error: "Приглашение не найдено или отозвано" }, { status: 404 });
 
-    await prisma.$transaction([
+    const bringData = body.bringData === true;
+    if (bringData) {
+      // Перенос забирает данные всей своей компании: при работающих людях увёл бы и их.
+      const own = await ensureOwnCompany(master.id);
+      const ownScope = await getScope({ id: master.id, activeCompanyId: own.id });
+      if (ownScope.masterIds.length > 1) {
+        return NextResponse.json(
+          { error: "В вашей компании работают другие люди — перенести данные нельзя. Примите приглашение без переноса." },
+          { status: 409 },
+        );
+      }
+    }
+
+    const switchOps = [
       prisma.master.update({ where: { id: master.id }, data: { activeCompanyId: companyId } }),
       ...(membership.joinedAt ? [] : [prisma.member.update({ where: { id: membership.id }, data: { joinedAt: new Date() } })]),
-    ]);
-    const transferred = body.bringData === true ? await transferOwnDataTo(master.id, companyId) : null;
+    ];
+    const transferOps = bringData ? await transferOwnDataOps(master.id, companyId) : [];
+    const results = await prisma.$transaction([...switchOps, ...transferOps]);
+    const counts = results.slice(switchOps.length) as { count: number }[];
+    const transferred = bringData
+      ? { objects: counts[0].count, estimates: counts[1].count, clients: counts[2].count, payments: counts[3].count }
+      : null;
     return NextResponse.json({ ...(await getScope({ id: master.id, activeCompanyId: companyId })), transferred });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

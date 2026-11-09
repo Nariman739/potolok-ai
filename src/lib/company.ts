@@ -231,16 +231,16 @@ export async function ownDataCounts(masterId: string): Promise<{ objects: number
  * при выходе обратно не возвращаются — об этом приложение предупреждает.
  * Корзину переносим тоже: восстановить из неё должна уметь бригада.
  */
-export async function transferOwnDataTo(masterId: string, companyId: string): Promise<{ objects: number; estimates: number; clients: number; payments: number }> {
+export async function transferOwnDataOps(masterId: string, companyId: string) {
   const where = await ownDataWhere(masterId);
   const data = { companyId };
-  const [o, e, c, p] = await prisma.$transaction([
+  // Без своего $transaction: вызывающий выполняет их вместе с переходом в компанию.
+  return [
     prisma.measurementObject.updateMany({ where, data }),
     prisma.estimate.updateMany({ where, data }),
     prisma.client.updateMany({ where, data }),
     prisma.payment.updateMany({ where, data }),
-  ]);
-  return { objects: o.count, estimates: e.count, clients: c.count, payments: p.count };
+  ];
 }
 
 /** Валюта цен для мастера: своя, а у участника чужой компании — валюта владельца (07.10.2026). */
