@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, measuredGeometry, splitSpotGroups } from "@/lib/room-input-builder";
+import { spotBreakdown, measuredGeometry, splitSpotGroups, gardinaFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2348,9 +2348,7 @@ export default function ZameryPage() {
       const lightLineLength = Math.round(
         els.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0)
       ) / 100;
-      const gardinaLength = Math.round(
-        els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
+      const gardina = gardinaFields(els);
       const subStats = computeSubcurtainStats(
         els,
         getVertices(room.walls, room.normalCorners, room.angles),
@@ -2398,7 +2396,7 @@ export default function ZameryPage() {
         pipeBypasses: 0,
         cornersCount: visibleCornersCount,
         eurobrusCount: 0,
-        gardinaLength,
+        ...gardina,
         podshtornikLength,
         podshtornikOnWallLength,
         roundedCornersCount,
@@ -2486,8 +2484,7 @@ export default function ZameryPage() {
               const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
               const lightLineEls = elements.filter(e => e.type === "lightline");
               const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const gardinaEls = elements.filter(e => e.type === "curtain");
-              const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const gardinaCalc = gardinaFields(elements);
               const subStatsCalc = computeSubcurtainStats(
                 elements,
                 getVertices(room.walls, room.normalCorners, room.angles),
@@ -2532,7 +2529,7 @@ export default function ZameryPage() {
                 pipeBypasses: 0,
                 cornersCount: visibleCornersCountCalc,
                 eurobrusCount: 0,
-                gardinaLength,
+                ...gardinaCalc,
                 podshtornikLength,
                 podshtornikOnWallLength,
                 roundedCornersCount,

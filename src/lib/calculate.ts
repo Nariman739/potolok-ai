@@ -20,6 +20,9 @@ export interface CustomItemInfo {
   category?: string | null;
 }
 
+/** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
+const LED_SURCHARGE_PER_M = 3000;
+
 /** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
 const VARIANT_INSTALL_CODE: Record<string, string> = {
   spot_pair: "install_spot",
@@ -292,11 +295,28 @@ function calculateRoom(
   }
 
   // Gardina (пластиковая на потолок / встроенная в потолок)
+  const gardinaLightM = room.gardinaLightLength ?? 0;
+  const gardinaVariant = (room.gardinaLength ?? 0) > 0 || gardinaLightM > 0 ? variantFor("gardina") : null;
+  if ((room.gardinaSingleLength ?? 0) > 0) {
+    const singleItem = makeLineItem("gardina_single", room.gardinaSingleLength ?? 0, prices);
+    if (singleItem) items.push(singleItem);
+  }
+  if (gardinaLightM > 0) {
+    const unitPrice = (gardinaVariant?.price ?? getPrice(prices, "gardina_plastic")) + LED_SURCHARGE_PER_M;
+    items.push({
+      itemCode: gardinaVariant ? `${gardinaVariant.code}:led` : "gardina_led",
+      itemName: `${gardinaVariant?.name ?? "Гардина"} с подсветкой`,
+      quantity: gardinaLightM,
+      unit: "м.п.",
+      unitPrice,
+      total: Math.round(unitPrice * gardinaLightM),
+      installCode: "install_gardina",
+    });
+  }
   if ((room.gardinaLength ?? 0) > 0) {
     const gardinaCode = room.gardinaType || "gardina_plastic";
-    const variant = variantFor("gardina");
-    const gardinaItem = variant
-      ? variantLine(variant, "gardina", room.gardinaLength ?? 0, gardinaCode)
+    const gardinaItem = gardinaVariant
+      ? variantLine(gardinaVariant, "gardina", room.gardinaLength ?? 0, gardinaCode)
       : makeLineItem(gardinaCode, room.gardinaLength, prices);
     if (gardinaItem) items.push(gardinaItem);
   }

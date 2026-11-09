@@ -100,6 +100,10 @@ export interface RoomInput {
   // Gardina + Podshtornik
   gardinaLength: number;
   gardinaType?: string;
+  /** Однорядная гардина (ванная), м.п. — своей строкой по коду gardina_single. */
+  gardinaSingleLength?: number;
+  /** Гардина с подсветкой, м.п. — цена гардины плюс подсветка. */
+  gardinaLightLength?: number;
   podshtornikLength: number;
   /** Длина участка СТЕНЫ, покрытого подшторником (без глубины ниши).
    *  Используется для вычитания из периметра багета. Если не задано — fallback на podshtornikLength. */

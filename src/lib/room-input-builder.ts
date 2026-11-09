@@ -42,6 +42,8 @@ interface DesignerElement {
   spotType?: string;
   priceVariantId?: string;
   groupId?: string;
+  rows?: number;
+  withLight?: boolean;
 }
 
 /**
@@ -71,6 +73,19 @@ export function splitSpotGroups<T extends { groupId?: string }>(allSpots: T[]): 
   const singleSpots = allSpots.filter((s) => !s.groupId || sizes.get(s.groupId) !== 2);
   const spotPairsCount = [...sizes.values()].filter((n) => n === 2).length;
   return { spotPairsCount, singleSpots };
+}
+
+/** Длины гардины по строкам КП: обычная, однорядная (rows = 1), с подсветкой. В метрах. */
+export function gardinaFields(els: DesignerElement[]) {
+  const m = (list: DesignerElement[]) => Math.round(list.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+  const all = els.filter((e) => e.type === "curtain");
+  const single = all.filter((e) => e.rows === 1);
+  const rest = all.filter((e) => e.rows !== 1);
+  return {
+    gardinaLength: m(rest.filter((e) => !e.withLight)),
+    gardinaSingleLength: m(single),
+    gardinaLightLength: m(rest.filter((e) => e.withLight)),
+  };
 }
 
 /**
@@ -131,12 +146,7 @@ export function buildRoomInputFromDesigner(
         .filter((e) => e.type === "lightline")
         .reduce((s, e) => s + (e.length || 0), 0)
     ) / 100;
-  const gardinaLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "curtain")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
+  const gardina = gardinaFields(els);
   const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
   const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length, room.walls);
   const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
@@ -196,7 +206,7 @@ export function buildRoomInputFromDesigner(
     pipeBypasses: existing?.pipeBypasses ?? 0,
     cornersCount: visibleCornersCount,
     eurobrusCount: existing?.eurobrusCount ?? 0,
-    gardinaLength,
+    ...gardina,
     gardinaType: existing?.gardinaType,
     podshtornikLength,
     podshtornikOnWallLength,
