@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const [master, setMaster] = useState<MasterProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Пункт меню «Договор»: карточка появляется только после загрузки профиля, якорь её не находил.
+  const section = useSearchParams().get("section");
+  useEffect(() => {
+    if (!loading && section === "contract") {
+      document.getElementById("contract")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [loading, section]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
