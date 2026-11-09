@@ -15,9 +15,12 @@ const SCOPE = `.${CONTRACT_DOC_CLASS}`;
 const RESET = `:where(${SCOPE}, ${SCOPE} *){all:revert}`;
 
 function scopeSelector(selector: string): string {
-  const rest = selector.trim().replace(/^(?:html\s+body|html|body|:root)(?![\w-])/i, "").trim();
-  if (!rest) return SCOPE;
-  return /^[.:#[]/.test(rest) ? `${SCOPE}${rest}` : `${SCOPE} ${rest}`;
+  const sel = selector.trim();
+  const root = /^(?:html\s+body|html|body|:root)(?![\w-])/i.exec(sel);
+  if (!root) return `${SCOPE} ${sel}`;
+  // Сам документ: body → контейнер, body.dark → контейнер.dark, body p → потомки.
+  const rest = sel.slice(root[0].length);
+  return `${SCOPE}${/^[.:#[]/.test(rest) ? rest : rest.trimStart() ? ` ${rest.trimStart()}` : ""}`;
 }
 
 function scopeCss(css: string): string {
