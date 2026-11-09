@@ -60,6 +60,11 @@ export function installSeenKey(installCode: string, itemCode: string): string {
     : installCode;
 }
 
+/** Пара софитов — два монтажа, как в наряде приложения. */
+export function installRateFactor(installCode: string, unit: string): number {
+  return installCode === "install_spot" && unit === "пара" ? 2 : 1;
+}
+
 /** Свой вариант прайса приходит из мобилки с itemCode = pickerKey («canvas», «spot:v:<id>»…). */
 function installCodeFor(itemCode: string): string | undefined {
   if (INSTALL_MAP[itemCode]) return INSTALL_MAP[itemCode];
@@ -216,7 +221,7 @@ export function autoWorkOrderLines(
       const seenKey = installSeenKey(installCode, item.itemCode);
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
-      const price = Math.max(0, priceOf(installCode));
+      const price = Math.max(0, priceOf(installCode)) * installRateFactor(installCode, item.unit);
       if (item.quantity <= 0) continue;
       // Первая строка трека, линии и гардины хранит прежний ключ: на него ссылаются правки мастера.
       const lineKey = PER_LINE_INSTALL.has(installCode) && !usedCodes.has(installCode) ? installCode : seenKey;

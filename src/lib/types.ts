@@ -143,6 +143,8 @@ export interface RoomInput {
   /** Выбор варианта из прайса на комнату: { gardina: id, track: id, lightline: id, canvas: id }.
    *  Та же форма, что room.variantOverrides в приложении и MeasurementRoom. */
   variantOverrides?: Record<string, string>;
+  /** «2 уровня» с чертежа: нижний уровень уходит из полотна, верх, борт и подсветка — свои строки. */
+  level2?: { canvasCutM2: number; upperM2: number; bortM: number; ledM: number };
   // Raw data for Room Designer round-trip editing
   designerData?: {
     walls: number[];

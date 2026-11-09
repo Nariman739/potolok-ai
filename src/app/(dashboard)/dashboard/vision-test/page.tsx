@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, measuredGeometry, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { spotBreakdown, level2Fields, measuredGeometry, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2403,6 +2403,7 @@ export default function ZameryPage() {
         shape: room.walls.length === 4 ? "rectangle" : undefined,
         previewUrl3d: room.previewUrl3d,
         ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
+        ...level2Fields(room),
         ...measuredGeometry(room),
       } satisfies RoomInput;
     });
@@ -2508,7 +2509,8 @@ export default function ZameryPage() {
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 ...(spotsByTypeCalc.length > 0 && { spotsByType: spotsByTypeCalc }),
                 ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
-                ...measuredGeometry(room),
+                ...level2Fields(room),
+        ...measuredGeometry(room),
                 spotPairsCount: spotPairsCalc,
                 spotTriplesCount: spotTriplesCalc,
                 chandelierCount,

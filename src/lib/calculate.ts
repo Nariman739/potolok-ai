@@ -31,6 +31,8 @@ const VARIANT_INSTALL_CODE: Record<string, string> = {
   lightline: "install_lightline",
 };
 
+const roundTenth = (n: number) => Math.round(n * 10) / 10;
+
 function getPrice(prices: PriceMap, code: string): number {
   return prices[code] ?? DEFAULT_PRICES[code] ?? 0;
 }
@@ -79,7 +81,9 @@ function calculateRoom(
 ): RoomResult {
   // Площадь натяжного потолка: вычитаем мебель «до потолка» (она съедает площадь).
   const furnitureArea = room.furnitureCeilingArea ?? 0;
-  const area = Math.max(0, computeArea(room) - furnitureArea);
+  const areaFull = Math.max(0, computeArea(room) - furnitureArea);
+  // Нижний уровень уходит из обычного полотна. Без «2 уровней» площадь прежняя.
+  const area = room.level2 ? roundTenth(Math.max(0, roundTenth(areaFull) - room.level2.canvasCutM2)) : areaFull;
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
   const missingVariants: string[] = [];
@@ -124,6 +128,19 @@ function calculateRoom(
   const canvasCode = getCanvasCode(room);
   const canvasItem = makeLineItem(canvasCode, area, prices);
   if (canvasItem) items.push(canvasItem);
+
+  // «2 уровня»: верхнее полотно, борт и подсветка — три строки, как в приложении.
+  if (room.level2) {
+    const totalArea = Math.max(0, computeArea(room));
+    for (const [code, quantity] of [
+      ["level2_canvas", roundTenth(Math.min(room.level2.upperM2, totalArea))],
+      ["level2_step", roundTenth(room.level2.bortM)],
+      ["level2_led", roundTenth(room.level2.ledM)],
+    ] as const) {
+      const line = makeLineItem(code, quantity, prices);
+      if (line) items.push(line);
+    }
+  }
 
   // Profile — master's choice or default
   const profileCode = room.profileType || "profile_insert";

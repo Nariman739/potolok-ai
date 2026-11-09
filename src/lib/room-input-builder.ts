@@ -11,6 +11,7 @@ import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 // Только серверно-безопасные модули: room-designer.tsx — "use client", и в
 // Next 16 его функции с сервера звать нельзя (500 в recalc-room, 27.10.2026).
 import { getVertices } from "@/lib/room-geometry";
+import { calcRoomLevel2, type Level2ElementLike } from "@/lib/level2-geometry";
 import { spotTypeKey, parseSpotTypeKey } from "@/lib/spot-types";
 import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
 
@@ -62,6 +63,14 @@ export function measuredGeometry(room: {
     && !room.columns?.length
     && !room.cutouts?.length;
   return plain ? {} : { measuredArea: room.area, measuredPerimeter: room.perimeter };
+}
+
+/** «2 уровня» с чертежа, как считает приложение. Вершины без замыкающего дубля. */
+export function level2Fields(room: { walls: number[]; normalCorners?: boolean[]; angles?: number[]; elements?: unknown[] }): { level2?: RoomInput["level2"] } {
+  if (!room.elements?.some((e) => (e as { type?: string }).type === "level2")) return {};
+  const vertices = getVertices(room.walls, room.normalCorners ?? room.walls.map(() => true), room.angles?.length ? room.angles : undefined);
+  const result = calcRoomLevel2(room.elements as Level2ElementLike[], vertices.slice(0, room.walls.length));
+  return result ? { level2: { canvasCutM2: result.canvasCutM2, upperM2: result.upperM2, bortM: result.bortM, ledM: result.ledM } } : {};
 }
 
 /**
@@ -238,6 +247,7 @@ export function buildRoomInputFromDesigner(
       room.walls.length === 4 ? ("rectangle" as const) : existing?.shape,
     previewUrl3d: room.previewUrl3d ?? existing?.previewUrl3d,
     variantOverrides: room.variantOverrides ?? existing?.variantOverrides,
+    ...level2Fields(room),
     ...measuredGeometry({ ...room, arcBulges: existing?.designerData?.arcBulges, columns: existing?.designerData?.columns }),
     designerData: {
       walls: room.walls,
