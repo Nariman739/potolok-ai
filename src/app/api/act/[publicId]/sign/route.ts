@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     const signedAt = new Date();
 
     // Снимок: реквизиты владельца компании, платежи и замечания на этот момент.
-    const master = await ownerBrandFor(estimate.masterId, estimate.master);
+    const master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
     const calc = estimate.calculationData as unknown as CalculationResult;
     const signedEstimate = {
       ...estimate,
@@ -60,8 +60,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
       renderAct(master, signedEstimate, calc, "kk"),
     ]);
 
-    await prisma.estimate.update({
-      where: { id: estimate.id },
+    // Условие в самом запросе: из двух одновременных подписей пройдёт одна.
+    const { count } = await prisma.estimate.updateMany({
+      where: { id: estimate.id, actSignedAt: null },
       data: {
         actSignedAt: signedAt,
         actSignerName: signedName,
@@ -71,6 +72,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
         actTextSnapshot: { version: 1, html: { ru, kk }, createdAt: signedAt.toISOString() },
       },
     });
+    if (count === 0) {
+      return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
+    }
 
     if (estimate.clientId) {
       addClientEvent({

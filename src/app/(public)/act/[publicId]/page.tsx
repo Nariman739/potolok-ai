@@ -43,7 +43,7 @@ export default async function ActPublicPage({
 
   if (!estimate) notFound();
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   // Язык акта — как и у договора: язык мастера, но заказчик переключает сам
   // ссылкой ?lang= (26.09.2026).
