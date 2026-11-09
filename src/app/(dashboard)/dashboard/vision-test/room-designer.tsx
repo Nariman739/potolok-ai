@@ -488,7 +488,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   // Fixture width editor (doors/windows)
   const [fixtureEditor, setFixtureEditor] = useState<{ elId: string; width: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean; handle?: "start" | "end"; grabDx?: number; grabDy?: number } | null>(null);
+  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean; handle?: "start" | "end"; grabDx?: number; grabDy?: number; pointerId: number } | null>(null);
+  // Указатели, нажатые во время чужого перетаскивания (второй палец): их отпускание ничего не делает.
+  const ignoredPointers = useRef(new Set<number>());
   const lastPointerType = useRef<string>("touch");
 
   const vertices = getVertices(editableWalls, room.normalCorners, room.angles);
@@ -569,12 +571,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   const DRAG_THRESHOLD = 8;
 
   function handleElementPointerDown(id: string, e: React.PointerEvent) {
+    if (e.button !== 0) return; // правая и средняя кнопки не берут элемент
+    if (dragStartRef.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     lastPointerType.current = e.pointerType;
     const grab = grabOffset(id, e.clientX, e.clientY);
-    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, grabDx: grab.dx, grabDy: grab.dy };
+    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, grabDx: grab.dx, grabDy: grab.dy, pointerId: e.pointerId };
     setDragId(id);
   }
 
@@ -611,17 +615,19 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   // Drag handle на конце прямого подшторника — тянем за круглую ручку,
   // чтобы вручную сужать длину (другой конец остаётся на месте).
   function handleSubcurtainHandlePointerDown(id: string, end: "start" | "end", e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    if (dragStartRef.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     lastPointerType.current = e.pointerType;
-    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, handle: end };
+    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, handle: end, pointerId: e.pointerId };
     setDragId(id);
   }
 
   function handleSVGPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const ds = dragStartRef.current;
-    if (!ds) return;
+    if (!ds || e.pointerId !== ds.pointerId) return;
 
     const dx = e.clientX - ds.cx;
     const dy = e.clientY - ds.cy;
@@ -641,8 +647,20 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
     }
   }
 
+  function handleSVGPointerCancel(e: React.PointerEvent<SVGSVGElement>) {
+    ignoredPointers.current.delete(e.pointerId);
+    if (dragStartRef.current?.pointerId === e.pointerId) {
+      dragStartRef.current = null;
+      setDragId(null);
+      setDragPos(null);
+    }
+  }
+
   function handleSVGPointerUp(e: React.PointerEvent<SVGSVGElement>) {
+    if (ignoredPointers.current.delete(e.pointerId)) return;
     const ds = dragStartRef.current;
+    if (ds && e.pointerId !== ds.pointerId) return;
+    if (!ds && e.button !== 0) return; // правый клик ничего не ставит
 
     if (ds) {
       if (ds.moved) {
@@ -1385,6 +1403,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   }, []);
 
   function handlePanStart(e: React.PointerEvent) {
+    if (dragStartRef.current) { ignoredPointers.current.add(e.pointerId); return; }
     lastPointerType.current = e.pointerType;
     // Mouse: средняя кнопка или Ctrl+Left — мгновенный pan
     const isMousePan = e.button === 1 || (e.button === 0 && e.ctrlKey);
@@ -2909,21 +2928,22 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
             {([
               ["1", "1", null],
               ["2h", "●●", "горизонт"],
-              ["2v", "●\n●", "верт"],
+              ["2v", "●●", "верт"],
               ["3h", "●●●", "горизонт"],
-              ["3v", "●\n●\n●", "верт"],
+              ["3v", "●●●", "верт"],
             ] as const).map(([key, glyph, hint]) => (
               <button
                 key={key}
                 onClick={() => setSpotGroup(key)}
                 title={hint || "Одиночный"}
-                className={`min-w-[36px] px-2 py-0.5 rounded text-[11px] font-semibold transition-all whitespace-pre leading-tight ${
+                className={`min-w-[36px] px-2 py-0.5 rounded text-[11px] font-semibold transition-all leading-tight ${
                   spotGroup === key
                     ? "bg-amber-600 text-white"
                     : "bg-white border border-amber-300 text-amber-700"
                 }`}
               >
-                {glyph}
+                {/* Вертикальная группа — те же точки, повёрнутые: кнопка остаётся в одну строку */}
+                <span className={hint === "верт" ? "inline-block rotate-90 text-[8px] leading-none" : undefined}>{glyph}</span>
               </button>
             ))}
           </div>
@@ -3139,6 +3159,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
           onPointerDown={handlePanStart}
           onPointerMove={(e) => { handlePanMove(e); if (!isPanning) handleSVGPointerMove(e); }}
           onPointerUp={(e) => { handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
+          onPointerCancel={handleSVGPointerCancel}
           style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined, display: viewMode === "3d" ? "none" : undefined }}
         >
           {/* Room fill — path с дугами на скруглённых углах (если есть) */}

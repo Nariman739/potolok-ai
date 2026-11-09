@@ -507,6 +507,11 @@ interface Room {
   previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
 }
 
+/** Копия из localStorage могла быть сделана без elements: такие комнаты не должны затирать сервер. */
+function markRoomsWithoutElements(list: Room[]): Room[] {
+  return list.map(r => (r.elements === undefined ? { ...r, elementsNotLoaded: true } : r));
+}
+
 interface SavedObject {
   id: string;
   address: string;
@@ -1715,11 +1720,17 @@ export default function ZameryPage() {
             const lo = localStorage.getItem("zamery-object");
             const loid = localStorage.getItem("zamery-objectId");
             if (lr) {
-              const parsed = JSON.parse(lr) as Room[];
+              const parsed = markRoomsWithoutElements(JSON.parse(lr) as Room[]);
               if (parsed.length > 0) {
                 setRooms(parsed);
                 if (lo) setObjectName(lo);
-                if (loid) setActiveObjectId(loid);
+                // Привязываем копию к объекту, только если он на сервере всё ещё активный:
+                // иначе правки старой копии ушли бы в уже сохранённый замер.
+                if (loid) {
+                  const check = await fetch(`/api/measurements/${loid}`).catch(() => null);
+                  const objOnServer = check?.ok ? await check.json() : null;
+                  if (objOnServer?.status === "active") setActiveObjectId(loid);
+                }
               }
             }
           } catch { /* ignore */ }
@@ -1758,7 +1769,7 @@ export default function ZameryPage() {
           const lr = localStorage.getItem("zamery-rooms");
           const lo = localStorage.getItem("zamery-object");
           const ls = localStorage.getItem("zamery-saved");
-          if (lr) setRooms(JSON.parse(lr));
+          if (lr) setRooms(markRoomsWithoutElements(JSON.parse(lr) as Room[]));
           if (lo) setObjectName(lo);
           if (ls) setSavedObjects(JSON.parse(ls));
         } catch { /* ignore */ }
@@ -1806,6 +1817,7 @@ export default function ZameryPage() {
           columns: r.columns,
           area: r.area,
           perimeter: r.perimeter,
+          cornerRadii: r.cornerRadii,
           elements: r.elements || [],
           previewUrl3d: r.previewUrl3d,
           variantOverrides: r.variantOverrides,
@@ -1926,7 +1938,7 @@ export default function ZameryPage() {
             status: "saved",
             ...(activeClientId && { clientId: activeClientId }),
             ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
-            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, elements: r.elements || [], variantOverrides: r.variantOverrides })),
+            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, cornerRadii: r.cornerRadii, elements: r.elements || [], variantOverrides: r.variantOverrides })),
           }),
         });
         if (!res.ok) throw new Error("Ошибка сохранения");
@@ -1967,12 +1979,23 @@ export default function ZameryPage() {
       if (!confirm("Заменить текущие замеры на этот объект?")) return;
     }
 
-    // Текущий активный замер не удаляем, а убираем в сохранённые как есть:
-    // раньше здесь был DELETE, и замер уходил в корзину (09.11.2026).
+    // Порядок важен: сначала делаем активным новый замер. Не вышло — ничего не меняем.
+    try {
+      const res = await fetch(`/api/measurements/${obj.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "active" }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      alert("Не удалось открыть замер. Попробуйте ещё раз.");
+      return;
+    }
+
+    // Текущий активный замер убираем в сохранённые как есть, пустой — в корзину.
     const currentObjId = activeObjectIdRef.current;
     let parkedCurrent: SavedObject | null = null;
     if (currentObjId && currentObjId !== obj.id && rooms.length === 0) {
-      // Пустой замер строкой в сохранённых не нужен: в корзину, как раньше.
       try {
         await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
       } catch { /* non-critical */ }
@@ -1985,6 +2008,12 @@ export default function ZameryPage() {
         });
         if (!res.ok) throw new Error(String(res.status));
       } catch {
+        // Текущий остался активным: возвращаем новый обратно, чтобы активных не стало два.
+        await fetch(`/api/measurements/${obj.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "saved" }),
+        }).catch(() => {});
         alert("Не удалось убрать текущий замер в сохранённые. Попробуйте ещё раз.");
         return;
       }
@@ -1998,7 +2027,7 @@ export default function ZameryPage() {
       };
     }
 
-    setRooms(obj.rooms.map(r => (r.elements === undefined ? { ...r, elementsNotLoaded: true } : r)));
+    setRooms(markRoomsWithoutElements(obj.rooms));
     setObjectName(obj.address);
     if (obj.client) {
       setActiveClientId(obj.client.id);
@@ -2011,19 +2040,8 @@ export default function ZameryPage() {
     }
     setSavedObjects(prev => [...prev.filter(o => o.id !== obj.id), ...(parkedCurrent ? [parkedCurrent] : [])]);
     setShowHistory(false);
-
-    // Change resumed object status to active
-    try {
-      const res = await fetch(`/api/measurements/${obj.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "active" }),
-      });
-      if (res.ok) setActiveObjectId(obj.id);
-      else alert("Не удалось возобновить объект. Попробуйте ещё раз.");
-    } catch {
-      alert("Ошибка сети при возобновлении замера.");
-    }
+    activeObjectIdRef.current = obj.id;
+    setActiveObjectId(obj.id);
   }
 
   // ── Delete from history ──
