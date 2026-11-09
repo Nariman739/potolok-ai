@@ -13,6 +13,11 @@ function sameDims(a: unknown, b: unknown): boolean {
   return a === b || (a == null && b == null);
 }
 
+/** Площадь не прямоугольной комнаты задана чертежом, а не длиной и шириной. */
+export function isDrawnRoom(room: RoomInput): boolean {
+  return room.measuredArea != null;
+}
+
 const shapeOf = (s?: string) => (!s || s === "square" ? "rectangle" : s);
 
 function sameGeometry(a: RoomInput, b: RoomInput): boolean {
@@ -29,14 +34,20 @@ function sameGeometry(a: RoomInput, b: RoomInput): boolean {
  * переносим как есть. Площадь и периметр с чертежа верны, только пока размеры те же.
  */
 export function mergeEditedRoom(edit: RoomInput, form: RoomInput): RoomInput {
+  // Комната с чертежа: форма показывает её габаритом, размеры здесь не меняются.
+  const drawn = isDrawnRoom(edit);
   const merged: RoomInput = {
     ...edit,
     ...form,
     trackMagneticLength: edit.trackMagneticLength,
     lightLineLength: edit.lightLineLength,
     eurobrusCount: edit.eurobrusCount,
+    ...(drawn && {
+      length: edit.length, width: edit.width, shape: edit.shape,
+      lShapeDims: edit.lShapeDims, tShapeDims: edit.tShapeDims, customDims: edit.customDims,
+    }),
   };
-  if (!sameGeometry(edit, form)) {
+  if (!drawn && !sameGeometry(edit, form)) {
     merged.measuredArea = undefined;
     merged.measuredPerimeter = undefined;
     merged.measuredMinWidth = undefined;

@@ -13,6 +13,7 @@ import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { roomForCalculation } from "@/lib/room-input-builder";
 import type { RoomInput } from "@/lib/types";
 
 export default function CalculatorPage() {
@@ -125,7 +126,7 @@ function CalculatorContent() {
       .then((r) => r.ok ? r.json() : null)
       .then((est) => {
         if (!est) return;
-        const importedRooms: RoomInput[] = est.roomsData ?? est.calculationData?.rooms ?? [];
+        const importedRooms: RoomInput[] = ((est.roomsData ?? est.calculationData?.rooms ?? []) as RoomInput[]).map(roomForCalculation);
         if (importedRooms.length > 0) {
           loadRooms(importedRooms);
           setFormOpen(false);
@@ -135,7 +136,8 @@ function CalculatorContent() {
         const importedExtras = est.calculationData?.extraItems;
         if (Array.isArray(importedExtras) && importedExtras.length > 0) {
           setExtraItems(
-            importedExtras.map((li: { itemName: string; unitPrice: number; quantity: number; unit: string }) => ({
+            // Доплату до минимума расчёт добавит сам, иначе она задвоится.
+            importedExtras.filter((li: { itemCode?: string }) => li.itemCode !== "min_order").map((li: { itemName: string; unitPrice: number; quantity: number; unit: string }) => ({
               name: li.itemName,
               price: li.unitPrice,
               quantity: li.quantity,

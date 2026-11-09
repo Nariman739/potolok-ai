@@ -173,6 +173,42 @@ export function spotBreakdown(singleSpots: DesignerElement[], existingSpotType?:
 }
 
 /**
+ * КП из приложения хранит комнату как чертёж: стены и элементы, без length/width.
+ * Расчёт сайта понимает только RoomInput, иначе итог получается NaN.
+ */
+export function roomForCalculation(room: RoomInput): RoomInput {
+  if (Number.isFinite(room.length) && Number.isFinite(room.width)) return room;
+  const saved = room as unknown as {
+    walls?: number[]; angles?: number[]; normalCorners?: boolean[]; cornerRadii?: number[];
+    bulges?: number[]; columns?: unknown[]; area?: number; perimeter?: number; elements?: DesignerElement[];
+    wallProfiles?: Record<string, string>;
+  };
+  if (!Array.isArray(saved.walls) || saved.walls.length < 3) return room;
+  const walls = saved.walls;
+  const drawing = {
+    walls,
+    angles: saved.angles ?? [],
+    normalCorners: saved.normalCorners ?? walls.map(() => true),
+    area: saved.area ?? 0,
+    perimeter: saved.perimeter ?? walls.reduce((sum, w) => sum + w, 0) / 100,
+  };
+  // Парящий профиль приложение хранит по стенам, а не элементом чертежа.
+  const floatingWallsM = Object.entries(saved.wallProfiles ?? {})
+    .filter(([, profile]) => profile === "floating")
+    .reduce((sum, [wall]) => sum + (walls[Number(wall)] ?? 0), 0) / 100;
+  const built = buildRoomInputFromDesigner(
+    { ...drawing, id: room.id, name: room.name, angles: saved.angles, cornerRadii: saved.cornerRadii, elements: saved.elements ?? [] },
+    {
+      id: room.id,
+      name: room.name,
+      variantOverrides: room.variantOverrides,
+      designerData: { ...drawing, elements: saved.elements ?? [], arcBulges: saved.bulges, columns: saved.columns },
+    },
+  );
+  return floatingWallsM > 0 ? { ...built, floatingLength: (built.floatingLength ?? 0) + floatingWallsM } : built;
+}
+
+/**
  * Построить RoomInput из чертежа. Поля выбора (canvasType и т.п.) подставляются
  * либо из existing (если правка), либо дефолтные.
  */
