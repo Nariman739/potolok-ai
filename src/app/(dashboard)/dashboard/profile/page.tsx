@@ -204,12 +204,16 @@ export default function ProfilePage() {
           contractCity: contractCity || null,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // Сервер присылает понятный текст (например, «номер занят другим аккаунтом» — 409).
+        const data = await res.json().catch(() => null);
+        throw new Error(typeof data?.error === "string" ? data.error : "");
+      }
       toast.success("Профиль сохранён");
       // Валюта идёт в CurrencyProvider из серверного layout — перечитываем, чтобы знак обновился сразу (07.10.2026).
       router.refresh();
-    } catch {
-      toast.error("Ошибка сохранения");
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : "Ошибка сохранения");
     } finally {
       setSaving(false);
     }

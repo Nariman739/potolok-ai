@@ -112,10 +112,22 @@ export async function PUT(request: Request) {
       }
     }
 
-    await prisma.master.update({
-      where: { id: master.id },
-      data: updateData,
-    });
+    // Телефон — логин, он уникален: занятый другим аккаунтом номер давал 500 (P2002, прод 11.11.2026).
+    // Проверяем заранее и отвечаем понятным 409; гонку двух сохранений ловит catch ниже.
+    if (typeof updateData.phone === "string" && updateData.phone !== master.phone) {
+      const taken = await prisma.master.findFirst({ where: { phone: updateData.phone, NOT: { id: master.id } }, select: { id: true } });
+      if (taken) return phoneTaken(master.language);
+    }
+
+    try {
+      await prisma.master.update({
+        where: { id: master.id },
+        data: updateData,
+      });
+    } catch (e) {
+      if ((e as { code?: string })?.code === "P2002" && "phone" in updateData) return phoneTaken(master.language);
+      throw e;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -128,4 +140,11 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
+}
+
+function phoneTaken(language: string | null | undefined) {
+  const error = language === "kk"
+    ? "Бұл нөмір басқа аккаунтқа тіркелген. WhatsApp-қа жазыңыз — біріктіреміз."
+    : "Этот номер уже зарегистрирован на другой аккаунт. Напишите нам в WhatsApp — объединим.";
+  return NextResponse.json({ error, code: "PHONE_TAKEN" }, { status: 409 });
 }
