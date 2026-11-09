@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants";
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
+import { isStandardSpotCode } from "./spot-types";
 
 type PriceMap = Record<string, number>;
 
@@ -18,14 +19,24 @@ export interface CustomItemInfo {
   photoUrl?: string | null;
   /** Категория позиции прайса: вариант подставляем только в свою категорию. */
   category?: string | null;
+  /** Своя ставка монтажа позиции */
+  installerPrice?: number | null;
+  isHidden?: boolean;
 }
+
+/** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
+const LED_SURCHARGE_PER_M = 3000;
 
 /** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
 const VARIANT_INSTALL_CODE: Record<string, string> = {
+  spot_pair: "install_spot",
   gardina: "install_gardina",
   track: "install_track",
   lightline: "install_lightline",
 };
+
+const roundTenth = (n: number) => Math.round(n * 10) / 10;
+const roundHundredth = (n: number) => Math.round(n * 100) / 100;
 
 function getPrice(prices: PriceMap, code: string): number {
   return prices[code] ?? DEFAULT_PRICES[code] ?? 0;
@@ -67,6 +78,16 @@ function getCanvasCode(room: RoomInput): string {
   return "canvas_over";
 }
 
+/** Монтаж одиночного софита как в приложении: своя ставка позиции, иначе 30 % цены клиенту. */
+function spotInstallRate(item: LineItem, ownItemsById?: Record<string, CustomItemInfo>): number | undefined {
+  if (item.variantId) {
+    if (item.installCode !== "install_spot") return undefined;
+    return ownItemsById?.[item.variantId]?.installerPrice ?? undefined;
+  }
+  if (!isStandardSpotCode(item.itemCode)) return undefined;
+  return ownItemsById?.[`catalog:${item.itemCode}`]?.installerPrice ?? Math.round(item.unitPrice * 0.3);
+}
+
 function calculateRoom(
   room: RoomInput,
   prices: PriceMap,
@@ -75,7 +96,9 @@ function calculateRoom(
 ): RoomResult {
   // Площадь натяжного потолка: вычитаем мебель «до потолка» (она съедает площадь).
   const furnitureArea = room.furnitureCeilingArea ?? 0;
-  const area = Math.max(0, computeArea(room) - furnitureArea);
+  const areaFull = Math.max(0, computeArea(room) - furnitureArea);
+  // Нижний уровень уходит из обычного полотна. Без «2 уровней» площадь прежняя.
+  const area = room.level2 ? roundTenth(roundHundredth(Math.max(0, roundTenth(areaFull) - room.level2.canvasCutM2))) : areaFull;
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
   const missingVariants: string[] = [];
@@ -120,6 +143,20 @@ function calculateRoom(
   const canvasCode = getCanvasCode(room);
   const canvasItem = makeLineItem(canvasCode, area, prices);
   if (canvasItem) items.push(canvasItem);
+
+  // «2 уровня»: верхнее полотно, борт и подсветка — три строки, как в приложении.
+  if (room.level2) {
+    const totalArea = Math.max(0, computeArea(room));
+    for (const [code, quantity] of [
+      ["level2_canvas", roundTenth(Math.min(room.level2.upperM2, totalArea))],
+      ["level2_step", roundTenth(room.level2.bortM)],
+      ["level2_led", roundTenth(room.level2.ledM)],
+    ] as const) {
+      if (ownItemsById?.[`catalog:${code}`]?.isHidden) continue;
+      const line = makeLineItem(code, quantity, prices);
+      if (line) items.push(line);
+    }
+  }
 
   // Profile — master's choice or default
   const profileCode = room.profileType || "profile_insert";
@@ -184,8 +221,19 @@ function calculateRoom(
   }
   const spotPairs = room.spotPairsCount ?? 0;
   if (spotPairs > 0) {
-    const pairItem = makeLineItem("spot_pair", spotPairs, prices);
-    if (pairItem) items.push(pairItem);
+    // Цена пары — позиция spot_pair_ours, как в приложении (код spot_pair давал 0 ₸).
+    const variant = variantFor("spot_pair");
+    const unitPrice = getPrice(prices, "spot_pair_ours");
+    items.push({ ...(variant
+      ? variantLine(variant, "spot_pair", spotPairs, "spot_pair_ours")
+      : {
+          itemCode: "spot_pair_ours",
+          itemName: "Двойные софиты",
+          quantity: spotPairs,
+          unit: "пара",
+          unitPrice,
+          total: Math.round(unitPrice * spotPairs),
+        }), installerRate: getPrice(prices, "install_spot") * 2 });
   }
   const spotTriples = room.spotTriplesCount ?? 0;
   if (spotTriples > 0) {
@@ -230,13 +278,36 @@ function calculateRoom(
   }
 
   // Track magnetic
-  if (room.trackMagneticLength > 0) {
+  // Трек с типом на элементе. Свой вариант удалён из прайса — считаем как трек без типа.
+  let trackLegacyM = room.trackMagneticLength;
+  for (const t of room.tracksByType ?? []) {
+    if (t.length <= 0) continue;
+    if (t.variantId) {
+      const info = ownItemsById?.[t.variantId];
+      if (!info) {
+        if (ownItemsById) missingVariants.push("track");
+        trackLegacyM += t.length;
+        continue;
+      }
+      items.push(variantLine({ ...info, id: t.variantId }, "track", t.length, "track_magnetic"));
+      continue;
+    }
+    const typed = makeLineItem(t.code && PRODUCT_BY_CODE[t.code] ? t.code : "track_magnetic", t.length, prices);
+    if (typed) items.push(typed);
+  }
+  if (trackLegacyM > 0) {
     const variant = variantFor("track");
     const trackItem = variant
-      ? variantLine(variant, "track", room.trackMagneticLength, "track_magnetic")
-      : makeLineItem("track_magnetic", room.trackMagneticLength, prices);
+      ? variantLine(variant, "track", trackLegacyM, "track_magnetic")
+      : makeLineItem("track_magnetic", trackLegacyM, prices);
     if (trackItem) items.push(trackItem);
   }
+  const installOnly = (code: string, name: string, quantity: number): LineItem => {
+    const unitPrice = getPrice(prices, code);
+    return { itemCode: code, itemName: name, quantity, unit: "м.п.", unitPrice, total: Math.round(unitPrice * quantity), installCode: code };
+  };
+  if ((room.trackClientLength ?? 0) > 0) items.push(installOnly("install_track", "Установка клиентского трека", room.trackClientLength ?? 0));
+  if ((room.lightLineClientLength ?? 0) > 0) items.push(installOnly("install_lightline", "Установка клиентской линии", room.lightLineClientLength ?? 0));
 
   // Light line
   if (room.lightLineLength > 0) {
@@ -280,11 +351,28 @@ function calculateRoom(
   }
 
   // Gardina (пластиковая на потолок / встроенная в потолок)
+  const gardinaLightM = room.gardinaLightLength ?? 0;
+  const gardinaVariant = (room.gardinaLength ?? 0) > 0 || gardinaLightM > 0 ? variantFor("gardina") : null;
+  if ((room.gardinaSingleLength ?? 0) > 0) {
+    const singleItem = makeLineItem("gardina_single", room.gardinaSingleLength ?? 0, prices);
+    if (singleItem) items.push(singleItem);
+  }
+  if (gardinaLightM > 0) {
+    const unitPrice = (gardinaVariant?.price ?? getPrice(prices, "gardina_plastic")) + LED_SURCHARGE_PER_M;
+    items.push({
+      itemCode: gardinaVariant ? `${gardinaVariant.code}:led` : "gardina_led",
+      itemName: `${gardinaVariant?.name ?? "Гардина"} с подсветкой`,
+      quantity: gardinaLightM,
+      unit: "м.п.",
+      unitPrice,
+      total: Math.round(unitPrice * gardinaLightM),
+      installCode: "install_gardina",
+    });
+  }
   if ((room.gardinaLength ?? 0) > 0) {
     const gardinaCode = room.gardinaType || "gardina_plastic";
-    const variant = variantFor("gardina");
-    const gardinaItem = variant
-      ? variantLine(variant, "gardina", room.gardinaLength ?? 0, gardinaCode)
+    const gardinaItem = gardinaVariant
+      ? variantLine(gardinaVariant, "gardina", room.gardinaLength ?? 0, gardinaCode)
       : makeLineItem(gardinaCode, room.gardinaLength, prices);
     if (gardinaItem) items.push(gardinaItem);
   }
@@ -357,6 +445,12 @@ function calculateRoom(
   const subtotalAfterHeight = heightMultiplied
     ? Math.round(subtotal * heightCoeff)
     : subtotal;
+
+  for (const item of items) {
+    if (item.installerRate !== undefined) continue;
+    const rate = spotInstallRate(item, ownItemsById);
+    if (rate !== undefined) item.installerRate = rate;
+  }
 
   return {
     roomId: room.id,

@@ -11,6 +11,7 @@ import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 // Только серверно-безопасные модули: room-designer.tsx — "use client", и в
 // Next 16 его функции с сервера звать нельзя (500 в recalc-room, 27.10.2026).
 import { getVertices } from "@/lib/room-geometry";
+import { calcRoomLevel2, type Level2ElementLike } from "@/lib/level2-geometry";
 import { spotTypeKey, parseSpotTypeKey } from "@/lib/spot-types";
 import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
 
@@ -41,6 +42,84 @@ interface DesignerElement {
   /** Софит: тип (28.10.2026) — стандартный код или свой вариант из прайса. */
   spotType?: string;
   priceVariantId?: string;
+  groupId?: string;
+  rows?: number;
+  withLight?: boolean;
+  trackType?: string;
+}
+
+/**
+ * Площадь и периметр с чертежа для комнат, которые нельзя посчитать как длина × ширина.
+ * У обычного прямоугольника полей нет: его расчёт не меняется.
+ */
+export function measuredGeometry(room: {
+  walls: number[]; angles?: number[]; area: number; perimeter: number;
+  arcBulges?: number[]; columns?: unknown[]; cornerRadii?: number[]; cutouts?: unknown[];
+}): { measuredArea?: number; measuredPerimeter?: number } {
+  const rectangle = room.walls.length === 4 && (room.angles ?? []).every((a) => Math.abs(a) === 90);
+  const plain = rectangle
+    && !room.arcBulges?.some((b) => b)
+    && !room.cornerRadii?.some((r) => r > 0)
+    && !room.columns?.length
+    && !room.cutouts?.length;
+  return plain ? {} : { measuredArea: room.area, measuredPerimeter: room.perimeter };
+}
+
+/** «2 уровня» с чертежа, как считает приложение. Вершины без замыкающего дубля. */
+export function level2Fields(room: { walls: number[]; normalCorners?: boolean[]; angles?: number[]; elements?: unknown[] }): { level2?: RoomInput["level2"] } {
+  if (!room.elements?.some((e) => (e as { type?: string }).type === "level2")) return {};
+  const vertices = getVertices(room.walls, room.normalCorners ?? room.walls.map(() => true), room.angles?.length ? room.angles : undefined);
+  const result = calcRoomLevel2(room.elements as Level2ElementLike[], vertices.slice(0, room.walls.length));
+  return result ? { level2: { canvasCutM2: result.canvasCutM2, upperM2: result.upperM2, bortM: result.bortM, ledM: result.ledM } } : {};
+}
+
+/**
+ * Пара софитов (группа ровно из двух) идёт одной строкой. Всё остальное, в том числе
+ * группа из трёх и остаток пары, — одиночные софиты, как считает приложение.
+ */
+export function splitSpotGroups<T extends { groupId?: string }>(allSpots: T[]): { spotPairsCount: number; singleSpots: T[] } {
+  const sizes = new Map<string, number>();
+  for (const s of allSpots) if (s.groupId) sizes.set(s.groupId, (sizes.get(s.groupId) ?? 0) + 1);
+  const singleSpots = allSpots.filter((s) => !s.groupId || sizes.get(s.groupId) !== 2);
+  const spotPairsCount = [...sizes.values()].filter((n) => n === 2).length;
+  return { spotPairsCount, singleSpots };
+}
+
+/** Длины гардины по строкам КП: обычная, однорядная (rows = 1), с подсветкой. В метрах. */
+export function gardinaFields(els: DesignerElement[]) {
+  const m = (list: DesignerElement[]) => Math.round(list.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+  const all = els.filter((e) => e.type === "curtain");
+  const single = all.filter((e) => e.rows === 1);
+  const rest = all.filter((e) => e.rows !== 1);
+  return {
+    gardinaLength: m(rest.filter((e) => !e.withLight)),
+    gardinaSingleLength: m(single),
+    gardinaLightLength: m(rest.filter((e) => e.withLight)),
+  };
+}
+
+/** Длины трека и линии по строкам КП, в метрах. Клиентские — отдельно, только установка. */
+export function trackFields(els: DesignerElement[]) {
+  const m = (list: DesignerElement[]) => Math.round(list.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+  const tracks = els.filter((e) => e.type === "track");
+  const ours = tracks.filter((e) => e.variant !== "client");
+  const typed = new Map<string, { code?: string; variantId?: string; list: DesignerElement[] }>();
+  for (const e of ours) {
+    if (!e.priceVariantId && !e.trackType) continue;
+    const key = e.priceVariantId ? `v:${e.priceVariantId}` : `t:${e.trackType}`;
+    const g = typed.get(key) ?? { code: e.priceVariantId ? undefined : e.trackType, variantId: e.priceVariantId, list: [] };
+    g.list.push(e);
+    typed.set(key, g);
+  }
+  const lines = els.filter((e) => e.type === "lightline");
+  const tracksByType = [...typed.values()].map((g) => ({ code: g.code, variantId: g.variantId, length: m(g.list) }));
+  return {
+    trackMagneticLength: m(ours.filter((e) => !e.priceVariantId && !e.trackType)),
+    lightLineLength: m(lines.filter((e) => e.variant !== "client")),
+    ...(tracksByType.length > 0 && { tracksByType }),
+    trackClientLength: m(tracks.filter((e) => e.variant === "client")),
+    lightLineClientLength: m(lines.filter((e) => e.variant === "client")),
+  };
 }
 
 /**
@@ -69,7 +148,15 @@ export function spotBreakdown(singleSpots: DesignerElement[], existingSpotType?:
     spotsOurs += gx.count;
     typedGroups.delete("t:spot_ours");
   }
-  return { spotsOurs, spotsClient, spotsCount: spotsOurs + spotsClient, legacySpotType, spotsByType: [...typedGroups.values()] };
+  // Смешанные: клиентские идут своей строкой, как в приложении. Иначе ушли бы по цене наших.
+  const mixed = spotsOurs > 0 && spotsClient > 0 && legacySpotType !== "spot_client";
+  return {
+    spotsOurs,
+    spotsClient,
+    spotsCount: mixed ? spotsOurs : spotsOurs + spotsClient,
+    legacySpotType,
+    spotsByType: [...typedGroups.values(), ...(mixed ? [{ code: "spot_client", count: spotsClient }] : [])],
+  };
 }
 
 /**
@@ -84,41 +171,13 @@ export function buildRoomInputFromDesigner(
   // Группируем спoты: одиночные (без groupId) идут как обычные «штуки»,
   // двойные/тройные (с groupId) — как пары/тройки в КП.
   const allSpots = els.filter((e) => e.type === "spot");
-  const groupSizeMap = new Map<string, number>();
-  for (const s of allSpots) {
-    const gid = (s as { groupId?: string }).groupId;
-    if (!gid) continue;
-    groupSizeMap.set(gid, (groupSizeMap.get(gid) ?? 0) + 1);
-  }
-  let spotPairsCount = 0;
-  let spotTriplesCount = 0;
-  for (const size of groupSizeMap.values()) {
-    if (size === 2) spotPairsCount++;
-    else if (size >= 3) spotTriplesCount++;
-  }
-  const singleSpots = allSpots.filter((s) => !(s as { groupId?: string }).groupId);
+  const { spotPairsCount, singleSpots } = splitSpotGroups(allSpots);
   const { spotsOurs, spotsClient, spotsCount, legacySpotType, spotsByType } = spotBreakdown(singleSpots, existing?.spotType);
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
   const ventCount = els.filter((e) => e.type === "vent").length;
-  const trackMagneticLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "track")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
-  const lightLineLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "lightline")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
-  const gardinaLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "curtain")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
+  const lightAndTrack = trackFields(els);
+  const gardina = gardinaFields(els);
   const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
   const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length, room.walls);
   const podshtornikLength = Math.round(subStats.totalLengthCm) / 100;
@@ -171,14 +230,13 @@ export function buildRoomInputFromDesigner(
     pendantCount,
     ventCount,
     spotPairsCount,
-    spotTriplesCount,
-    trackMagneticLength,
-    lightLineLength,
+    spotTriplesCount: 0,
+    ...lightAndTrack,
     curtainRodLength: existing?.curtainRodLength ?? 0,
     pipeBypasses: existing?.pipeBypasses ?? 0,
     cornersCount: visibleCornersCount,
     eurobrusCount: existing?.eurobrusCount ?? 0,
-    gardinaLength,
+    ...gardina,
     gardinaType: existing?.gardinaType,
     podshtornikLength,
     podshtornikOnWallLength,
@@ -197,6 +255,8 @@ export function buildRoomInputFromDesigner(
       room.walls.length === 4 ? ("rectangle" as const) : existing?.shape,
     previewUrl3d: room.previewUrl3d ?? existing?.previewUrl3d,
     variantOverrides: room.variantOverrides ?? existing?.variantOverrides,
+    ...level2Fields(room),
+    ...measuredGeometry({ ...room, arcBulges: existing?.designerData?.arcBulges, columns: existing?.designerData?.columns }),
     designerData: {
       walls: room.walls,
       angles: room.angles ?? [],

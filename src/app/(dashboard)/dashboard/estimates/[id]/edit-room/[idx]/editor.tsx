@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import RoomDesigner from "@/app/(dashboard)/dashboard/vision-test/room-designer";
+import { useCurrency } from "@/components/currency-provider";
 import type { RoomElement } from "@/app/(dashboard)/dashboard/vision-test/room-designer";
 
 interface RoomDesignerInput {
@@ -28,6 +29,7 @@ interface EditorProps {
 export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const { symbol } = useCurrency();
 
   async function handleDone(
     elements: RoomElement[],
@@ -80,7 +82,15 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
       toast.error("Не удалось сохранить чертёж");
       return;
     }
-    toast.success("Чертёж сохранён, КП пересчитан");
+    const data = (await res.json().catch(() => null)) as { total?: number; previousTotal?: number; unchanged?: boolean; areaFromDrawing?: boolean } | null;
+    if (data?.unchanged) {
+      toast.success("Чертёж не менялся, сумма КП осталась прежней");
+    } else if (data?.total != null && data.previousTotal != null && data.total !== data.previousTotal) {
+      const money = (n: number) => `${n.toLocaleString("ru-RU")} ${symbol}`;
+      toast.info(`Сумма КП изменилась: ${money(data.previousTotal)} → ${money(data.total)}${data.areaFromDrawing ? ". Площадь теперь по чертежу" : ""}`, { duration: 10000 });
+    } else {
+      toast.success("Чертёж сохранён, КП пересчитан");
+    }
     router.push(`/dashboard/estimates/${estimateId}`);
     router.refresh();
   }

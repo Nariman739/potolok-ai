@@ -176,6 +176,7 @@ export function validateCustomDims(dims: CustomDimensions): string | null {
 
 /** Area in m² based on room shape (rounded to 2 decimal places) */
 export function computeArea(room: RoomInput): number {
+  if (room.measuredArea != null) return Math.round(room.measuredArea * 100) / 100;
   const shape = getRoomShape(room);
   let area: number;
 
@@ -201,6 +202,7 @@ export function computeArea(room: RoomInput): number {
 
 /** Perimeter in meters based on room shape (rounded to 2 decimal places) */
 export function computePerimeter(room: RoomInput): number {
+  if (room.measuredPerimeter != null) return Math.round(room.measuredPerimeter * 100) / 100;
   const shape = getRoomShape(room);
   let perimeter: number;
 

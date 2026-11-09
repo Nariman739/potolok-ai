@@ -83,6 +83,11 @@ export interface RoomInput {
   spotsByType?: { code?: string; variantId?: string; count: number }[];
   trackMagneticLength: number;
   lightLineLength: number;
+  /** Треки с типом на элементе: стандартный код (накладной) или свой вариант. */
+  tracksByType?: { code?: string; variantId?: string; length: number }[];
+  /** Клиентский трек и линия, м.п.: только установка. */
+  trackClientLength?: number;
+  lightLineClientLength?: number;
   curtainRodLength: number;
   pipeBypasses: number;
   cornersCount: number;
@@ -100,6 +105,10 @@ export interface RoomInput {
   // Gardina + Podshtornik
   gardinaLength: number;
   gardinaType?: string;
+  /** Однорядная гардина (ванная), м.п. — своей строкой по коду gardina_single. */
+  gardinaSingleLength?: number;
+  /** Гардина с подсветкой, м.п. — цена гардины плюс подсветка. */
+  gardinaLightLength?: number;
   podshtornikLength: number;
   /** Длина участка СТЕНЫ, покрытого подшторником (без глубины ниши).
    *  Используется для вычитания из периметра багета. Если не задано — fallback на podshtornikLength. */
@@ -127,9 +136,15 @@ export interface RoomInput {
   oneOffItems?: OneOffItem[];
   /** PNG-снимок 3D-сцены этой комнаты (Vercel Blob URL) — попадает в Estimate.room3dPreviewUrl и на публичную КП. */
   previewUrl3d?: string;
+  /** Площадь (м²) и периметр (м) по чертежу. Только у комнат, которые нельзя посчитать
+   *  как длина × ширина: не прямоугольных, с дугами, колоннами, скруглениями. */
+  measuredArea?: number;
+  measuredPerimeter?: number;
   /** Выбор варианта из прайса на комнату: { gardina: id, track: id, lightline: id, canvas: id }.
    *  Та же форма, что room.variantOverrides в приложении и MeasurementRoom. */
   variantOverrides?: Record<string, string>;
+  /** «2 уровня» с чертежа: нижний уровень уходит из полотна, верх, борт и подсветка — свои строки. */
+  level2?: { canvasCutM2: number; upperM2: number; bortM: number; ledM: number };
   // Raw data for Room Designer round-trip editing
   designerData?: {
     walls: number[];
@@ -158,6 +173,8 @@ export interface LineItem {
   variantId?: string;
   /** Прямая ссылка на фото варианта, чтобы публичная страница не делала лишних запросов */
   photoUrl?: string;
+  /** Ставка монтажа, рассчитанная при создании КП как в приложении. Нет у старых КП: их наряд не меняется. */
+  installerRate?: number;
   /** Код монтажной позиции для наряда монтажнику, когда itemCode не каталожный (свой софит → install_spot). */
   installCode?: string;
 }

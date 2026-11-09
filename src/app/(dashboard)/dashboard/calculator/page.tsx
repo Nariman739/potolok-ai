@@ -13,6 +13,7 @@ import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { APP_ESTIMATE_RECALC_MESSAGE, isAppFormatRoom } from "@/lib/room-edit";
 import type { RoomInput } from "@/lib/types";
 
 export default function CalculatorPage() {
@@ -155,6 +156,12 @@ function CalculatorContent() {
       .then((est) => {
         if (!est) return;
         const importedRooms: RoomInput[] = est.roomsData ?? est.calculationData?.rooms ?? [];
+        // КП из приложения: сайт посчитал бы правдоподобно, но неверно.
+        if (importedRooms.some(isAppFormatRoom)) {
+          toast.info(APP_ESTIMATE_RECALC_MESSAGE);
+          router.replace("/dashboard/calculator", { scroll: false });
+          return;
+        }
         if (importedRooms.length > 0) {
           loadRooms(importedRooms);
           setFormOpen(false);
@@ -164,7 +171,8 @@ function CalculatorContent() {
         const importedExtras = est.calculationData?.extraItems;
         if (Array.isArray(importedExtras) && importedExtras.length > 0) {
           setExtraItems(
-            importedExtras.map((li: { itemName: string; unitPrice: number; quantity: number; unit: string }) => ({
+            // Доплату до минимума расчёт добавит сам, иначе она задвоится.
+            importedExtras.filter((li: { itemCode?: string }) => li.itemCode !== "min_order").map((li: { itemName: string; unitPrice: number; quantity: number; unit: string }) => ({
               name: li.itemName,
               price: li.unitPrice,
               quantity: li.quantity,

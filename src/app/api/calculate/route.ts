@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { getScope } from "@/lib/company";
+import { getScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import type { RoomInput, ExtraItem } from "@/lib/types";
 import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
@@ -21,12 +21,15 @@ export async function POST(request: Request) {
 
     // Прайс компании — PriceItem («Мой прайс», 01.10.2026)
     const companyId = await priceBookCompanyId(scope.ownerId);
-    const priceMap = await priceMapFor(companyId);
+    const priceMap = await priceMapFor(companyId, await currencyFor(scope.ownerId));
     const customItemsMap = await customItemsMapFor(companyId);
 
     const ownItemsById = await ownItemsByIdFor(companyId);
 
     const result = calculate(rooms, priceMap, customItemsMap, extraItems, ownItemsById);
+    if (!Number.isFinite(result.total)) {
+      return NextResponse.json({ error: "Не удалось посчитать: у комнаты нет размеров" }, { status: 400 });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

@@ -19,6 +19,9 @@ import { EstimateActions } from "./estimate-actions";
 import { ContractSection } from "./contract-section";
 import { ActSection } from "./act-section";
 import { ItemsEditor } from "./items-editor";
+import { AppRecalcButton } from "./app-recalc-button";
+import { isAppFormatRoom } from "@/lib/room-edit";
+import type { RoomInput } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   DRAFT: { label: "Черновик", variant: "secondary" },
@@ -63,6 +66,8 @@ export default async function EstimateDetailPage({
   const hasKpBrief = !!kpBrief;
 
   const calc = estimate.calculationData as unknown as CalculationResult;
+  const savedRooms = estimate.roomsData as unknown as RoomInput[] | null;
+  const isAppEstimate = Array.isArray(savedRooms) && savedRooms.some(isAppFormatRoom);
   const statusInfo = STATUS_LABELS[estimate.status] ?? { label: estimate.status, variant: "secondary" as const };
   // Серверный компонент: валюту передаём явно, глобал formatPrice тут не работает (07.10.2026).
   const formatPrice = (n: number) => formatPriceIn(n, master.currency);
@@ -133,12 +138,16 @@ export default async function EstimateDetailPage({
             Открыть КП
           </a>
         </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/dashboard/calculator?from=${estimate.id}`}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Пересчитать
-          </Link>
-        </Button>
+        {isAppEstimate ? (
+          <AppRecalcButton />
+        ) : (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/dashboard/calculator?from=${estimate.id}`}>
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Пересчитать
+            </Link>
+          </Button>
+        )}
         <Button variant="outline" size="sm" asChild>
           <Link href={`/dashboard/visualization?estimateId=${estimate.id}`}>
             ✨ AI-фото

@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown } from "@/lib/room-input-builder";
+import { spotBreakdown, level2Fields, measuredGeometry, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2337,30 +2337,13 @@ export default function ZameryPage() {
       const els = room.elements || [];
       // Группируем спoты: одиночные → штуки, пары/тройки (groupId) → отдельные позиции.
       const allSpotEls = els.filter(e => e.type === "spot");
-      const groupCounts = new Map<string, number>();
-      for (const s of allSpotEls) {
-        const gid = (s as { groupId?: string }).groupId;
-        if (gid) groupCounts.set(gid, (groupCounts.get(gid) ?? 0) + 1);
-      }
-      let spotPairsCount = 0;
-      let spotTriplesCount = 0;
-      for (const sz of groupCounts.values()) {
-        if (sz === 2) spotPairsCount++;
-        else if (sz >= 3) spotTriplesCount++;
-      }
-      const singleSpotEls = allSpotEls.filter(s => !(s as { groupId?: string }).groupId);
+      const { spotPairsCount, singleSpots: singleSpotEls } = splitSpotGroups(allSpotEls);
+      const spotTriplesCount = 0;
       const { spotsOurs, spotsClient, spotsCount, spotsByType } = spotBreakdown(singleSpotEls);
       const pendantCount = els.filter(e => e.type === "pendant").length;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
-      const trackMagneticLength = Math.round(
-        els.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
-      const lightLineLength = Math.round(
-        els.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
-      const gardinaLength = Math.round(
-        els.filter(e => e.type === "curtain").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
+      const lightAndTrack = trackFields(els);
+      const gardina = gardinaFields(els);
       const subStats = computeSubcurtainStats(
         els,
         getVertices(room.walls, room.normalCorners, room.angles),
@@ -2402,13 +2385,12 @@ export default function ZameryPage() {
         spotPairsCount,
         spotTriplesCount,
         floatingLength,
-        trackMagneticLength,
-        lightLineLength,
+        ...lightAndTrack,
         curtainRodLength: 0,
         pipeBypasses: 0,
         cornersCount: visibleCornersCount,
         eurobrusCount: 0,
-        gardinaLength,
+        ...gardina,
         podshtornikLength,
         podshtornikOnWallLength,
         roundedCornersCount,
@@ -2421,6 +2403,8 @@ export default function ZameryPage() {
         shape: room.walls.length === 4 ? "rectangle" : undefined,
         previewUrl3d: room.previewUrl3d,
         ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
+        ...level2Fields(room),
+        ...measuredGeometry(room),
       } satisfies RoomInput;
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
@@ -2489,26 +2473,12 @@ export default function ZameryPage() {
             if (isCalculatorMode) {
               const room = roomWithElements;
               const allSpotElsCalc = elements.filter(e => e.type === "spot");
-              const groupCountsCalc = new Map<string, number>();
-              for (const s of allSpotElsCalc) {
-                const gid = (s as { groupId?: string }).groupId;
-                if (gid) groupCountsCalc.set(gid, (groupCountsCalc.get(gid) ?? 0) + 1);
-              }
-              let spotPairsCalc = 0;
-              let spotTriplesCalc = 0;
-              for (const sz of groupCountsCalc.values()) {
-                if (sz === 2) spotPairsCalc++;
-                else if (sz >= 3) spotTriplesCalc++;
-              }
-              const singleSpotElsCalc = allSpotElsCalc.filter(s => !(s as { groupId?: string }).groupId);
-              const { spotsOurs, spotsClient, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
+              const { spotPairsCount: spotPairsCalc, singleSpots: singleSpotElsCalc } = splitSpotGroups(allSpotElsCalc);
+              const spotTriplesCalc = 0;
+              const { spotsOurs, spotsClient, spotsCount: spotsCountCalc, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
-              const trackEls = elements.filter(e => e.type === "track");
-              const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const lightLineEls = elements.filter(e => e.type === "lightline");
-              const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const gardinaEls = elements.filter(e => e.type === "curtain");
-              const gardinaLength = Math.round(gardinaEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const lightAndTrackCalc = trackFields(elements);
+              const gardinaCalc = gardinaFields(elements);
               const subStatsCalc = computeSubcurtainStats(
                 elements,
                 getVertices(room.walls, room.normalCorners, room.angles),
@@ -2537,22 +2507,23 @@ export default function ZameryPage() {
                 ceilingHeight: 3,
                 canvasType: "mat" as CanvasType,
                 profileType: profileTypeForRoom,
-                spotsCount: spotsOurs + spotsClient,
+                spotsCount: spotsCountCalc,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 ...(spotsByTypeCalc.length > 0 && { spotsByType: spotsByTypeCalc }),
                 ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
+                ...level2Fields(room),
+        ...measuredGeometry(room),
                 spotPairsCount: spotPairsCalc,
                 spotTriplesCount: spotTriplesCalc,
                 chandelierCount,
                 chandelierInstallCount: chandelierCount,
                 floatingLength: floatingLengthCalc,
-                trackMagneticLength,
-                lightLineLength,
+                ...lightAndTrackCalc,
                 curtainRodLength: 0,
                 pipeBypasses: 0,
                 cornersCount: visibleCornersCountCalc,
                 eurobrusCount: 0,
-                gardinaLength,
+                ...gardinaCalc,
                 podshtornikLength,
                 podshtornikOnWallLength,
                 roundedCornersCount,
