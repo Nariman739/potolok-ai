@@ -44,6 +44,7 @@ function CalculatorContent() {
     calculate,
     reset,
     loadRooms,
+    replaceWithMeasurement,
     extraItems,
     setExtraItems,
   } = useCalculator();
@@ -83,6 +84,34 @@ function CalculatorContent() {
   // Load room from vision (?from=vision or ?from=vision-edit&roomId=xxx)
   useEffect(() => {
     const from = searchParams.get("from");
+
+    // «Создать КП» из замера: черновик заменяется, а не дополняется.
+    if (from === "measurement") {
+      try {
+        const stored = localStorage.getItem("vision-rooms");
+        const sourceId = localStorage.getItem("vision-rooms-source") ?? "";
+        localStorage.removeItem("vision-rooms");
+        localStorage.removeItem("vision-rooms-source");
+        if (stored) {
+          const imported: RoomInput[] = JSON.parse(stored);
+          const draftSource = localStorage.getItem("calculator-draft-source");
+          const sameMeasurement = !!sourceId && draftSource === sourceId;
+          const hasDraft = rooms.length > 0 || extraItems.length > 0;
+          const replace = !hasDraft || sameMeasurement
+            || confirm("В калькуляторе есть несохранённый расчёт. Заменить его этим замером?");
+          if (replace) {
+            replaceWithMeasurement(imported, sourceId);
+            setFormOpen(false);
+          } else {
+            toast.info("Оставили текущий расчёт, замер не загружен");
+          }
+        }
+      } catch {
+        toast.error("Не удалось загрузить замер");
+      }
+      router.replace("/dashboard/calculator", { scroll: false });
+      return;
+    }
 
     if (from === "vision" || from === "vision-edit") {
       try {
@@ -146,7 +175,9 @@ function CalculatorContent() {
       })
       .catch(() => {})
       .finally(() => setLoadingFrom(false));
-  }, [searchParams, addRoom, loadRooms, router, setExtraItems]);
+  // rooms и extraItems читаются один раз при заходе с ?from=measurement: перезапуск эффекта от них не нужен.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, addRoom, loadRooms, replaceWithMeasurement, router, setExtraItems]);
 
   useEffect(() => {
     fetch("/api/prices")
@@ -190,6 +221,8 @@ function CalculatorContent() {
       }
 
       toast.success("КП сохранено!");
+      // Сохранённый черновик не должен попасть в КП следующего клиента.
+      reset();
       router.push(`/dashboard/estimates/${data.id}`);
     } catch {
       toast.error("Ошибка соединения");
