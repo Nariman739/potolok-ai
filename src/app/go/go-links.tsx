@@ -23,6 +23,12 @@ function detect(): Platform {
 }
 
 function track(platform: Platform) {
+  // Lead для Meta (09.11.2026) — как на /app и на главной.
+  try {
+    window.fbq?.("track", "Lead", { content_name: platform });
+  } catch {
+    /* пиксель не загрузился */
+  }
   try {
     const body = JSON.stringify({ event: "click", platform, source: "go" });
     if (navigator.sendBeacon) {

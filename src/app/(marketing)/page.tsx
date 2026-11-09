@@ -18,6 +18,7 @@ import {
   Camera,
 } from "lucide-react";
 import { FaqList } from "./faq-list";
+import { StoreLink } from "./store-link";
 
 // Мобильное приложение — то, чем мастер пользуется на объекте.
 const IOS_APP_URL = "https://apps.apple.com/kz/app/potolok-ai/id6766588501";
@@ -116,24 +117,22 @@ export default function HomePage() {
 
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#64748B]">
                 <span>Замеряете на объекте? Ставьте приложение:</span>
-                <a
+                <StoreLink
                   href={IOS_APP_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  platform="ios"
                   className="inline-flex items-center gap-1.5 text-[#94A3B8] hover:text-[#F1F5F9] underline underline-offset-4 transition-colors"
                 >
                   <Smartphone className="h-4 w-4" />
                   App Store
-                </a>
-                <a
+                </StoreLink>
+                <StoreLink
                   href={ANDROID_APP_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  platform="android"
                   className="inline-flex items-center gap-1.5 text-[#94A3B8] hover:text-[#F1F5F9] underline underline-offset-4 transition-colors"
                 >
                   <Smartphone className="h-4 w-4" />
                   Google Play
-                </a>
+                </StoreLink>
               </div>
             </div>
 
@@ -506,24 +505,22 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a
+            <StoreLink
               href={IOS_APP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+                  platform="ios"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F1F5F9] px-7 py-3.5 text-base font-semibold text-[#0F1724] hover:shadow-[0_0_30px_rgba(241,245,249,0.25)] hover:-translate-y-0.5 transition-all"
             >
               <Smartphone className="h-5 w-5" />
               Скачать на iPhone
-            </a>
-            <a
+            </StoreLink>
+            <StoreLink
               href={ANDROID_APP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+                  platform="android"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#334155] px-7 py-3.5 text-base font-medium text-[#F1F5F9] hover:border-[#3B82F6] hover:text-[#3B82F6] transition-all"
             >
               <Smartphone className="h-5 w-5" />
               Скачать на Android
-            </a>
+            </StoreLink>
           </div>
         </div>
       </section>
