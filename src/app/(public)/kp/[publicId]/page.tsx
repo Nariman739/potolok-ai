@@ -35,7 +35,7 @@ export async function generateMetadata({
 
   if (!estimate) return { title: "КП не найдено" };
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   const company = estimate.master.companyName || estimate.master.firstName;
   const areaStr = estimate.totalArea > 0 ? ` | ${formatArea(estimate.totalArea)}` : "";
@@ -144,7 +144,7 @@ export default async function PublicKpPage({
 
   if (!estimate) notFound();
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
   // Валюта — тоже владельца компании (07.10.2026)
   const currency = asCurrency(estimate.master.currency);
 

@@ -17,7 +17,7 @@ export async function generateMetadata({
   });
   if (!estimate) return { title: "3D-просмотр не найден" };
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   const company = estimate.master.companyName || estimate.master.firstName;
   const title = `3D-просмотр потолка | ${company}`;
@@ -52,6 +52,7 @@ export default async function Public3DPage({
       roomsData: true,
       room3dPreviewUrl: true,
       priceView: true,
+      companyId: true,
       master: { select: { brandColor: true, companyName: true, firstName: true } },
     },
   });
@@ -61,7 +62,7 @@ export default async function Public3DPage({
   // длины стен, и конкурент посчитал бы по ним без замера.
   if (estimate.priceView === "summary") redirect(`/kp/${publicId}`);
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   const room = pickRoomForScene3D(estimate.roomsData);
   if (!room) {
