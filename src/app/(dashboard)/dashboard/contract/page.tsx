@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowRight, Building2, Loader2, Lock, Pencil, RotateCcw, Save, Sparkles } from "lucide-react";
-import { bodyToFrame, damagedTags, frameToBody, structureOf } from "./_components/contract-frame";
+import { bodyToFrame, damagedTags, frameMatchesBody, frameToBody, structureOf } from "./_components/contract-frame";
 
 /**
  * «Мой договор» на сайте (09.11.2026) — то же, что экран приложения, по тем же
@@ -46,9 +46,10 @@ const LANGS: { code: Lang; label: string }[] = [
 const CHIPS = ["Предоплата 30%", "Гарантия на монтаж 3 года", "Добавь пункт: мусор вывозим сами"];
 const STARTER_NOTE = "Типовой договор";
 const MANUAL_NOTE = "Правка вручную";
+const LEAVE_QUESTION = "Несохранённые правки пропадут. Продолжить?";
 
 class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly currentVersion?: number) {
     super(message);
   }
 }
@@ -56,7 +57,7 @@ class ApiError extends Error {
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/contract${url}`, init);
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(data?.error || "Ошибка сервера", res.status);
+  if (!res.ok) throw new ApiError(data?.error || "Ошибка сервера", res.status, data?.currentVersion);
   return data as T;
 }
 
@@ -89,7 +90,7 @@ export default function ContractPage() {
   // Отмена ручной правки: перезагружаем фрейм, иначе в нём останется набранное.
   const [frameKey, setFrameKey] = useState(0);
   // Пропали метки или обязательное (409): объясняем, решает владелец.
-  const [confirm, setConfirm] = useState<{ body: string; note: string; message: string; force: boolean } | null>(null);
+  const [confirm, setConfirm] = useState<{ body: string; note: string; message: string; force: boolean; baseVersion: number } | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const structureRef = useRef("");
   // Заготовка на каждый язык — тянем один раз.
@@ -136,7 +137,21 @@ export default function ContractPage() {
     if (!unsaved) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    // Переход по ссылке внутри кабинета beforeunload не ловит. Перехват раньше
+    // React: иначе Link успеет сменить страницу.
+    const guardLink = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      if (!window.confirm(LEAVE_QUESTION)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("click", guardLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLink, true);
+    };
   }, [unsaved]);
 
   const frameDoc = () => frameRef.current?.contentDocument ?? null;
@@ -156,7 +171,7 @@ export default function ContractPage() {
 
   /** Несохранённая правка пропадёт — спрашиваем, прежде чем уйти с неё. */
   const mayLeaveDraft = () =>
-    shown?.kind !== "draft" || window.confirm("Несохранённые правки пропадут. Продолжить?");
+    shown?.kind !== "draft" || window.confirm(LEAVE_QUESTION);
 
   const changeLang = (l: Lang) => {
     if (l !== lang && mayLeaveDraft()) setLang(l);
@@ -199,16 +214,26 @@ export default function ContractPage() {
     }
   };
 
-  const save = async (body: string, note: string, force = false): Promise<void> => {
+  const save = async (
+    body: string,
+    note: string,
+    force = false,
+    baseVersion = info?.template?.version ?? 0,
+  ): Promise<void> => {
     setSaving(true);
     try {
-      await api("/template", postJson({ body, note, language: lang, force }));
-      toast.success("Договор сохранён");
+      const r = await api<{ unchanged?: boolean }>("/template", postJson({ body, note, language: lang, force, baseVersion }));
+      if (r.unchanged) toast.info("Изменений нет");
+      else toast.success("Договор сохранён");
       setEditing(false);
       await load(lang);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
-        setConfirm({ body, note, message: e.message, force: true });
+      if (e instanceof ApiError && e.status === 412) {
+        // Старая версия останется в истории — чужая правка не потеряется.
+        const message = `${e.message} Сейчас действует версия ${e.currentVersion ?? 0}. Ваш текст станет новой версией, та останется в истории.`;
+        setConfirm({ body, note, message, force, baseVersion: e.currentVersion ?? 0 });
+      } else if (e instanceof ApiError && e.status === 409) {
+        setConfirm({ body, note, message: e.message, force: true, baseVersion });
       } else {
         toast.error(e instanceof Error ? e.message : "Не удалось сохранить");
       }
@@ -221,6 +246,10 @@ export default function ContractPage() {
     const doc = frameDoc();
     if (!doc || !shown) return;
     const body = frameToBody(doc, shown.body, structureRef.current);
+    if (body === null) {
+      toast.error("Такую правку нельзя перенести в этот договор без потерь. Опишите её словами в блоке справа");
+      return;
+    }
     if (body === shown.body) {
       setEditing(false);
       doc.body.removeAttribute("contenteditable");
@@ -235,10 +264,20 @@ export default function ContractPage() {
         broken.length > 0 ? `Разорваны оформлением и не подставятся: ${broken.join(", ")}.` : "",
         "На их месте в договоре не будет данных заказа.",
       ].filter(Boolean).join(" ");
-      setConfirm({ body, note, message, force: false });
+      setConfirm({ body, note, message, force: false, baseVersion: info?.template?.version ?? 0 });
       return;
     }
     void save(body, note);
+  };
+
+  const startManual = () => {
+    const doc = frameDoc();
+    if (!doc || !shown) return;
+    if (!frameMatchesBody(doc, shown.body)) {
+      toast.error("У этого договора необычная разметка, правка вручную может его испортить. Опишите изменения словами в блоке справа");
+      return;
+    }
+    setEditing(true);
   };
 
   const cancelManual = () => {
@@ -272,7 +311,7 @@ export default function ContractPage() {
 
   const html = useMemo(() => (shown ? bodyToFrame(shown.body) : ""), [shown]);
   const editButton = canEdit && !editing && (
-    <Button variant="outline" size="sm" onClick={() => setEditing(true)} disabled={locked || loading}>
+    <Button variant="outline" size="sm" onClick={startManual} disabled={locked || loading}>
       <Pencil className="mr-2 h-4 w-4" />
       Править вручную
     </Button>
@@ -337,7 +376,7 @@ export default function ContractPage() {
               {shown?.kind === "starter" && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#1e3a5f]/30 bg-[#1e3a5f]/5 p-3">
                   <p className="min-w-0 flex-1 text-sm">
-                    Это типовой договор. Скажите, что поменять, или поправьте вручную — и он станет вашим.
+                    {canEdit ? "Это типовой договор. Скажите, что поменять, или поправьте вручную — и он станет вашим." : "Это типовой договор."}
                   </p>
                   {editButton}
                 </div>
@@ -417,7 +456,7 @@ export default function ContractPage() {
         </div>
 
         <div className="space-y-4">
-          <Card>
+          {canEdit && <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-4 w-4" />
@@ -427,13 +466,13 @@ export default function ContractPage() {
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/dashboard/profile?section=contract">
+                <Link href="/dashboard/profile?section=contract" target="_blank" rel="noopener">
                   Заполнить реквизиты
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </CardContent>
-          </Card>
+          </Card>}
 
           {info && !canEdit ? (
             <div className="flex items-center gap-2 rounded-lg border bg-white p-3 text-sm text-muted-foreground">
@@ -541,9 +580,9 @@ export default function ContractPage() {
               variant="destructive"
               onClick={() => {
                 if (!confirm) return;
-                const { body, note, force } = confirm;
+                const { body, note, force, baseVersion } = confirm;
                 setConfirm(null);
-                void save(body, note, force);
+                void save(body, note, force, baseVersion);
               }}
             >
               Сохранить

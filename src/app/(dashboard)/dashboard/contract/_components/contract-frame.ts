@@ -12,7 +12,7 @@ const ROW_ATTR = "data-contract-row";
 const PLACEHOLDER = /\{\s*([a-zа-яё_]+)\s*\}/gi;
 const MARKUP = /(<!--[\s\S]*?-->|<\/?[a-z!][^>]*>)/i;
 
-const bodyStart = (source: string) => source.indexOf("<body");
+const bodyStart = (source: string) => source.search(/<body[\s>]/i);
 
 /**
  * Договор для фрейма: метки подсвечены жёлтым. {таблица_работ} стоит голым
@@ -66,37 +66,52 @@ export function structureOf(doc: Document): string {
   return body.outerHTML;
 }
 
-const escapeText = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/ /g, "&nbsp;");
+// &nbsp; не экранируем: сумма этапа ищет «30 %» и числа в обычном тексте.
+const escapeText = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** Текст договора из отредактированного фрейма. */
-export function frameToBody(doc: Document, original: string, structure: string): string {
-  const root = cleanRoot(doc);
-  const body = root.querySelector("body") as HTMLElement;
-  const hasBody = bodyStart(original) >= 0;
-  const at = Math.max(bodyStart(original), 0);
-
+/** Куски текста исходника и текстовые узлы фрейма — в одном порядке. */
+function textPairs(doc: Document, body: HTMLElement, original: string) {
   const decoder = doc.createElement("textarea");
   const decode = (html: string) => {
     decoder.innerHTML = html;
     return decoder.value;
   };
-  const parts = original.slice(at).split(MARKUP);
+  const parts = original.slice(Math.max(bodyStart(original), 0)).split(MARKUP);
   const slots = parts.flatMap((part, i) => (i % 2 === 0 && /\S/.test(decode(part)) ? [i] : []));
-  const edited = textNodes(doc, body).filter((t) => /\S/.test(t.data));
+  const nodes = textNodes(doc, body).filter((t) => /\S/.test(t.data));
+  return { decode, parts, slots, nodes };
+}
 
-  if (structureOf(doc) === structure && slots.length === edited.length) {
+/**
+ * Совпадает ли документ во фрейме с исходником кусок к куску. Текст прямо в
+ * таблице браузер переставляет, и правка попала бы не в тот кусок — такой
+ * договор вручную не открываем.
+ */
+export function frameMatchesBody(doc: Document, original: string): boolean {
+  const { decode, parts, slots, nodes } = textPairs(doc, cleanRoot(doc).querySelector("body") as HTMLElement, original);
+  return slots.length === nodes.length && slots.every((slot, n) => decode(parts[slot]) === nodes[n].data);
+}
+
+/** Текст договора из отредактированного фрейма; null — правку нельзя перенести без потерь. */
+export function frameToBody(doc: Document, original: string, structure: string): string | null {
+  const body = cleanRoot(doc).querySelector("body") as HTMLElement;
+  const start = bodyStart(original);
+  const at = Math.max(start, 0);
+  const { decode, parts, slots, nodes } = textPairs(doc, body, original);
+
+  if (structureOf(doc) === structure && slots.length === nodes.length) {
     slots.forEach((slot, n) => {
-      if (decode(parts[slot]) !== edited[n].data) parts[slot] = escapeText(edited[n].data);
+      if (decode(parts[slot]) !== nodes[n].data) parts[slot] = escapeText(nodes[n].data);
     });
     return original.slice(0, at) + parts.join("");
   }
 
   // Человек поменял разметку (новый абзац, жирный, вставка) — кусками текста
   // это не описать, пересобираем только <body>. Шапка и стили остаются как были.
-  if (!hasBody) return body.innerHTML;
-  const end = original.lastIndexOf("</body>");
-  return original.slice(0, at) + body.outerHTML + (end >= 0 ? original.slice(end + "</body>".length) : "");
+  if (start < 0) return null;
+  const close = [...original.matchAll(/<\/body\s*>/gi)].pop();
+  const tail = close ? original.slice((close.index as number) + close[0].length) : "";
+  return original.slice(0, at) + body.outerHTML.replace(/&nbsp;/g, " ") + tail;
 }
 
 function countTags(html: string): Map<string, number> {

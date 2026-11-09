@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       kind?: unknown;
       language?: unknown;
       force?: unknown;
+      baseVersion?: unknown;
     };
     const text = typeof body.body === "string" ? body.body.trim() : "";
     if (text.length < 200) {
@@ -82,6 +83,23 @@ export async function POST(request: Request) {
     const kind = body.kind === "act" ? "act" : "contract";
     const language = asLang(body.language ?? master.language);
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) || null : null;
+
+    const active = await prisma.masterContract.findFirst({
+      where: { masterId: scope.ownerId, kind, language, isActive: true },
+      orderBy: { version: "desc" },
+    });
+    // Две вкладки: сайт шлёт версию, с которой начал править. Приложение не
+    // шлёт baseVersion и работает как раньше.
+    if (typeof body.baseVersion === "number" && (active?.version ?? 0) !== body.baseVersion) {
+      return NextResponse.json(
+        { error: "Договор уже изменили в другой вкладке.", code: "VERSION_CONFLICT", currentVersion: active?.version ?? 0 },
+        { status: 412 },
+      );
+    }
+    // Тот же текст — новая версия не нужна.
+    if (active?.body === text) {
+      return NextResponse.json({ template: active, check: checkTemplate(text), unchanged: true });
+    }
 
     // Метки и обязательные пункты. Мастер может настоять — тогда сохраняем,
     // но предупредив: это его документ и его ответственность.
