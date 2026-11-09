@@ -3,6 +3,8 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { canonicalizeStatus, changeClientStatus, normalizeClientPhone } from "@/lib/clients";
+import { applyCrmColumn } from "@/lib/crm-board";
+import { isCrmColumn } from "@/lib/crm-columns";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
 // Принимаем и старые, и новые значения статусов. Старые билды mobile продолжат
@@ -115,7 +117,11 @@ export async function PUT(
       );
     }
 
-    const { name, phone, address, latitude, longitude, source, notes, status, nextContactAt } = body;
+    const { name, phone, address, latitude, longitude, source, notes, status, nextContactAt, crmColumn } = body;
+
+    if (crmColumn !== undefined && crmColumn !== null && !isCrmColumn(crmColumn)) {
+      return NextResponse.json({ error: "Неизвестная колонка" }, { status: 400 });
+    }
 
     let normalizedSource: ClientSource | null | undefined = undefined;
     if (source === null) normalizedSource = null;
@@ -168,6 +174,10 @@ export async function PUT(
       if (canonical !== existing.status) {
         await changeClientStatus(id, canonical);
       }
+    }
+
+    if (crmColumn !== undefined) {
+      await applyCrmColumn(existing, crmColumn);
     }
 
     const fresh = await prisma.client.findUnique({ where: { id } });

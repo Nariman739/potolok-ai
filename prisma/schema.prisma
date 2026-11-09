@@ -1167,6 +1167,11 @@ model Client {
   // в 9:00 Asia/Almaty (cron tg-followups) перечисляет актуальное.
   nextContactAt DateTime?
 
+  // Колонка канбана на сайте, поставленная рукой (ключ из src/lib/crm-columns.ts).
+  // null — колонка считается сама из статуса клиента и этапа объекта. Приложение
+  // это поле не читает: этапы объекта (object-stage) остаются прежними.
+  crmColumn String?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   // Soft-delete (см. /dashboard/trash). null = живая запись.
