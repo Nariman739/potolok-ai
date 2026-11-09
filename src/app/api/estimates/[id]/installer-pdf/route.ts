@@ -11,7 +11,7 @@ import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 // Клиентская позиция → монтажная ставка: одна карта с нарядом (29.10.2026)
-import { INSTALL_MAP, installRateFactor, installSeenKey } from "@/lib/work-order-lines";
+import { INSTALL_MAP, installSeenKey } from "@/lib/work-order-lines";
 
 const C = {
   primary: "#374151",
@@ -110,7 +110,7 @@ export async function GET(
         if (seen.has(seenKey)) continue;
         seen.add(seenKey);
 
-        const price = getInstallPrice(installCode) * installRateFactor(installCode, item.unit);
+        const price = item.installRate ?? getInstallPrice(installCode);
         if (price <= 0) continue;
 
         // Use same quantity as client item

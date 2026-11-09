@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
-import { getScope, inScope } from "@/lib/company";
+import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
 import type { CalculationResult, RoomInput } from "@/lib/types";
@@ -94,7 +94,7 @@ export async function POST(
 
     // Готовим prices и custom items для пересчёта (как в /api/calculate).
     const companyId = await priceBookCompanyId(scope.ownerId);
-    const priceMap = await priceMapFor(companyId);
+    const priceMap = await priceMapFor(companyId, await currencyFor(scope.ownerId));
     const customItemsMap = await customItemsMapFor(companyId);
     const ownItemsById = await ownItemsByIdFor(companyId);
 

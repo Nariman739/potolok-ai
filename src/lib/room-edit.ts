@@ -41,8 +41,8 @@ export function mergeEditedRoom(edit: RoomInput, form: RoomInput): RoomInput {
     merged.measuredPerimeter = undefined;
     merged.designerData = undefined;
   }
-  // Разбивка по типам и участок подшторника у стены описывают старые количества.
-  if (form.spotsCount !== edit.spotsCount) merged.spotsByType = undefined;
+  // Участок подшторника у стены описывает старую длину. Разбивка софитов по типам
+  // не зависит от spotsCount: там только софиты без типа.
   if (form.podshtornikLength !== edit.podshtornikLength) merged.podshtornikOnWallLength = undefined;
   return merged;
 }

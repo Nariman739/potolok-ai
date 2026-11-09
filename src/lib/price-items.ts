@@ -19,6 +19,7 @@ export {
 } from "./price-roles";
 export type { PriceRole, WallKind, RoleMeta } from "./price-roles";
 import { templateRole, inferRole, parseRollWidthCm, type WallKind, type PriceRole } from "./price-roles";
+import { STANDARD_SPOT_CODES } from "./spot-types";
 
 // ------------------------------------------------------------------
 // Загрузка
@@ -46,12 +47,12 @@ export async function loadPriceItems(companyId: string, opts?: { includeDeleted?
 }
 
 /** Цены по кодам каталога с дефолтами — замена паттерна «masterPrice.findMany + DEFAULT_PRICES». */
-export async function priceMapFor(companyId: string): Promise<Record<string, number>> {
+export async function priceMapFor(companyId: string, currency?: string | null): Promise<Record<string, number>> {
   const rows = await prisma.priceItem.findMany({
     where: { companyId, deletedAt: null, templateCode: { not: null } },
     select: { templateCode: true, price: true },
   });
-  const map: Record<string, number> = { ...DEFAULT_PRICES };
+  const map: Record<string, number> = { ...defaultPricesFor(currency) };
   for (const r of rows) if (r.templateCode) map[r.templateCode] = r.price;
   return map;
 }
@@ -59,11 +60,22 @@ export async function priceMapFor(companyId: string): Promise<Record<string, num
 /** Свои позиции прайса (бывшие PriceVariant) по id — для софитов с типом «свой вариант» (28.10.2026). */
 export async function ownItemsByIdFor(companyId: string): Promise<Record<string, CustomItemInfo>> {
   const rows = await prisma.priceItem.findMany({
-    where: { companyId, deletedAt: null, templateCode: null, code: { startsWith: "own:" } },
-    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true },
+    where: {
+      companyId,
+      deletedAt: null,
+      OR: [
+        { templateCode: null, code: { startsWith: "own:" } },
+        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led"] } },
+      ],
+    },
+    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true },
   });
   const map: Record<string, CustomItemInfo> = {};
-  for (const r of rows) map[r.id] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category };
+  for (const r of rows) {
+    // Каталожные софиты и «2 уровня» лежат отдельным ключом: расчёту нужны их ставка и скрытие.
+    const key = r.templateCode ? `catalog:${r.templateCode}` : r.id;
+    map[key] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category, installerPrice: r.installerPrice, isHidden: r.isHidden };
+  }
   return map;
 }
 
