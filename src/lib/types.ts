@@ -127,6 +127,10 @@ export interface RoomInput {
   oneOffItems?: OneOffItem[];
   /** PNG-снимок 3D-сцены этой комнаты (Vercel Blob URL) — попадает в Estimate.room3dPreviewUrl и на публичную КП. */
   previewUrl3d?: string;
+  /** Площадь (м²) и периметр (м) по чертежу. Только у комнат, которые нельзя посчитать
+   *  как длина × ширина: не прямоугольных, с дугами, колоннами, скруглениями. */
+  measuredArea?: number;
+  measuredPerimeter?: number;
   /** Выбор варианта из прайса на комнату: { gardina: id, track: id, lightline: id, canvas: id }.
    *  Та же форма, что room.variantOverrides в приложении и MeasurementRoom. */
   variantOverrides?: Record<string, string>;

@@ -44,6 +44,23 @@ interface DesignerElement {
 }
 
 /**
+ * Площадь и периметр с чертежа для комнат, которые нельзя посчитать как длина × ширина.
+ * У обычного прямоугольника полей нет: его расчёт не меняется.
+ */
+export function measuredGeometry(room: {
+  walls: number[]; angles?: number[]; area: number; perimeter: number;
+  arcBulges?: number[]; columns?: unknown[]; cornerRadii?: number[]; cutouts?: unknown[];
+}): { measuredArea?: number; measuredPerimeter?: number } {
+  const rectangle = room.walls.length === 4 && (room.angles ?? []).every((a) => Math.abs(a) === 90);
+  const plain = rectangle
+    && !room.arcBulges?.some((b) => b)
+    && !room.cornerRadii?.some((r) => r > 0)
+    && !room.columns?.length
+    && !room.cutouts?.length;
+  return plain ? {} : { measuredArea: room.area, measuredPerimeter: room.perimeter };
+}
+
+/**
  * Одиночные софиты по строкам КП. «Наши» с типом на элементе (spotType / priceVariantId)
  * идут отдельными строками по типу; без типа — как раньше, через spotsCount/spotType.
  */
@@ -197,6 +214,7 @@ export function buildRoomInputFromDesigner(
       room.walls.length === 4 ? ("rectangle" as const) : existing?.shape,
     previewUrl3d: room.previewUrl3d ?? existing?.previewUrl3d,
     variantOverrides: room.variantOverrides ?? existing?.variantOverrides,
+    ...measuredGeometry({ ...room, arcBulges: existing?.designerData?.arcBulges, columns: existing?.designerData?.columns }),
     designerData: {
       walls: room.walls,
       angles: room.angles ?? [],
