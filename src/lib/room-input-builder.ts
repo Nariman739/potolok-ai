@@ -41,6 +41,7 @@ interface DesignerElement {
   /** Софит: тип (28.10.2026) — стандартный код или свой вариант из прайса. */
   spotType?: string;
   priceVariantId?: string;
+  groupId?: string;
 }
 
 /**
@@ -58,6 +59,18 @@ export function measuredGeometry(room: {
     && !room.columns?.length
     && !room.cutouts?.length;
   return plain ? {} : { measuredArea: room.area, measuredPerimeter: room.perimeter };
+}
+
+/**
+ * Пара софитов (группа ровно из двух) идёт одной строкой. Всё остальное, в том числе
+ * группа из трёх и остаток пары, — одиночные софиты, как считает приложение.
+ */
+export function splitSpotGroups<T extends { groupId?: string }>(allSpots: T[]): { spotPairsCount: number; singleSpots: T[] } {
+  const sizes = new Map<string, number>();
+  for (const s of allSpots) if (s.groupId) sizes.set(s.groupId, (sizes.get(s.groupId) ?? 0) + 1);
+  const singleSpots = allSpots.filter((s) => !s.groupId || sizes.get(s.groupId) !== 2);
+  const spotPairsCount = [...sizes.values()].filter((n) => n === 2).length;
+  return { spotPairsCount, singleSpots };
 }
 
 /**
@@ -101,19 +114,7 @@ export function buildRoomInputFromDesigner(
   // Группируем спoты: одиночные (без groupId) идут как обычные «штуки»,
   // двойные/тройные (с groupId) — как пары/тройки в КП.
   const allSpots = els.filter((e) => e.type === "spot");
-  const groupSizeMap = new Map<string, number>();
-  for (const s of allSpots) {
-    const gid = (s as { groupId?: string }).groupId;
-    if (!gid) continue;
-    groupSizeMap.set(gid, (groupSizeMap.get(gid) ?? 0) + 1);
-  }
-  let spotPairsCount = 0;
-  let spotTriplesCount = 0;
-  for (const size of groupSizeMap.values()) {
-    if (size === 2) spotPairsCount++;
-    else if (size >= 3) spotTriplesCount++;
-  }
-  const singleSpots = allSpots.filter((s) => !(s as { groupId?: string }).groupId);
+  const { spotPairsCount, singleSpots } = splitSpotGroups(allSpots);
   const { spotsOurs, spotsClient, spotsCount, legacySpotType, spotsByType } = spotBreakdown(singleSpots, existing?.spotType);
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
@@ -188,7 +189,7 @@ export function buildRoomInputFromDesigner(
     pendantCount,
     ventCount,
     spotPairsCount,
-    spotTriplesCount,
+    spotTriplesCount: 0,
     trackMagneticLength,
     lightLineLength,
     curtainRodLength: existing?.curtainRodLength ?? 0,

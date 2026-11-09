@@ -22,6 +22,7 @@ export interface CustomItemInfo {
 
 /** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
 const VARIANT_INSTALL_CODE: Record<string, string> = {
+  spot_pair: "install_spot",
   gardina: "install_gardina",
   track: "install_track",
   lightline: "install_lightline",
@@ -184,8 +185,19 @@ function calculateRoom(
   }
   const spotPairs = room.spotPairsCount ?? 0;
   if (spotPairs > 0) {
-    const pairItem = makeLineItem("spot_pair", spotPairs, prices);
-    if (pairItem) items.push(pairItem);
+    // Цена пары — позиция spot_pair_ours, как в приложении (код spot_pair давал 0 ₸).
+    const variant = variantFor("spot_pair");
+    const unitPrice = getPrice(prices, "spot_pair_ours");
+    items.push(variant
+      ? variantLine(variant, "spot_pair", spotPairs, "spot_pair_ours")
+      : {
+          itemCode: "spot_pair_ours",
+          itemName: "Двойные софиты",
+          quantity: spotPairs,
+          unit: "пара",
+          unitPrice,
+          total: Math.round(unitPrice * spotPairs),
+        });
   }
   const spotTriples = room.spotTriplesCount ?? 0;
   if (spotTriples > 0) {
