@@ -45,6 +45,10 @@ export type ScopeMember = {
   /** Работает в этой компании (его объекты в общем списке); false — у него своя фирма */
   worksHere: boolean;
   isMe: boolean;
+  /** Принял приглашение, ждёт подтверждения владельца */
+  pending: boolean;
+  /** Владелец отклонил заявку; пригласить снова — добавить номер заново */
+  rejected: boolean;
 };
 
 function displayName(m: { firstName: string; lastName: string | null }): string {
@@ -85,7 +89,7 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
           where: {
             id: master.activeCompanyId,
             // Активной может быть только компания, где он всё ещё участник
-            members: { some: { masterId: master.id, removedAt: null } },
+            members: { some: { masterId: master.id, removedAt: null, pendingSince: null } },
           },
           include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" }, include: { master: { select: { activeCompanyId: true } } } } },
         })
@@ -130,6 +134,8 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
       hasApp: !!m.masterId && (m.masterId === company.ownerId || m.master?.activeCompanyId === company.id),
       worksHere: !m.masterId || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id,
       isMe: m.masterId === master.id,
+      pending: !!m.pendingSince,
+      rejected: !!m.rejectedAt,
     })),
   };
 }
@@ -168,7 +174,7 @@ export async function companyIdFor(masterId: string): Promise<string | null> {
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (me?.activeCompanyId) {
       const active = await prisma.company.findFirst({
-        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null } } },
+        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, pendingSince: null } } },
         select: { id: true },
       });
       if (active) return active.id;
@@ -191,7 +197,7 @@ export async function ownerBrandFor<M extends object>(masterId: string, master: 
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (!me?.activeCompanyId) return master;
     const company = await prisma.company.findFirst({
-      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null } } },
+      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, pendingSince: null } } },
       select: { ownerId: true },
     });
     if (!company || company.ownerId === masterId) return master;
@@ -241,6 +247,16 @@ export async function transferOwnDataOps(masterId: string, companyId: string) {
     prisma.client.updateMany({ where, data }),
     prisma.payment.updateMany({ where, data }),
   ];
+}
+
+/**
+ * В своей компании мастера работают другие люди: перенос забрал бы и их данные,
+ * поэтому он запрещён (и при заявке, и при подтверждении).
+ */
+export async function ownCompanyHasOtherPeople(masterId: string): Promise<boolean> {
+  const own = await ensureOwnCompany(masterId);
+  const ownScope = await getScope({ id: masterId, activeCompanyId: own.id });
+  return ownScope.masterIds.length > 1;
 }
 
 /** Валюта цен для мастера: своя, а у участника чужой компании — валюта владельца (07.10.2026). */

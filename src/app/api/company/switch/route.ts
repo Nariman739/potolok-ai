@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureOwnCompany, getScope, transferOwnDataOps } from "@/lib/company";
+import { ensureOwnCompany, getScope, ownCompanyHasOtherPeople, transferOwnDataOps } from "@/lib/company";
+import { bringDataBlockedText, notifyOwnerOfRequest, pendingApprovalText } from "@/lib/company-approval";
 
 /**
  * Переход между компаниями по СОГЛАСИЮ мастера (21.09.2026).
  * POST { companyId, bringData? } — принять приглашение: работать в компании, куда меня
  *   добавили; bringData: true — ещё и перенести туда свои объекты/КП/клиентов (слияние).
  * POST { own: true } — вернуться в свою компанию.
+ * POST { cancelPending: true } — отозвать свою заявку.
+ *
+ * С 09.11.2026 первое принятие — это заявка: доступ и перенос данных после подтверждения
+ * владельцем (см. company-approval.ts). Кто уже подтверждён (joinedAt), переходит сразу.
+ * Новые клиенты шлют approvalFlow: true и получают 200 { pending: true }. Старые сборки на
+ * 200 молча убрали бы карточку, поэтому им 409 с текстом — они показывают его в окне.
  *
  * Раньше мастера с пустым аккаунтом владелец затягивал к себе одним добавлением
  * номера — без вопроса. Теперь добавление = приглашение, а переключает только сам
@@ -16,7 +23,7 @@ import { ensureOwnCompany, getScope, transferOwnDataOps } from "@/lib/company";
 export async function POST(request: Request) {
   try {
     const master = await requireAuth();
-    const body = (await request.json().catch(() => ({}))) as { companyId?: unknown; own?: unknown; bringData?: unknown };
+    const body = (await request.json().catch(() => ({}))) as { companyId?: unknown; own?: unknown; bringData?: unknown; cancelPending?: unknown; approvalFlow?: unknown };
 
     if (body.own === true) {
       const own = await ensureOwnCompany(master.id);
@@ -24,30 +31,48 @@ export async function POST(request: Request) {
       return NextResponse.json(await getScope({ id: master.id, activeCompanyId: own.id }));
     }
 
+    if (body.cancelPending === true) {
+      await prisma.member.updateMany({
+        where: { masterId: master.id, pendingSince: { not: null } },
+        data: { pendingSince: null, pendingBringData: null },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     const companyId = typeof body.companyId === "string" ? body.companyId : "";
     if (!companyId) return NextResponse.json({ error: "Не указана компания" }, { status: 400 });
     const membership = await prisma.member.findFirst({
       where: { companyId, masterId: master.id, removedAt: null },
-      select: { id: true, joinedAt: true },
+      select: { id: true, joinedAt: true, pendingSince: true },
     });
     if (!membership) return NextResponse.json({ error: "Приглашение не найдено или отозвано" }, { status: 404 });
 
     const bringData = body.bringData === true;
-    if (bringData) {
-      // Перенос забирает данные всей своей компании: при работающих людях увёл бы и их.
-      const own = await ensureOwnCompany(master.id);
-      const ownScope = await getScope({ id: master.id, activeCompanyId: own.id });
-      if (ownScope.masterIds.length > 1) {
-        return NextResponse.json(
-          { error: "В вашей компании работают другие люди — перенести данные нельзя. Примите приглашение без переноса." },
-          { status: 409 },
-        );
-      }
+    // Перенос забирает данные всей своей компании: при работающих людях увёл бы и их.
+    if (bringData && (await ownCompanyHasOtherPeople(master.id))) {
+      return NextResponse.json({ error: bringDataBlockedText(master.language) }, { status: 409 });
+    }
+
+    if (!membership.joinedAt) {
+      // Заявка одна на мастера: иначе второе подтверждение выдернуло бы его из первой компании.
+      await prisma.$transaction([
+        prisma.member.updateMany({
+          where: { masterId: master.id, pendingSince: { not: null }, id: { not: membership.id } },
+          data: { pendingSince: null, pendingBringData: null },
+        }),
+        prisma.member.update({
+          where: { id: membership.id },
+          data: { pendingSince: membership.pendingSince ?? new Date(), pendingBringData: bringData },
+        }),
+      ]);
+      // Повторное «Принять» при висящей заявке только обновляет перенос — без уведомления.
+      if (!membership.pendingSince) await notifyOwnerOfRequest(membership.id);
+      if (body.approvalFlow === true) return NextResponse.json({ pending: true, companyId });
+      return NextResponse.json({ error: pendingApprovalText(master.language), code: "APPROVAL_PENDING" }, { status: 409 });
     }
 
     const switchOps = [
       prisma.master.update({ where: { id: master.id }, data: { activeCompanyId: companyId } }),
-      ...(membership.joinedAt ? [] : [prisma.member.update({ where: { id: membership.id }, data: { joinedAt: new Date() } })]),
     ];
     const transferOps = bringData ? await transferOwnDataOps(master.id, companyId) : [];
     const results = await prisma.$transaction([...switchOps, ...transferOps]);

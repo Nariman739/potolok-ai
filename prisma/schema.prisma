@@ -258,8 +258,17 @@ model Member {
   /// Сколько обычно платим за монтаж (₸) — подставляется в наряд
   defaultFee Int?
   createdAt  DateTime  @default(now())
+  /// Заполнено = подтверждён (владельцем или до появления подтверждения): вход одним тапом.
   joinedAt   DateTime?
   removedAt  DateTime?
+  /// Нажал «Принять», ждёт владельца. Доступа нет, activeCompanyId не ставится.
+  pendingSince     DateTime?
+  /// Просил перенести свои данные — выполнится при подтверждении.
+  pendingBringData Boolean?
+  /// Владелец отклонил заявку: номер не привязывается к аккаунтам, пока владелец не пригласит снова.
+  rejectedAt       DateTime?
+  /// Когда владельца уведомили о заявке по этой строке (не чаще раза в сутки).
+  approvalPushAt   DateTime?
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   master  Master? @relation("MemberMaster", fields: [masterId], references: [id], onDelete: SetNull)

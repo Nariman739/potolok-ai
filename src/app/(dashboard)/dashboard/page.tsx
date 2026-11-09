@@ -28,6 +28,7 @@ import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklis
 import { SubscriptionWidget } from "@/components/dashboard/subscription-widget";
 import { KpBrandingBanner } from "@/components/dashboard/kp-branding-banner";
 import { CompanyInviteBanner } from "@/components/dashboard/company-invite-banner";
+import { CompanyApprovalsBanner } from "@/components/dashboard/company-approvals-banner";
 
 export const metadata = {
   title: "Дашборд",
@@ -130,6 +131,7 @@ export default async function DashboardPage() {
     return (
       <div className="space-y-5">
         {/* Сотрудник только что зарегистрировался — приглашение нужно ему раньше настройки */}
+        <CompanyApprovalsBanner />
         <CompanyInviteBanner />
         <OnboardingWizard firstName={master.firstName} phone={master.phone} />
       </div>
@@ -147,6 +149,8 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{master.companyName}</p>
         )}
       </div>
+
+      <CompanyApprovalsBanner />
 
       <CompanyInviteBanner />
 

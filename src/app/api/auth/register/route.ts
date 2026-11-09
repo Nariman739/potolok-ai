@@ -117,7 +117,13 @@ export async function POST(request: Request) {
     // участника висела без masterId и приглашение человеку не показывалось никогда
     // (аудит 01.10.2026). Привязываем: он увидит приглашение на «Сегодня».
     await prisma.member
-      .updateMany({ where: { phone, masterId: null, removedAt: null }, data: { masterId: master.id } })
+      .updateMany({
+        // rejectedAt: владелец отклонил заявку с этого номера — новая регистрация приглашения не даёт.
+        // joinedAt/pending сбрасываем: строка могла остаться от удалённого аккаунта, новому человеку
+        // нужно своё согласие и подтверждение владельца.
+        where: { phone, masterId: null, removedAt: null, rejectedAt: null },
+        data: { masterId: master.id, joinedAt: null, pendingSince: null, pendingBringData: null },
+      })
       .catch((e) => console.warn("link pending members:", e));
 
     // Дефолтный прайс компании — одним createMany в PriceItem («Мой прайс», 01.10.2026).
