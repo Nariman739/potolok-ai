@@ -26,6 +26,7 @@ import { CATEGORY_LABELS, type ProductCategory } from "@/lib/constants";
 import { useCurrency } from "@/components/currency-provider";
 import { unitLabel } from "@/lib/currency";
 import {
+import { FilmsSection } from "@/components/prices/FilmsSection";
   VariantList,
   AddVariantButton,
   VariantDialog,
@@ -303,6 +304,8 @@ export default function PricesPage() {
             </div>
 
             {/* Варианты с фото — только для категорий где это имеет смысл */}
+            {group.category === "canvas" && <FilmsSection />}
+
             {supportsVariants && (
               <>
                 <VariantList

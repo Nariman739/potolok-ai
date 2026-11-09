@@ -39,6 +39,7 @@ export function mergeEditedRoom(edit: RoomInput, form: RoomInput): RoomInput {
   if (!sameGeometry(edit, form)) {
     merged.measuredArea = undefined;
     merged.measuredPerimeter = undefined;
+    merged.measuredMinWidth = undefined;
     merged.designerData = undefined;
   }
   // Участок подшторника у стены описывает старую длину. Разбивка софитов по типам

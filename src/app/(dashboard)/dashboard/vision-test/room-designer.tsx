@@ -350,11 +350,14 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 // ── Component ──
 
-export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, roomVariants = false }: {
+export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, roomVariants = false, objectFilmId, canvasFilms = [] }: {
   room: Room;
   onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string; normalCorners?: boolean[]; angles?: number[] ; variantOverrides?: Record<string, string> }) => void;
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
+  /** Плёнка на весь объект и список плёнок: выбор на комнату показываем только при их наличии. */
+  objectFilmId?: string | null;
+  canvasFilms?: { key: string; name: string }[];
   /** Экран умеет сохранять variantOverrides комнаты (страница замеров). */
   roomVariants?: boolean;
 }) {
@@ -470,7 +473,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
     return () => { cancelled = true; };
   }, [roomVariants]);
   const missingVariantLabels = priceVariantIds
-    ? Object.entries(variantOverrides).filter(([, id]) => !priceVariantIds.has(id)).map(([cat]) => ROOM_VARIANT_LABEL[cat] ?? cat)
+    ? Object.entries(variantOverrides).filter(([cat, id]) => !priceVariantIds.has(id) && !(cat === "canvas" && canvasFilms.some((f) => f.key === id))).map(([cat]) => ROOM_VARIANT_LABEL[cat] ?? cat)
     : [];
 
   function applyPriceVariant(variantId: string | null) {
@@ -2969,10 +2972,26 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
           {editableName} · {computedArea.toFixed(2)} м²
           <Pencil className="h-3 w-3 text-muted-foreground" />
         </button>
+        <div className="flex items-center gap-2 min-w-0">
+        {roomVariants && canvasFilms.length > 0 && (
+          <select
+            aria-label="Полотно этой комнаты"
+            value={canvasFilms.some((f) => f.key === variantOverrides.canvas) ? variantOverrides.canvas : ""}
+            onChange={(e) => setVariantOverrides((prev) => {
+              const next = { ...prev };
+              if (e.target.value) next.canvas = e.target.value; else delete next.canvas;
+              return next;
+            })}
+            className="max-w-[220px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700">
+            <option value="">{canvasFilms.find((f) => f.key === objectFilmId)?.name ?? "Полотно: обычный расчёт"}</option>
+            {canvasFilms.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}
+          </select>
+        )}
         <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName, normalCorners: editableNormalCorners, angles: editableAngles, ...(roomVariants && { variantOverrides }) })}
           className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
+        </div>
       </div>
 
       {/* Hint + selected actions */}

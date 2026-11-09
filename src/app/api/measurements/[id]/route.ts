@@ -41,7 +41,7 @@ export async function PATCH(
     const scope = await getScope(master);
     const { id } = await params;
     const body = await request.json();
-    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms, noInsert } = body as {
+    const { address, status, totalArea, latitude, longitude, clientId, clientName, clientPhone, rooms, noInsert, canvasItemId } = body as {
       address?: string;
       status?: string;
       totalArea?: number;
@@ -52,6 +52,8 @@ export async function PATCH(
       clientPhone?: string;
       /** «Убрать вставку везде» на объекте (30.10.2026) */
       noInsert?: boolean;
+      /** Плёнка на весь объект (filmKey); null — снять выбор */
+      canvasItemId?: string | null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null }[];
     };
@@ -100,6 +102,7 @@ export async function PATCH(
         ...(longitude != null && { longitude }),
         ...(safeClientId !== undefined && { clientId: safeClientId }),
         ...(typeof noInsert === "boolean" && { noInsert }),
+        ...((canvasItemId === null || (typeof canvasItemId === "string" && canvasItemId.length <= 64)) && { canvasItemId }),
       },
     });
 

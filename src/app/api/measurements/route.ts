@@ -57,7 +57,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
   const master = { id: masterId };
   try {
     const body = await request.json();
-    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt, noInsert } = body as {
+    const { address, status, rooms, latitude, longitude, clientId, clientName, clientPhone, measuredAt, noInsert, canvasItemId } = body as {
       address?: string;
       status?: string;
       latitude?: number;
@@ -68,6 +68,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       measuredAt?: string; // ISO — когда мастер замерял на объекте (1-я комната)
       /** «Убрать вставку везде» на объекте (30.10.2026) */
       noInsert?: boolean;
+      /** Плёнка на весь объект (filmKey); null — снять выбор */
+      canvasItemId?: string | null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null }[];
     };
@@ -131,6 +133,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
         // остаётся null, и в списке fallback на createdAt.
         ...(measuredAt && { measuredAt: new Date(measuredAt) }),
         ...(typeof noInsert === "boolean" && { noInsert }),
+        ...((canvasItemId === null || (typeof canvasItemId === "string" && canvasItemId.length <= 64)) && { canvasItemId }),
         rooms: rooms
           ? {
               create: rooms.map((r, i) => ({

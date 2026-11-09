@@ -8,6 +8,7 @@ import type {
 import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants";
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 import { isStandardSpotCode } from "./spot-types";
+import { canvasMinSideCm, pickFilmStep, pickMainCanvas, type CanvasCatalog, type CanvasCode, type CanvasFilm } from "./canvas-pricing";
 
 type PriceMap = Record<string, number>;
 
@@ -22,6 +23,10 @@ export interface CustomItemInfo {
   /** Своя ставка монтажа позиции */
   installerPrice?: number | null;
   isHidden?: boolean;
+  /** Полотно: ширина рулона и принадлежность плёнке с лестницей. */
+  maxWidthCm?: number | null;
+  filmKey?: string | null;
+  filmName?: string | null;
 }
 
 /** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
@@ -29,6 +34,7 @@ const LED_SURCHARGE_PER_M = 3000;
 
 /** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
 const VARIANT_INSTALL_CODE: Record<string, string> = {
+  canvas: "install_canvas",
   spot_pair: "install_spot",
   gardina: "install_gardina",
   track: "install_track",
@@ -67,15 +73,22 @@ function makeLineItem(
   };
 }
 
-/**
- * Цена полотна определяется автоматически по короткой стороне комнаты.
- * Это ширина рулона плёнки: ≤3.2м, ≤5.5м или больше — без шва на потолке.
- */
-function getCanvasCode(room: RoomInput): string {
-  const minDim = getBoundingBoxMinDim(room);
-  if (minDim <= 3.2) return "canvas_320";
-  if (minDim <= 5.5) return "canvas_550";
-  return "canvas_over";
+/** Каталог, свои строки и плёнки из прайса. Без ownItemsById — только цены каталога. */
+function canvasBook(prices: PriceMap, ownItemsById?: Record<string, CustomItemInfo>) {
+  const entry = (code: CanvasCode) => {
+    const row = ownItemsById?.[`catalog:${code}`];
+    return { name: row?.name || getItemName(code), price: getPrice(prices, code), hidden: row?.isHidden === true };
+  };
+  const catalog: CanvasCatalog = { canvas_320: entry("canvas_320"), canvas_550: entry("canvas_550"), canvas_over: entry("canvas_over") };
+  const rows: (CustomItemInfo & { id: string })[] = [];
+  const films = new Map<string, CanvasFilm>();
+  for (const [id, info] of Object.entries(ownItemsById ?? {})) {
+    if (id.startsWith("catalog:") || info.category !== "canvas") continue;
+    if (!info.filmKey) { rows.push({ ...info, id }); continue; }
+    if (!films.has(info.filmKey)) films.set(info.filmKey, { key: info.filmKey, name: info.filmName ?? info.name, steps: [] });
+    films.get(info.filmKey)!.steps.push({ id, maxWidthCm: info.maxWidthCm ?? null, price: info.price });
+  }
+  return { catalog, rows, films };
 }
 
 /** Монтаж одиночного софита как в приложении: своя ставка позиции, иначе 30 % цены клиенту. */
@@ -139,10 +152,38 @@ function calculateRoom(
   const floatingLen = Math.min(room.floatingLength ?? 0, profilePerimeter);
   const baseProfileLen = Math.max(0, profilePerimeter - floatingLen);
 
-  // Canvas
-  const canvasCode = getCanvasCode(room);
-  const canvasItem = makeLineItem(canvasCode, area, prices);
-  if (canvasItem) items.push(canvasItem);
+  // Полотно: плёнка или строка, выбранная на комнату (выбор на объект приходит сюда же),
+  // иначе основная лестница по ширине, тем же кодом, что в приложении.
+  const book = canvasBook(prices, ownItemsById);
+  const minSideCm = canvasMinSideCm(room.measuredMinWidth ?? getBoundingBoxMinDim(room));
+  const chosenFilm = book.films.get(room.variantOverrides?.canvas ?? "");
+  const filmStep = chosenFilm ? pickFilmStep(chosenFilm, minSideCm) : null;
+  let filmWidest: string | undefined;
+  if (chosenFilm && filmStep) {
+    if (filmStep.widest) filmWidest = chosenFilm.name;
+    if (!(area <= 0)) items.push({
+      itemCode: `own:${filmStep.step.id}`,
+      itemName: chosenFilm.name,
+      quantity: area,
+      unit: "м²",
+      unitPrice: filmStep.step.price,
+      total: Math.round(filmStep.step.price * area),
+      variantId: filmStep.step.id,
+      installCode: "install_canvas",
+    });
+  } else {
+    const chosenRow = variantFor("canvas");
+    const main = chosenRow ? null : pickMainCanvas(minSideCm, book.catalog, book.rows);
+    const row = chosenRow ?? main?.row;
+    if (!(area <= 0)) {
+      if (row) {
+        items.push({ ...variantLine(row, "canvas", area, "canvas_320"), ...(row.installerPrice != null && { installRate: row.installerPrice }) });
+      } else {
+        const line = makeLineItem(main!.code!, area, prices);
+        if (line) items.push({ ...line, itemName: main!.name });
+      }
+    }
+  }
 
   // «2 уровня»: верхнее полотно, борт и подсветка — три строки, как в приложении.
   if (room.level2) {
@@ -462,6 +503,7 @@ function calculateRoom(
     heightMultiplied,
     subtotalAfterHeight,
     ...(missingVariants.length > 0 && { missingVariants }),
+    ...(filmWidest && { filmWidest }),
   };
 }
 

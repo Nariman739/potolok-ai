@@ -41,7 +41,8 @@ export async function priceBookCompanyIdForMaster(masterId: string): Promise<str
 /** Все живые строки прайса компании. */
 export async function loadPriceItems(companyId: string, opts?: { includeDeleted?: boolean }) {
   return prisma.priceItem.findMany({
-    where: { companyId, ...(opts?.includeDeleted ? {} : { deletedAt: null }) },
+    // Ступени плёнок здесь не отдаём: их читает только /api/prices/films, старые сборки их не видят.
+    where: { companyId, filmKey: null, ...(opts?.includeDeleted ? {} : { deletedAt: null }) },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 }
@@ -65,16 +66,18 @@ export async function ownItemsByIdFor(companyId: string): Promise<Record<string,
       deletedAt: null,
       OR: [
         { templateCode: null, code: { startsWith: "own:" } },
-        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led"] } },
+        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led", "canvas_320", "canvas_550", "canvas_over"] } },
       ],
     },
-    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true },
+    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true, maxWidthCm: true, filmKey: true, filmName: true },
+    // Порядок как в /prices/variants: при равной ширине строку выбирает тот же порядок.
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
   const map: Record<string, CustomItemInfo> = {};
   for (const r of rows) {
     // Каталожные софиты и «2 уровня» лежат отдельным ключом: расчёту нужны их ставка и скрытие.
     const key = r.templateCode ? `catalog:${r.templateCode}` : r.id;
-    map[key] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category, installerPrice: r.installerPrice, isHidden: r.isHidden };
+    map[key] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category, installerPrice: r.installerPrice, isHidden: r.isHidden, maxWidthCm: r.maxWidthCm, filmKey: r.filmKey, filmName: r.filmName };
   }
   return map;
 }

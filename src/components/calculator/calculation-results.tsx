@@ -197,6 +197,11 @@ export function CalculationResults({
                       ⚠ Выбранный вариант удалён из прайса, посчитано по обычной цене
                     </p>
                   )}
+                  {rr.filmWidest && (
+                    <p className="text-xs font-medium text-amber-700 mt-1">
+                      ⚠ Комната шире всех ступеней плёнки «{rr.filmWidest}», взята самая широкая
+                    </p>
+                  )}
                   <div className="flex justify-between text-sm font-medium mt-1 pt-1 border-t border-dashed">
                     <span>Итого {rr.roomName}</span>
                     <span>{formatPrice(rr.subtotalAfterHeight)}</span>

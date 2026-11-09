@@ -62,7 +62,7 @@ export default async function TrashPage() {
       },
     }),
     prisma.priceItem.findMany({
-      where: { companyId: await priceBookCompanyId(master.id), deletedAt: { not: null }, code: { startsWith: "own:" } },
+      where: { companyId: await priceBookCompanyId(master.id), filmKey: null, deletedAt: { not: null }, code: { startsWith: "own:" } },
       orderBy: { deletedAt: "desc" },
       take: LIMIT,
       select: {

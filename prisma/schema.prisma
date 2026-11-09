@@ -224,6 +224,9 @@ model PriceItem {
   /// Полотно: ширина рулона, см (320, 550). null — любая ширина. Расчёт берёт самое
   /// узкое полотно, перекрывающее комнату по меньшей стороне (Нариман 02.10.2026).
   maxWidthCm   Int?
+  /// Ступень плёнки с лестницей ширин: общий ключ и название плёнки. null — обычная строка прайса.
+  filmKey      String?
+  filmName     String?
   sortOrder    Int     @default(0)
 
   // 3D-рендер (перенесено из PriceVariant как есть)
@@ -764,6 +767,8 @@ model MeasurementObject {
   /// алюминиевый багет и евробрус во всех комнатах; этот флаг выключает её на
   /// объекте целиком, точечно комната включает обратно через MeasurementRoom.withInsert.
   noInsert           Boolean   @default(false)
+  /// Плёнка на весь объект (filmKey). null — обычный расчёт по ширине.
+  canvasItemId String?
 
   measuredBy Member? @relation("MeasuredBy", fields: [measuredByMemberId], references: [id], onDelete: SetNull)
   installer  Member? @relation("Installer", fields: [installerMemberId], references: [id], onDelete: SetNull)

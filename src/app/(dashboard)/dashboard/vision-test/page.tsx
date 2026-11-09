@@ -524,6 +524,8 @@ interface SavedObject {
   longitude?: number;
   clientId?: string | null;
   client?: { id: string; name: string; phone: string | null } | null;
+  /** Плёнка на весь объект (filmKey) */
+  canvasItemId?: string | null;
 }
 
 // ─────────────────────────────────────────────────────
@@ -1596,6 +1598,15 @@ export default function ZameryPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [objectName, setObjectName] = useState("");
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
+  // Плёнка на весь объект. Список есть только у тех, кто завёл такие плёнки.
+  const [objectFilmId, setObjectFilmId] = useState<string | null>(null);
+  const [canvasFilms, setCanvasFilms] = useState<{ key: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/prices/films", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (Array.isArray(data?.films)) setCanvasFilms(data.films); })
+      .catch(() => {});
+  }, []);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [activeClientName, setActiveClientName] = useState<string | null>(null);
   const [activeClientPhone, setActiveClientPhone] = useState<string | null>(null);
@@ -1687,6 +1698,7 @@ export default function ZameryPage() {
           if (activeList.length > 0) {
             const obj = activeList[0];
             setActiveObjectId(obj.id);
+            setObjectFilmId(obj.canvasItemId ?? null);
             setObjectName(obj.address || "");
             if (obj.client) {
               setActiveClientId(obj.client.id);
@@ -1744,6 +1756,7 @@ export default function ZameryPage() {
             savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
             latitude: o.latitude,
             longitude: o.longitude,
+            canvasItemId: o.canvasItemId ?? null,
             rooms: (o.rooms || []).map((r: Room & { arcBulges?: number[]; columns?: RoomColumn[] }) => ({
               id: r.id,
               name: r.name,
@@ -1791,6 +1804,7 @@ export default function ZameryPage() {
         address: objectName,
         status: "active",
         ...(activeClientId && { clientId: activeClientId }),
+        ...(objectFilmId && { canvasItemId: objectFilmId }),
       }),
     });
     if (!res.ok) throw new Error("Не удалось создать объект замера");
@@ -1941,6 +1955,7 @@ export default function ZameryPage() {
           body: JSON.stringify({
             address: currentName,
             status: "saved",
+            ...(objectFilmId && { canvasItemId: objectFilmId }),
             ...(activeClientId && { clientId: activeClientId }),
             ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
             rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, cornerRadii: r.cornerRadii, elements: r.elements || [], variantOverrides: r.variantOverrides })),
@@ -1958,9 +1973,11 @@ export default function ZameryPage() {
         rooms: currentRooms,
         totalArea,
         savedAt: Date.now(),
+        canvasItemId: objectFilmId,
         ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
       };
       setSavedObjects(prev => [...prev, savedObj]);
+      setObjectFilmId(null);
       setRooms([]);
       setObjectName("");
       setActiveObjectId(null);
@@ -2049,6 +2066,7 @@ export default function ZameryPage() {
     setShowHistory(false);
     activeObjectIdRef.current = obj.id;
     setActiveObjectId(obj.id);
+    setObjectFilmId(obj.canvasItemId ?? null);
   }
 
   // ── Delete from history ──
@@ -2320,6 +2338,49 @@ export default function ZameryPage() {
     }
   }
 
+  /** Выбор на комнату важнее выбора на объект. В КП плёнка объекта уходит как выбор комнаты. */
+  function estimateVariantOverrides(room: Room): { variantOverrides?: Record<string, string> } {
+    // Плёнка комнаты удалена из прайса: действует выбор на объект, как в приложении.
+    const roomFilm = room.variantOverrides?.canvas;
+    const roomFilmGone = !!roomFilm && canvasFilms.length > 0 && !canvasFilms.some(f => f.key === roomFilm);
+    if (objectFilmId && (!roomFilm || roomFilmGone)) {
+      return { variantOverrides: { ...room.variantOverrides, canvas: objectFilmId } };
+    }
+    return room.variantOverrides ? { variantOverrides: room.variantOverrides } : {};
+  }
+
+  async function changeObjectFilm(key: string | null) {
+    const previous = objectFilmId;
+    setObjectFilmId(key);
+    const objectId = activeObjectIdRef.current;
+    if (!objectId) return;
+    const res = await fetch(`/api/measurements/${objectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ canvasItemId: key }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setObjectFilmId(previous);
+      alert("Не удалось сохранить плёнку на объект. Попробуйте ещё раз.");
+      return;
+    }
+    // Плёнка на объект значит на все комнаты: выборы комнат снимаем.
+    if (!key) return;
+    const withFilm = rooms.filter(r => r.variantOverrides?.canvas);
+    if (!withFilm.length) return;
+    const cleared = (r: Room) => {
+      const rest = { ...r.variantOverrides };
+      delete rest.canvas;
+      return rest;
+    };
+    setRooms(prev => prev.map(r => (r.variantOverrides?.canvas ? { ...r, variantOverrides: cleared(r) } : r)));
+    await Promise.all(withFilm.map(r => fetch(`/api/measurements/${objectId}/rooms/${r.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variantOverrides: cleared(r) }),
+    }).catch(() => null)));
+  }
+
   function handleCreateEstimate() {
     const roomInputs: RoomInput[] = rooms.map(room => {
       // Реальные размеры — bbox по вершинам полигона. Это критично для
@@ -2402,7 +2463,7 @@ export default function ZameryPage() {
         furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
         previewUrl3d: room.previewUrl3d,
-        ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
+        ...estimateVariantOverrides(room),
         ...level2Fields(room),
         ...measuredGeometry(room),
       } satisfies RoomInput;
@@ -2434,6 +2495,8 @@ export default function ZameryPage() {
         <RoomDesigner
           room={designingRoom}
           roomVariants
+          objectFilmId={objectFilmId}
+          canvasFilms={canvasFilms}
           onPreviewSaved={(url) => {
             // Обновляем designingRoom (в режиме рисования) и persist в БД, если комната уже есть в rooms
             setDesigningRoom(prev => prev ? { ...prev, previewUrl3d: url } : prev);
@@ -2508,7 +2571,7 @@ export default function ZameryPage() {
                 spotsCount: spotsOurs + spotsClient,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 ...(spotsByTypeCalc.length > 0 && { spotsByType: spotsByTypeCalc }),
-                ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
+                ...estimateVariantOverrides(room),
                 ...level2Fields(room),
         ...measuredGeometry(room),
                 spotPairsCount: spotPairsCalc,
@@ -2740,6 +2803,16 @@ export default function ZameryPage() {
                   <span className="text-2xl font-bold text-[#1e3a5f]">{totalArea} м²</span>
                   <span className="text-sm font-medium text-purple-600">P = {totalPerimeter} м</span>
                 </div>
+                {canvasFilms.length > 0 && (
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground whitespace-nowrap">Плёнка на весь объект</span>
+                    <select value={objectFilmId ?? ""} onChange={(e) => changeObjectFilm(e.target.value || null)}
+                      className="min-w-0 max-w-[220px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm">
+                      <option value="">Обычный расчёт</option>
+                      {canvasFilms.map(f => <option key={f.key} value={f.key}>{f.name}</option>)}
+                    </select>
+                  </label>
+                )}
               </div>
               <div className="flex gap-2 flex-wrap">
                 <button onClick={handleSaveObject}

@@ -11,6 +11,7 @@ import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 // Только серверно-безопасные модули: room-designer.tsx — "use client", и в
 // Next 16 его функции с сервера звать нельзя (500 в recalc-room, 27.10.2026).
 import { getVertices } from "@/lib/room-geometry";
+import { polygonMinThickness } from "@/lib/canvas-pricing";
 import { calcRoomLevel2, type Level2ElementLike } from "@/lib/level2-geometry";
 import { spotTypeKey, parseSpotTypeKey } from "@/lib/spot-types";
 import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
@@ -53,16 +54,28 @@ interface DesignerElement {
  * У обычного прямоугольника полей нет: его расчёт не меняется.
  */
 export function measuredGeometry(room: {
-  walls: number[]; angles?: number[]; area: number; perimeter: number;
+  walls: number[]; normalCorners?: boolean[]; angles?: number[]; area: number; perimeter: number;
   arcBulges?: number[]; columns?: unknown[]; cornerRadii?: number[]; cutouts?: unknown[];
-}): { measuredArea?: number; measuredPerimeter?: number } {
+}): { measuredArea?: number; measuredPerimeter?: number; measuredMinWidth?: number } {
   const rectangle = room.walls.length === 4 && (room.angles ?? []).every((a) => Math.abs(a) === 90);
   const plain = rectangle
     && !room.arcBulges?.some((b) => b)
     && !room.cornerRadii?.some((r) => r > 0)
     && !room.columns?.length
     && !room.cutouts?.length;
-  return plain ? {} : { measuredArea: room.area, measuredPerimeter: room.perimeter };
+  if (plain) return {};
+  return { measuredArea: room.area, measuredPerimeter: room.perimeter, ...minWidthFromWalls(room.walls, room.normalCorners, room.angles) };
+}
+
+/** Наименьшая ширина по стенам и углам, как считает приложение. Битая геометрия — без поля. */
+function minWidthFromWalls(walls: number[], normalCorners?: boolean[], angles?: number[]): { measuredMinWidth?: number } {
+  try {
+    // Старые замеры без углов: поворот берём из normalCorners, как при нормализации в приложении.
+    const thickness = polygonMinThickness(getVertices(walls, normalCorners ?? walls.map(() => true), angles?.length ? angles : undefined));
+    return Number.isFinite(thickness) ? { measuredMinWidth: thickness / 100 } : {};
+  } catch {
+    return {};
+  }
 }
 
 /** «2 уровня» с чертежа, как считает приложение. Вершины без замыкающего дубля. */
