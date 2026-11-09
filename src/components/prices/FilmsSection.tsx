@@ -55,6 +55,11 @@ export function FilmsSection() {
         price: Number(e.price),
       })),
     ];
+    // NaN в JSON становится null, то есть «любая ширина»: опечатку ловим здесь.
+    if (steps.some((s) => Number.isNaN(s.maxWidthCm))) {
+      toast.error("Ширину укажите числом в метрах, например 3,6");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(editing.key ? `/api/prices/films/${editing.key}` : "/api/prices/films", {
