@@ -1061,8 +1061,14 @@ export type Level2Side = {
 export type Level2Calc = {
   /** Верхнее полотно, м². */
   upperM2: number;
-  /** Площадь нижнего уровня (внутри борта у острова / со стороны lowSide у линии), м² — на столько уменьшается обычное полотно. */
+  /** Площадь внутри борта у острова / со стороны lowSide у линии, м² (для чертежа и подписей). */
   cutM2: number;
+  /**
+   * На сколько уменьшается обычное полотно (нижний уровень), м²: верх + полка. У острова это
+   * cutM2, у линии и полукруга — ДРУГАЯ сторона (QA Б6, 11.11.2026: КП вычитал нижнюю сторону и
+   * считал верхнюю дважды — полотно почти вдвое). Инвариант: полотно + верх + полка = комната.
+   */
+  canvasCutM2: number;
   /** Борт без сторон на стене, м. */
   bortM: number;
   /** Подсветка, м (0, если led выключен). */
@@ -1189,6 +1195,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
     bortM: r2(bortCm / 100),
     ledM: params.led ? r2(bortCm / 100) : 0,
     shelfM2: r2(Math.max(0, cutCm2 - upperCm2) / 10000),
+    canvasCutM2: r2(cutCm2 / 10000),
     contourM: r2(contourP / 100),
     sidesOnWall: sides.filter((s) => s.onWall).length,
     contour: D,
@@ -1225,7 +1232,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   const empty = (): Level2Calc => {
     const len = pathLength(line, false);
     return {
-      upperM2: 0, cutM2: 0, bortM: r2(len / 100), ledM: params.led ? r2(len / 100) : 0, shelfM2: 0, contourM: r2(len / 100), sidesOnWall: 0,
+      upperM2: 0, cutM2: 0, canvasCutM2: 0, bortM: r2(len / 100), ledM: params.led ? r2(len / 100) : 0, shelfM2: 0, contourM: r2(len / 100), sidesOnWall: 0,
       contour: line, contourRadii: openLineRadii(line, r, dense.isCorner), contourCorners: dense.isCorner, edgeOnWall: dense.pts.map(() => false), upper: null, upperRadii: [], upperPolygon: null, lowPolygon: [], lowWalls: [],
       sides: sidesOf(shape, dense, noWall), closed: false, warnings: [...warnings, "open_no_room"], params,
     };
@@ -1325,6 +1332,8 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
     bortM: r2(bortCm / 100),
     ledM: params.led ? r2(bortCm / 100) : 0,
     shelfM2: r2(Math.max(0, roomCm2 - lowCm2 - upperCm2) / 10000),
+    // Обычное полотно — это НИЖНЯЯ сторона (lowCm2): вычитаем всё остальное, верх + полку.
+    canvasCutM2: r2(Math.max(0, roomCm2 - lowCm2) / 10000),
     contourM: r2(bortCm / 100),
     sidesOnWall: 0,
     contour: line,
@@ -1347,6 +1356,8 @@ export type RoomLevel2 = {
   count: number;
   upperM2: number;
   cutM2: number;
+  /** Сумма canvasCutM2 — на столько уменьшается обычное полотно комнаты. */
+  canvasCutM2: number;
   bortM: number;
   ledM: number;
   /** Макс. перепад по контурам (для сводки) и признак «есть подсветка». */
@@ -1384,6 +1395,7 @@ export function calcRoomLevel2(elements: ReadonlyArray<Level2ElementLike> | null
     count: items.length,
     upperM2: sum((c) => c.upperM2),
     cutM2: sum((c) => c.cutM2),
+    canvasCutM2: sum((c) => c.canvasCutM2),
     bortM: sum((c) => c.bortM),
     ledM: sum((c) => c.ledM),
     dropCm: Math.max(...items.map((it) => it.calc.params.dropCm)),
@@ -1399,7 +1411,7 @@ export function calcRoomLevel2(elements: ReadonlyArray<Level2ElementLike> | null
  */
 export function canvasAfterLevel2(canvasM2: number, lvl: RoomLevel2 | null): { m2: number; warning: Level2Warning | null } {
   if (!lvl) return { m2: canvasM2, warning: null };
-  const rest = canvasM2 - lvl.cutM2;
+  const rest = canvasM2 - lvl.canvasCutM2;
   if (rest < -0.005) return { m2: 0, warning: "canvas_negative" };
   return { m2: r2(Math.max(0, rest)), warning: null };
 }
