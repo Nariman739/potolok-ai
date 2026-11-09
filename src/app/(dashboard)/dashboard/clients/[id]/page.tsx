@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import { ClientCard } from "./client-card";
 import type { Metadata } from "next";
 
@@ -18,8 +19,9 @@ export default async function ClientPage({
 
   const { id } = await params;
 
+  const scope = await getScope(master);
   const client = await prisma.client.findFirst({
-    where: { id, masterId: master.id, deletedAt: null },
+    where: { id, ...inScope(scope), deletedAt: null },
     include: {
       events: {
         orderBy: { createdAt: "desc" },

@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import type { Metadata } from "next";
 import { ClientsList } from "./clients-list";
 
@@ -12,8 +13,9 @@ export default async function ClientsPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
 
+  const scope = await getScope(master);
   const clients = await prisma.client.findMany({
-    where: { masterId: master.id, deletedAt: null },
+    where: { ...inScope(scope), deletedAt: null },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

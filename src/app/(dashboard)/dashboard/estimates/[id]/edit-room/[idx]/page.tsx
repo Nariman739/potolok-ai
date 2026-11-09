@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,9 @@ export default async function EditRoomPage({
   const idx = Number(idxStr);
   if (!Number.isFinite(idx) || idx < 0) notFound();
 
+  const scope = await getScope(master);
   const estimate = await prisma.estimate.findFirst({
-    where: { id, masterId: master.id, deletedAt: null },
+    where: { id, ...inScope(scope), deletedAt: null },
   });
   if (!estimate) notFound();
 

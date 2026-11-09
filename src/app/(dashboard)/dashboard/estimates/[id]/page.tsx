@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import {
   isContractConfigured,
   missingContractFields,
@@ -39,9 +40,11 @@ export default async function EstimateDetailPage({
 
   const { id } = await params;
 
+  // По компании, как и карточка клиента: иначе КП напарника из неё открывалось бы 404.
+  const scope = await getScope(master);
   const [estimate, kpBrief] = await Promise.all([
     prisma.estimate.findFirst({
-      where: { id, masterId: master.id, deletedAt: null },
+      where: { id, ...inScope(scope), deletedAt: null },
       include: { partner: { select: { amount: true, percent: true, coef: true } } },
     }),
     prisma.masterBrief.findUnique({

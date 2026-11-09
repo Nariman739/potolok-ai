@@ -27,6 +27,7 @@ import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { SubscriptionWidget } from "@/components/dashboard/subscription-widget";
 import { KpBrandingBanner } from "@/components/dashboard/kp-branding-banner";
+import { CompanyInviteBanner } from "@/components/dashboard/company-invite-banner";
 
 export const metadata = {
   title: "Дашборд",
@@ -140,6 +141,8 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{master.companyName}</p>
         )}
       </div>
+
+      <CompanyInviteBanner />
 
       <SubscriptionWidget masterId={master.id} />
 
