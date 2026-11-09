@@ -572,7 +572,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
 
   function handleElementPointerDown(id: string, e: React.PointerEvent) {
     if (e.button !== 0) return; // правая и средняя кнопки не берут элемент
-    if (dragStartRef.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
+    if (dragStartRef.current || panStart.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -616,7 +616,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   // чтобы вручную сужать длину (другой конец остаётся на месте).
   function handleSubcurtainHandlePointerDown(id: string, end: "start" | "end", e: React.PointerEvent) {
     if (e.button !== 0) return;
-    if (dragStartRef.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
+    if (dragStartRef.current || panStart.current) { e.stopPropagation(); ignoredPointers.current.add(e.pointerId); return; }
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -3158,7 +3158,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
           onWheel={handleWheel}
           onPointerDown={handlePanStart}
           onPointerMove={(e) => { handlePanMove(e); if (!isPanning) handleSVGPointerMove(e); }}
-          onPointerUp={(e) => { handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
+          onPointerUp={(e) => { if (ignoredPointers.current.delete(e.pointerId)) return; handlePanEnd(); if (!isPanning) handleSVGPointerUp(e); }}
           onPointerCancel={handleSVGPointerCancel}
           style={{ touchAction: "none", cursor: isPanning ? "grabbing" : undefined, display: viewMode === "3d" ? "none" : undefined }}
         >

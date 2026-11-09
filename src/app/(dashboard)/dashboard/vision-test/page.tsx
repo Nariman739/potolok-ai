@@ -1912,6 +1912,11 @@ export default function ZameryPage() {
   // ── Save to history ──
   async function handleSaveObject() {
     if (rooms.length === 0) return;
+    // Старая копия без расстановки: новый объект был бы пустым двойником и занял бы лимит.
+    if (!activeObjectId && rooms.some(r => r.elementsNotLoaded)) {
+      alert("Это старая копия замера без расстановки, сохранить её нельзя. Обновите страницу и откройте замер из «Сохранённых».");
+      return;
+    }
     const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
 
     // Save to server FIRST, then clear local state
@@ -2009,12 +2014,14 @@ export default function ZameryPage() {
         if (!res.ok) throw new Error(String(res.status));
       } catch {
         // Текущий остался активным: возвращаем новый обратно, чтобы активных не стало два.
-        await fetch(`/api/measurements/${obj.id}`, {
+        const rollback = await fetch(`/api/measurements/${obj.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "saved" }),
-        }).catch(() => {});
-        alert("Не удалось убрать текущий замер в сохранённые. Попробуйте ещё раз.");
+        }).catch(() => null);
+        alert(rollback?.ok
+          ? "Не удалось убрать текущий замер в сохранённые. Попробуйте ещё раз."
+          : "Не удалось переключить замеры. Обновите страницу.");
         return;
       }
       parkedCurrent = {
