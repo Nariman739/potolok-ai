@@ -40,7 +40,7 @@ export default async function ContractPublicPage({
 
   if (!estimate) notFound();
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
-  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master);
+  estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
   // Язык документа: по умолчанию язык мастера, но заказчик может переключить
   // ссылкой ?lang= — у мастера-казаха бывает русскоязычный заказчик и наоборот,

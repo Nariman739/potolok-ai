@@ -68,5 +68,10 @@ export function contractView(html: string): { css: string; body: string } {
   } else {
     body = noStyles.replace(/<head\b[\s\S]*?<\/head\s*>/i, "").replace(/<!doctype[^>]*>|<\/?html\b[^>]*>/gi, "");
   }
+  // <meta refresh> в тексте увёл бы клиента со страницы договора.
+  for (let prev = ""; prev !== body; ) {
+    prev = body;
+    body = body.replace(/<meta\b[^>]*>/gi, "");
+  }
   return { css: RESET + scopeCss(styles.join("\n").replace(/\/\*[\s\S]*?\*\//g, "")), body };
 }

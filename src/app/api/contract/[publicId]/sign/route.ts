@@ -61,7 +61,7 @@ export async function POST(
 
     // Подпись замораживает текст, который клиент видел: неподписанный договор
     // рисуется из живого шаблона, и снимок дня создания мог от него отстать.
-    const brand = await ownerBrandFor(estimate.masterId, estimate.master);
+    const brand = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
     const [ru, kk] = await Promise.all([
       renderLiveContract(estimate, brand, "ru"),
       renderLiveContract(estimate, brand, "kk"),
@@ -88,8 +88,9 @@ export async function POST(
     const signedPassport = signerPassport?.trim() || null;
     const signedAt = new Date();
 
-    await prisma.estimate.update({
-      where: { id: estimate.id },
+    // Условие в самом запросе: из двух одновременных подписей пройдёт одна.
+    const { count } = await prisma.estimate.updateMany({
+      where: { id: estimate.id, contractSignedAt: null },
       data: {
         contractSignedAt: signedAt,
         contractSignerName: signedName,
@@ -104,6 +105,9 @@ export async function POST(
         },
       },
     });
+    if (count === 0) {
+      return NextResponse.json({ error: "Договор уже подписан" }, { status: 400 });
+    }
 
     // CRM event + перевод сделки в WON
     if (estimate.clientId) {

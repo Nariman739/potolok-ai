@@ -96,14 +96,11 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
 
-  // Договор клиента: текст шаблона присылает мастер и он выводится в HTML страницы.
-  // Вместо 'unsafe-inline' — nonce: скрипты Next пройдут, скрипты из шаблона нет.
-  const nonce = pathname.startsWith("/contract/") ? btoa(crypto.randomUUID()) : null;
+  // Договор и акт клиента: текст документа выводится в HTML страницы. Внешних
+  // скриптов здесь нет (пиксель выключен), поэтому только свои и с nonce.
+  const nonce = /^\/(contract|act)\//.test(pathname) ? btoa(crypto.randomUUID()) : null;
   const contractCsp = nonce
-    ? securityHeaders["Content-Security-Policy"].replace(
-        "script-src 'self' 'unsafe-inline'",
-        `script-src 'self' 'nonce-${nonce}'`
-      )
+    ? securityHeaders["Content-Security-Policy"].replace(/script-src [^;]*/, `script-src 'self' 'nonce-${nonce}'`)
     : null;
   if (contractCsp) requestHeaders.set("Content-Security-Policy", contractCsp);
 

@@ -53,13 +53,19 @@ export async function GET(
 
     // Этот PDF рисует типовой текст и о своём шаблоне не знает. Кнопка кабинета
     // (?web=1) в таком случае открывает страницу договора с печатью.
-    if (new URL(request.url).searchParams.get("web") && estimate.contractPublicId) {
+    if (new URL(request.url).searchParams.get("web")) {
       const lang = asLang(master.language);
       const snap = estimate.contractTextSnapshot as { templateVersion?: Record<string, number | null> } | null;
       const ownTemplate = estimate.contractSignedAt
         ? snap?.templateVersion?.[lang] != null
         : !!(await activeContractTemplate(scope.ownerId, lang));
       if (ownTemplate) {
+        if (!estimate.contractPublicId) {
+          return new NextResponse("Сначала создайте договор", {
+            status: 400,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
         return NextResponse.redirect(new URL(`/contract/${estimate.contractPublicId}?print=1`, request.url));
       }
     }

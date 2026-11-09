@@ -172,7 +172,7 @@ function buildWorksTable(
       roomsSum += item.total ?? 0;
       rows += row(
         `${esc(item.itemName)} (${esc(rr.roomName)})`,
-        String(item.quantity),
+        esc(String(item.quantity)),
         esc(item.unit),
         fmtPrice(item.unitPrice, cur),
         fmtPrice(item.total, cur),
@@ -193,7 +193,7 @@ function buildWorksTable(
   for (const extra of (calc?.extraItems ?? [])) {
     rows += row(
       esc(extra.itemName),
-      String(extra.quantity ?? 1),
+      esc(String(extra.quantity ?? 1)),
       esc(extra.unit ?? t("ct.unitService")),
       fmtPrice(extra.unitPrice ?? extra.total ?? 0, cur),
       fmtPrice(extra.total ?? 0, cur),

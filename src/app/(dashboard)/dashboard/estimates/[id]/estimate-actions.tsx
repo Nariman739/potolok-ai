@@ -177,7 +177,7 @@ export function EstimateActions({
       </Button>
       {contractConfigured && (
         <Button variant="outline" size="sm" asChild>
-          <a href={`/api/estimates/${estimateId}/contract`}>
+          <a href={`/api/estimates/${estimateId}/contract?web=1`}>
             <FileText className="h-4 w-4 mr-2" />
             Договор
           </a>
