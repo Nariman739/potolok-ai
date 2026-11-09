@@ -220,6 +220,50 @@ function turnAt(pts: Pt[], i: number, orient: 1 | -1): number {
 }
 
 /**
+ * Поворот в вершине i по ближайшим НЕСОВПАДАЮЩИМ соседям (после обрезки офсета у конца
+ * дуги несколько точек стоят в одном месте — ребро нулевой длины не даёт направления).
+ */
+function turnAtD(pts: Pt[], i: number, orient: 1 | -1, closed = true): number {
+  const n = pts.length;
+  const c = pts[i];
+  let p: Pt | null = null, q: Pt | null = null;
+  for (let k = 1; k < n; k++) {
+    const j = i - k;
+    if (!closed && j < 0) break;
+    const cand = pts[((j % n) + n) % n];
+    if (Math.hypot(cand.x - c.x, cand.y - c.y) > 1e-6) { p = cand; break; }
+  }
+  for (let k = 1; k < n; k++) {
+    const j = i + k;
+    if (!closed && j > n - 1) break;
+    const cand = pts[j % n];
+    if (Math.hypot(cand.x - c.x, cand.y - c.y) > 1e-6) { q = cand; break; }
+  }
+  if (!p || !q) return 0;
+  const a1 = Math.atan2(c.y - p.y, c.x - p.x), a2 = Math.atan2(q.y - c.y, q.x - c.x);
+  let t = a2 - a1;
+  while (t > Math.PI) t -= 2 * Math.PI;
+  while (t < -Math.PI) t += 2 * Math.PI;
+  return t * orient;
+}
+
+/** Длина ломаной от вершины i до ближайшего угла (corners) назад (dir −1) или вперёд (+1). */
+function runToCorner(pts: Pt[], i: number, dir: 1 | -1, closed: boolean, corners?: boolean[]): number {
+  const n = pts.length;
+  let len = 0, j = i;
+  for (let k = 0; k < n; k++) {
+    const nj = j + dir;
+    if (!closed && (nj < 0 || nj > n - 1)) break;
+    const a = pts[((j % n) + n) % n], b = pts[((nj % n) + n) % n];
+    len += Math.hypot(b.x - a.x, b.y - a.y);
+    j = nj;
+    const jj = ((j % n) + n) % n;
+    if (!corners || corners[jj] || (!closed && (jj === 0 || jj === n - 1))) break;
+  }
+  return len;
+}
+
+/**
  * Точки дуги сегмента a→b со стрелкой h, в сторону нормали `side` (+1 — слева по
  * ходу при y вниз, −1 — справа), без концов. Та же геометрия, что у дуг стен
  * (arcGeometry/arcPointAt в room-geometry), включая дугу больше полукруга.
@@ -314,11 +358,12 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
     if (!closed && (i === 0 || i === n - 1)) return 0;
     if (corners && !corners[i]) return 0;
     if (onWall && (onWall[i] || onWall[(i - 1 + n) % n])) return 0;
-    const phi = turnAt(pts, i, orient);
+    const phi = turnAtD(pts, i, orient, closed);
     if (Math.abs(phi) <= 1e-9) return 0;
     if (!concaveToo && phi <= 0) return 0;
-    const p = pts[(i - 1 + n) % n], c = pts[i], q = pts[(i + 1) % n];
-    const l1 = Math.hypot(c.x - p.x, c.y - p.y), l2 = Math.hypot(q.x - c.x, q.y - c.y);
+    // Предел — половина пути до соседнего угла (у дуги — вся дуга, не её короткое ребро;
+    // ревью 09.11.2026: волна рядом с углом обнуляла R20 соседних углов).
+    const l1 = runToCorner(pts, i, -1, closed, corners), l2 = runToCorner(pts, i, 1, closed, corners);
     const tan = Math.tan(Math.abs(phi) / 2);
     return Math.max(0, Math.min(r, l1 / 2 / tan, l2 / 2 / tan));
   });
@@ -334,7 +379,7 @@ export function roundingByRadii(pts: Pt[], radii: number[]): { dP: number; dA: n
   for (let i = 0; i < pts.length; i++) {
     const rr = radii[i];
     if (!rr || rr <= 0) continue;
-    const phi = Math.abs(turnAt(pts, i, orient));
+    const phi = Math.abs(turnAtD(pts, i, orient));
     const tan = Math.tan(phi / 2);
     dP -= rr * (2 * tan - phi);
     dA -= rr * rr * (tan - phi / 2);
@@ -359,7 +404,7 @@ function openRoundingShift(line: Pt[], radii: number[]): { dP: number; areaToLef
   for (let i = 1; i < line.length - 1; i++) {
     const rr = radii[i];
     if (!rr || rr <= 0) continue;
-    const phi = turnAt(line, i, 1);
+    const phi = turnAtD(line, i, 1, false);
     const a = Math.abs(phi), tan = Math.tan(a / 2);
     dP -= rr * (2 * tan - a);
     const moved = rr * rr * (tan - a / 2);
@@ -405,6 +450,59 @@ export function offsetInward(pts: Pt[], d: number): Pt[] {
 }
 
 /**
+ * Обрезка «усов» офсета у конца дуги (ревью 09.11.2026): точки дуги рядом с выпуклым углом
+ * при сдвиге уходят за линию полки соседней стороны — кромка полки шла по диагонали к углу,
+ * ореол LED вылезал за борт. Для каждого выпуклого угла c: точки дуги перед ним, лежащие
+ * снаружи сдвинутой линии ребра c→c+1, сводятся в точку пересечения с этой линией (и
+ * симметрично после угла). Индексы сохраняются (точки совпадают) — маски рёбер не едут.
+ * corners — настоящие вершины (по ним идём только через точки дуг).
+ */
+export function clipOffsetOvershoot(src: Pt[], dst: Pt[], corners: boolean[]): Pt[] {
+  const n = src.length;
+  if (n < 3 || dst.length !== n) return dst;
+  const out = dst.map((p) => ({ ...p }));
+  const orient: 1 | -1 = signedArea(src) >= 0 ? 1 : -1;
+  const cvOrient: 1 | -1 = signedArea(src) < 0 ? -1 : 1;
+  const inN = (a: Pt, b: Pt) => {
+    const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1;
+    return { x: (-orient * dy) / l, y: (orient * dx) / l };
+  };
+  const side = (pt: Pt, o: Pt, nrm: Pt) => (pt.x - o.x) * nrm.x + (pt.y - o.y) * nrm.y;
+  const cut = (a: Pt, b: Pt, o: Pt, nrm: Pt): Pt | null => {
+    const sa = side(a, o, nrm), sb = side(b, o, nrm);
+    if (sa === sb) return null;
+    const t = sa / (sa - sb);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  };
+  for (let c = 0; c < n; c++) {
+    if (!corners[c] || turnAtD(src, c, cvOrient) <= 1e-6) continue;
+    // Назад: линия полки ребра c→c+1.
+    {
+      const nrm = inN(src[c], src[(c + 1) % n]);
+      const o = dst[c];
+      let j = (c - 1 + n) % n, steps = 0;
+      while (!corners[j] && side(out[j], o, nrm) < -1e-6 && steps < n) { j = (j - 1 + n) % n; steps++; }
+      if (steps > 0 && side(out[j], o, nrm) >= -1e-6) {
+        const X = cut(out[j], out[(j + 1) % n], o, nrm);
+        if (X) for (let k = 1; k <= steps + 1; k++) out[(j + k) % n] = { ...X };
+      }
+    }
+    // Вперёд: линия полки ребра c−1→c.
+    {
+      const nrm = inN(src[(c - 1 + n) % n], src[c]);
+      const o = dst[c];
+      let j = (c + 1) % n, steps = 0;
+      while (!corners[j] && side(out[j], o, nrm) < -1e-6 && steps < n) { j = (j + 1) % n; steps++; }
+      if (steps > 0 && side(out[j], o, nrm) >= -1e-6) {
+        const X = cut(out[(j - 1 + n) % n], out[j], o, nrm);
+        if (X) for (let k = 0; k <= steps; k++) out[(c + k) % n] = { ...X };
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Сдвиг не вывернулся: ориентация та же и каждое сдвинутое ребро смотрит туда же,
  * куда исходное (ревью 08.11.2026: ромб 60° со стороной 22 и треугольник 30-30-42
  * при полке 10 проходили проверку «сторона ≥ 2w», а офсет выворачивался).
@@ -420,6 +518,8 @@ export function offsetIsValid(src: Pt[], dst: Pt[], closed: boolean, edgeMask?: 
     // Короткие рёбра плотной ломаной у стыка дуги с прямой стороной при miter-сдвиге
     // локально выворачиваются (петелька в десятки см²) — это не схлопнувшаяся сторона.
     if (minEdge > 0 && Math.hypot(sx, sy) < minEdge) continue;
+    // Ребро, схлопнутое обрезкой у конца дуги (clipOffsetOvershoot), — не вывернутое.
+    if (Math.hypot(dst[j].x - dst[i].x, dst[j].y - dst[i].y) < 1e-6) continue;
     const dot = sx * (dst[j].x - dst[i].x) + sy * (dst[j].y - dst[i].y);
     if (dot <= 0) return false;
   }
@@ -524,27 +624,69 @@ export function distToPath(p: Pt, pts: Pt[], closed: boolean): number {
 export function level2Path(pts: Pt[], radii: number[], closed: boolean): string {
   const n = pts.length;
   if (n < 2) return "";
-  const at = (i: number) => pts[((i % n) + n) % n];
-  const along = (from: Pt, to: Pt, dist: number) => {
-    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-    return { x: from.x + ((to.x - from.x) / len) * dist, y: from.y + ((to.y - from.y) / len) * dist };
-  };
-  const rAt = (i: number) => (closed || (i > 0 && i < n - 1) ? radii[((i % n) + n) % n] || 0 : 0);
   const f = (v: number) => v.toFixed(1);
-  const startR = rAt(0);
-  const start = startR > 0 ? along(at(0), at(1), startR) : at(0);
-  let d = `M ${f(start.x)} ${f(start.y)}`;
-  const segs = closed ? n : n - 1;
-  for (let i = 0; i < segs; i++) {
-    const next = at(i + 1);
-    const rNext = rAt(i + 1);
-    const hasAfter = closed || i + 2 <= n - 1;
-    const endPoint = rNext > 0 && hasAfter ? along(next, at(i), rNext) : next;
-    d += ` L ${f(endPoint.x)} ${f(endPoint.y)}`;
-    if (rNext > 0 && hasAfter) {
-      const after = along(next, at(i + 2), rNext);
-      d += ` Q ${f(next.x)} ${f(next.y)} ${f(after.x)} ${f(after.y)}`;
+  const idx = (i: number) => ((i % n) + n) % n;
+  const rAt = (i: number) => (closed || (i > 0 && i < n - 1) ? radii[idx(i)] || 0 : 0);
+  /** Точка на расстоянии dist от вершины i вдоль ломаной (dir −1 назад, +1 вперёд); k — последняя пройденная вершина. */
+  const walk = (i: number, dir: 1 | -1, dist: number): { p: Pt; k: number } => {
+    let left = dist, j = i;
+    for (let s = 0; s < n; s++) {
+      const nj = j + dir;
+      if (!closed && (nj < 0 || nj > n - 1)) break;
+      const a = pts[idx(j)], b = pts[idx(nj)];
+      const l = Math.hypot(b.x - a.x, b.y - a.y);
+      if (l >= left) {
+        const t = l > 0 ? left / l : 0;
+        return { p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, k: j };
+      }
+      left -= l;
+      j = nj;
     }
+    return { p: { ...pts[idx(j)] }, k: j };
+  };
+  // Скругление угла: касательные точки на расстоянии r·tan(φ/2) вдоль ломаной (у дуги —
+  // по её точкам, ревью 09.11.2026), точки внутри этого участка выпадают.
+  type Fil = { a: Pt; b: Pt; from: number; to: number };
+  const fil: (Fil | null)[] = pts.map(() => null);
+  const skip: boolean[] = pts.map(() => false);
+  for (let i = 0; i < n; i++) {
+    const r = rAt(i);
+    if (r <= 0) continue;
+    const phi = Math.abs(turnAtD(pts, i, 1, closed));
+    if (phi <= 1e-9) continue;
+    const t = r * Math.tan(phi / 2);
+    const back = walk(i, -1, t), fwd = walk(i, 1, t);
+    fil[i] = { a: back.p, b: fwd.p, from: back.k, to: fwd.k };
+    for (let j = i - 1; j > back.k; j--) if (closed || j >= 0) skip[idx(j)] = true;
+    for (let j = i + 1; j < fwd.k; j++) if (closed || j <= n - 1) skip[idx(j)] = true;
+  }
+  let s0 = 0;
+  if (closed) {
+    s0 = -1;
+    for (let i = 0; i < n; i++) if (!skip[i] && !fil[i]) { s0 = i; break; }
+    if (s0 < 0) {
+      // Все вершины скруглены: стартуем с конца скругления вершины 0.
+      const f0 = fil[0]!;
+      let d = `M ${f(f0.b.x)} ${f(f0.b.y)}`;
+      for (let k = 1; k <= n; k++) {
+        const i = idx(k);
+        if (skip[i]) continue;
+        const fi = fil[i];
+        if (fi) d += ` L ${f(fi.a.x)} ${f(fi.a.y)} Q ${f(pts[i].x)} ${f(pts[i].y)} ${f(fi.b.x)} ${f(fi.b.y)}`;
+        else d += ` L ${f(pts[i].x)} ${f(pts[i].y)}`;
+      }
+      return `${d} Z`;
+    }
+  }
+  let d = `M ${f(pts[s0].x)} ${f(pts[s0].y)}`;
+  const last = closed ? n : n - 1;
+  for (let k = 1; k <= last; k++) {
+    if (closed && k === n) break;
+    const i = idx(s0 + k);
+    if (skip[i]) continue;
+    const fi = fil[i];
+    if (fi) d += ` L ${f(fi.a.x)} ${f(fi.a.y)} Q ${f(pts[i].x)} ${f(pts[i].y)} ${f(fi.b.x)} ${f(fi.b.y)}`;
+    else d += ` L ${f(pts[i].x)} ${f(pts[i].y)}`;
   }
   return closed ? `${d} Z` : d;
 }
@@ -740,7 +882,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
   let upperRadii: number[] = [];
   let upperCm2 = cutCm2;
   if (w > 0) {
-    const U = offsetEdgesInward(D, onWall.map((ow) => (ow ? 0 : w)));
+    const U = clipOffsetOvershoot(D, offsetEdgesInward(D, onWall.map((ow) => (ow ? 0 : w))), dense.isCorner);
     if (offsetIsValid(D, U, true, undefined, 2 * w)) {
       upper = U;
       upperRadii = level2CornerRadii(U, Math.max(0, r - w), onWall, dense.isCorner);
@@ -858,7 +1000,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   let upperCm2 = roomCm2 - lowCm2;
   if (w > 0 && upPoly.length >= 3) {
     const lineEdges = upPoly.map((_, i) => i < n - 1);
-    const U = offsetEdgesInward(upPoly, lineEdges.map((isLine) => (isLine ? w : 0)));
+    const U = clipOffsetOvershoot(upPoly, offsetEdgesInward(upPoly, lineEdges.map((isLine) => (isLine ? w : 0))), upPoly.map((_, i) => (i < n ? dense.isCorner[i] : true)));
     if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w)) {
       upperPolygon = U;
       upper = U.slice(0, n);
