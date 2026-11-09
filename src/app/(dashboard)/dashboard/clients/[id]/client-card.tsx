@@ -31,6 +31,7 @@ import {
   SOURCE_LABELS,
   EVENT_LABELS,
   MANUAL_EVENT_TYPES,
+  PICKABLE_STATUSES,
   type DealStatusKey,
   type ClientSourceKey,
   type EventTypeKey,
@@ -38,8 +39,9 @@ import {
 import { PhotoGallery, type ObjectPhoto, type PhotoCategoryKey } from "@/components/clients/photo-gallery";
 import { useCurrency } from "@/components/currency-provider";
 import { AddEntryDialog } from "../../calendar/add-entry-dialog";
-import { almatyDay, almatyTime, dayTitle, type CalendarKind, type PlanMoment } from "@/lib/crm-calendar";
+import { dayTitle, plannedAt, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
+import { useClock } from "@/components/use-clock";
 
 type Client = {
   id: string;
@@ -90,28 +92,6 @@ type Contract = {
   total: number;
 };
 
-const STATUSES: DealStatusKey[] = [
-  "NEW",
-  "QUALIFIED",
-  "PROPOSAL_SENT",
-  "NEGOTIATING",
-  "WON",
-  "LOST",
-];
-
-// По Астане и на сервере (UTC), и в браузере — иначе разметка не сходится при гидратации
-function formatDate(iso: string) {
-  return new Date(`${almatyDay(new Date(iso))}T00:00:00Z`).toLocaleDateString("ru-RU", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-  });
-}
-
-function formatDateTime(iso: string) {
-  return formatDate(iso) + ", " + almatyTime(new Date(iso));
-}
-
 const ESTIMATE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Черновик",
   SENT: "Отправлено",
@@ -133,7 +113,7 @@ export function ClientCard({
 }: {
   client: Client;
   planClient: CalendarClient;
-  nearest: { measure: PlanMoment | null; install: PlanMoment | null };
+  nearest: { measure: string | null; install: string | null };
   events: Event[];
   estimates: Estimate[];
   measurements: Measurement[];
@@ -152,6 +132,25 @@ export function ClientCard({
   const [saving, setSaving] = useState(false);
   const [planDay, setPlanDay] = useState<string | null>(null);
   const [planKind, setPlanKind] = useState<CalendarKind>("measure");
+  const [planTime, setPlanTime] = useState("10:00");
+  const clock = useClock();
+
+  function formatDate(iso: string) {
+    return new Date(`${clock.day(new Date(iso))}T00:00:00Z`).toLocaleDateString("ru-RU", {
+      timeZone: "UTC",
+      day: "2-digit",
+      month: "short",
+    });
+  }
+
+  function formatDateTime(iso: string) {
+    return formatDate(iso) + ", " + clock.time(new Date(iso));
+  }
+
+  function nearestText(iso: string) {
+    const d = new Date(iso);
+    return `${dayTitle(clock.day(d))} в ${clock.time(d)}`;
+  }
 
   // Запись из диалога приходит с сервера через router.refresh
   useEffect(() => setEvents(initialEvents), [initialEvents]);
@@ -170,7 +169,8 @@ export function ClientCard({
   const lastEvent = events[0];
 
   async function changeStatus(status: DealStatusKey) {
-    if (status === client.status) return;
+    // Старые статусы показываются как «В работе» — повторный тап их не перезаписывает
+    if (STATUS_LABELS[status] === STATUS_LABELS[client.status]) return;
     setClient((c) => ({ ...c, status }));
     try {
       const res = await fetch(`/api/clients/${client.id}`, {
@@ -267,8 +267,11 @@ export function ClientCard({
   }
 
   function openPlan(kind: CalendarKind) {
+    const current = plannedAt(planClient, kind);
+    const upcoming = current && new Date(current).getTime() > Date.now() ? new Date(current) : null;
     setPlanKind(kind);
-    setPlanDay(almatyDay(new Date()));
+    setPlanTime(upcoming ? clock.time(upcoming) : "10:00");
+    setPlanDay(clock.day(upcoming ?? new Date()));
   }
 
   function copyContractLink(publicId: string) {
@@ -355,22 +358,22 @@ export function ClientCard({
               <div className="space-y-2">
                 {nearest.measure && (
                   <p data-nearest="measure" className="text-sm">
-                    Замер: <span className="font-medium">{dayTitle(nearest.measure.day)} в {nearest.measure.time}</span> по Астане
+                    Замер: <span className="font-medium">{nearestText(nearest.measure)}</span>{clock.local ? "" : " по Астане"}
                   </p>
                 )}
                 {nearest.install && (
                   <p data-nearest="install" className="text-sm">
-                    Монтаж: <span className="font-medium">{dayTitle(nearest.install.day)} в {nearest.install.time}</span> по Астане
+                    Монтаж: <span className="font-medium">{nearestText(nearest.install)}</span>{clock.local ? "" : " по Астане"}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => openPlan("measure")}>
                     <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                    Назначить замер
+                    {planClient.measureAt ? `Перенести замер · ${formatDateTime(planClient.measureAt)}` : "Назначить замер"}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openPlan("install")}>
                     <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                    Назначить монтаж
+                    {nearest.install ? `Перенести монтаж · ${formatDateTime(nearest.install)}` : "Назначить монтаж"}
                   </Button>
                 </div>
               </div>
@@ -378,8 +381,8 @@ export function ClientCard({
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Сменить статус</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {STATUSES.map((s) => {
-                    const active = client.status === s;
+                  {PICKABLE_STATUSES.map((s) => {
+                    const active = STATUS_LABELS[client.status] === STATUS_LABELS[s];
                     return (
                       <button
                         key={s}
@@ -477,7 +480,7 @@ export function ClientCard({
       </Card>
 
       <Tabs defaultValue="overview">
-        <TabsList className="flex flex-wrap h-auto justify-start">
+        <TabsList className="flex flex-wrap group-data-[orientation=horizontal]/tabs:h-auto justify-start">
           <TabsTrigger value="overview">Обзор</TabsTrigger>
           <TabsTrigger value="events">События ({events.length})</TabsTrigger>
           <TabsTrigger value="measurements">
@@ -827,6 +830,7 @@ export function ClientCard({
         day={planDay}
         fixedClient={planClient}
         initialKind={planKind}
+        initialTime={planTime}
         onClose={() => setPlanDay(null)}
       />
     </div>

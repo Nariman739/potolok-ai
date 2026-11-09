@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { inScope, type Scope } from "./company";
-import { buildCalendarEntries, monthGrid, type CalendarEntry } from "./crm-calendar";
+import { buildCalendarEntries, monthGrid, plannedEvents, type CalendarEntry } from "./crm-calendar";
 
 const CLIENT_SELECT = { id: true, name: true, address: true, masterId: true } as const;
 
@@ -13,6 +13,11 @@ export type CalendarClient = {
   /** Самый новый объект: дата монтажа пишется в него, как с доски */
   objectId: string | null;
   installAt: string | null;
+  objectAddress: string | null;
+  objectCount: number;
+  /** Ближайшие будущие события: новое назначение переносит их, а не добавляет второе */
+  measureAt: string | null;
+  installEventAt: string | null;
 };
 
 export async function getCalendarClients(scope: Scope): Promise<CalendarClient[]> {
@@ -29,14 +34,22 @@ export async function getCalendarClients(scope: Scope): Promise<CalendarClient[]
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { id: true, installAt: true },
+        select: { id: true, installAt: true, address: true },
+      },
+      _count: { select: { measurements: { where: { deletedAt: null } } } },
+      events: {
+        where: { type: { in: ["MEASUREMENT", "INSTALL"] }, scheduledAt: { gt: new Date() } },
+        select: { type: true, scheduledAt: true },
       },
     },
   });
-  return clients.map(({ measurements, ...c }) => ({
+  return clients.map(({ measurements, events, _count, ...c }) => ({
     ...c,
     objectId: measurements[0]?.id ?? null,
     installAt: measurements[0]?.installAt?.toISOString() ?? null,
+    objectAddress: measurements[0]?.address ?? null,
+    objectCount: _count.measurements,
+    ...plannedEvents(events),
   }));
 }
 

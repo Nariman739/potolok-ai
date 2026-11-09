@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dayTitle, monthTitle, shiftMonth, type CalendarEntry } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
-import { AddEntryDialog } from "./add-entry-dialog";
+import { useClock } from "@/components/use-clock";
+import { AddEntryDialog, type PlanTarget } from "./add-entry-dialog";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const CELL_LIMIT = 3;
@@ -21,7 +22,7 @@ function entryClass(e: CalendarEntry) {
   return e.done ? "text-blue-900/55 hover:bg-blue-50" : "bg-blue-100 text-blue-900 hover:bg-blue-200";
 }
 
-function Entry({ entry }: { entry: CalendarEntry }) {
+function Entry({ entry, onEdit }: { entry: CalendarEntry; onEdit?: (e: CalendarEntry) => void }) {
   const body = (
     <>
       <span className="font-medium">{entry.time}</span> {entry.label}
@@ -39,23 +40,52 @@ function Entry({ entry }: { entry: CalendarEntry }) {
       </div>
     );
   }
-  return (
+  const link = (
     <Link
       href={`/dashboard/clients/${entry.clientId}`}
       title={entry.label}
       onClick={(e) => e.stopPropagation()}
-      className={className}
+      className={onEdit ? `${className} min-w-0 flex-1` : className}
     >
       {body}
     </Link>
   );
+  if (!onEdit) return link;
+  return (
+    <div className="flex items-center gap-0.5">
+      {link}
+      <button
+        type="button"
+        data-edit={entry.id}
+        aria-label="Перенести или отменить"
+        title="Перенести или отменить"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit(entry);
+        }}
+        className="flex-shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// Перенести можно будущую запись-план; замер из объекта — это факт, его дату не двигаем
+function isPlanned(e: CalendarEntry) {
+  return !e.done && !!e.clientId && (e.id.startsWith("e:") || e.id.startsWith("i:"));
+}
+
+function targetOf(e: CalendarEntry): PlanTarget {
+  const id = e.id.slice(2);
+  return e.id.startsWith("e:") ? { at: e.at, eventId: id } : { at: e.at, objectId: id, objectLabel: e.label };
 }
 
 export function CalendarView({
   month,
   days,
-  today,
-  entries,
+  today: almatyToday,
+  entries: serverEntries,
   clients,
   isTeam,
 }: {
@@ -69,7 +99,21 @@ export function CalendarView({
   const [onlyMine, setOnlyMine] = useState(false);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [addDay, setAddDay] = useState<string | null>(null);
+  const [editing, setEditing] = useState<CalendarEntry | null>(null);
+  const clock = useClock();
+  const today = clock.local ? clock.day(new Date()) : almatyToday;
   const defaultDay = today.startsWith(month) ? today : `${month}-01`;
+
+  // Сервер раскладывает по Астане; мастеру из России — по его времени
+  const entries = useMemo(
+    () =>
+      clock.local
+        ? serverEntries.map((e) => ({ ...e, day: clock.day(new Date(e.at)), time: clock.time(new Date(e.at)) }))
+        : serverEntries,
+    [serverEntries, clock],
+  );
+  const clientFor = (e: CalendarEntry) => clients.find((c) => c.id === e.clientId);
+  const editHandler = (e: CalendarEntry) => (isPlanned(e) && clientFor(e) ? setEditing : undefined);
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarEntry[]>();
@@ -120,7 +164,7 @@ export function CalendarView({
             <span className="h-2.5 w-2.5 rounded-sm border border-muted-foreground/40" />
             Прошло — бледнее
           </span>
-          <span>Время по Астане</span>
+          {!clock.local && <span>Время по Астане</span>}
         </div>
         <Button onClick={() => setAddDay(defaultDay)} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
           <Plus className="h-4 w-4 mr-2" />
@@ -162,7 +206,7 @@ export function CalendarView({
                   {Number(day.slice(8))}
                 </div>
                 {shown.map((e) => (
-                  <Entry key={e.id} entry={e} />
+                  <Entry key={e.id} entry={e} onEdit={editHandler(e)} />
                 ))}
                 {list.length > shown.length && (
                   <button
@@ -191,7 +235,7 @@ export function CalendarView({
           <div key={day} className="space-y-1">
             <p className={`text-sm font-medium ${day === today ? "text-[#1e3a5f]" : ""}`}>{dayTitle(day)}</p>
             {byDay.get(day)!.map((e) => (
-              <Entry key={e.id} entry={e} />
+              <Entry key={e.id} entry={e} onEdit={editHandler(e)} />
             ))}
           </div>
         ))}
@@ -204,13 +248,31 @@ export function CalendarView({
           </DialogHeader>
           <div className="max-h-[60vh] space-y-1 overflow-y-auto">
             {(openDay ? byDay.get(openDay) ?? [] : []).map((e) => (
-              <Entry key={e.id} entry={e} />
+              <Entry
+                key={e.id}
+                entry={e}
+                onEdit={
+                  editHandler(e) &&
+                  ((x) => {
+                    setOpenDay(null);
+                    setEditing(x);
+                  })
+                }
+              />
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
       <AddEntryDialog day={addDay} clients={clients} onClose={() => setAddDay(null)} />
+      <AddEntryDialog
+        day={editing?.day ?? null}
+        fixedClient={editing ? clientFor(editing) : undefined}
+        target={editing ? targetOf(editing) : undefined}
+        initialKind={editing?.kind}
+        initialTime={editing?.time}
+        onClose={() => setEditing(null)}
+      />
     </div>
   );
 }
