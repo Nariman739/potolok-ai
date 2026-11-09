@@ -2469,7 +2469,9 @@ export default function ZameryPage() {
       } satisfies RoomInput;
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
-    router.push("/dashboard/calculator?from=vision");
+    localStorage.setItem("vision-rooms-source", activeObjectId ?? "");
+    // Весь замер заменяет черновик. ?from=vision — добавить комнату в черновик калькулятора.
+    router.push("/dashboard/calculator?from=measurement");
   }
 
   if (loading) {
