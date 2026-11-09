@@ -17,6 +17,7 @@ import {
   Users,
   Crown,
   Trash2,
+  Palette,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -31,6 +32,9 @@ const navItems = [
   { href: "/dashboard/quick-estimate", label: "Быстрое КП", icon: Zap },
   { href: "/dashboard/portfolio", label: "Портфолио", icon: ImageIcon },
   { href: "/dashboard/prices", label: "Цены", icon: DollarSign },
+  // «Дизайн КП» (09.11.2026): страница была только по баннеру на главной —
+  // мастер с сайта (Андрей, «Небо в подарок») не нашёл, где настраивать КП.
+  { href: "/dashboard/branding", label: "Дизайн КП", icon: Palette },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
   { href: "/dashboard/trash", label: "Корзина", icon: Trash2 },
 ];
