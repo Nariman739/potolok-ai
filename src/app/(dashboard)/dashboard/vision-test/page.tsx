@@ -498,6 +498,9 @@ interface Room {
   area: number;
   perimeter: number;
   elements?: RoomElement[];
+  /** Комната пришла без elements (старая копия из localStorage): на сервере они могут быть,
+   *  поэтому в PATCH поле не отправляем, иначе затрём расстановку пустым массивом. */
+  elementsNotLoaded?: boolean;
   photoUrls?: string[];     // Фото потолка комнаты
   previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
 }
@@ -1737,6 +1740,10 @@ export default function ZameryPage() {
               columns: (r.columns as RoomColumn[]) ?? [],
               area: r.area,
               perimeter: r.perimeter,
+              // Без этих полей открытый из «Сохранённых» замер приходил пустым,
+              // а «Готово» затирало расстановку на сервере (09.11.2026).
+              elements: (r.elements as RoomElement[]) || [],
+              previewUrl3d: r.previewUrl3d,
               photoUrls: (r.photoUrls as string[]) || [],
             })),
           })));
@@ -1850,12 +1857,15 @@ export default function ZameryPage() {
             columns: updated.columns,
             area: updated.area,
             perimeter: updated.perimeter,
-            elements: updated.elements || [],
+            // Не загружено — не отправляем: пустой массив стёр бы элементы на сервере.
+            ...(!updated.elementsNotLoaded && { elements: updated.elements || [] }),
             previewUrl3d: updated.previewUrl3d,
           }),
         });
         if (!res.ok) {
           alert("Не удалось сохранить изменения комнаты. Попробуйте ещё раз.");
+        } else if (updated.elementsNotLoaded && (updated.elements?.length ?? 0) > 0) {
+          alert("Элементы этой комнаты не были загружены, поэтому расстановка не сохранена. Обновите страницу и откройте замер снова.");
         }
       } catch {
         alert("Ошибка сохранения. Проверьте интернет.");
@@ -1910,7 +1920,7 @@ export default function ZameryPage() {
             status: "saved",
             ...(activeClientId && { clientId: activeClientId }),
             ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
-            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter })),
+            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, elements: r.elements || [] })),
           }),
         });
         if (!res.ok) throw new Error("Ошибка сохранения");
@@ -1951,15 +1961,33 @@ export default function ZameryPage() {
       if (!confirm("Заменить текущие замеры на этот объект?")) return;
     }
 
-    // Delete current active on server
+    // Текущий активный замер не удаляем, а убираем в сохранённые как есть:
+    // раньше здесь был DELETE, и замер уходил в корзину (09.11.2026).
     const currentObjId = activeObjectIdRef.current;
-    if (currentObjId) {
+    let parkedCurrent: SavedObject | null = null;
+    if (currentObjId && currentObjId !== obj.id) {
       try {
-        await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
-      } catch { /* non-critical */ }
+        const res = await fetch(`/api/measurements/${currentObjId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "saved" }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+      } catch {
+        alert("Не удалось убрать текущий замер в сохранённые. Попробуйте ещё раз.");
+        return;
+      }
+      parkedCurrent = {
+        id: currentObjId,
+        address: objectName,
+        rooms,
+        totalArea: Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100,
+        savedAt: Date.now(),
+        clientId: activeClientId,
+      };
     }
 
-    setRooms(obj.rooms);
+    setRooms(obj.rooms.map(r => (r.elements === undefined ? { ...r, elementsNotLoaded: true } : r)));
     setObjectName(obj.address);
     if (obj.client) {
       setActiveClientId(obj.client.id);
@@ -1970,7 +1998,7 @@ export default function ZameryPage() {
       setActiveClientName(null);
       setActiveClientPhone(null);
     }
-    setSavedObjects(prev => prev.filter(o => o.id !== obj.id));
+    setSavedObjects(prev => [...prev.filter(o => o.id !== obj.id), ...(parkedCurrent ? [parkedCurrent] : [])]);
     setShowHistory(false);
 
     // Change resumed object status to active
