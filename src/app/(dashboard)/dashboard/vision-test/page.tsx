@@ -1965,7 +1965,12 @@ export default function ZameryPage() {
     // раньше здесь был DELETE, и замер уходил в корзину (09.11.2026).
     const currentObjId = activeObjectIdRef.current;
     let parkedCurrent: SavedObject | null = null;
-    if (currentObjId && currentObjId !== obj.id) {
+    if (currentObjId && currentObjId !== obj.id && rooms.length === 0) {
+      // Пустой замер строкой в сохранённых не нужен: в корзину, как раньше.
+      try {
+        await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
+      } catch { /* non-critical */ }
+    } else if (currentObjId && currentObjId !== obj.id) {
       try {
         const res = await fetch(`/api/measurements/${currentObjId}`, {
           method: "PATCH",

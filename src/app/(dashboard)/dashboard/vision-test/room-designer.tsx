@@ -454,8 +454,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   // Fixture width editor (doors/windows)
   const [fixtureEditor, setFixtureEditor] = useState<{ elId: string; width: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const pointerHandled = useRef(false);
-  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean; handle?: "start" | "end" } | null>(null);
+  const dragStartRef = useRef<{ id: string; cx: number; cy: number; moved: boolean; handle?: "start" | "end"; grabDx?: number; grabDy?: number } | null>(null);
+  const lastPointerType = useRef<string>("touch");
 
   const vertices = getVertices(editableWalls, room.normalCorners, room.angles);
 
@@ -488,7 +488,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   // Grid snapping for spots
   const gridSize = roomSize * 0.02;
   function snapToGrid(val: number): number {
-    return Math.round(val / gridSize) * gridSize;
+    // Мышью ставим точно под курсор (шаг 1 см), сетка осталась для пальца.
+    const step = lastPointerType.current === "mouse" ? 1 : gridSize;
+    return Math.round(val / step) * step;
   }
 
   // Scale factors
@@ -510,8 +512,14 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     // это давало эффект «нажимаешь ниже, попадает выше» при долгой работе.
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return null;
-    const localX = ((clientX - rect.left) / rect.width) * vbW + vbX;
-    const localY = ((clientY - rect.top) / rect.height) * vbH + vbY;
+    // SVG вписывает viewBox с полями (preserveAspectRatio = meet): на широком экране
+    // вокруг чертежа пустые поля, и линейный пересчёт на весь прямоугольник уводил
+    // клик от курсора на 50–120 px (09.11.2026).
+    const scale = Math.min(rect.width / vbW, rect.height / vbH);
+    const offsetX = (rect.width - vbW * scale) / 2;
+    const offsetY = (rect.height - vbH * scale) / 2;
+    const localX = (clientX - rect.left - offsetX) / scale + vbX;
+    const localY = (clientY - rect.top - offsetY) / scale + vbY;
     return { x: localX, y: localY };
   }
 
@@ -530,8 +538,40 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false };
+    lastPointerType.current = e.pointerType;
+    const grab = grabOffset(id, e.clientX, e.clientY);
+    dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, grabDx: grab.dx, grabDy: grab.dy };
     setDragId(id);
+  }
+
+  // На сколько точка захвата смещена от центра элемента: без этого элемент при
+  // первом же движении центром прыгал под курсор (09.11.2026).
+  function grabOffset(id: string, clientX: number, clientY: number): { dx: number; dy: number } {
+    const el = elements.find(x => x.id === id);
+    const pointer = svgCoords(clientX, clientY);
+    if (!el || !pointer) return { dx: 0, dy: 0 };
+    let center: { x: number; y: number } | null = null;
+    if (el.shape === "freeform" && el.points?.length) {
+      center = {
+        x: el.points.reduce((s, p) => s + p.x, 0) / el.points.length,
+        y: el.points.reduce((s, p) => s + p.y, 0) / el.points.length,
+      };
+    } else if (el.x !== undefined && el.y !== undefined) {
+      center = { x: el.x, y: el.y };
+    } else if (el.type !== "subcurtain" && el.wallIndex !== undefined && el.wallPosition !== undefined) {
+      const a = vertices[el.wallIndex], b = vertices[el.wallIndex + 1];
+      if (a && b) center = { x: a.x + (b.x - a.x) * el.wallPosition, y: a.y + (b.y - a.y) * el.wallPosition };
+    }
+    return center ? { dx: pointer.x - center.x, dy: pointer.y - center.y } : { dx: 0, dy: 0 };
+  }
+
+  // Координаты центра элемента при перетаскивании. Элемент на стене переносим на
+  // другую стену по самому курсору: смещение вдоль старой стены там уже не имеет смысла.
+  function draggedCenter(coords: { x: number; y: number }, ds: NonNullable<typeof dragStartRef.current>) {
+    const el = elements.find(x => x.id === ds.id);
+    const onWall = !!el && el.shape !== "freeform" && el.x === undefined && el.wallIndex !== undefined;
+    if (onWall && nearestWall(coords.x, coords.y, vertices).wallIndex !== el.wallIndex) return coords;
+    return { x: coords.x - (ds.grabDx ?? 0), y: coords.y - (ds.grabDy ?? 0) };
   }
 
   // Drag handle на конце прямого подшторника — тянем за круглую ручку,
@@ -540,6 +580,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    lastPointerType.current = e.pointerType;
     dragStartRef.current = { id, cx: e.clientX, cy: e.clientY, moved: false, handle: end };
     setDragId(id);
   }
@@ -554,8 +595,9 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     if (!ds.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
     ds.moved = true;
 
-    const coords = svgCoords(e.clientX, e.clientY);
-    if (!coords) return;
+    const pointer = svgCoords(e.clientX, e.clientY);
+    if (!pointer) return;
+    const coords = draggedCenter(pointer, ds);
     // Snap during drag for spots/chandeliers
     const dragEl = elements.find(el => el.id === ds.id);
     if (dragEl && (dragEl.type === "spot" || dragEl.type === "pendant" || dragEl.type === "chandelier")) {
@@ -570,8 +612,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
 
     if (ds) {
       if (ds.moved) {
-        const finalCoords = svgCoords(e.clientX, e.clientY);
-        const dropPos = finalCoords || dragPos;
+        const finalPointer = svgCoords(e.clientX, e.clientY);
+        const dropPos = (finalPointer && draggedCenter(finalPointer, ds)) || dragPos;
         if (dropPos) {
           const el = elements.find(el => el.id === ds.id);
           if (el) {
@@ -762,13 +804,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       dragStartRef.current = null;
       setDragId(null);
       setDragPos(null);
-      pointerHandled.current = true;
       return;
     }
 
     // Not dragging — place new element
-    if (pointerHandled.current) { pointerHandled.current = false; return; }
-
     setSelectedId(null);
 
     const coords = svgCoords(e.clientX, e.clientY);
@@ -1312,6 +1351,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   }, []);
 
   function handlePanStart(e: React.PointerEvent) {
+    lastPointerType.current = e.pointerType;
     // Mouse: средняя кнопка или Ctrl+Left — мгновенный pan
     const isMousePan = e.button === 1 || (e.button === 0 && e.ctrlKey);
     // Modal-формы блокируют pan
@@ -1362,9 +1402,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const scaleX = vbW / rect.width, scaleY = vbH / rect.height;
-    const dx = (e.clientX - panStart.current.x) * scaleX;
-    const dy = (e.clientY - panStart.current.y) * scaleY;
+    // Тот же масштаб вписывания, что в svgCoords, общий для обеих осей.
+    const unitsPerPx = 1 / Math.min(rect.width / vbW, rect.height / vbH);
+    const dx = (e.clientX - panStart.current.x) * unitsPerPx;
+    const dy = (e.clientY - panStart.current.y) * unitsPerPx;
     setPan({ x: panStart.current.panX - dx, y: panStart.current.panY - dy });
   }
 
@@ -2661,7 +2702,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     if (len < 1) return null;
     const perpX = -dy / len, perpY = dx / len;
     return (
-      <g>
+      // Подсказка, а не элемент: иначе пунктир закрывал выделенную линию от мыши.
+      <g pointerEvents="none">
         <line x1={x1} y1={y1} x2={x2} y2={y2}
           stroke={color} strokeWidth={spotR * 0.15}
           strokeDasharray={`${spotR * 0.4},${spotR * 0.3}`} opacity={0.6} />
@@ -2802,6 +2844,58 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
     }
   }
 
+  const spotVariantControls = (
+    <>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs text-amber-800 font-medium">Софиты:</span>
+            <button
+              onClick={() => setActiveVariant("ours")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                activeVariant === "ours"
+                  ? "bg-[#1e3a5f] text-white"
+                  : "bg-white border border-amber-300 text-amber-700"
+              }`}
+            >
+              Наши (с материалом)
+            </button>
+            <button
+              onClick={() => setActiveVariant("client")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                activeVariant === "client"
+                  ? "bg-gray-600 text-white"
+                  : "bg-white border border-amber-300 text-amber-700"
+              }`}
+            >
+              Клиентские
+            </button>
+          </div>
+          {/* Группа: ставит сразу 2-3 софита одним кликом */}
+          <div className="flex items-center justify-center gap-1 flex-wrap">
+            <span className="text-[10px] text-amber-800/80">Группа:</span>
+            {([
+              ["1", "1", null],
+              ["2h", "●●", "горизонт"],
+              ["2v", "●\n●", "верт"],
+              ["3h", "●●●", "горизонт"],
+              ["3v", "●\n●\n●", "верт"],
+            ] as const).map(([key, glyph, hint]) => (
+              <button
+                key={key}
+                onClick={() => setSpotGroup(key)}
+                title={hint || "Одиночный"}
+                className={`min-w-[36px] px-2 py-0.5 rounded text-[11px] font-semibold transition-all whitespace-pre leading-tight ${
+                  spotGroup === key
+                    ? "bg-amber-600 text-white"
+                    : "bg-white border border-amber-300 text-amber-700"
+                }`}
+              >
+                {glyph}
+              </button>
+            ))}
+          </div>
+    </>
+  );
+
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white"
       style={{ height: "100dvh", paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -2826,7 +2920,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       </div>
 
       {/* Hint + selected actions */}
-      <div className="shrink-0 px-4 py-2 text-center border-b bg-gray-50 flex items-center justify-center gap-3">
+      {/* На компьютере высота строки постоянная: иначе при выделении чертёж менял масштаб */}
+      <div className="shrink-0 lg:h-14 px-4 py-2 text-center border-b bg-gray-50 flex items-center justify-center gap-3">
         <p className="text-xs text-muted-foreground">{hintText}</p>
         {selectedId && (
           <div className="flex gap-2">
@@ -3358,11 +3453,22 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         )}
       </div>
 
+      {/* На компьютере место под итог и панель софитов занято всегда: чертёж
+          не прыгает, когда включают инструмент или ставят первый элемент (09.11.2026). */}
+      <div className="relative shrink-0 lg:h-[84px] lg:overflow-hidden flex flex-col justify-end">
+      {/* Панель софитов на компьютере — в строке итога, чтобы не закрывать чертёж */}
+      {activeType === "spot" && (
+        <div className="hidden lg:flex absolute inset-x-0 bottom-1 z-10 justify-center pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-6 px-3 py-1 rounded-xl border bg-amber-50">
+            {spotVariantControls}
+          </div>
+        </div>
+      )}
       {/* Summary + Cost + Actions */}
       {elements.length > 0 && (
         <div className="shrink-0 border-t bg-white">
           <div className="px-3 py-1.5 flex items-center justify-between">
-            <div className="flex gap-1.5 flex-wrap overflow-x-auto">
+            <div className="flex gap-1.5 flex-wrap lg:flex-nowrap overflow-x-auto">
               {summary.map((s, i) => (
                 <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
                   {s.icon} {s.label}
@@ -3387,58 +3493,13 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         </div>
       )}
 
-      {/* Variant toggle — only for spots */}
+      {/* Variant toggle — only for spots. На телефоне и планшете в потоке. */}
       {activeType === "spot" && (
-        <div className="shrink-0 px-3 py-1.5 border-t bg-amber-50 flex flex-col gap-1.5">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-xs text-amber-800 font-medium">Софиты:</span>
-            <button
-              onClick={() => setActiveVariant("ours")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                activeVariant === "ours"
-                  ? "bg-[#1e3a5f] text-white"
-                  : "bg-white border border-amber-300 text-amber-700"
-              }`}
-            >
-              Наши (с материалом)
-            </button>
-            <button
-              onClick={() => setActiveVariant("client")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                activeVariant === "client"
-                  ? "bg-gray-600 text-white"
-                  : "bg-white border border-amber-300 text-amber-700"
-              }`}
-            >
-              Клиентские
-            </button>
-          </div>
-          {/* Группа: ставит сразу 2-3 софита одним кликом */}
-          <div className="flex items-center justify-center gap-1 flex-wrap">
-            <span className="text-[10px] text-amber-800/80">Группа:</span>
-            {([
-              ["1", "1", null],
-              ["2h", "●●", "горизонт"],
-              ["2v", "●\n●", "верт"],
-              ["3h", "●●●", "горизонт"],
-              ["3v", "●\n●\n●", "верт"],
-            ] as const).map(([key, glyph, hint]) => (
-              <button
-                key={key}
-                onClick={() => setSpotGroup(key)}
-                title={hint || "Одиночный"}
-                className={`min-w-[36px] px-2 py-0.5 rounded text-[11px] font-semibold transition-all whitespace-pre leading-tight ${
-                  spotGroup === key
-                    ? "bg-amber-600 text-white"
-                    : "bg-white border border-amber-300 text-amber-700"
-                }`}
-              >
-                {glyph}
-              </button>
-            ))}
-          </div>
+        <div className="lg:hidden shrink-0 px-3 py-1.5 border-t bg-amber-50 flex flex-col gap-1.5">
+          {spotVariantControls}
         </div>
       )}
+      </div>
 
       {/* Toolbar with tabs */}
       <div className="shrink-0 border-t bg-gray-50">
