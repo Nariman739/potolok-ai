@@ -84,6 +84,13 @@ async function invited(owner: any, label: string) {
     const o = await ownerWithCompany("Владелец1");
     const u = await invited(o, "Самозванец");
     await db.client.create({ data: { masterId: o.id, companyId: o.companyId, name: "Клиент компании", phone: "+77000000001" } });
+    const phoneReg = u.phone;
+    const dupRes = await addPhone(o, phoneReg, "Тот же");
+    ok("ответ на добавление не раскрывает masterId", !("masterId" in dupRes.body.member), dupRes.body.member);
+    const fresh = await addPhone(o, (await reg(nextPhone(), "Зарегистрированный")).phone, "Новый");
+    ok("…и для нового зарегистрированного номера", !("masterId" in fresh.body.member), fresh.body.member);
+    const pat = await patch(o, u.memberId, { name: "Ерлан" });
+    ok("ответ PATCH не раскрывает masterId", pat.status === 200 && !("masterId" in pat.body), pat.body);
     let g = await GET(u);
     ok("приглашение видно после регистрации на номер", g.body.invites.length === 1 && g.body.pendingJoin === null, g.body);
     const a = await accept(u, o.companyId);

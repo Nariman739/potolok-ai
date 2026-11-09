@@ -51,6 +51,14 @@ export type ScopeMember = {
   rejected: boolean;
 };
 
+/**
+ * Строка участника в ответах API: без masterId и служебных полей. По masterId в ответе на
+ * добавление можно было узнать, зарегистрирован ли чужой номер (перебор базы).
+ */
+export function publicMember(m: { id: string; companyId: string; name: string; phone: string | null; role: string; defaultFee: number | null }) {
+  return { id: m.id, companyId: m.companyId, name: m.name, phone: m.phone, role: m.role, defaultFee: m.defaultFee };
+}
+
 function displayName(m: { firstName: string; lastName: string | null }): string {
   return [m.firstName, m.lastName].filter(Boolean).join(" ").trim() || "Мастер";
 }

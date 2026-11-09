@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, normalizePhone } from "@/lib/company";
+import { getScope, normalizePhone, publicMember } from "@/lib/company";
 
 /** PATCH { name?, phone?, defaultFee? } · DELETE — убрать из компании (мягко). */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     else if (typeof body.defaultFee === "number" && body.defaultFee >= 0) data.defaultFee = Math.round(body.defaultFee);
 
     const updated = await prisma.member.update({ where: { id }, data });
-    return NextResponse.json(updated);
+    return NextResponse.json(publicMember(updated));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

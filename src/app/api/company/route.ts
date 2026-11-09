@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getScope, normalizePhone, ownDataCounts } from "@/lib/company";
+import { getScope, normalizePhone, ownDataCounts, publicMember } from "@/lib/company";
 
 /**
  * Компания и люди (Этап 3). GET — состав; POST — добавить человека
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
             ...(nowRegistered ? { masterId: nowRegistered.id, joinedAt: null } : {}),
           },
         });
-        return NextResponse.json({ member: restored, linked: false, invited: !!restored.phone, restored: true });
+        return NextResponse.json({ member: publicMember(restored), linked: false, invited: !!restored.phone, restored: true });
       }
     }
 
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     });
 
     // linked не раскрываем: по ответу нельзя узнать, зарегистрирован ли номер (перебор базы).
-    return NextResponse.json({ member, linked: false, invited: !!phone, restored: false });
+    return NextResponse.json({ member: publicMember(member), linked: false, invited: !!phone, restored: false });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
