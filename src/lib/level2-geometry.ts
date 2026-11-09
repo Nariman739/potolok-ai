@@ -1171,7 +1171,17 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
   let upperCm2 = cutCm2;
   if (w > 0) {
     const U = clipOffsetOvershoot(D, offsetEdgesInward(D, onWall.map((ow) => (ow ? 0 : w))), dense.isCorner);
-    if (offsetIsValid(D, U, true, undefined, 2 * w)) {
+    // Сдвиг весь внутри борта: у маленького острова с широкой полкой (60×50, полка 100) все стороны
+    // «короче 2w», проверка направлений их пропускала, а сдвиг выворачивался НАРУЖУ (QA Б8).
+    // Петля у острого стыка дуг законно выходит наружу несколькими точками (это shelf_tight), а целый
+    // выворот — большинством точек и площадью больше контура.
+    // Быстро: рамка кромки внутри рамки контура — выворота нет (при вывороте кромка всегда шире).
+    const bb = (P: Pt[]) => P.reduce((o, p) => ({ x0: Math.min(o.x0, p.x), y0: Math.min(o.y0, p.y), x1: Math.max(o.x1, p.x), y1: Math.max(o.y1, p.y) }), { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
+    const bu = bb(U), bd = bb(D);
+    const withinBox = bu.x0 >= bd.x0 - 0.5 && bu.y0 >= bd.y0 - 0.5 && bu.x1 <= bd.x1 + 0.5 && bu.y1 <= bd.y1 + 0.5;
+    const outside = withinBox ? 0 : U.filter((p) => !pointInPolygon(p, D) && distToPolygon(p, D) >= 0.5).length;
+    const inside = outside <= U.length * 0.5 && Math.abs(signedArea(U)) <= Math.abs(signedArea(D)) + 1;
+    if (offsetIsValid(D, U, true, undefined, 2 * w) && inside) {
       // Петля кромки (скос короче 2w, узкое место) — не «полка шире контура»: верх = |площадь|
       // кромки (петля вычитается сама), мягкое предупреждение (ревью 10.11.2026, трапеция 0,63).
       if (selfIntersects(U, true)) warnings.push("shelf_tight");
@@ -1293,7 +1303,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   if (w > 0 && upPoly.length >= 3) {
     const lineEdges = upPoly.map((_, i) => i < n - 1);
     const U = clipOffsetOvershoot(upPoly, offsetEdgesInward(upPoly, lineEdges.map((isLine) => (isLine ? w : 0))), upPoly.map((_, i) => (i < n ? dense.isCorner[i] : true)));
-    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w)) {
+    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w) && U.filter((p) => !pointInPolygon(p, upPoly) && distToPolygon(p, upPoly) >= 0.5).length <= U.length * 0.5) {
       if (selfIntersects(U.slice(0, n), false)) warnings.push("shelf_tight");
       upperPolygon = U;
       upper = U.slice(0, n);

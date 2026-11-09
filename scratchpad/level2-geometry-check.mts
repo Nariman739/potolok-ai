@@ -363,5 +363,12 @@ check("level2Params: lowSide по умолчанию left", level2Params({}).low
     check(`Б6 ${nm}: полотно + верх + полка, м²`, canvasAfterLevel2(roomM2, lvl).m2 + c.upperM2 + c.shelfM2, roomM2, 0.015);
   }
 }
+// ── QA Б8 (11.11.2026): остров 60×50 с полкой 100 — сдвиг не выворачивается наружу ──
+{
+  const room4 = [{ x: 0, y: 0 }, { x: 400, y: 0 }, { x: 400, y: 300 }, { x: 0, y: 300 }];
+  const c = calcLevel2([{ x: 170, y: 125 }, { x: 230, y: 125 }, { x: 230, y: 175 }, { x: 170, y: 175 }], room4, { ...LEVEL2_DEFAULTS, radiusCm: 0, shelfCm: 100 });
+  check("Б8: 60×50 полка 100 → shelf_too_wide", c.warnings.includes("shelf_too_wide") ? 1 : 0, 1, 0);
+  check("Б8: кромки нет (верх = низ)", c.upper ? 1 : 0, 0, 0);
+}
 console.log(fails === 0 ? "\nВСЕ ПРОВЕРКИ ПРОШЛИ" : `\nПРОВАЛОВ: ${fails}`);
 process.exit(fails === 0 ? 0 : 1);
