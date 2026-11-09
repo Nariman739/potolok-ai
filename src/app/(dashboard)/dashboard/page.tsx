@@ -127,7 +127,13 @@ export default async function DashboardPage() {
 
   // Show onboarding wizard for new users
   if (!master.onboardingCompleted) {
-    return <OnboardingWizard firstName={master.firstName} phone={master.phone} />;
+    return (
+      <div className="space-y-5">
+        {/* Сотрудник только что зарегистрировался — приглашение нужно ему раньше настройки */}
+        <CompanyInviteBanner />
+        <OnboardingWizard firstName={master.firstName} phone={master.phone} />
+      </div>
+    );
   }
 
   return (
