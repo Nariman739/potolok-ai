@@ -100,6 +100,14 @@ export function middleware(request: NextRequest) {
   for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
   }
+  // «Дизайн КП»: превью PDF — blob:-URL в iframe (PdfPreview). Только на этой странице
+  // и только blob: — X-Frame-Options и CSP остальных страниц не меняются.
+  if (pathname === "/dashboard/branding") {
+    response.headers.set(
+      "Content-Security-Policy",
+      securityHeaders["Content-Security-Policy"].replace(/frame-src [^;]*/, "frame-src blob:")
+    );
+  }
   return response;
 }
 
