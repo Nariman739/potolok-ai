@@ -374,24 +374,55 @@ export function filletAt(pts: Pt[], i: number, r: number, closed: boolean, maxBa
   // Дальше 25·r касание не уходит даже у острого угла (≈ 7°) — дальше не ищем (скорость).
   const reachMax = 25 * r + 50;
   const back = build(-1, Math.min(maxBack, reachMax)), fwd = build(1, Math.min(maxFwd, reachMax));
-  let best: { o: Pt; be: S; fe: S; score: number } | null = null;
-  for (let bi = 0; bi < back.length; bi++) {
-    for (let fi = 0; fi < fwd.length; fi++) {
-      if (best && bi + fi >= best.score) break;
-      const B = back[bi], F = fwd[fi];
-      // Рамки отрезков далеко — пересечения нет (первые рёбра продлеваются — их не отсекаем).
-      if (!B.first && !F.first && (Math.max(B.p.x, B.q.x) < Math.min(F.p.x, F.q.x) - 1e-6 || Math.max(F.p.x, F.q.x) < Math.min(B.p.x, B.q.x) - 1e-6 || Math.max(B.p.y, B.q.y) < Math.min(F.p.y, F.q.y) - 1e-6 || Math.max(F.p.y, F.q.y) < Math.min(B.p.y, B.q.y) - 1e-6)) continue;
-      const rx = B.q.x - B.p.x, ry = B.q.y - B.p.y, sx = F.q.x - F.p.x, sy = F.q.y - F.p.y;
-      const den = rx * sy - ry * sx;
-      if (Math.abs(den) < 1e-12) continue;
-      const u = ((F.p.x - B.p.x) * sy - (F.p.y - B.p.y) * sx) / den;
-      const v = ((F.p.x - B.p.x) * ry - (F.p.y - B.p.y) * rx) / den;
-      const eps = 1e-9;
-      // Первые рёбра от вершины продлеваем назад (у двух прямых центр лежит на продолжении).
-      if (u > 1 + eps || v > 1 + eps) continue;
-      if (u < -eps && !B.first) continue;
-      if (v < -eps && !F.first) continue;
-      best = { o: { x: B.p.x + rx * u, y: B.p.y + ry * u }, be: B, fe: F, score: bi + fi };
+  // Ближайшая к вершине пара отрезков: меньше bi+fi, при равенстве — меньший bi (как раньше полным
+  // перебором). Подбор R зовёт это сотни раз, а у острого кончика касание уходит почти на всю сторону —
+  // поэтому отрезки «вперёд» разложены по сетке и с отрезком «назад» проверяются только те, чьи рамки
+  // рядом (звезда 20 вогнутых дуг R50: 14 → ≤ 2 мс, ревью 11.11.2026). Ответ тот же: пары с далёкими
+  // рамками и раньше отбрасывались, первые рёбра (продлеваются назад) проверяются со всеми.
+  const hit = (bi: number, fi: number): Pt | null => {
+    const B = back[bi], F = fwd[fi];
+    // Рамки отрезков далеко — пересечения нет (первые рёбра продлеваются — их не отсекаем).
+    if (!B.first && !F.first && (Math.max(B.p.x, B.q.x) < Math.min(F.p.x, F.q.x) - 1e-6 || Math.max(F.p.x, F.q.x) < Math.min(B.p.x, B.q.x) - 1e-6 || Math.max(B.p.y, B.q.y) < Math.min(F.p.y, F.q.y) - 1e-6 || Math.max(F.p.y, F.q.y) < Math.min(B.p.y, B.q.y) - 1e-6)) return null;
+    const rx = B.q.x - B.p.x, ry = B.q.y - B.p.y, sx = F.q.x - F.p.x, sy = F.q.y - F.p.y;
+    const den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-12) return null;
+    const u = ((F.p.x - B.p.x) * sy - (F.p.y - B.p.y) * sx) / den;
+    const v = ((F.p.x - B.p.x) * ry - (F.p.y - B.p.y) * rx) / den;
+    const eps = 1e-9;
+    // Первые рёбра от вершины продлеваем назад (у двух прямых центр лежит на продолжении).
+    if (u > 1 + eps || v > 1 + eps) return null;
+    if (u < -eps && !B.first) return null;
+    if (v < -eps && !F.first) return null;
+    return { x: B.p.x + rx * u, y: B.p.y + ry * u };
+  };
+  let best = null as { o: Pt; be: S; fe: S } | null;
+  let bestScore = Infinity;
+  const take = (bi: number, fi: number) => {
+    if (bi + fi >= bestScore) return;
+    const X = hit(bi, fi);
+    if (X) { best = { o: X, be: back[bi], fe: fwd[fi] }; bestScore = bi + fi; }
+  };
+  if (back.length * fwd.length <= 2000) {
+    for (let bi = 0; bi < back.length && bi < bestScore; bi++) for (let fi = 0; fi < fwd.length && bi + fi < bestScore; fi++) take(bi, fi);
+  } else {
+    // Отрезки «вперёд» блоками по 16 с общей рамкой: блок далеко от отрезка «назад» — пропускаем целиком.
+    const BS = 16, nBlk = Math.ceil(fwd.length / BS);
+    const bx0 = new Float64Array(nBlk).fill(Infinity), by0 = new Float64Array(nBlk).fill(Infinity);
+    const bx1 = new Float64Array(nBlk).fill(-Infinity), by1 = new Float64Array(nBlk).fill(-Infinity);
+    for (let fi = 1; fi < fwd.length; fi++) {
+      const F = fwd[fi], b = (fi / BS) | 0;
+      bx0[b] = Math.min(bx0[b], F.p.x, F.q.x); bx1[b] = Math.max(bx1[b], F.p.x, F.q.x);
+      by0[b] = Math.min(by0[b], F.p.y, F.q.y); by1[b] = Math.max(by1[b], F.p.y, F.q.y);
+    }
+    for (let bi = 0; bi < back.length && bi < bestScore; bi++) {
+      const B = back[bi];
+      if (B.first) { for (let fi = 0; fi < fwd.length && bi + fi < bestScore; fi++) take(bi, fi); continue; }
+      take(bi, 0);
+      const x0 = Math.min(B.p.x, B.q.x) - 1e-3, x1 = Math.max(B.p.x, B.q.x) + 1e-3, y0 = Math.min(B.p.y, B.q.y) - 1e-3, y1 = Math.max(B.p.y, B.q.y) + 1e-3;
+      for (let b = 0; b < nBlk && bi + b * BS < bestScore; b++) {
+        if (bx1[b] < x0 || bx0[b] > x1 || by1[b] < y0 || by0[b] > y1) continue;
+        for (let fi = Math.max(1, b * BS); fi < Math.min(fwd.length, (b + 1) * BS) && bi + fi < bestScore; fi++) take(bi, fi);
+      }
     }
   }
   if (!best) return null;
@@ -404,15 +435,19 @@ export function filletAt(pts: Pt[], i: number, r: number, closed: boolean, maxBa
     const tb0 = best.be.v ?? null, tf0 = best.fe.v ?? null;
     const pb = tb0 ?? (() => { const e = best!.be; const dx = e.eb!.x - e.ea!.x, dy = e.eb!.y - e.ea!.y, l2 = dx * dx + dy * dy; const tt = Math.max(0, Math.min(1, ((o.x - e.ea!.x) * dx + (o.y - e.ea!.y) * dy) / l2)); return { x: e.ea!.x + dx * tt, y: e.ea!.y + dy * tt }; })();
     const pf = tf0 ?? (() => { const e = best!.fe; const dx = e.eb!.x - e.ea!.x, dy = e.eb!.y - e.ea!.y, l2 = dx * dx + dy * dy; const tt = Math.max(0, Math.min(1, ((o.x - e.ea!.x) * dx + (o.y - e.ea!.y) * dy) / l2)); return { x: e.ea!.x + dx * tt, y: e.ea!.y + dy * tt }; })();
+    // Без объектов и корней на каждом отрезке (подбор R зовёт это сотни раз, ревью 11.11.2026): дальше
+    // 1,001·r — отрезок не мешает при любом допуске, ближе — как раньше, с допуском у касания.
+    const far2 = (r * 1.001) * (r * 1.001), near = Math.max(0.5, 0.4 * r), near2 = near * near;
     for (let k = 0; k < segs; k++) {
       const a2 = pts[k], b2 = pts[(k + 1) % n];
       const dx = b2.x - a2.x, dy = b2.y - a2.y, l2 = dx * dx + dy * dy;
       const tt = l2 > 0 ? Math.max(0, Math.min(1, ((o.x - a2.x) * dx + (o.y - a2.y) * dy) / l2)) : 0;
-      const q = { x: a2.x + dx * tt, y: a2.y + dy * tt };
-      const d = Math.hypot(o.x - q.x, o.y - q.y);
+      const qx = a2.x + dx * tt, qy = a2.y + dy * tt;
+      const d2 = (o.x - qx) * (o.x - qx) + (o.y - qy) * (o.y - qy);
+      if (d2 >= far2) continue;
       // Рядом с касанием хорды плотной дуги лежат чуть внутри настоящей дуги — там допуск по касанию.
-      const nearTouch = Math.hypot(q.x - pb.x, q.y - pb.y) < Math.max(0.5, 0.4 * r) || Math.hypot(q.x - pf.x, q.y - pf.y) < Math.max(0.5, 0.4 * r);
-      if (d < (nearTouch ? r * (1 - 1e-2) - 0.05 : r * 1.001)) return null;
+      const nearTouch = (qx - pb.x) * (qx - pb.x) + (qy - pb.y) * (qy - pb.y) < near2 || (qx - pf.x) * (qx - pf.x) + (qy - pf.y) * (qy - pf.y) < near2;
+      if (Math.sqrt(d2) < (nearTouch ? r * (1 - 1e-2) - 0.05 : r * 1.001)) return null;
     }
   }
   // Точка касания и путь от вершины до неё.
@@ -766,14 +801,15 @@ export function clipOffsetOvershoot(src: Pt[], dst: Pt[], corners: boolean[]): P
       for (let k = 0; k < n && fwd.length < n; k++) { const j = at(c + k); fwd.push(j); if (corners[at(j + 1)] || !reach(at(j + 1))) break; }
       // Петли бывают вложенными (сдвиг дуги у острого угла делает «ус» за «усом»): снимаем по одной, пока есть.
       for (let pass = 0; pass < 24; pass++) {
-        let best: { X: Pt; jb: number; jf: number; score: number } | null = null;
-        for (let bi = 0; bi < back.length; bi++) {
-          for (let fi = 0; fi < fwd.length; fi++) {
-            if (best && bi + fi >= best.score) break;
-            const jb = back[bi], jf = fwd[fi];
+        // Ближайшая к углу пара: перебор по возрастанию bi+fi (при равенстве — меньший bi), первая
+        // найденная и есть ответ — без полного перебора пар на каждом проходе (звезда 20 дуг: 14 → ≤ 2 мс, ревью 11.11.2026).
+        let best: { X: Pt; jb: number; jf: number } | null = null;
+        for (let s = 0; s <= back.length + fwd.length - 2 && !best; s++) {
+          for (let bi = Math.max(0, s - fwd.length + 1); bi <= Math.min(s, back.length - 1); bi++) {
+            const jb = back[bi], jf = fwd[s - bi];
             if (jb === jf || at(jb + 1) === jf || at(jf + 1) === jb) continue;
             const X = segX(out[jb], out[at(jb + 1)], out[jf], out[at(jf + 1)]);
-            if (X) best = { X, jb, jf, score: bi + fi };
+            if (X) { best = { X, jb, jf }; break; }
           }
         }
         if (!best) break;
@@ -1158,6 +1194,45 @@ function sidesOf(shape: Level2Shape, dense: DenseShape, onWallEdges: boolean[]):
   return out;
 }
 
+/**
+ * Кромка полки вывернулась наружу контура (полка шире фигуры, QA Б8): площадь больше контура, или
+ * больше половины точек кромки за контуром, или больше половины её ДЛИНЫ. Петля у острого кончика
+ * законно выходит наружу (это shelf_tight), а у перепутанной кромки маленького острова наружу уходят
+ * то точки (короткие стороны), то длина (длинные перемычки) — проверяем обе меры. Скорость (ревью
+ * 11.11.2026: было 15 мс на звезде из 1260 точек): точки — до 64 через равный шаг индексов, длина —
+ * 48 равных шагов; O(64·m).
+ */
+function offsetTurnedOut(D: Pt[], U: Pt[]): boolean {
+  if (Math.abs(signedArea(U)) > Math.abs(signedArea(D)) + 1) return true;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of D) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+  // Кромка внутри рамки контура — выворота нет (при вывороте кромка всегда шире).
+  if (U.every((p) => p.x >= x0 - 0.5 && p.y >= y0 - 0.5 && p.x <= x1 + 0.5 && p.y <= y1 + 0.5)) return false;
+  const out = (p: Pt) => !pointInPolygon(p, D) && distToPolygon(p, D) >= 0.5;
+  // Точки: через равный шаг индексов.
+  const step = Math.max(1, Math.ceil(U.length / 64));
+  let nP = 0, oP = 0;
+  for (let i = 0; i < U.length; i += step) { nP++; if (out(U[i])) oP++; }
+  if (oP > nP * 0.5) return true;
+  // Длина: середины 48 равных шагов по кромке.
+  const total = pathLength(U, true);
+  if (!(total > 0)) return false;
+  const K = 48, len = total / K;
+  let oL = 0, k = 0, acc = 0, next = len / 2;
+  for (let i = 0; i < U.length && k < K; i++) {
+    const a = U[i], b = U[(i + 1) % U.length];
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    while (k < K && next <= acc + l) {
+      const t = l > 0 ? (next - acc) / l : 0;
+      if (out({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })) oL++;
+      k++; next += len;
+      if (oL > K / 2) return true;
+    }
+    acc += l;
+  }
+  return false;
+}
+
 function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params): Level2Calc {
   const warnings: Level2Warning[] = [];
   const r = Math.max(0, params.radiusCm);
@@ -1186,12 +1261,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
     // Петля у острого стыка дуг законно выходит наружу несколькими точками (это shelf_tight), а целый
     // выворот — большинством точек и площадью больше контура.
     // Быстро: рамка кромки внутри рамки контура — выворота нет (при вывороте кромка всегда шире).
-    const bb = (P: Pt[]) => P.reduce((o, p) => ({ x0: Math.min(o.x0, p.x), y0: Math.min(o.y0, p.y), x1: Math.max(o.x1, p.x), y1: Math.max(o.y1, p.y) }), { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
-    const bu = bb(U), bd = bb(D);
-    const withinBox = bu.x0 >= bd.x0 - 0.5 && bu.y0 >= bd.y0 - 0.5 && bu.x1 <= bd.x1 + 0.5 && bu.y1 <= bd.y1 + 0.5;
-    const outside = withinBox ? 0 : U.filter((p) => !pointInPolygon(p, D) && distToPolygon(p, D) >= 0.5).length;
-    const inside = outside <= U.length * 0.5 && Math.abs(signedArea(U)) <= Math.abs(signedArea(D)) + 1;
-    if (offsetIsValid(D, U, true, undefined, 2 * w) && inside) {
+    if (offsetIsValid(D, U, true, undefined, 2 * w) && !offsetTurnedOut(D, U)) {
       // Петля кромки (скос короче 2w, узкое место) — не «полка шире контура»: верх = |площадь|
       // кромки (петля вычитается сама), мягкое предупреждение (ревью 10.11.2026, трапеция 0,63).
       if (selfIntersects(U, true)) warnings.push("shelf_tight");
@@ -1313,7 +1383,7 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   if (w > 0 && upPoly.length >= 3) {
     const lineEdges = upPoly.map((_, i) => i < n - 1);
     const U = clipOffsetOvershoot(upPoly, offsetEdgesInward(upPoly, lineEdges.map((isLine) => (isLine ? w : 0))), upPoly.map((_, i) => (i < n ? dense.isCorner[i] : true)));
-    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w) && U.filter((p) => !pointInPolygon(p, upPoly) && distToPolygon(p, upPoly) >= 0.5).length <= U.length * 0.5) {
+    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w) && !offsetTurnedOut(upPoly, U)) {
       if (selfIntersects(U.slice(0, n), false)) warnings.push("shelf_tight");
       upperPolygon = U;
       upper = U.slice(0, n);
@@ -1408,6 +1478,24 @@ export function calcRoomLevel2(elements: ReadonlyArray<Level2ElementLike> | null
       const inside = items[i].contour.map((p) => pointInPolygon(p, items[j].contour));
       if (inside.every(Boolean)) warnings.add("inside_other_contour");
       else if (inside.some(Boolean)) warnings.add("contours_overlap");
+    }
+  }
+  // Остров в ВЕРХНЕЙ зоне линии: там уже второй уровень линии, полотна под островом нет — его площадь
+  // не вычитаем из полотна и не добавляем в верх второй раз (ревью 11.11.2026: 400×300, линия x=250,
+  // остров 100×80 слева — полотно 3,73 вместо 4,50, верх 7,67 вместо 7,20). Борт и LED острова остаются.
+  // Остров в нижней зоне (обычное полотно) считается как раньше.
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (!it.calc.closed || it.contour.length < 3) continue;
+    for (const ln of items) {
+      if (ln.calc.closed || ln.calc.lowPolygon.length < 3) continue;
+      const inUpper = it.contour.map((p) => !pointInPolygon(p, ln.calc.lowPolygon) && distToPolygon(p, ln.calc.lowPolygon) > ON_WALL_TOL_CM);
+      if (inUpper.every(Boolean)) {
+        warnings.add("inside_other_contour");
+        items[i] = { ...it, calc: { ...it.calc, upperM2: 0, shelfM2: 0, canvasCutM2: 0, warnings: [...it.calc.warnings, "inside_other_contour"] } };
+        break;
+      }
+      if (inUpper.some(Boolean)) warnings.add("contours_overlap");
     }
   }
   const sum = (f: (c: Level2Calc) => number) => r2(items.reduce((s, it) => s + f(it.calc), 0));

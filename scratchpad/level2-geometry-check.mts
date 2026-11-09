@@ -6,6 +6,7 @@ import type { RoomElement } from "@/lib/room-types";
 
 let fails = 0;
 const close = (a: number, b: number, eps = 0.011) => Math.abs(a - b) <= eps;
+const r2x = (n: number) => Math.round(n * 100) / 100;
 function check(name: string, got: number, want: number, eps?: number) {
   const ok = close(got, want, eps);
   if (!ok) fails++;
@@ -272,11 +273,14 @@ check("контуров 2", mix.count, 2);
 check("низ 4,16 + 3 = 7,16", mix.cutM2, 7.16);
 check("борт 8,4 + 3 = 11,4", mix.bortM, 11.4);
 // QA Б6 (11.11.2026): из полотна вычитается верх + полка (у линии — её ВЕРХНЯЯ сторона 9 м²), а не низ.
-// Остров внутри верхней стороны линии — сочетание без однозначной площади: честное предупреждение,
-// а не прежние «12 − 7,16 = 4,84» (там из полотна вычитался низ линии — та же ошибка, что Б6).
-check("остров + линия: полотно 0 (вычитается верх линии 9 + остров 4,16 > 12)", canvasAfterLevel2(12, mix).m2, 0);
-check("остров + линия: предупреждение canvas_negative", canvasAfterLevel2(12, mix).warning === "canvas_negative" ? 1 : 0, 1, 0);
-check("без предупреждений", mix.warnings.length, 0);
+// Остров внутри верхней стороны линии: там уже второй уровень линии — остров не вычитается из полотна
+// и не добавляется в верх второй раз, предупреждение inside_other_contour (ревью 11.11.2026, 5-й прогон;
+// до этого — canvas_negative и полотно 0, а ещё раньше «12 − 7,16 = 4,84» — ошибка Б6).
+check("остров + линия: полотно 3 (12 − верх линии 9, остров не вычитается)", canvasAfterLevel2(12, mix).m2, 3);
+check("остров + линия: без canvas_negative", canvasAfterLevel2(12, mix).warning === null ? 1 : 0, 1, 0);
+check("остров + линия: предупреждение inside_other_contour", mix.warnings.includes("inside_other_contour") ? 1 : 0, 1, 0);
+check("остров + линия: верх = верх одной линии", mix.upperM2, mix.items[1].calc.upperM2);
+check("остров + линия: полотно + верх + полка = 12", r2x(canvasAfterLevel2(12, mix).m2 + mix.upperM2 + mix.items.reduce((s, it) => s + it.calc.shelfM2, 0)), 12, 0.015);
 check("level2Params: closed по умолчанию", level2Params({}).closed ? 1 : 0, 1);
 check("level2Params: lowSide по умолчанию left", level2Params({}).lowSide === "left" ? 1 : 0, 1);
 
