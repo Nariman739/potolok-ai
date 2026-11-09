@@ -11,6 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
+import { spotBreakdown } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -502,6 +503,7 @@ interface Room {
    *  поэтому в PATCH поле не отправляем, иначе затрём расстановку пустым массивом. */
   elementsNotLoaded?: boolean;
   photoUrls?: string[];     // Фото потолка комнаты
+  variantOverrides?: Record<string, string>; // Вариант из прайса на комнату, как в приложении
   previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
 }
 
@@ -1701,6 +1703,7 @@ export default function ZameryPage() {
               elements: (r.elements as RoomElement[]) || [],
               photoUrls: (r.photoUrls as string[]) || [],
               previewUrl3d: r.previewUrl3d,
+              variantOverrides: r.variantOverrides ?? undefined,
             })));
             loadedFromServer = true;
           }
@@ -1745,6 +1748,7 @@ export default function ZameryPage() {
               elements: (r.elements as RoomElement[]) || [],
               previewUrl3d: r.previewUrl3d,
               photoUrls: (r.photoUrls as string[]) || [],
+              variantOverrides: r.variantOverrides ?? undefined,
             })),
           })));
         }
@@ -1804,6 +1808,7 @@ export default function ZameryPage() {
           perimeter: r.perimeter,
           elements: r.elements || [],
           previewUrl3d: r.previewUrl3d,
+          variantOverrides: r.variantOverrides,
         }))),
       });
       if (res.ok) {
@@ -1860,6 +1865,7 @@ export default function ZameryPage() {
             // Не загружено — не отправляем: пустой массив стёр бы элементы на сервере.
             ...(!updated.elementsNotLoaded && { elements: updated.elements || [] }),
             previewUrl3d: updated.previewUrl3d,
+            ...(updated.variantOverrides !== undefined && { variantOverrides: updated.variantOverrides }),
           }),
         });
         if (!res.ok) {
@@ -1920,7 +1926,7 @@ export default function ZameryPage() {
             status: "saved",
             ...(activeClientId && { clientId: activeClientId }),
             ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
-            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, elements: r.elements || [] })),
+            rooms: currentRooms.map(r => ({ name: r.name, walls: r.walls, normalCorners: r.normalCorners, angles: r.angles, arcBulges: r.arcBulges, columns: r.columns, area: r.area, perimeter: r.perimeter, elements: r.elements || [], variantOverrides: r.variantOverrides })),
           }),
         });
         if (!res.ok) throw new Error("Ошибка сохранения");
@@ -2318,9 +2324,7 @@ export default function ZameryPage() {
         else if (sz >= 3) spotTriplesCount++;
       }
       const singleSpotEls = allSpotEls.filter(s => !(s as { groupId?: string }).groupId);
-      const spotsOurs = singleSpotEls.filter(e => e.variant !== "client").length;
-      const spotsClient = singleSpotEls.filter(e => e.variant === "client").length;
-      const spotsCount = spotsOurs + spotsClient;
+      const { spotsOurs, spotsClient, spotsCount, spotsByType } = spotBreakdown(singleSpotEls);
       const pendantCount = els.filter(e => e.type === "pendant").length;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
       const trackMagneticLength = Math.round(
@@ -2366,6 +2370,7 @@ export default function ZameryPage() {
         profileType: profileTypeForRoom,
         spotsCount,
         spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined,
+        ...(spotsByType.length > 0 && { spotsByType }),
         chandelierCount,
         chandelierInstallCount: chandelierCount,
         pendantCount,
@@ -2390,6 +2395,7 @@ export default function ZameryPage() {
         furniturePlannedArea: Math.round(fcStats.plannedAreaCm2 / 100) / 100,
         shape: room.walls.length === 4 ? "rectangle" : undefined,
         previewUrl3d: room.previewUrl3d,
+        ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
       } satisfies RoomInput;
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
@@ -2418,6 +2424,7 @@ export default function ZameryPage() {
       {designingRoom && (
         <RoomDesigner
           room={designingRoom}
+          roomVariants
           onPreviewSaved={(url) => {
             // Обновляем designingRoom (в режиме рисования) и persist в БД, если комната уже есть в rooms
             setDesigningRoom(prev => prev ? { ...prev, previewUrl3d: url } : prev);
@@ -2439,6 +2446,7 @@ export default function ZameryPage() {
             const roomWithElements: Room = {
               ...designingRoom,
               elements,
+              ...(updates?.variantOverrides && { variantOverrides: updates.variantOverrides }),
               ...(updates?.name && { name: updates.name }),
               ...(updates && updates.walls && {
                 walls: updates.walls,
@@ -2466,8 +2474,7 @@ export default function ZameryPage() {
                 else if (sz >= 3) spotTriplesCalc++;
               }
               const singleSpotElsCalc = allSpotElsCalc.filter(s => !(s as { groupId?: string }).groupId);
-              const spotsOurs = singleSpotElsCalc.filter(e => e.variant !== "client").length;
-              const spotsClient = singleSpotElsCalc.filter(e => e.variant === "client").length;
+              const { spotsOurs, spotsClient, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
               const trackEls = elements.filter(e => e.type === "track");
               const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
@@ -2505,6 +2512,8 @@ export default function ZameryPage() {
                 profileType: profileTypeForRoom,
                 spotsCount: spotsOurs + spotsClient,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
+                ...(spotsByTypeCalc.length > 0 && { spotsByType: spotsByTypeCalc }),
+                ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
                 spotPairsCount: spotPairsCalc,
                 spotTriplesCount: spotTriplesCalc,
                 chandelierCount,

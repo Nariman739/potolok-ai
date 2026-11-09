@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square, Pencil } from "lucide-react";
@@ -42,7 +42,13 @@ interface Room {
   elements?: RoomElement[];
   ceilingHeight?: number;
   previewUrl3d?: string;
+  /** Выбор варианта из прайса на комнату, как в приложении: { gardina: id, track: id, ... } */
+  variantOverrides?: Record<string, string>;
 }
+
+/** Элементы, у которых вариант выбирается один на комнату. */
+const ROOM_VARIANT_CATEGORY: Partial<Record<string, string>> = { curtain: "gardina", track: "track", lightline: "lightline" };
+const ROOM_VARIANT_LABEL: Record<string, string> = { gardina: "гардина", track: "трек", lightline: "свет.линия", canvas: "полотно" };
 
 // ── Element config ──
 
@@ -344,11 +350,13 @@ function projectOnWall(px: number, py: number, a: Vertex, b: Vertex): Vertex {
 
 // ── Component ──
 
-export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }: {
+export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, roomVariants = false }: {
   room: Room;
-  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string; normalCorners?: boolean[]; angles?: number[] }) => void;
+  onDone: (elements: RoomElement[], updates?: { walls: number[]; area: number; perimeter: number; name?: string; normalCorners?: boolean[]; angles?: number[] ; variantOverrides?: Record<string, string> }) => void;
   onCancel: () => void;
   onPreviewSaved?: (url: string) => void;
+  /** Экран умеет сохранять variantOverrides комнаты (страница замеров). */
+  roomVariants?: boolean;
 }) {
   // Валюта мастера вместо зашитого «₸» (07.10.2026): formatPrice уже со знаком.
   const { format: formatPrice } = useCurrency();
@@ -447,8 +455,34 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
   // PriceVariant picker — модал «Выбрать товар из прайса» для текущего selectedEl
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Вариант на комнату — та же запись variantOverrides, что читает приложение.
+  const [variantOverrides, setVariantOverrides] = useState<Record<string, string>>(room.variantOverrides ?? {});
+  const [priceVariantIds, setPriceVariantIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!roomVariants) return;
+    let cancelled = false;
+    fetch("/api/prices/variants", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { id: string }[] | null) => {
+        if (!cancelled && Array.isArray(data)) setPriceVariantIds(new Set(data.map((v) => v.id)));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [roomVariants]);
+  const missingVariantLabels = priceVariantIds
+    ? Object.entries(variantOverrides).filter(([, id]) => !priceVariantIds.has(id)).map(([cat]) => ROOM_VARIANT_LABEL[cat] ?? cat)
+    : [];
+
   function applyPriceVariant(variantId: string | null) {
     if (!selectedId) return;
+    const category = roomVariants ? ROOM_VARIANT_CATEGORY[elements.find(e => e.id === selectedId)?.type ?? ""] : undefined;
+    if (category) {
+      setVariantOverrides((prev) => {
+        const next = { ...prev };
+        if (variantId) next[category] = variantId; else delete next[category];
+        return next;
+      });
+    }
     setElements((prev) => prev.map((e) => e.id === selectedId ? { ...e, priceVariantId: variantId ?? undefined } : e));
   }
   // Fixture width editor (doors/windows)
@@ -2913,7 +2947,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
           {editableName} · {computedArea.toFixed(2)} м²
           <Pencil className="h-3 w-3 text-muted-foreground" />
         </button>
-        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName, normalCorners: editableNormalCorners, angles: editableAngles })}
+        <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName, normalCorners: editableNormalCorners, angles: editableAngles, ...(roomVariants && { variantOverrides }) })}
           className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
@@ -2923,6 +2957,11 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
       {/* На компьютере высота строки постоянная: иначе при выделении чертёж менял масштаб */}
       <div className="shrink-0 lg:h-14 px-4 py-2 text-center border-b bg-gray-50 flex items-center justify-center gap-3">
         <p className="text-xs text-muted-foreground">{hintText}</p>
+        {missingVariantLabels.length > 0 && (
+          <p className="text-xs font-medium text-amber-700">
+            ⚠ Удалено из прайса: {missingVariantLabels.join(", ")}. Считаем по обычной цене.
+          </p>
+        )}
         {selectedId && (
           <div className="flex gap-2">
             {/* Rotate */}
@@ -2951,7 +2990,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
               if (!sel) return null;
               const supported = new Set(["spot","chandelier","pendant","track","lightline","curtain","subcurtain","builtin_gardina"]);
               if (!supported.has(sel.type)) return null;
-              const linked = !!sel.priceVariantId;
+              const roomCategory = roomVariants ? ROOM_VARIANT_CATEGORY[sel.type] : undefined;
+              const linked = roomCategory ? !!variantOverrides[roomCategory] : !!sel.priceVariantId;
               return (
                 <button onClick={() => setPickerOpen(true)}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-90 active:scale-95 shadow-sm ${
@@ -3973,7 +4013,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved }:
         return (
           <PriceVariantPicker
             elementType={sel.type}
-            currentVariantId={sel.priceVariantId ?? null}
+            currentVariantId={(roomVariants && ROOM_VARIANT_CATEGORY[sel.type] ? variantOverrides[ROOM_VARIANT_CATEGORY[sel.type]!] : sel.priceVariantId) ?? null}
+            note={roomVariants && ROOM_VARIANT_CATEGORY[sel.type] ? "Выбор действует на всю комнату" : undefined}
             onPick={applyPriceVariant}
             onClose={() => setPickerOpen(false)}
           />

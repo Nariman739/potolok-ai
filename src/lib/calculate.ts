@@ -16,7 +16,16 @@ export interface CustomItemInfo {
   unit: string;
   price: number;
   photoUrl?: string | null;
+  /** Категория позиции прайса: вариант подставляем только в свою категорию. */
+  category?: string | null;
 }
+
+/** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
+const VARIANT_INSTALL_CODE: Record<string, string> = {
+  gardina: "install_gardina",
+  track: "install_track",
+  lightline: "install_lightline",
+};
 
 function getPrice(prices: PriceMap, code: string): number {
   return prices[code] ?? DEFAULT_PRICES[code] ?? 0;
@@ -69,6 +78,32 @@ function calculateRoom(
   const area = Math.max(0, computeArea(room) - furnitureArea);
   const perimeter = computePerimeter(room);
   const items: LineItem[] = [];
+  const missingVariants: string[] = [];
+
+  // Вариант из прайса, выбранный на комнату. Удалён из прайса — считаем как без
+  // выбора и отмечаем категорию, чтобы показать подсказку. Без ownItemsById
+  // (ассистент и другие расчёты без прайса вариантов) выбор просто не учитывается.
+  const variantFor = (category: string): (CustomItemInfo & { id: string }) | null => {
+    const id = room.variantOverrides?.[category];
+    if (!id || !ownItemsById) return null;
+    const info = ownItemsById[id];
+    if (!info || (info.category && info.category !== category)) {
+      missingVariants.push(category);
+      return null;
+    }
+    return { ...info, id };
+  };
+  const variantLine = (variant: CustomItemInfo & { id: string }, category: string, quantity: number, fallbackCode: string): LineItem => ({
+    itemCode: variant.code,
+    itemName: variant.name,
+    quantity,
+    unit: variant.unit || getUnit(fallbackCode),
+    unitPrice: variant.price,
+    total: Math.round(variant.price * quantity),
+    variantId: variant.id,
+    photoUrl: variant.photoUrl ?? undefined,
+    installCode: VARIANT_INSTALL_CODE[category],
+  });
 
   // Багет/вставка идут только по стенам, НЕ под подшторником.
   // + Учитываем обход мебели до потолка: in-room грани добавляются, at-wall грани вычитаются.
@@ -196,13 +231,19 @@ function calculateRoom(
 
   // Track magnetic
   if (room.trackMagneticLength > 0) {
-    const trackItem = makeLineItem("track_magnetic", room.trackMagneticLength, prices);
+    const variant = variantFor("track");
+    const trackItem = variant
+      ? variantLine(variant, "track", room.trackMagneticLength, "track_magnetic")
+      : makeLineItem("track_magnetic", room.trackMagneticLength, prices);
     if (trackItem) items.push(trackItem);
   }
 
   // Light line
   if (room.lightLineLength > 0) {
-    const lightItem = makeLineItem("light_line", room.lightLineLength, prices);
+    const variant = variantFor("lightline");
+    const lightItem = variant
+      ? variantLine(variant, "lightline", room.lightLineLength, "light_line")
+      : makeLineItem("light_line", room.lightLineLength, prices);
     if (lightItem) items.push(lightItem);
   }
 
@@ -241,7 +282,10 @@ function calculateRoom(
   // Gardina (пластиковая на потолок / встроенная в потолок)
   if ((room.gardinaLength ?? 0) > 0) {
     const gardinaCode = room.gardinaType || "gardina_plastic";
-    const gardinaItem = makeLineItem(gardinaCode, room.gardinaLength, prices);
+    const variant = variantFor("gardina");
+    const gardinaItem = variant
+      ? variantLine(variant, "gardina", room.gardinaLength ?? 0, gardinaCode)
+      : makeLineItem(gardinaCode, room.gardinaLength, prices);
     if (gardinaItem) items.push(gardinaItem);
   }
 
@@ -323,6 +367,7 @@ function calculateRoom(
     subtotal,
     heightMultiplied,
     subtotalAfterHeight,
+    ...(missingVariants.length > 0 && { missingVariants }),
   };
 }
 

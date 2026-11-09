@@ -25,6 +25,7 @@ interface DesignerRoom {
   perimeter: number;
   elements: DesignerElement[];
   previewUrl3d?: string;
+  variantOverrides?: Record<string, string>;
 }
 
 interface DesignerElement {
@@ -40,6 +41,35 @@ interface DesignerElement {
   /** Софит: тип (28.10.2026) — стандартный код или свой вариант из прайса. */
   spotType?: string;
   priceVariantId?: string;
+}
+
+/**
+ * Одиночные софиты по строкам КП. «Наши» с типом на элементе (spotType / priceVariantId)
+ * идут отдельными строками по типу; без типа — как раньше, через spotsCount/spotType.
+ */
+export function spotBreakdown(singleSpots: DesignerElement[], existingSpotType?: string) {
+  const typedGroups = new Map<string, { code?: string; variantId?: string; count: number }>();
+  let spotsOurs = 0;
+  for (const e of singleSpots) {
+    if (e.variant === "client") continue;
+    const key = spotTypeKey(e);
+    if (!key) { spotsOurs++; continue; }
+    const ref = parseSpotTypeKey(key)!;
+    const g = typedGroups.get(key) ?? (ref.kind === "code" ? { code: ref.code, count: 0 } : { variantId: ref.variantId, count: 0 });
+    g.count++;
+    typedGroups.set(key, g);
+  }
+  const spotsClient = singleSpots.filter((e) => e.variant === "client").length;
+  const legacySpotType: string | undefined =
+    existingSpotType ??
+    (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined);
+  // Типизированные GX53 сливаем со старой строкой, если она и так GX53 — иначе две одинаковые строки.
+  const gx = typedGroups.get("t:spot_ours");
+  if (gx && (legacySpotType === "spot_ours" || legacySpotType === undefined)) {
+    spotsOurs += gx.count;
+    typedGroups.delete("t:spot_ours");
+  }
+  return { spotsOurs, spotsClient, spotsCount: spotsOurs + spotsClient, legacySpotType, spotsByType: [...typedGroups.values()] };
 }
 
 /**
@@ -67,31 +97,7 @@ export function buildRoomInputFromDesigner(
     else if (size >= 3) spotTriplesCount++;
   }
   const singleSpots = allSpots.filter((s) => !(s as { groupId?: string }).groupId);
-  // Типы софитов (28.10.2026): «наши» с типом на элементе (spotType / priceVariantId)
-  // идут отдельными строками по типу; без типа — как раньше, через spotsCount/spotType.
-  const typedGroups = new Map<string, { code?: string; variantId?: string; count: number }>();
-  let spotsOurs = 0;
-  for (const e of singleSpots) {
-    if (e.variant === "client") continue;
-    const key = spotTypeKey(e);
-    if (!key) { spotsOurs++; continue; }
-    const ref = parseSpotTypeKey(key)!;
-    const g = typedGroups.get(key) ?? (ref.kind === "code" ? { code: ref.code, count: 0 } : { variantId: ref.variantId, count: 0 });
-    g.count++;
-    typedGroups.set(key, g);
-  }
-  const spotsClient = singleSpots.filter((e) => e.variant === "client").length;
-  const legacySpotType: string | undefined =
-    existing?.spotType ??
-    (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined);
-  // Типизированные GX53 сливаем со старой строкой, если она и так GX53 — иначе две одинаковые строки.
-  const gx = typedGroups.get("t:spot_ours");
-  if (gx && (legacySpotType === "spot_ours" || legacySpotType === undefined)) {
-    spotsOurs += gx.count;
-    typedGroups.delete("t:spot_ours");
-  }
-  const spotsCount = spotsOurs + spotsClient;
-  const spotsByType = [...typedGroups.values()];
+  const { spotsOurs, spotsClient, spotsCount, legacySpotType, spotsByType } = spotBreakdown(singleSpots, existing?.spotType);
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
   const ventCount = els.filter((e) => e.type === "vent").length;
@@ -190,6 +196,7 @@ export function buildRoomInputFromDesigner(
     shape:
       room.walls.length === 4 ? ("rectangle" as const) : existing?.shape,
     previewUrl3d: room.previewUrl3d ?? existing?.previewUrl3d,
+    variantOverrides: room.variantOverrides ?? existing?.variantOverrides,
     designerData: {
       walls: room.walls,
       angles: room.angles ?? [],

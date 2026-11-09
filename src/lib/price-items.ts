@@ -60,10 +60,10 @@ export async function priceMapFor(companyId: string): Promise<Record<string, num
 export async function ownItemsByIdFor(companyId: string): Promise<Record<string, CustomItemInfo>> {
   const rows = await prisma.priceItem.findMany({
     where: { companyId, deletedAt: null, templateCode: null, code: { startsWith: "own:" } },
-    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true },
+    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true },
   });
   const map: Record<string, CustomItemInfo> = {};
-  for (const r of rows) map[r.id] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl };
+  for (const r of rows) map[r.id] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category };
   return map;
 }
 

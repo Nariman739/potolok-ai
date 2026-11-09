@@ -25,7 +25,7 @@ const ELEMENT_TO_CATEGORY: Record<string, string> = {
   pendant: "chandelier",
   track: "track",
   lightline: "lightline",
-  curtain: "curtain",
+  curtain: "gardina",
   subcurtain: "podshtornik",
   builtin_gardina: "gardina",
 };
@@ -37,7 +37,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   lightline: "Световые линии",
   curtain: "Гардины",
   podshtornik: "Подшторники",
-  gardina: "Встроенные гардины",
+  gardina: "Гардины",
 };
 
 interface PriceVariantPickerProps {
@@ -45,9 +45,11 @@ interface PriceVariantPickerProps {
   currentVariantId?: string | null;
   onPick: (variantId: string | null) => void;
   onClose: () => void;
+  /** Уточнение под заголовком, например «Выбор действует на всю комнату». */
+  note?: string;
 }
 
-export function PriceVariantPicker({ elementType, currentVariantId, onPick, onClose }: PriceVariantPickerProps) {
+export function PriceVariantPicker({ elementType, currentVariantId, onPick, onClose, note }: PriceVariantPickerProps) {
   const category = ELEMENT_TO_CATEGORY[elementType];
   const { format, symbol } = useCurrency(); // валюта мастера (07.10.2026)
   const [variants, setVariants] = useState<PriceVariant[]>([]);
@@ -92,6 +94,7 @@ export function PriceVariantPicker({ elementType, currentVariantId, onPick, onCl
           <h3 className="text-base font-semibold text-slate-900">
             Выбрать товар: {CATEGORY_LABELS[category] ?? category}
           </h3>
+          {note && <p className="text-xs font-medium text-amber-700">{note}</p>}
           <p className="text-xs text-slate-500">Из вашего прайса. AI отрендерит именно этот товар.</p>
         </div>
         <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">

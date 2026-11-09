@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getScope } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import type { RoomInput, ExtraItem } from "@/lib/types";
-import { priceBookCompanyId, priceMapFor, customItemsMapFor } from "@/lib/price-items";
+import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +24,9 @@ export async function POST(request: Request) {
     const priceMap = await priceMapFor(companyId);
     const customItemsMap = await customItemsMapFor(companyId);
 
-    const result = calculate(rooms, priceMap, customItemsMap, extraItems);
+    const ownItemsById = await ownItemsByIdFor(companyId);
+
+    const result = calculate(rooms, priceMap, customItemsMap, extraItems, ownItemsById);
 
     return NextResponse.json(result);
   } catch (error) {

@@ -192,6 +192,11 @@ export function CalculationResults({
                       </p>
                     )}
                   </div>
+                  {rr.missingVariants && rr.missingVariants.length > 0 && (
+                    <p className="text-xs font-medium text-amber-700 mt-1">
+                      ⚠ Выбранный вариант удалён из прайса, посчитано по обычной цене
+                    </p>
+                  )}
                   <div className="flex justify-between text-sm font-medium mt-1 pt-1 border-t border-dashed">
                     <span>Итого {rr.roomName}</span>
                     <span>{formatPrice(rr.subtotalAfterHeight)}</span>

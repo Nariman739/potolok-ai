@@ -127,6 +127,9 @@ export interface RoomInput {
   oneOffItems?: OneOffItem[];
   /** PNG-снимок 3D-сцены этой комнаты (Vercel Blob URL) — попадает в Estimate.room3dPreviewUrl и на публичную КП. */
   previewUrl3d?: string;
+  /** Выбор варианта из прайса на комнату: { gardina: id, track: id, lightline: id, canvas: id }.
+   *  Та же форма, что room.variantOverrides в приложении и MeasurementRoom. */
+  variantOverrides?: Record<string, string>;
   // Raw data for Room Designer round-trip editing
   designerData?: {
     walls: number[];
@@ -168,6 +171,8 @@ export interface RoomResult {
   subtotal: number;
   heightMultiplied: boolean;
   subtotalAfterHeight: number;
+  /** Категории, чей выбранный вариант удалён из прайса: посчитано по обычной цене. */
+  missingVariants?: string[];
 }
 
 export interface CalculationResult {
