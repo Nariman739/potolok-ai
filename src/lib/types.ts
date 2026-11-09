@@ -83,6 +83,11 @@ export interface RoomInput {
   spotsByType?: { code?: string; variantId?: string; count: number }[];
   trackMagneticLength: number;
   lightLineLength: number;
+  /** Треки с типом на элементе: стандартный код (накладной) или свой вариант. */
+  tracksByType?: { code?: string; variantId?: string; length: number }[];
+  /** Клиентский трек и линия, м.п.: только установка. */
+  trackClientLength?: number;
+  lightLineClientLength?: number;
   curtainRodLength: number;
   pipeBypasses: number;
   cornersCount: number;

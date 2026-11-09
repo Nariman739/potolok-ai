@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, measuredGeometry, splitSpotGroups, gardinaFields } from "@/lib/room-input-builder";
+import { spotBreakdown, measuredGeometry, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2342,12 +2342,7 @@ export default function ZameryPage() {
       const { spotsOurs, spotsClient, spotsCount, spotsByType } = spotBreakdown(singleSpotEls);
       const pendantCount = els.filter(e => e.type === "pendant").length;
       const chandelierCount = els.filter(e => e.type === "chandelier").length;
-      const trackMagneticLength = Math.round(
-        els.filter(e => e.type === "track").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
-      const lightLineLength = Math.round(
-        els.filter(e => e.type === "lightline").reduce((s, e) => s + (e.length || 0), 0)
-      ) / 100;
+      const lightAndTrack = trackFields(els);
       const gardina = gardinaFields(els);
       const subStats = computeSubcurtainStats(
         els,
@@ -2390,8 +2385,7 @@ export default function ZameryPage() {
         spotPairsCount,
         spotTriplesCount,
         floatingLength,
-        trackMagneticLength,
-        lightLineLength,
+        ...lightAndTrack,
         curtainRodLength: 0,
         pipeBypasses: 0,
         cornersCount: visibleCornersCount,
@@ -2480,10 +2474,7 @@ export default function ZameryPage() {
               const spotTriplesCalc = 0;
               const { spotsOurs, spotsClient, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
-              const trackEls = elements.filter(e => e.type === "track");
-              const trackMagneticLength = Math.round(trackEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
-              const lightLineEls = elements.filter(e => e.type === "lightline");
-              const lightLineLength = Math.round(lightLineEls.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+              const lightAndTrackCalc = trackFields(elements);
               const gardinaCalc = gardinaFields(elements);
               const subStatsCalc = computeSubcurtainStats(
                 elements,
@@ -2523,8 +2514,7 @@ export default function ZameryPage() {
                 chandelierCount,
                 chandelierInstallCount: chandelierCount,
                 floatingLength: floatingLengthCalc,
-                trackMagneticLength,
-                lightLineLength,
+                ...lightAndTrackCalc,
                 curtainRodLength: 0,
                 pipeBypasses: 0,
                 cornersCount: visibleCornersCountCalc,

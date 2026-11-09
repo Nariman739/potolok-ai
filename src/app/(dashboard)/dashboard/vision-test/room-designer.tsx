@@ -482,6 +482,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
         if (variantId) next[category] = variantId; else delete next[category];
         return next;
       });
+      // Вариант трека живёт только на комнате: иначе отдельной строкой посчитался бы элемент.
+      if (category === "track") return;
     }
     setElements((prev) => prev.map((e) => e.id === selectedId ? { ...e, priceVariantId: variantId ?? undefined } : e));
   }

@@ -44,6 +44,7 @@ interface DesignerElement {
   groupId?: string;
   rows?: number;
   withLight?: boolean;
+  trackType?: string;
 }
 
 /**
@@ -85,6 +86,30 @@ export function gardinaFields(els: DesignerElement[]) {
     gardinaLength: m(rest.filter((e) => !e.withLight)),
     gardinaSingleLength: m(single),
     gardinaLightLength: m(rest.filter((e) => e.withLight)),
+  };
+}
+
+/** Длины трека и линии по строкам КП, в метрах. Клиентские — отдельно, только установка. */
+export function trackFields(els: DesignerElement[]) {
+  const m = (list: DesignerElement[]) => Math.round(list.reduce((s, e) => s + (e.length || 0), 0)) / 100;
+  const tracks = els.filter((e) => e.type === "track");
+  const ours = tracks.filter((e) => e.variant !== "client");
+  const typed = new Map<string, { code?: string; variantId?: string; list: DesignerElement[] }>();
+  for (const e of ours) {
+    if (!e.priceVariantId && !e.trackType) continue;
+    const key = e.priceVariantId ? `v:${e.priceVariantId}` : `t:${e.trackType}`;
+    const g = typed.get(key) ?? { code: e.priceVariantId ? undefined : e.trackType, variantId: e.priceVariantId, list: [] };
+    g.list.push(e);
+    typed.set(key, g);
+  }
+  const lines = els.filter((e) => e.type === "lightline");
+  const tracksByType = [...typed.values()].map((g) => ({ code: g.code, variantId: g.variantId, length: m(g.list) }));
+  return {
+    trackMagneticLength: m(ours.filter((e) => !e.priceVariantId && !e.trackType)),
+    lightLineLength: m(lines.filter((e) => e.variant !== "client")),
+    ...(tracksByType.length > 0 && { tracksByType }),
+    trackClientLength: m(tracks.filter((e) => e.variant === "client")),
+    lightLineClientLength: m(lines.filter((e) => e.variant === "client")),
   };
 }
 
@@ -134,18 +159,7 @@ export function buildRoomInputFromDesigner(
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
   const ventCount = els.filter((e) => e.type === "vent").length;
-  const trackMagneticLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "track")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
-  const lightLineLength =
-    Math.round(
-      els
-        .filter((e) => e.type === "lightline")
-        .reduce((s, e) => s + (e.length || 0), 0)
-    ) / 100;
+  const lightAndTrack = trackFields(els);
   const gardina = gardinaFields(els);
   const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
   const subStats = computeSubcurtainStats(els, verticesForRoom, room.walls.length, room.walls);
@@ -200,8 +214,7 @@ export function buildRoomInputFromDesigner(
     ventCount,
     spotPairsCount,
     spotTriplesCount: 0,
-    trackMagneticLength,
-    lightLineLength,
+    ...lightAndTrack,
     curtainRodLength: existing?.curtainRodLength ?? 0,
     pipeBypasses: existing?.pipeBypasses ?? 0,
     cornersCount: visibleCornersCount,

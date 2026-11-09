@@ -245,13 +245,36 @@ function calculateRoom(
   }
 
   // Track magnetic
-  if (room.trackMagneticLength > 0) {
+  // Трек с типом на элементе. Свой вариант удалён из прайса — считаем как трек без типа.
+  let trackLegacyM = room.trackMagneticLength;
+  for (const t of room.tracksByType ?? []) {
+    if (t.length <= 0) continue;
+    if (t.variantId) {
+      const info = ownItemsById?.[t.variantId];
+      if (!info) {
+        if (ownItemsById) missingVariants.push("track");
+        trackLegacyM += t.length;
+        continue;
+      }
+      items.push(variantLine({ ...info, id: t.variantId }, "track", t.length, "track_magnetic"));
+      continue;
+    }
+    const typed = makeLineItem(t.code && PRODUCT_BY_CODE[t.code] ? t.code : "track_magnetic", t.length, prices);
+    if (typed) items.push(typed);
+  }
+  if (trackLegacyM > 0) {
     const variant = variantFor("track");
     const trackItem = variant
-      ? variantLine(variant, "track", room.trackMagneticLength, "track_magnetic")
-      : makeLineItem("track_magnetic", room.trackMagneticLength, prices);
+      ? variantLine(variant, "track", trackLegacyM, "track_magnetic")
+      : makeLineItem("track_magnetic", trackLegacyM, prices);
     if (trackItem) items.push(trackItem);
   }
+  const installOnly = (code: string, name: string, quantity: number): LineItem => {
+    const unitPrice = getPrice(prices, code);
+    return { itemCode: code, itemName: name, quantity, unit: "м.п.", unitPrice, total: Math.round(unitPrice * quantity), installCode: code };
+  };
+  if ((room.trackClientLength ?? 0) > 0) items.push(installOnly("install_track", "Установка клиентского трека", room.trackClientLength ?? 0));
+  if ((room.lightLineClientLength ?? 0) > 0) items.push(installOnly("install_lightline", "Установка клиентской линии", room.lightLineClientLength ?? 0));
 
   // Light line
   if (room.lightLineLength > 0) {
