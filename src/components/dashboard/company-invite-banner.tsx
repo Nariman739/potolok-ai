@@ -79,13 +79,15 @@ export function CompanyInviteBanner() {
                     Перенести ваши данные в «{inv.companyName}»?
                   </p>
                   <p className="text-xs text-muted-foreground mt-1 leading-snug">
-                    Объектов: {ownData?.objects ?? 0}, клиентов: {ownData?.clients ?? 0}. Если
-                    перенести — их увидит вся компания, и они останутся у неё, даже если вы
-                    потом выйдете. Без переноса они останутся в вашей личной компании и не
-                    будут видны, пока вы работаете в «{inv.companyName}».
+                    Объектов: {ownData?.objects ?? 0}, клиентов: {ownData?.clients ?? 0}. Без
+                    переноса они останутся в вашей личной компании и не будут видны, пока вы
+                    работаете в «{inv.companyName}».
+                  </p>
+                  <p className="text-xs mt-1 leading-snug">
+                    Перенесённые данные останутся у компании, даже если вы потом выйдете.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <Button size="sm" disabled={busy} onClick={() => switchTo(inv.companyId, true)}>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => switchTo(inv.companyId, true)}>
                       Перенести
                     </Button>
                     <Button size="sm" variant="outline" disabled={busy} onClick={() => switchTo(inv.companyId, false)}>
