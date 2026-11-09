@@ -28,7 +28,8 @@ import type { RoomInput, RoomShape, CustomDimensions, OneOffItem } from "@/lib/t
 import { Plus, Trash2 } from "lucide-react";
 import { useCurrency } from "@/components/currency-provider";
 import { unitLabel } from "@/lib/currency";
-import { mergeEditedRoom } from "@/lib/room-edit";
+import { isDrawnRoom, mergeEditedRoom } from "@/lib/room-edit";
+import Link from "next/link";
 
 // Clear "0" on focus so user can type directly, restore "0" on blur if empty
 function zeroFieldProps(value: string, setter: (v: string) => void) {
@@ -81,6 +82,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
   const prices = priceMap ?? DEFAULT_PRICES;
   const { symbol } = useCurrency(); // знак валюты мастера вместо зашитого «₸» (07.10.2026)
   const er = editRoom; // shorthand
+  const drawnRoom = !!er && isDrawnRoom(er);
 
   const [name, setName] = useState(er?.name ?? "");
   // Legacy "square" rooms treated as rectangle
@@ -426,6 +428,13 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         />
       </div>
 
+      {drawnRoom ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Размеры этой комнаты заданы чертежом ({er?.measuredArea} м²), здесь они не меняются.{" "}
+          Чтобы изменить форму, откройте объект в{" "}
+          <Link href="/dashboard/vision-test" className="font-medium underline">Замерах</Link> и создайте КП заново.
+        </div>
+      ) : (<>
       {/* Shape selector */}
       <div className="space-y-2">
         <Label>Форма комнаты</Label>
@@ -648,6 +657,7 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
       {shapeError && (
         <p className="text-sm text-destructive">{shapeError}</p>
       )}
+      </>)}
 
       {/* Высота потолка. Тип/цена полотна — авто по короткой стороне комнаты. */}
       <div className="space-y-2">

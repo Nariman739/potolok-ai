@@ -155,6 +155,9 @@ async function createEstimate(request: Request): Promise<NextResponse> {
       { calcIsBase: true }
     );
     let total = adjust.total;
+    if (!Number.isFinite(total)) {
+      return NextResponse.json({ error: "Не удалось сохранить: в расчёте нет итога" }, { status: 400 });
+    }
 
     // Минимальный заказ мастера. Приложение его не считает и шлёт голую сумму
     // позиций: мастер выставил «меньше 90 000 не берусь», а из телефона уходило

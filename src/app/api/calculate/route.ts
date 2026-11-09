@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
+import { roomForCalculation } from "@/lib/room-input-builder";
 import type { RoomInput, ExtraItem } from "@/lib/types";
 import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
 
@@ -26,7 +27,10 @@ export async function POST(request: Request) {
 
     const ownItemsById = await ownItemsByIdFor(companyId);
 
-    const result = calculate(rooms, priceMap, customItemsMap, extraItems, ownItemsById);
+    const result = calculate(rooms.map(roomForCalculation), priceMap, customItemsMap, extraItems, ownItemsById);
+    if (!Number.isFinite(result.total)) {
+      return NextResponse.json({ error: "Не удалось посчитать: у комнаты нет размеров" }, { status: 400 });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

@@ -34,6 +34,8 @@ export const INSTALL_MAP: Record<string, string> = {
   spot_pair_ours: "install_spot",
   chandelier: "install_chandelier",
   chandelier_install: "install_chandelier",
+  // Как в приложении: бра в наряде идёт по ставке установки подвесного светильника.
+  pendant: "pendant_install",
   track_magnetic: "install_track",
   track_surface: "install_track",
   light_line: "install_lightline",

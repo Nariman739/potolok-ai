@@ -175,7 +175,9 @@ export function applyKpAdjustments<T extends AdjCalc>(
   opts: { partner?: MoneyInput | null; discount?: MoneyInput | null; prevCoef?: number }
 ): KpAdjustment<T> {
   const prevCoef = opts.prevCoef && opts.prevCoef > 0 ? opts.prevCoef : 1;
-  const baseCalc = scaleCalc(calc, 1 / prevCoef);
+  // Как в приложении: со скидкой минимальный заказ не действует, мастер ставит её осознанно.
+  const discounted = !!opts.discount && opts.discount.value > 0;
+  const baseCalc = scaleCalc(discounted && calc.minOrderApplied ? { ...calc, minOrderApplied: false } : calc, 1 / prevCoef);
   const base = baseCalc.total;
   const partner = computePartner(base, opts.partner);
   const adjusted = partner.coef === 1 ? baseCalc : scaleCalc(baseCalc, partner.coef);
