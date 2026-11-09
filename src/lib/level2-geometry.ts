@@ -556,7 +556,16 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
     const q = nb[i];
     if (!q || !q.back || !q.fwd) return null;
     const f = filletAt(pts, i, r, closed, q.back.len, q.fwd.len);
-    return f ? { b: f.dBack, f: f.dFwd } : { b: q.back.len, f: q.fwd.len };
+    if (f) return { b: f.dBack, f: f.dFwd };
+    // Не влез при полном R — потребность при наибольшем R, который влезает в окна до соседей
+    // (не вся сторона: иначе дальний нормальный угол на длинной стороне терял радиус, ревью 11.11.2026).
+    let lo = 0, hi = r, best: Level2Fillet | null = null;
+    for (let k = 0; k < 14; k++) {
+      const mid = (lo + hi) / 2;
+      const g = filletAt(pts, i, mid, closed, q.back.len, q.fwd.len);
+      if (g && g.dBack <= q.back.len + 1e-6 && g.dFwd <= q.fwd.len + 1e-6) { lo = mid; best = g; } else hi = mid;
+    }
+    return best ? { b: best.dBack, f: best.dFwd } : { b: 0, f: 0 };
   });
   /** Наибольший R ≤ hi, при котором касания влезают в доли hb/hf (делением пополам — без ступеней ×0,9). */
   const fit = (i: number, hi: number, hb: number, hf: number, q: { back: { len: number }; fwd: { len: number } }) => {
