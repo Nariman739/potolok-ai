@@ -24,9 +24,9 @@ import { toast } from "sonner";
 import { Save, Loader2, RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { CATEGORY_LABELS, type ProductCategory } from "@/lib/constants";
 import { useCurrency } from "@/components/currency-provider";
+import { FilmsSection } from "@/components/prices/FilmsSection";
 import { unitLabel } from "@/lib/currency";
 import {
-import { FilmsSection } from "@/components/prices/FilmsSection";
   VariantList,
   AddVariantButton,
   VariantDialog,
