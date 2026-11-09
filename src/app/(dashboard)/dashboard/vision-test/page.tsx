@@ -2473,7 +2473,7 @@ export default function ZameryPage() {
               const allSpotElsCalc = elements.filter(e => e.type === "spot");
               const { spotPairsCount: spotPairsCalc, singleSpots: singleSpotElsCalc } = splitSpotGroups(allSpotElsCalc);
               const spotTriplesCalc = 0;
-              const { spotsOurs, spotsClient, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
+              const { spotsOurs, spotsClient, spotsCount: spotsCountCalc, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
               const lightAndTrackCalc = trackFields(elements);
               const gardinaCalc = gardinaFields(elements);
@@ -2505,7 +2505,7 @@ export default function ZameryPage() {
                 ceilingHeight: 3,
                 canvasType: "mat" as CanvasType,
                 profileType: profileTypeForRoom,
-                spotsCount: spotsOurs + spotsClient,
+                spotsCount: spotsCountCalc,
                 spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours",
                 ...(spotsByTypeCalc.length > 0 && { spotsByType: spotsByTypeCalc }),
                 ...(room.variantOverrides && { variantOverrides: room.variantOverrides }),
