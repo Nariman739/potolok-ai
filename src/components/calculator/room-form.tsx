@@ -28,6 +28,7 @@ import type { RoomInput, RoomShape, CustomDimensions, OneOffItem } from "@/lib/t
 import { Plus, Trash2 } from "lucide-react";
 import { useCurrency } from "@/components/currency-provider";
 import { unitLabel } from "@/lib/currency";
+import { mergeEditedRoom } from "@/lib/room-edit";
 
 // Clear "0" on focus so user can type directly, restore "0" on blur if empty
 function zeroFieldProps(value: string, setter: (v: string) => void) {
@@ -373,13 +374,9 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         .filter((ci) => ci.itemId && parseFloat(ci.quantity) > 0)
         .map((ci) => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
       oneOffItems: cleanOneOffs.length > 0 ? cleanOneOffs : undefined,
-      // Выбор вариантов сделан в дизайнере, в этой форме его нет: правка не должна его терять.
-      variantOverrides: editRoom?.variantOverrides,
-      spotsByType: editRoom?.spotsByType,
-      tracksByType: editRoom?.tracksByType,
     };
 
-    onAdd(room);
+    onAdd(editRoom ? mergeEditedRoom(editRoom, room) : room);
 
     // Only reset form when adding (not editing)
     if (!editRoom) {

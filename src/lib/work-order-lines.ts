@@ -42,12 +42,23 @@ export const INSTALL_MAP: Record<string, string> = {
   level2_canvas: "install_canvas",
   curtain_ldsp: "install_curtain",
   curtain_aluminum: "install_curtain",
+  gardina_single: "install_gardina",
   gardina_plastic: "install_gardina",
   gardina_aluminum: "install_gardina",
   corner_plastic: "install_corner",
   corner_aluminum: "install_corner",
   pipe_bypass: "install_pipe",
 };
+
+/** Эти работы оплачиваются по метрам каждой строки КП: схлопывать нельзя. */
+const PER_LINE_INSTALL = new Set(["install_track", "install_lightline", "install_gardina"]);
+
+/** Ключ схлопывания строк одной комнаты. Профиль и вставка — один монтаж, остальное построчно. */
+export function installSeenKey(installCode: string, itemCode: string): string {
+  return installCode === "install_spot" || itemCode === "level2_canvas" || PER_LINE_INSTALL.has(installCode)
+    ? `${installCode}:${itemCode}`
+    : installCode;
+}
 
 /** Свой вариант прайса приходит из мобилки с itemCode = pickerKey («canvas», «spot:v:<id>»…). */
 function installCodeFor(itemCode: string): string | undefined {
@@ -191,6 +202,7 @@ export function autoWorkOrderLines(
       continue;
     }
     const seen = new Set<string>();
+    const usedCodes = new Set<string>();
     for (const [i, item] of ((rr.items ?? []) as LineItem[]).entries()) {
       const kind = noRateKind(item);
       if (kind) {
@@ -201,12 +213,15 @@ export function autoWorkOrderLines(
       if (!installCode) continue;
       // Софиты разных типов монтируются отдельно, полотно 2-го уровня — отдельно от
       // основного; остальное по коду монтажа схлопываем (профиль + вставка = один монтаж профиля).
-      const seenKey = installCode === "install_spot" || item.itemCode === "level2_canvas" ? `${installCode}:${item.itemCode}` : installCode;
+      const seenKey = installSeenKey(installCode, item.itemCode);
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
       const price = Math.max(0, priceOf(installCode));
       if (item.quantity <= 0) continue;
-      out.push({ key: `${roomKey}:${seenKey}`, room: roomName, name: `${item.itemName} (монтаж)`, qty: round2(item.quantity), unit: item.unit, price, code: installCode });
+      // Первая строка трека, линии и гардины хранит прежний ключ: на него ссылаются правки мастера.
+      const lineKey = PER_LINE_INSTALL.has(installCode) && !usedCodes.has(installCode) ? installCode : seenKey;
+      usedCodes.add(installCode);
+      out.push({ key: `${roomKey}:${lineKey}`, room: roomName, name: `${item.itemName} (монтаж)`, qty: round2(item.quantity), unit: item.unit, price, code: installCode });
     }
   }
 

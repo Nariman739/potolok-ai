@@ -11,7 +11,7 @@ import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 // Клиентская позиция → монтажная ставка: одна карта с нарядом (29.10.2026)
-import { INSTALL_MAP } from "@/lib/work-order-lines";
+import { INSTALL_MAP, installSeenKey } from "@/lib/work-order-lines";
 
 const C = {
   primary: "#374151",
@@ -106,7 +106,7 @@ export async function GET(
         if (!installCode) continue;
         // Софиты разных типов (28.10.2026) — каждая строка монтируется отдельно;
         // для остального дубли по коду монтажа схлопываем (профиль + вставка = один монтаж).
-        const seenKey = installCode === "install_spot" ? `${installCode}:${item.itemCode}` : installCode;
+        const seenKey = installSeenKey(installCode, item.itemCode);
         if (seen.has(seenKey)) continue;
         seen.add(seenKey);
 
