@@ -96,10 +96,22 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
 
+  // Договор клиента: текст шаблона присылает мастер и он выводится в HTML страницы.
+  // Вместо 'unsafe-inline' — nonce: скрипты Next пройдут, скрипты из шаблона нет.
+  const nonce = pathname.startsWith("/contract/") ? btoa(crypto.randomUUID()) : null;
+  const contractCsp = nonce
+    ? securityHeaders["Content-Security-Policy"].replace(
+        "script-src 'self' 'unsafe-inline'",
+        `script-src 'self' 'nonce-${nonce}'`
+      )
+    : null;
+  if (contractCsp) requestHeaders.set("Content-Security-Policy", contractCsp);
+
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
   }
+  if (contractCsp) response.headers.set("Content-Security-Policy", contractCsp);
   // «Дизайн КП»: превью PDF — blob:-URL в iframe (PdfPreview). Только на этой странице
   // и только blob: — X-Frame-Options и CSP остальных страниц не меняются.
   if (pathname === "/dashboard/branding") {
