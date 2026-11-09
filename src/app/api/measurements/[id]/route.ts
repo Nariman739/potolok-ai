@@ -141,15 +141,16 @@ export async function PATCH(
           variantOverrides: r.variantOverrides ?? undefined,
           // null = «как на объекте»; телефон шлёт поле всегда, чтобы снятая галочка комнаты доезжала.
           withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
-          insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
           sortOrder: i,
         };
+        // Цвет вставки: старые клиенты поля не шлют — при обновлении не затираем (код-ревью 11.11.2026).
+        const insertColor = r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null;
         const rid = (r as { id?: string }).id;
         if (rid && known.has(rid)) {
-          await prisma.measurementRoom.update({ where: { id: rid }, data });
+          await prisma.measurementRoom.update({ where: { id: rid }, data: r.insertColor !== undefined ? { ...data, insertColor } : data });
           keep.add(rid);
         } else {
-          const created = await prisma.measurementRoom.create({ data: { objectId: id, ...data }, select: { id: true } });
+          const created = await prisma.measurementRoom.create({ data: { objectId: id, ...data, insertColor }, select: { id: true } });
           keep.add(created.id);
         }
       }

@@ -865,7 +865,7 @@ export function buildRoomPlan(room: PlanRoom, lang: Lang, size = 320, opts: Plan
         if (closed || calc.sides.length > 1) {
           const anchor = side.apex ? S(side.apex) : S({ x: mx, y: my });
           // «⌒» нет во встроенном шрифте PDF (в PDF цеха печатался квадратом, QA 11.11.2026) — словом.
-          const lenTxt = side.bulge ? `дуга ${Math.round(side.lengthCm)}` : String(Math.round(len));
+          const lenTxt = side.bulge ? `${t("wo.level2.arc")} ${Math.round(side.lengthCm)}` : String(Math.round(len));
           shapes.push({ k: "text", x: anchor.x - px * fs * 0.95, y: anchor.y - py * fs * 0.95, text: lenTxt, size: fs * 0.9, weight: 600, fill: color, halo: true, tag: "dim-level2" });
         }
         // Отступ до стены — пунктиром наружу с цифрой; у стороны на стене и у дуги отступа нет
