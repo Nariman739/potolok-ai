@@ -274,7 +274,7 @@ function calculateRoom(
           unit: "пара",
           unitPrice,
           total: Math.round(unitPrice * spotPairs),
-        }), installRate: getPrice(prices, "install_spot") * 2 });
+        }), installerRate: getPrice(prices, "install_spot") * 2 });
   }
   const spotTriples = room.spotTriplesCount ?? 0;
   if (spotTriples > 0) {
@@ -488,9 +488,9 @@ function calculateRoom(
     : subtotal;
 
   for (const item of items) {
-    if (item.installRate !== undefined) continue;
+    if (item.installerRate !== undefined) continue;
     const rate = spotInstallRate(item, ownItemsById);
-    if (rate !== undefined) item.installRate = rate;
+    if (rate !== undefined) item.installerRate = rate;
   }
 
   return {

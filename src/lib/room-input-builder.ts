@@ -161,7 +161,15 @@ export function spotBreakdown(singleSpots: DesignerElement[], existingSpotType?:
     spotsOurs += gx.count;
     typedGroups.delete("t:spot_ours");
   }
-  return { spotsOurs, spotsClient, spotsCount: spotsOurs + spotsClient, legacySpotType, spotsByType: [...typedGroups.values()] };
+  // Смешанные: клиентские идут своей строкой, как в приложении. Иначе ушли бы по цене наших.
+  const mixed = spotsOurs > 0 && spotsClient > 0 && legacySpotType !== "spot_client";
+  return {
+    spotsOurs,
+    spotsClient,
+    spotsCount: mixed ? spotsOurs : spotsOurs + spotsClient,
+    legacySpotType,
+    spotsByType: [...typedGroups.values(), ...(mixed ? [{ code: "spot_client", count: spotsClient }] : [])],
+  };
 }
 
 /**

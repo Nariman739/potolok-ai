@@ -110,7 +110,7 @@ export async function GET(
         if (seen.has(seenKey)) continue;
         seen.add(seenKey);
 
-        const price = item.installRate ?? getInstallPrice(installCode);
+        const price = item.installerRate ?? getInstallPrice(installCode);
         if (price <= 0) continue;
 
         // Use same quantity as client item

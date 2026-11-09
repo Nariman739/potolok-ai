@@ -216,7 +216,7 @@ export function autoWorkOrderLines(
       const seenKey = installSeenKey(installCode, item.itemCode);
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
-      const price = item.installRate ?? Math.max(0, priceOf(installCode));
+      const price = item.installerRate ?? Math.max(0, priceOf(installCode));
       if (item.quantity <= 0) continue;
       // Первая строка трека, линии и гардины хранит прежний ключ: на него ссылаются правки мастера.
       const lineKey = PER_LINE_INSTALL.has(installCode) && !usedCodes.has(installCode) ? installCode : seenKey;

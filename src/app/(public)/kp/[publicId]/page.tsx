@@ -15,6 +15,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { after } from "next/server";
 import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
+import { stripInternalPrices } from "@/lib/public-calc";
 
 // Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
 // перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
@@ -53,20 +54,6 @@ export async function generateMetadata({
   }
 
   return { title, description };
-}
-
-/** Рекурсивно убирает из расчёта всё, что начинается на installer/partner/cost/margin. */
-function stripInternalPrices(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stripInternalPrices);
-  if (value && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (/^(installer|partner|margin|costPrice|purchase)/i.test(k)) continue;
-      out[k] = stripInternalPrices(v);
-    }
-    return out;
-  }
-  return value;
 }
 
 /**
