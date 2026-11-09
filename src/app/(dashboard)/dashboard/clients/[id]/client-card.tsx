@@ -39,7 +39,7 @@ import {
 import { PhotoGallery, type ObjectPhoto, type PhotoCategoryKey } from "@/components/clients/photo-gallery";
 import { useCurrency } from "@/components/currency-provider";
 import { AddEntryDialog } from "../../calendar/add-entry-dialog";
-import { dayTitle, plannedAt, type CalendarKind } from "@/lib/crm-calendar";
+import { dayShort, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 import { useClock } from "@/components/use-clock";
 
@@ -104,6 +104,7 @@ const ESTIMATE_STATUS_LABELS: Record<string, string> = {
 export function ClientCard({
   client: initialClient,
   planClient,
+  planned,
   nearest,
   events: initialEvents,
   estimates,
@@ -113,6 +114,8 @@ export function ClientCard({
 }: {
   client: Client;
   planClient: CalendarClient;
+  /** Будущие даты, которые заменит назначение: и подпись кнопки, и диалог */
+  planned: { measure: string | null; install: string | null };
   nearest: { measure: string | null; install: string | null };
   events: Event[];
   estimates: Estimate[];
@@ -136,11 +139,7 @@ export function ClientCard({
   const clock = useClock();
 
   function formatDate(iso: string) {
-    return new Date(`${clock.day(new Date(iso))}T00:00:00Z`).toLocaleDateString("ru-RU", {
-      timeZone: "UTC",
-      day: "2-digit",
-      month: "short",
-    });
+    return dayShort(clock.day(new Date(iso)));
   }
 
   function formatDateTime(iso: string) {
@@ -267,8 +266,7 @@ export function ClientCard({
   }
 
   function openPlan(kind: CalendarKind) {
-    const current = plannedAt(planClient, kind);
-    const upcoming = current && new Date(current).getTime() > Date.now() ? new Date(current) : null;
+    const upcoming = planned[kind] ? new Date(planned[kind]) : null;
     setPlanKind(kind);
     setPlanTime(upcoming ? clock.time(upcoming) : "10:00");
     setPlanDay(clock.day(upcoming ?? new Date()));
@@ -369,11 +367,11 @@ export function ClientCard({
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => openPlan("measure")}>
                     <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                    {planClient.measureAt ? `Перенести замер · ${formatDateTime(planClient.measureAt)}` : "Назначить замер"}
+                    {planned.measure ? `Перенести замер · ${formatDateTime(planned.measure)}` : "Назначить замер"}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openPlan("install")}>
                     <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                    {nearest.install ? `Перенести монтаж · ${formatDateTime(nearest.install)}` : "Назначить монтаж"}
+                    {planned.install ? `Перенести монтаж · ${formatDateTime(planned.install)}` : "Назначить монтаж"}
                   </Button>
                 </div>
               </div>

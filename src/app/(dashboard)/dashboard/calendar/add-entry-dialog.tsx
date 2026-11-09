@@ -81,7 +81,6 @@ export function AddEntryDialog({
   const canSave = !!client && !!date && !!time && !saving;
   const currentIso = target?.at ?? (client ? plannedAt(client, kind) : null);
   const replaced = currentIso ? new Date(currentIso) : null;
-  const upcoming = !!replaced && replaced.getTime() > Date.now();
   const noun = kind === "install" ? "монтаж" : "замер";
   const zone = clock.local ? "" : " по Астане";
   // Дата монтажа пишется в один объект — при нескольких видно, в какой
@@ -90,14 +89,14 @@ export function AddEntryDialog({
       ? target?.objectLabel || client.objectAddress || "Без адреса"
       : null;
 
-  async function send(at: string | null, done: string) {
+  async function send(at: string | null, done: string, note?: string) {
     if (!client) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/clients/${client.id}/plan`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, at, eventId: target?.eventId, objectId: target?.objectId }),
+        body: JSON.stringify({ kind, at, eventId: target?.eventId, objectId: target?.objectId, note }),
       });
       if (!res.ok) throw new Error();
       const { moved } = await res.json();
@@ -113,7 +112,9 @@ export function AddEntryDialog({
   }
 
   function cancelPlan() {
-    if (confirm(`Отменить ${noun}?`)) send(null, kind === "install" ? "Монтаж отменён" : "Замер отменён");
+    if (!replaced || !confirm(`Отменить ${noun}?`)) return;
+    const done = kind === "install" ? "Монтаж отменён" : "Замер отменён";
+    send(null, done, `${done}: ${dayTitle(clock.day(replaced))} в ${clock.time(replaced)}${zone}`);
   }
 
   return (
@@ -121,7 +122,7 @@ export function AddEntryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {fixedClient ? `${upcoming ? "Перенести" : "Назначить"} ${noun}` : "Добавить в календарь"}
+            {fixedClient ? `${replaced ? "Перенести" : "Назначить"} ${noun}` : "Добавить в календарь"}
           </DialogTitle>
         </DialogHeader>
 
@@ -214,7 +215,7 @@ export function AddEntryDialog({
         )}
 
         <DialogFooter>
-          {upcoming && (
+          {replaced && (
             <Button variant="ghost" className="text-red-700 sm:mr-auto" disabled={saving} onClick={cancelPlan}>
               Отменить {noun}
             </Button>

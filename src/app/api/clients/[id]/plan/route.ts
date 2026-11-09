@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { syncClientStatusForObject } from "@/lib/clients";
 import { applyCrmColumn } from "@/lib/crm-board";
+import { almatyDay } from "@/lib/crm-calendar";
 import { installColumnFor, mainObject, type CrmColumn } from "@/lib/crm-columns";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -13,7 +14,7 @@ const INSTALL_COLUMNS = ["install_planned", "install"];
 
 /**
  * Назначить, перенести или отменить замер/монтаж клиента.
- * Тело: { kind, at: ISO | null, eventId?, objectId? }; at = null — отмена.
+ * Тело: { kind, at: ISO | null, eventId?, objectId?, note? }; at = null — отмена, note — строка в историю.
  * eventId и objectId — конкретная запись календаря, без них берётся ближайшая.
  */
 export async function PUT(
@@ -24,11 +25,12 @@ export async function PUT(
     const master = await requireAuth();
     const scope = await getScope(master);
     const { id } = await params;
-    const { kind, at, eventId, objectId } = (await request.json()) as {
+    const { kind, at, eventId, objectId, note } = (await request.json()) as {
       kind?: unknown;
       at?: unknown;
       eventId?: unknown;
       objectId?: unknown;
+      note?: unknown;
     };
 
     if (kind !== "measure" && kind !== "install") {
@@ -57,7 +59,7 @@ export async function PUT(
         events: {
           where: { type, scheduledAt: { gt: now } },
           orderBy: { scheduledAt: "asc" },
-          select: { id: true },
+          select: { id: true, scheduledAt: true },
         },
       },
     });
@@ -80,14 +82,25 @@ export async function PUT(
         : null;
     const touch = prisma.client.update({ where: { id }, data: { updatedAt: now } });
 
-    if (object && (when || object.installAt)) {
+    const cancelNote =
+      when === null && typeof note === "string" && note.trim()
+        ? prisma.clientEvent.create({ data: { clientId: id, type: "NOTE", content: note.trim().slice(0, 200) } })
+        : null;
+
+    if (object && (when || (object.installAt && object.installAt > now))) {
       const ops: Prisma.PrismaPromise<unknown>[] = [
         prisma.measurementObject.update({ where: { id: object.id }, data: { installAt: when } }),
         touch,
       ];
-      // Дата монтажа живёт в объекте: события на будущее стали бы второй датой
-      if (!objectId && client.events.length > 0) {
-        ops.push(prisma.clientEvent.deleteMany({ where: { id: { in: client.events.map((e) => e.id) } } }));
+      if (cancelNote) ops.push(cancelNote);
+      // Дата монтажа живёт в объекте: события на будущее стали бы второй датой. При правке
+      // записи из календаря — только событие того же дня: календарь прятал его за объектом.
+      const previousDay = object.installAt ? almatyDay(object.installAt) : null;
+      const stale = objectId
+        ? client.events.filter((e) => almatyDay(e.scheduledAt!) === previousDay)
+        : client.events;
+      if (stale.length > 0) {
+        ops.push(prisma.clientEvent.deleteMany({ where: { id: { in: stale.map((e) => e.id) } } }));
       }
       await prisma.$transaction(ops);
 
@@ -101,7 +114,8 @@ export async function PUT(
           : INSTALL_COLUMNS.includes(crm)
             ? "planning"
             : null;
-        if (next) {
+        // Отказ важнее: дата монтажа не возвращает клиента в работу
+        if (next && client.status !== "LOST") {
           try {
             await applyCrmColumn(client, next);
           } catch (error) {
@@ -116,7 +130,13 @@ export async function PUT(
 
     const targetId = (eventId as string | undefined) ?? client.events[0]?.id;
     if (!when) {
-      if (targetId) await prisma.$transaction([prisma.clientEvent.delete({ where: { id: targetId } }), touch]);
+      if (targetId) {
+        await prisma.$transaction([
+          prisma.clientEvent.delete({ where: { id: targetId } }),
+          touch,
+          ...(cancelNote ? [cancelNote] : []),
+        ]);
+      }
       return NextResponse.json({ ok: true, moved: true });
     }
     await prisma.$transaction([

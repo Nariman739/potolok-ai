@@ -108,6 +108,39 @@ export function dayTitle(day: string): string {
 }
 
 /**
+ * Дата для напоминания «через час». Пояс мастера из России серверу неизвестен,
+ * время Астаны его бы запутало — «через час» там и так говорит всё.
+ */
+export function reminderDate(at: Date, currency: string): string | null {
+  if (currency === "RUB") return null;
+  return at.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Almaty",
+  });
+}
+
+/** «12 нояб.» */
+export function dayShort(day: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("ru-RU", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+/**
+ * Запрос к базе с запасом в сутки: сетка считается по Астане, а мастеру из России
+ * записи раскладываются по его поясу, и крайние часы попадают в соседние дни.
+ */
+export function withMargin(grid: { from: Date; to: Date }): { from: Date; to: Date } {
+  const day = 24 * 60 * 60 * 1000;
+  return { from: new Date(grid.from.getTime() - day), to: new Date(grid.to.getTime() + day) };
+}
+
+/**
  * Параметр ?m=YYYY-MM; мусор — текущий месяц по Астане. Только 20xx: на отрицательном
  * годе дата перестаёт двигаться, и цикл в monthGrid вешал сервер (?m=0000-01).
  */
@@ -163,12 +196,14 @@ export function plannedEvents(
   return { measureAt: earliest(ofType("MEASUREMENT"), now), installEventAt: earliest(ofType("INSTALL"), now) };
 }
 
-/** Какую дату заменит новое назначение. */
+/** Какую будущую дату заменит новое назначение; прошедшая дата монтажа плановой не считается. */
 export function plannedAt(
   c: { measureAt: string | null; installEventAt: string | null; installAt: string | null },
   kind: CalendarKind,
+  now: Date = new Date(),
 ): string | null {
-  return kind === "measure" ? c.measureAt : (c.installAt ?? c.installEventAt);
+  if (kind === "measure") return c.measureAt;
+  return c.installAt && new Date(c.installAt) > now ? c.installAt : c.installEventAt;
 }
 
 function labelOf(...parts: (string | null | undefined)[]): string {

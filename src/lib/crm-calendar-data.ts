@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { inScope, type Scope } from "./company";
-import { buildCalendarEntries, monthGrid, plannedEvents, type CalendarEntry } from "./crm-calendar";
+import { buildCalendarEntries, monthGrid, plannedEvents, withMargin, type CalendarEntry } from "./crm-calendar";
 
 const CLIENT_SELECT = { id: true, name: true, address: true, masterId: true } as const;
 
@@ -54,7 +54,7 @@ export async function getCalendarClients(scope: Scope): Promise<CalendarClient[]
 }
 
 export async function getCalendarEntries(scope: Scope, masterId: string, month: string): Promise<CalendarEntry[]> {
-  const grid = monthGrid(month);
+  const grid = withMargin(monthGrid(month));
   const range = { gte: grid.from, lt: grid.to };
 
   const [objects, events] = await Promise.all([
