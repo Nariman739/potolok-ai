@@ -7,6 +7,7 @@
  * который замораживается при создании: иначе клиент читал бы один текст, а
  * под подпись уходил другой.
  */
+import { createHash } from "crypto";
 import { prisma } from "./prisma";
 import {
   generateContractHtml,
@@ -17,6 +18,7 @@ import {
 import { asLang, type Lang } from "./i18n";
 import { currencyFor } from "./company";
 import type { CalculationResult } from "./types";
+import type { Estimate } from "@/generated/prisma/client";
 
 /**
  * Чей шаблон печатать. КП принадлежит компании (companyId), а не автору:
@@ -46,6 +48,37 @@ export async function activeContractTemplate(ownerId: string, lang: Lang, kind: 
     where: { masterId: ownerId, kind, language: lang, isActive: true },
     orderBy: { version: "desc" },
   });
+}
+
+/** Поля мастера, которые нужны тексту договора: и странице клиента, и подписи. */
+export const CONTRACT_MASTER_SELECT = {
+  firstName: true,
+  lastName: true,
+  companyName: true,
+  phone: true,
+  whatsappPhone: true,
+  address: true,
+  contractType: true,
+  bin: true,
+  iin: true,
+  legalName: true,
+  legalAddress: true,
+  bankName: true,
+  iban: true,
+  kbe: true,
+  bik: true,
+  passportData: true,
+  prepaymentPercent: true,
+  warrantyMaterials: true,
+  warrantyInstall: true,
+  contractCity: true,
+  language: true,
+  currency: true,
+} as const;
+
+/** Отпечаток текста: подпись сверяет его с тем, что клиент видел на экране. */
+export function contractHash(html: string): string {
+  return createHash("sha256").update(html).digest("hex");
 }
 
 export type RenderedContract = {
@@ -80,4 +113,31 @@ export async function renderContract(
     console.error("Contract template render error:", e);
   }
   return { html: generateContractHtml(master, estimate, calc, lang), templateVersion: null };
+}
+
+/** Текст неподписанного договора — тот, что сейчас видит клиент на своей странице. */
+export function renderLiveContract(estimate: Estimate, master: MasterData, language: Lang | string) {
+  return renderContract(
+    estimate,
+    master,
+    {
+      publicId: estimate.publicId,
+      clientName: estimate.clientName,
+      clientPhone: estimate.clientPhone,
+      clientAddress: estimate.clientAddress,
+      clientIin: estimate.clientIin,
+      total: estimate.total,
+      createdAt: estimate.createdAt,
+      contractCreatedAt: estimate.contractCreatedAt,
+      priceView: estimate.priceView,
+      // Сроки и схему оплаты мастер задаёт при создании договора, они лежат
+      // в базе — но сюда не передавались, и каждый клиент видел «по
+      // согласованию Сторон» и жёсткие 50/50 (аудит 24.09.2026).
+      workStartDate: estimate.workStartDate,
+      workDurationDays: estimate.workDurationDays,
+      paymentSchedule: estimate.paymentSchedule as never,
+    },
+    estimate.calculationData as unknown as CalculationResult,
+    language,
+  );
 }

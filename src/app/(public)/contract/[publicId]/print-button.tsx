@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Printer } from "lucide-react";
 import { tFor, type Lang } from "@/lib/i18n";
 import "@/lib/i18n/contract";
@@ -9,8 +10,16 @@ import "@/lib/i18n/contract";
  * или PDF себе: на телефоне системная печать даёт «Сохранить в файлы».
  * Кнопка скрыта при печати через @media print в глобальных стилях страницы.
  */
-export function PrintButton({ lang = "ru" }: { lang?: Lang }) {
+export function PrintButton({ lang = "ru", autoPrint = false }: { lang?: Lang; autoPrint?: boolean }) {
   const t = tFor(lang);
+  // Кнопка «PDF» в кабинете у договора из своего шаблона ведёт сюда с ?print=1.
+  const printed = useRef(false);
+  useEffect(() => {
+    if (autoPrint && !printed.current) {
+      printed.current = true;
+      window.print();
+    }
+  }, [autoPrint]);
   return (
     <button
       type="button"

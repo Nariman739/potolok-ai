@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { currencyFor, getScope, inScope } from "@/lib/company";
+import { activeContractTemplate } from "@/lib/contract-render";
+import { asLang } from "@/lib/i18n";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { numberToWordsKz } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
@@ -34,7 +36,7 @@ function yearWord(n: number): string {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -44,12 +46,27 @@ export async function GET(
 
     // Реквизиты в документе — компании (владельца), а не того, кто нажал «Договор».
     const master = await prisma.master.findUnique({ where: { id: scope.ownerId } });
-    if (!master || !master.contractType || master.contractType === "none") {
-      return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
-    }
+    if (!master) return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
 
     const estimate = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
+
+    // Этот PDF рисует типовой текст и о своём шаблоне не знает. Кнопка кабинета
+    // (?web=1) в таком случае открывает страницу договора с печатью.
+    if (new URL(request.url).searchParams.get("web") && estimate.contractPublicId) {
+      const lang = asLang(master.language);
+      const snap = estimate.contractTextSnapshot as { templateVersion?: Record<string, number | null> } | null;
+      const ownTemplate = estimate.contractSignedAt
+        ? snap?.templateVersion?.[lang] != null
+        : !!(await activeContractTemplate(scope.ownerId, lang));
+      if (ownTemplate) {
+        return NextResponse.redirect(new URL(`/contract/${estimate.contractPublicId}?print=1`, request.url));
+      }
+    }
+
+    if (!master.contractType || master.contractType === "none") {
+      return NextResponse.json({ error: "Настройте тип договора в разделе Профиль" }, { status: 400 });
+    }
 
     const calc = estimate.calculationData as unknown as CalculationResult;
     // Валюта владельца компании: знак и слово в сумме прописью (07.10.2026)

@@ -10,7 +10,7 @@ import { CheckCircle2, FileSignature } from "lucide-react";
 import { type Lang } from "@/lib/i18n";
 import { contractT } from "@/lib/i18n/contract";
 
-export function SignSection({ publicId, lang = "ru", currency }: { publicId: string; lang?: Lang; currency?: string | null }) {
+export function SignSection({ publicId, lang = "ru", currency, seenHash }: { publicId: string; lang?: Lang; currency?: string | null; seenHash?: string }) {
   // Рублёвый мастер → подпись и паспорт по правилам РФ (27.10.2026).
   const t = contractT(lang, currency);
   const router = useRouter();
@@ -34,9 +34,13 @@ export function SignSection({ publicId, lang = "ru", currency }: { publicId: str
           signerName: name.trim(),
           signerPassport: passport.trim() || undefined,
           agreed: true,
+          seenHash,
+          lang,
         }),
       });
       const data = await res.json();
+      // Пока клиент читал, текст поменялся: показываем новый, подпись не ставим.
+      if (data?.changed) router.refresh();
       if (!res.ok) throw new Error(data?.error ?? t("sign.error"));
       router.refresh();
     } catch (e) {

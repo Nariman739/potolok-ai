@@ -329,7 +329,7 @@ export default function ContractPage() {
                       Версия {shown.version} · {dateTime(shown.createdAt)}
                       {shown.note ? ` · ${shown.note}` : ""}
                     </p>
-                    <p className="text-muted-foreground">Так будет выглядеть каждый новый договор. Уже созданные не меняются.</p>
+                    <p className="text-muted-foreground">Так будет выглядеть каждый новый договор. Подписанные не меняются, неподписанные покажут новый текст.</p>
                   </div>
                   {editButton}
                 </div>

@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound } from "next/navigation";
-import { renderContract } from "@/lib/contract-render";
+import { CONTRACT_MASTER_SELECT, contractHash, renderLiveContract } from "@/lib/contract-render";
+import { CONTRACT_DOC_CLASS, contractView } from "@/lib/contract-view";
 import { asLang, localeOf, type Lang } from "@/lib/i18n";
 import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
-import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { SignSection } from "./sign-section";
 import { PrintButton } from "./print-button";
@@ -26,40 +26,15 @@ export default async function ContractPublicPage({
   searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; print?: string }>;
 }) {
   const { publicId } = await params;
-  const { lang: langParam } = await searchParams;
+  const { lang: langParam, print } = await searchParams;
 
   const estimate = await prisma.estimate.findFirst({
     where: { contractPublicId: publicId, deletedAt: null },
     include: {
-      master: {
-        select: {
-          firstName: true,
-          lastName: true,
-          companyName: true,
-          phone: true,
-          whatsappPhone: true,
-          address: true,
-          contractType: true,
-          bin: true,
-          iin: true,
-          legalName: true,
-          legalAddress: true,
-          bankName: true,
-          iban: true,
-          kbe: true,
-          bik: true,
-          passportData: true,
-          prepaymentPercent: true,
-          warrantyMaterials: true,
-          warrantyInstall: true,
-          contractCity: true,
-          language: true,
-          currency: true,
-        },
-      },
+      master: { select: CONTRACT_MASTER_SELECT },
     },
   });
 
@@ -76,7 +51,6 @@ export default async function ContractPublicPage({
   const t = contractT(lang, estimate.master.currency);
   const otherLang: Lang = lang === "kk" ? "ru" : "kk";
 
-  const calc = estimate.calculationData as unknown as CalculationResult;
   // Подписанный договор рисуем из снимка, сделанного при создании: живой
   // расчёт с тех пор мог измениться, а документ, под которым стоит подпись,
   // меняться не должен — именно за это в суде и бьют (26.09.2026).
@@ -87,34 +61,13 @@ export default async function ContractPublicPage({
   const frozenHtml = estimate.contractSignedAt ? snap?.html?.[lang] : undefined;
 
   // Не подписан — живой текст: типовой или из шаблона мастера (26.09.2026).
-  const html = frozenHtml ?? (await renderContract(
-    estimate,
-    estimate.master,
-    {
-      publicId: estimate.publicId,
-      clientName: estimate.clientName,
-      clientPhone: estimate.clientPhone,
-      clientAddress: estimate.clientAddress,
-      clientIin: estimate.clientIin,
-      total: estimate.total,
-      createdAt: estimate.createdAt,
-      contractCreatedAt: estimate.contractCreatedAt,
-      priceView: estimate.priceView,
-      // Сроки и схему оплаты мастер задаёт при создании договора, они лежат
-      // в базе — но сюда не передавались, и каждый клиент видел «по
-      // согласованию Сторон» и жёсткие 50/50 (аудит 24.09.2026).
-      workStartDate: estimate.workStartDate,
-      workDurationDays: estimate.workDurationDays,
-      paymentSchedule: estimate.paymentSchedule as never,
-    },
-    calc,
-    lang,
-  )).html;
+  const html = frozenHtml ?? (await renderLiveContract(estimate, estimate.master, lang)).html;
+  const doc = contractView(html);
 
   const isSigned = !!estimate.contractSignedAt;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 print:bg-white">
       {isSigned && (
         <div className="sticky top-0 z-10 bg-emerald-600 text-white">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -130,7 +83,7 @@ export default async function ContractPublicPage({
       )}
 
       <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end gap-2 print:hidden">
-        <PrintButton lang={lang} />
+        <PrintButton lang={lang} autoPrint={print === "1"} />
         <Link
           href={`?lang=${otherLang}`}
           prefetch={false}
@@ -140,14 +93,14 @@ export default async function ContractPublicPage({
         </Link>
       </div>
 
-      <div className="max-w-3xl mx-auto px-3 py-4">
-        <div
-          className="bg-white shadow-sm rounded-lg overflow-hidden"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+      <div className="max-w-3xl mx-auto px-3 py-4 print:max-w-none print:p-0">
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden print:shadow-none print:rounded-none">
+          <style dangerouslySetInnerHTML={{ __html: doc.css }} />
+          <div className={CONTRACT_DOC_CLASS} dangerouslySetInnerHTML={{ __html: doc.body }} />
+        </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-3 pb-10">
+      <div className={`max-w-3xl mx-auto px-3 pb-10 ${isSigned ? "" : "print:hidden"}`}>
         {isSigned ? (
           <div className="bg-white rounded-lg shadow-sm p-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-3" />
@@ -162,7 +115,7 @@ export default async function ContractPublicPage({
             </p>
           </div>
         ) : (
-          <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} />
+          <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} seenHash={contractHash(html)} />
         )}
       </div>
     </div>

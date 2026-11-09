@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { addClientEvent, changeClientStatus } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
-import { currencyFor } from "@/lib/company";
+import { currencyFor, ownerBrandFor } from "@/lib/company";
+import { CONTRACT_MASTER_SELECT, contractHash, renderLiveContract } from "@/lib/contract-render";
+import { asLang } from "@/lib/i18n";
 import { reportError } from "@/lib/report-error";
 
 export async function POST(
@@ -14,10 +16,13 @@ export async function POST(
   try {
     const { publicId } = await params;
     const body = await request.json();
-    const { signerName, signerPassport, agreed } = body as {
+    const { signerName, signerPassport, agreed, seenHash, lang: langParam } = body as {
       signerName?: string;
       signerPassport?: string;
       agreed?: boolean;
+      /** Отпечаток текста, который клиент видел на странице. */
+      seenHash?: string;
+      lang?: string;
     };
 
     if (!agreed) {
@@ -36,7 +41,7 @@ export async function POST(
     const estimate = await prisma.estimate.findFirst({
       where: { contractPublicId: publicId, deletedAt: null },
       include: {
-        master: { select: { telegramChatId: true, notifyDealWon: true } },
+        master: { select: { ...CONTRACT_MASTER_SELECT, telegramChatId: true, notifyDealWon: true } },
       },
     });
 
@@ -51,6 +56,24 @@ export async function POST(
       return NextResponse.json(
         { error: "Договор уже подписан" },
         { status: 400 },
+      );
+    }
+
+    // Подпись замораживает текст, который клиент видел: неподписанный договор
+    // рисуется из живого шаблона, и снимок дня создания мог от него отстать.
+    const brand = await ownerBrandFor(estimate.masterId, estimate.master);
+    const [ru, kk] = await Promise.all([
+      renderLiveContract(estimate, brand, "ru"),
+      renderLiveContract(estimate, brand, "kk"),
+    ]);
+    const lang = asLang(langParam ?? brand.language);
+    if (seenHash && contractHash(lang === "kk" ? kk.html : ru.html) !== seenHash) {
+      return NextResponse.json(
+        {
+          error: lang === "kk" ? "Шарт мәтіні өзгерді. Жаңа мәтінді оқып, қайта қол қойыңыз" : "Текст договора изменился. Прочитайте новый текст и подпишите ещё раз",
+          changed: true,
+        },
+        { status: 409 },
       );
     }
 
@@ -73,6 +96,12 @@ export async function POST(
         contractSignerPassport: signedPassport,
         contractSignerIp: ip,
         contractSignerUserAgent: userAgent,
+        contractTextSnapshot: {
+          ...((estimate.contractTextSnapshot as object | null) ?? {}),
+          html: { ru: ru.html, kk: kk.html },
+          templateVersion: { ru: ru.templateVersion, kk: kk.templateVersion },
+          frozenAt: signedAt.toISOString(),
+        },
       },
     });
 

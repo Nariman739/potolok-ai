@@ -248,7 +248,7 @@ export function ContractSection({
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a
-              href={`/api/estimates/${estimateId}/contract`}
+              href={`/api/estimates/${estimateId}/contract?web=1`}
               target="_blank"
               rel="noopener noreferrer"
             >
