@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dayTitle, monthTitle, shiftMonth, type CalendarEntry } from "@/lib/crm-calendar";
+import type { CalendarClient } from "@/lib/crm-calendar-data";
+import { AddEntryDialog } from "./add-entry-dialog";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const CELL_LIMIT = 3;
@@ -26,13 +28,22 @@ function Entry({ entry }: { entry: CalendarEntry }) {
   const className = `block truncate rounded px-1.5 py-0.5 text-xs leading-4 ${entryClass(entry)}`;
   if (!entry.clientId) {
     return (
-      <div title={`${entry.label} — объект без клиента`} className={`${className} cursor-default`}>
+      <div
+        title={`${entry.label} — объект без клиента`}
+        onClick={(e) => e.stopPropagation()}
+        className={`${className} cursor-default`}
+      >
         {body}
       </div>
     );
   }
   return (
-    <Link href={`/dashboard/clients/${entry.clientId}`} title={entry.label} className={className}>
+    <Link
+      href={`/dashboard/clients/${entry.clientId}`}
+      title={entry.label}
+      onClick={(e) => e.stopPropagation()}
+      className={className}
+    >
       {body}
     </Link>
   );
@@ -43,16 +54,20 @@ export function CalendarView({
   days,
   today,
   entries,
+  clients,
   isTeam,
 }: {
   month: string;
   days: string[];
   today: string;
   entries: CalendarEntry[];
+  clients: CalendarClient[];
   isTeam: boolean;
 }) {
   const [onlyMine, setOnlyMine] = useState(false);
   const [openDay, setOpenDay] = useState<string | null>(null);
+  const [addDay, setAddDay] = useState<string | null>(null);
+  const defaultDay = today.startsWith(month) ? today : `${month}-01`;
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarEntry[]>();
@@ -105,6 +120,10 @@ export function CalendarView({
           </span>
           <span>Время по Астане</span>
         </div>
+        <Button onClick={() => setAddDay(defaultDay)} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+          <Plus className="h-4 w-4 mr-2" />
+          Добавить
+        </Button>
       </div>
 
       <div className="hidden overflow-hidden rounded-lg border md:block">
@@ -124,7 +143,10 @@ export function CalendarView({
               <div
                 key={day}
                 data-day={day}
-                className={`min-h-24 min-w-0 space-y-0.5 border-b border-r p-1 ${outside ? "bg-muted/30" : ""}`}
+                onClick={() => setAddDay(day)}
+                className={`min-h-24 min-w-0 cursor-pointer space-y-0.5 border-b border-r p-1 hover:bg-muted/40 ${
+                  outside ? "bg-muted/30" : ""
+                }`}
               >
                 <div
                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs ${
@@ -142,7 +164,10 @@ export function CalendarView({
                 ))}
                 {list.length > shown.length && (
                   <button
-                    onClick={() => setOpenDay(day)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDay(day);
+                    }}
                     className="block w-full rounded px-1.5 text-left text-xs text-muted-foreground hover:bg-muted"
                   >
                     ещё {list.length - shown.length}
@@ -182,6 +207,8 @@ export function CalendarView({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AddEntryDialog day={addDay} clients={clients} onClose={() => setAddDay(null)} />
     </div>
   );
 }

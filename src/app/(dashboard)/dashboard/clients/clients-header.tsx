@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { CalendarDays, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -65,6 +65,16 @@ export function ClientsHeader({
         </div>
       )}
       <div className="ml-auto flex items-center gap-3">
+        {isTeam && (
+          <Link
+            href="/dashboard/calendar"
+            aria-label="Календарь"
+            title="Календарь"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background hover:bg-muted"
+          >
+            <CalendarDays className="h-4 w-4" />
+          </Link>
+        )}
         {showToggle && (
           <div className="hidden gap-1 rounded-lg bg-muted p-1 md:inline-flex">
             <Link href="/dashboard/clients" onClick={() => remember("list")} className={tab(view === "list")}>

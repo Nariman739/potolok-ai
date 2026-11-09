@@ -4,6 +4,40 @@ import { buildCalendarEntries, monthGrid, type CalendarEntry } from "./crm-calen
 
 const CLIENT_SELECT = { id: true, name: true, address: true, masterId: true } as const;
 
+export type CalendarClient = {
+  id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  /** Самый новый объект: дата монтажа пишется в него, как с доски */
+  objectId: string | null;
+  installAt: string | null;
+};
+
+export async function getCalendarClients(scope: Scope): Promise<CalendarClient[]> {
+  const clients = await prisma.client.findMany({
+    where: { ...inScope(scope), deletedAt: null },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      address: true,
+      measurements: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, installAt: true },
+      },
+    },
+  });
+  return clients.map(({ measurements, ...c }) => ({
+    ...c,
+    objectId: measurements[0]?.id ?? null,
+    installAt: measurements[0]?.installAt?.toISOString() ?? null,
+  }));
+}
+
 export async function getCalendarEntries(scope: Scope, masterId: string, month: string): Promise<CalendarEntry[]> {
   const grid = monthGrid(month);
   const range = { gte: grid.from, lt: grid.to };
