@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { currencyFor, getScope, inScope } from "@/lib/company";
 import { activeContractTemplate } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
-import { currencySymbol, type CurrencyCode } from "@/lib/currency";
+import { contractT } from "@/lib/i18n/contract";
+import { currencySymbol, jurisdictionOf, type CurrencyCode } from "@/lib/currency";
 import { numberToWordsKz } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
@@ -106,10 +107,14 @@ export async function GET(
       .text(city, L, doc.y + 2, { width: CW, align: "center" });
     doc.moveDown(0.8);
 
+    // Названия реквизитов — по стране мастера: у рублёвого ОГРНИП/ИНН.
+    const label = contractT("ru", cur);
+    const isRu = jurisdictionOf(cur) === "RU";
+
     // Parties
     const executorDesc = isIp
-      ? `${masterName}${master.bin ? `, БИН ${master.bin}` : ""}${master.iin ? `, ИИН ${master.iin}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`
-      : `${masterName}${master.iin ? `, ИИН ${master.iin}` : ""}${master.passportData ? `, уд. личности ${master.passportData}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`;
+      ? `${masterName}${master.bin ? `, ${label("ct.lbl.bin")} ${master.bin}` : ""}${master.iin ? `, ${label("ct.lbl.iin")} ${master.iin}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`
+      : `${masterName}${master.iin ? `, ${label("ct.lbl.iin")} ${master.iin}` : ""}${master.passportData ? `, ${isRu ? "паспорт" : "уд. личности"} ${master.passportData}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`;
 
     doc.font("Sans").fontSize(10)
       .text(`${executorDesc}, с одной стороны, и`, L, doc.y, { width: CW })
@@ -135,7 +140,7 @@ export async function GET(
 
     // Works table
     const colX = [L, L + 30, L + 232, L + 277, L + 322, L + 402];
-    const colW = [28, 200, 43, 43, 78, CW - 352];
+    const colW = [28, 200, 43, 43, 78, CW - 404];
     let ty = doc.y;
     doc.rect(L, ty, CW, 16).fill("#f0f0f0");
     doc.font("Sans-Bold").fontSize(8).fillColor("#000");
@@ -243,11 +248,11 @@ export async function GET(
     doc.font("Sans").fontSize(9);
     let ey = sigY + 14;
     doc.text(masterName, L, ey, { width: halfW }); ey = doc.y + 2;
-    if (isIp && master.bin) { doc.text(`БИН: ${master.bin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
-    if (master.iin) { doc.text(`ИИН: ${master.iin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (isIp && master.bin) { doc.text(`${label("ct.lbl.bin")}: ${master.bin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (master.iin) { doc.text(`${label("ct.lbl.iin")}: ${master.iin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (master.legalAddress) { doc.text(`Адрес: ${master.legalAddress}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (master.bankName) { doc.text(`Банк: ${master.bankName}`, L, ey, { width: halfW }); ey = doc.y + 2; }
-    if (master.iban) { doc.text(`IBAN: ${master.iban}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (master.iban) { doc.text(`${label("ct.lbl.iban")}: ${master.iban}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (masterPhone) { doc.text(`Тел: ${masterPhone}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     doc.text("Подпись ________________", L, ey + 8, { width: halfW });
 
@@ -259,10 +264,10 @@ export async function GET(
     doc.text(`Тел: ${clientPhone}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     doc.text(`Адрес: ${clientAddress}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     if (estimate.contractSignerPassport) {
-      doc.text(`Удостоверение: ${estimate.contractSignerPassport}`, colR, cy2, { width: halfW });
+      doc.text(`${isRu ? "Паспорт" : "Удостоверение"}: ${estimate.contractSignerPassport}`, colR, cy2, { width: halfW });
       cy2 = doc.y + 2;
     } else {
-      doc.text("ИИН: _______________", colR, cy2, { width: halfW });
+      doc.text(`${label("ct.lbl.iin")}: _______________`, colR, cy2, { width: halfW });
       cy2 = doc.y + 2;
     }
     if (estimate.contractSignedAt) {
