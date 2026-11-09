@@ -130,6 +130,9 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
   return calc.roomResults ?? (calc as any).variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
 }
 
+/** Строка таблицы работ: и в договоре на странице, и в PDF одни и те же. */
+export type WorksLine = { name: string; quantity: string; unit: string; unitPrice: number; total: number };
+
 /**
  * Таблица работ договора и акта.
  *
@@ -138,6 +141,51 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
+export function worksLines(
+  roomResults: RoomResult[],
+  t: T,
+  calc: CalculationResult | null | undefined,
+): WorksLine[] {
+  const lines: WorksLine[] = [];
+  for (const rr of roomResults) {
+    for (const item of (rr.items ?? [])) {
+      lines.push({
+        name: `${item.itemName ?? ""} (${rr.roomName ?? ""})`,
+        quantity: String(item.quantity),
+        unit: item.unit ?? "",
+        unitPrice: item.unitPrice,
+        total: item.total,
+      });
+    }
+  }
+
+  // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
+  const heightExtra = (calc?.roomResults ?? []).reduce((acc, rr) => {
+    const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
+    const before = (rr as { subtotal?: number }).subtotal;
+    return acc + (after != null && before != null && after > before ? after - before : 0);
+  }, 0);
+  if (heightExtra > 0) {
+    lines.push({ name: t("ct.heightExtra"), quantity: "1", unit: t("ct.unitService"), unitPrice: heightExtra, total: heightExtra });
+  }
+
+  for (const extra of (calc?.extraItems ?? [])) {
+    lines.push({
+      name: extra.itemName ?? "",
+      quantity: String(extra.quantity ?? 1),
+      unit: extra.unit ?? t("ct.unitService"),
+      unitPrice: extra.unitPrice ?? extra.total ?? 0,
+      total: extra.total ?? 0,
+    });
+  }
+
+  const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
+  if (discount > 0) {
+    lines.push({ name: t("ct.discount"), quantity: "1", unit: t("ct.unitService"), unitPrice: -discount, total: -discount });
+  }
+  return lines;
+}
+
 /**
  * Кратко (Estimate.priceView = "summary", 16.10.2026): колонки «Кол.», «Ед.» и
  * «Цена» не печатаются — КП клиент получил без площади, периметра и цен за
@@ -152,60 +200,17 @@ function buildWorksTable(
   priceView?: string | null,
 ): string {
   const hidePrice = priceView === "summary";
-  let rows = "";
-  let num = 0;
-  const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
-    num++;
-    return `<tr>
-        <td style="${tdStyle}">${num}</td>
-        <td style="${tdStyle}">${name}</td>
-        ${hidePrice ? "" : `<td style="${tdStyle} text-align:center;">${qty}</td>
-        <td style="${tdStyle} text-align:center;">${unit}</td>
-        <td style="${tdStyle} text-align:right;">${price}</td>`}
-        <td style="${tdStyle} text-align:right;">${sum}</td>
-      </tr>`;
-  };
-
-  let roomsSum = 0;
-  for (const rr of roomResults) {
-    for (const item of (rr.items ?? [])) {
-      roomsSum += item.total ?? 0;
-      rows += row(
-        `${esc(item.itemName)} (${esc(rr.roomName)})`,
-        esc(String(item.quantity)),
-        esc(item.unit),
-        fmtPrice(item.unitPrice, cur),
-        fmtPrice(item.total, cur),
-      );
-    }
-  }
-
-  // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
-  const heightExtra = (calc?.roomResults ?? []).reduce((acc, rr) => {
-    const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
-    const before = (rr as { subtotal?: number }).subtotal;
-    return acc + (after != null && before != null && after > before ? after - before : 0);
-  }, 0);
-  if (heightExtra > 0) {
-    rows += row(t("ct.heightExtra"), "1", t("ct.unitService"), fmtPrice(heightExtra, cur), fmtPrice(heightExtra, cur));
-  }
-
-  for (const extra of (calc?.extraItems ?? [])) {
-    rows += row(
-      esc(extra.itemName),
-      esc(String(extra.quantity ?? 1)),
-      esc(extra.unit ?? t("ct.unitService")),
-      fmtPrice(extra.unitPrice ?? extra.total ?? 0, cur),
-      fmtPrice(extra.total ?? 0, cur),
-    );
-  }
-
-  const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
-  if (discount > 0) {
-    rows += row(t("ct.discount"), "1", t("ct.unitService"), `−${fmtPrice(discount, cur)}`, `−${fmtPrice(discount, cur)}`);
-  }
-  void roomsSum;
-  return rows;
+  const money = (n: number) => (n < 0 ? `−${fmtPrice(-n, cur)}` : fmtPrice(n, cur));
+  return worksLines(roomResults, t, calc)
+    .map((line, i) => `<tr>
+        <td style="${tdStyle}">${i + 1}</td>
+        <td style="${tdStyle}">${esc(line.name)}</td>
+        ${hidePrice ? "" : `<td style="${tdStyle} text-align:center;">${esc(line.quantity)}</td>
+        <td style="${tdStyle} text-align:center;">${esc(line.unit)}</td>
+        <td style="${tdStyle} text-align:right;">${money(line.unitPrice)}</td>`}
+        <td style="${tdStyle} text-align:right;">${money(line.total)}</td>
+      </tr>`)
+    .join("");
 }
 
 const tdStyle = "padding:4px 8px;border:1px solid #999;font-size:12px;";

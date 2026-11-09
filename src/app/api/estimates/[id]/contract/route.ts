@@ -6,7 +6,7 @@ import { activeContractTemplate } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
 import { contractT } from "@/lib/i18n/contract";
 import { currencySymbol, jurisdictionOf, type CurrencyCode } from "@/lib/currency";
-import { numberToWordsKz } from "@/lib/contract-html";
+import { numberToWordsKz, worksLines } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -141,31 +141,36 @@ export async function GET(
     // Works table
     const colX = [L, L + 30, L + 232, L + 277, L + 322, L + 402];
     const colW = [28, 200, 43, 43, 78, CW - 404];
+    // Те же строки, что в договоре на странице: допработы, надбавка, скидка.
+    // «Кратко» (priceView) — без количества и цены за единицу, как там же.
+    const hidePrice = estimate.priceView === "summary";
+    const nameW = hidePrice ? colX[5] - colX[1] - 4 : colW[1];
+    // Обычный дефис: «−» (U+2212) в этом шрифте печатается пустым квадратом.
+    const money = (n: number) => (n < 0 ? `-${fmtPrice(-n, cur)}` : fmtPrice(n, cur));
     let ty = doc.y;
     doc.rect(L, ty, CW, 16).fill("#f0f0f0");
     doc.font("Sans-Bold").fontSize(8).fillColor("#000");
-    ["№", "Наименование", "Кол.", "Ед.", "Цена", "Сумма"].forEach((h, i) =>
-      doc.text(h, colX[i] + 2, ty + 4, { width: colW[i], align: i >= 3 ? "right" : "left" })
-    );
+    ["№", "Наименование", "Кол.", "Ед.", "Цена", "Сумма"].forEach((h, i) => {
+      if (hidePrice && i >= 2 && i <= 4) return;
+      doc.text(h, colX[i] + 2, ty + 4, { width: i === 1 ? nameW : colW[i], align: i >= 3 ? "right" : "left" });
+    });
     ty += 18;
-    let rowNum = 0;
-    for (const rr of roomResults) {
-      for (const item of (rr.items ?? [])) {
-        if (ty > 760) { doc.addPage(); ty = 50; }
-        rowNum++;
-        doc.font("Sans").fontSize(8).fillColor("#000");
-        doc.text(String(rowNum), colX[0] + 2, ty, { width: colW[0] });
-        doc.text(`${item.itemName} (${rr.roomName})`, colX[1] + 2, ty, { width: colW[1] - 4 });
-        const rowH = doc.y - ty;
-        doc.text(`${item.quantity}`, colX[2] + 2, ty, { width: colW[2], align: "right" });
-        doc.text(item.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
-        doc.text(fmtPrice(item.unitPrice, cur), colX[4] + 2, ty, { width: colW[4], align: "right" });
-        doc.font("Sans-Bold").text(fmtPrice(item.total, cur), colX[5] + 2, ty, { width: colW[5], align: "right" });
-        ty += Math.max(rowH, 12) + 2;
-        doc.moveTo(L, ty).lineTo(L + CW, ty).strokeColor("#ccc").lineWidth(0.5).stroke();
-        ty += 2;
+    worksLines(roomResults, label, calc).forEach((line, index) => {
+      if (ty > 760) { doc.addPage(); ty = 50; }
+      doc.font("Sans").fontSize(8).fillColor("#000");
+      doc.text(String(index + 1), colX[0] + 2, ty, { width: colW[0] });
+      doc.text(line.name, colX[1] + 2, ty, { width: nameW - 4 });
+      const rowH = doc.y - ty;
+      if (!hidePrice) {
+        doc.text(line.quantity, colX[2] + 2, ty, { width: colW[2], align: "right" });
+        doc.text(line.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
+        doc.text(money(line.unitPrice), colX[4] + 2, ty, { width: colW[4], align: "right" });
       }
-    }
+      doc.font("Sans-Bold").text(money(line.total), colX[5] + 2, ty, { width: colW[5], align: "right" });
+      ty += Math.max(rowH, 12) + 2;
+      doc.moveTo(L, ty).lineTo(L + CW, ty).strokeColor("#ccc").lineWidth(0.5).stroke();
+      ty += 2;
+    });
     doc.y = ty + 4;
 
     // 2. Оплата
