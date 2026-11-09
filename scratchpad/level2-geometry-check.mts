@@ -370,5 +370,12 @@ check("level2Params: lowSide по умолчанию left", level2Params({}).low
   check("Б8: 60×50 полка 100 → shelf_too_wide", c.warnings.includes("shelf_too_wide") ? 1 : 0, 1, 0);
   check("Б8: кромки нет (верх = низ)", c.upper ? 1 : 0, 0, 0);
 }
+// ── QA Б7 (11.11.2026): острый треугольник R50 — уменьшается только острая вершина, монотонно ──
+{
+  const tri = [{ x: 60, y: 90 }, { x: 404, y: 110 }, { x: 70, y: 184 }];
+  const c50 = calcLevel2(tri, null, { ...LEVEL2_DEFAULTS, radiusCm: 50 }), c30 = calcLevel2(tri, null, { ...LEVEL2_DEFAULTS, radiusCm: 30 });
+  check("Б7: R острой вершины при R50", c50.contourRadii[1], 23.8, 0.2);
+  check("Б7: R острой вершины при R30 (монотонно)", c30.contourRadii[1], 23.8, 0.2);
+}
 console.log(fails === 0 ? "\nВСЕ ПРОВЕРКИ ПРОШЛИ" : `\nПРОВАЛОВ: ${fails}`);
 process.exit(fails === 0 ? 0 : 1);

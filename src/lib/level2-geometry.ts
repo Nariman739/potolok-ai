@@ -556,7 +556,7 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
     const q = nb[i];
     if (!q || !q.back || !q.fwd) return null;
     const f = filletAt(pts, i, r, closed, q.back.len, q.fwd.len);
-    if (f) return { b: f.dBack, f: f.dFwd };
+    if (f) return { b: f.dBack, f: f.dFwd, reduced: false };
     // Не влез при полном R — потребность при наибольшем R, который влезает в окна до соседей
     // (не вся сторона: иначе дальний нормальный угол на длинной стороне терял радиус, ревью 11.11.2026).
     let lo = 0, hi = r, best: Level2Fillet | null = null;
@@ -565,7 +565,7 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
       const g = filletAt(pts, i, mid, closed, q.back.len, q.fwd.len);
       if (g && g.dBack <= q.back.len + 1e-6 && g.dFwd <= q.fwd.len + 1e-6) { lo = mid; best = g; } else hi = mid;
     }
-    return best ? { b: best.dBack, f: best.dFwd } : { b: 0, f: 0 };
+    return best ? { b: best.dBack, f: best.dFwd, reduced: true } : { b: 0, f: 0, reduced: true };
   });
   /** Наибольший R ≤ hi, при котором касания влезают в доли hb/hf (делением пополам — без ступеней ×0,9). */
   const fit = (i: number, hi: number, hb: number, hf: number, q: { back: { len: number }; fwd: { len: number } }) => {
@@ -580,9 +580,19 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
     const q = nb[i], nd = need[i];
     if (!q || !nd || !q.back || !q.fwd) return 0;
     const allow = (side: { j: number; len: number }, mine: number, theirsKey: "b" | "f") => {
+      // Острый угол (полный R не помещается или нужно больше половины стороны) — не больше половины, даже
+      // если сосед оставил место: иначе острая вершина «съедала» обе длинные стороны (QA Б7). Так R ещё и
+      // монотонен: R30 и R50 у острой вершины дают одно и то же, а не R30 скругляет сильнее R50.
       const other = side.j >= 0 && roundable[side.j] ? need[side.j] : null;
-      const theirs = other ? Math.min(other[theirsKey], side.len) : 0;
-      return mine + theirs <= side.len ? side.len : (side.len * mine) / (mine + theirs);
+      // Сосед не скругляется (гладкий стык волны, вогнутый, у стены) — сторона целиком.
+      if (!other) return side.len;
+      if (nd.reduced || mine > side.len / 2) return side.len / 2;
+      const theirs = Math.min(other[theirsKey], side.len);
+      // Конфликт (сумма потребностей длиннее стороны) — каждому не больше половины: угол, которому хватает
+      // половины, получает полный R, острый — уменьшается (QA Б7: длинный острый треугольник R50
+      // схлопывался в круг, острая вершина забирала почти всю сторону). Без конфликта — сколько нужно
+      // (ревью 10.11: острый угол у дуги получает полный R, если сосед оставил место).
+      return mine + theirs <= side.len ? side.len : side.len / 2;
     };
     return fit(i, r, allow(q.back, nd.b, "f"), allow(q.fwd, nd.f, "b"), q as { back: { len: number }; fwd: { len: number } });
   });
