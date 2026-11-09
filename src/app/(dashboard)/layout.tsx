@@ -49,7 +49,9 @@ export default async function DashboardLayout({
         Отступ снизу = высота нижнего меню (64px) + запас + вырез iPhone.
       */}
       <main className="flex-1 min-w-0 overflow-x-hidden md:overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
-        <div className="container mx-auto max-w-5xl p-4 md:p-6">
+        {/* data-wide-page — канбану нужна вся ширина. Через CSS, а не x-pathname:
+            layout не перерисовывается при переходах внутри дашборда. */}
+        <div className="container mx-auto max-w-5xl has-[[data-wide-page]]:max-w-none p-4 md:p-6">
           {/* Валюта мастера (тенге/рубли) для всех цен в дашборде, 07.10.2026 */}
           <CurrencyProvider currency={master?.currency}>{children}</CurrencyProvider>
         </div>
