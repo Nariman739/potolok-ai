@@ -1,6 +1,7 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,9 @@ export default async function EstimatesPage() {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
 
+  const scope = await getScope(master);
   const estimates = await prisma.estimate.findMany({
-    where: { masterId: master.id, deletedAt: null },
+    where: { ...inScope(scope), deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
