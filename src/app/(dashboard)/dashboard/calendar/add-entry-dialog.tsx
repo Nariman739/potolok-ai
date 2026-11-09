@@ -14,9 +14,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { almatyDay, almatyInstant, almatyTime, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
+import { installColumnFor } from "@/lib/crm-columns";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 
 const SEARCH_LIMIT = 6;
+// Эти колонки только ручные и важнее расчёта: без переноса карточка осталась бы в них
+const MANUAL_BEFORE_INSTALL = ["purchase", "planning"];
 
 function clientTitle(c: CalendarClient) {
   return c.name.trim() || c.phone || "Без имени";
@@ -85,6 +88,14 @@ export function AddEntryDialog({
               body: JSON.stringify({ type: kind === "install" ? "INSTALL" : "MEASUREMENT", scheduledAt: iso }),
             });
       if (!res.ok) throw new Error();
+      if (kind === "install" && client.objectId && client.crmColumn && MANUAL_BEFORE_INSTALL.includes(client.crmColumn)) {
+        const moved = await fetch(`/api/clients/${client.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ crmColumn: installColumnFor(new Date(iso)) }),
+        });
+        if (!moved.ok) toast.error("Дата сохранена, но карточку на доске перенести не удалось");
+      }
       toast.success("Добавлено в календарь");
       onClose();
       router.refresh();

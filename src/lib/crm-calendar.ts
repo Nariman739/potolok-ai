@@ -10,7 +10,7 @@ export type CalendarKind = "measure" | "install";
 export type CalendarEntry = {
   id: string;
   kind: CalendarKind;
-  /** Прошедший замер — факт, показываем приглушённо */
+  /** Уже прошло — показываем приглушённо */
   done: boolean;
   at: string;
   /** YYYY-MM-DD по Астане */
@@ -34,6 +34,8 @@ export type RawCalendarObject = {
   id: string;
   masterId: string;
   address: string;
+  /** "saved" — замер завершён, "active" — незавершённый черновик */
+  status: string;
   measuredAt: Date | null;
   createdAt: Date;
   installAt: Date | null;
@@ -85,9 +87,12 @@ export function dayTitle(day: string): string {
   });
 }
 
-/** Параметр ?m=YYYY-MM; мусор — текущий месяц по Астане. */
+/**
+ * Параметр ?m=YYYY-MM; мусор — текущий месяц по Астане. Только 20xx: на отрицательном
+ * годе дата перестаёт двигаться, и цикл в monthGrid вешал сервер (?m=0000-01).
+ */
 export function parseMonth(raw: string | undefined, now: Date = new Date()): string {
-  if (raw && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
+  if (raw && /^20\d{2}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
   return almatyDay(now).slice(0, 7);
 }
 
@@ -124,6 +129,7 @@ export function buildCalendarEntries(
   objects: RawCalendarObject[],
   masterId: string,
   grid: { from: Date; to: Date },
+  now: Date = new Date(),
 ): CalendarEntry[] {
   const inGrid = (d: Date) => d >= grid.from && d < grid.to;
   const entry = (
@@ -158,8 +164,8 @@ export function buildCalendarEntries(
       if (e.clientId) taken.add(key(e.clientId, e.day, kind));
     };
     const measuredAt = o.measuredAt ?? o.createdAt;
-    if (inGrid(measuredAt)) add(`m:${o.id}`, "measure", true, measuredAt);
-    if (o.installAt && inGrid(o.installAt)) add(`i:${o.id}`, "install", false, o.installAt);
+    if (inGrid(measuredAt)) add(`m:${o.id}`, "measure", o.status === "saved" && measuredAt <= now, measuredAt);
+    if (o.installAt && inGrid(o.installAt)) add(`i:${o.id}`, "install", o.installAt <= now, o.installAt);
   }
 
   for (const ev of events) {
@@ -167,7 +173,7 @@ export function buildCalendarEntries(
     const kind: CalendarKind | null = ev.type === "MEASUREMENT" ? "measure" : ev.type === "INSTALL" ? "install" : null;
     if (!kind || taken.has(key(ev.client.id, almatyDay(ev.scheduledAt), kind))) continue;
     result.push(
-      entry(`e:${ev.id}`, kind, false, ev.scheduledAt, labelOf(ev.client.address, ev.client.name), ev.client.id, ev.client.masterId),
+      entry(`e:${ev.id}`, kind, ev.scheduledAt <= now, ev.scheduledAt, labelOf(ev.client.address, ev.client.name), ev.client.id, ev.client.masterId),
     );
   }
 

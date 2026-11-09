@@ -9,6 +9,7 @@ export type CalendarClient = {
   name: string;
   phone: string | null;
   address: string | null;
+  crmColumn: string | null;
   /** Самый новый объект: дата монтажа пишется в него, как с доски */
   objectId: string | null;
   installAt: string | null;
@@ -23,6 +24,7 @@ export async function getCalendarClients(scope: Scope): Promise<CalendarClient[]
       name: true,
       phone: true,
       address: true,
+      crmColumn: true,
       measurements: {
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
@@ -53,6 +55,7 @@ export async function getCalendarEntries(scope: Scope, masterId: string, month: 
         id: true,
         masterId: true,
         address: true,
+        status: true,
         measuredAt: true,
         createdAt: true,
         installAt: true,

@@ -15,7 +15,9 @@ const CELL_LIMIT = 3;
 const navLink = "inline-flex h-8 items-center justify-center rounded-md border bg-background px-2 text-sm hover:bg-muted";
 
 function entryClass(e: CalendarEntry) {
-  if (e.kind === "install") return "bg-amber-100 text-amber-900 hover:bg-amber-200";
+  if (e.kind === "install") {
+    return e.done ? "text-amber-900/55 hover:bg-amber-50" : "bg-amber-100 text-amber-900 hover:bg-amber-200";
+  }
   return e.done ? "text-blue-900/55 hover:bg-blue-50" : "bg-blue-100 text-blue-900 hover:bg-blue-200";
 }
 
@@ -111,12 +113,12 @@ export function CalendarView({
             Замер
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm border border-blue-200" />
-            Замер прошёл
-          </span>
-          <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm bg-amber-200" />
             Монтаж
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-muted-foreground/40" />
+            Прошло — бледнее
           </span>
           <span>Время по Астане</span>
         </div>
