@@ -371,12 +371,16 @@ export function filletAt(pts: Pt[], i: number, r: number, closed: boolean, maxBa
     }
     return out;
   };
-  const back = build(-1, maxBack), fwd = build(1, maxFwd);
+  // Дальше 25·r касание не уходит даже у острого угла (≈ 7°) — дальше не ищем (скорость).
+  const reachMax = 25 * r + 50;
+  const back = build(-1, Math.min(maxBack, reachMax)), fwd = build(1, Math.min(maxFwd, reachMax));
   let best: { o: Pt; be: S; fe: S; score: number } | null = null;
   for (let bi = 0; bi < back.length; bi++) {
     for (let fi = 0; fi < fwd.length; fi++) {
       if (best && bi + fi >= best.score) break;
       const B = back[bi], F = fwd[fi];
+      // Рамки отрезков далеко — пересечения нет (первые рёбра продлеваются — их не отсекаем).
+      if (!B.first && !F.first && (Math.max(B.p.x, B.q.x) < Math.min(F.p.x, F.q.x) - 1e-6 || Math.max(F.p.x, F.q.x) < Math.min(B.p.x, B.q.x) - 1e-6 || Math.max(B.p.y, B.q.y) < Math.min(F.p.y, F.q.y) - 1e-6 || Math.max(F.p.y, F.q.y) < Math.min(B.p.y, B.q.y) - 1e-6)) continue;
       const rx = B.q.x - B.p.x, ry = B.q.y - B.p.y, sx = F.q.x - F.p.x, sy = F.q.y - F.p.y;
       const den = rx * sy - ry * sx;
       if (Math.abs(den) < 1e-12) continue;
@@ -392,6 +396,25 @@ export function filletAt(pts: Pt[], i: number, r: number, closed: boolean, maxBa
   }
   if (!best) return null;
   const o = best.o;
+  // Окружность должна помещаться: остальные рёбра контура — не ближе 1,001·r к центру (иначе
+  // скругление вылезает за другую сторону или сливается с соседним — треугольник R50 >
+  // вписанной окружности, ревью 10.11.2026). Рёбра у самих точек касания не в счёт.
+  {
+    const segs = closed ? n : n - 1;
+    const tb0 = best.be.v ?? null, tf0 = best.fe.v ?? null;
+    const pb = tb0 ?? (() => { const e = best!.be; const dx = e.eb!.x - e.ea!.x, dy = e.eb!.y - e.ea!.y, l2 = dx * dx + dy * dy; const tt = Math.max(0, Math.min(1, ((o.x - e.ea!.x) * dx + (o.y - e.ea!.y) * dy) / l2)); return { x: e.ea!.x + dx * tt, y: e.ea!.y + dy * tt }; })();
+    const pf = tf0 ?? (() => { const e = best!.fe; const dx = e.eb!.x - e.ea!.x, dy = e.eb!.y - e.ea!.y, l2 = dx * dx + dy * dy; const tt = Math.max(0, Math.min(1, ((o.x - e.ea!.x) * dx + (o.y - e.ea!.y) * dy) / l2)); return { x: e.ea!.x + dx * tt, y: e.ea!.y + dy * tt }; })();
+    for (let k = 0; k < segs; k++) {
+      const a2 = pts[k], b2 = pts[(k + 1) % n];
+      const dx = b2.x - a2.x, dy = b2.y - a2.y, l2 = dx * dx + dy * dy;
+      const tt = l2 > 0 ? Math.max(0, Math.min(1, ((o.x - a2.x) * dx + (o.y - a2.y) * dy) / l2)) : 0;
+      const q = { x: a2.x + dx * tt, y: a2.y + dy * tt };
+      const d = Math.hypot(o.x - q.x, o.y - q.y);
+      // Рядом с касанием хорды плотной дуги лежат чуть внутри настоящей дуги — там допуск по касанию.
+      const nearTouch = Math.hypot(q.x - pb.x, q.y - pb.y) < Math.max(0.5, 0.4 * r) || Math.hypot(q.x - pf.x, q.y - pf.y) < Math.max(0.5, 0.4 * r);
+      if (d < (nearTouch ? r * (1 - 1e-2) - 0.05 : r * 1.001)) return null;
+    }
+  }
   // Точка касания и путь от вершины до неё.
   const touch = (sg: S, dir: 1 | -1) => {
     if (sg.v) return { p: { ...sg.v }, dist: sg.d0 };
@@ -425,35 +448,50 @@ export function filletAt(pts: Pt[], i: number, r: number, closed: boolean, maxBa
 export function filletPolygon(pts: Pt[], radii: number[], closed: boolean): Pt[] {
   const n = pts.length;
   if (n < 2) return pts.map((p) => ({ ...p }));
-  const fil: (Level2Fillet | null)[] = pts.map((_, i) => {
-    const r = radii[i] || 0;
-    if (r <= 0 || (!closed && (i === 0 || i === n - 1))) return null;
-    return filletAt(pts, i, r, closed);
-  });
-  if (!fil.some(Boolean)) return pts.map((p) => ({ ...p }));
-  // Какие вершины выпадают: строго между ребром касания назад и ребром касания вперёд.
-  const drop = pts.map(() => false);
-  for (let i = 0; i < n; i++) {
-    const f = fil[i];
-    if (!f) continue;
-    for (let k = f.kb + 1; k <= f.kf - 1; k++) drop[((k % n) + n) % n] = true;
-  }
-  const out: Pt[] = [];
-  // Обход с вершины, которая не выпадает (у открытой — с начала).
-  let s0 = 0;
-  if (closed) { s0 = drop.findIndex((v) => !v); if (s0 < 0) s0 = 0; }
-  const cnt = closed ? n : n;
-  for (let k = 0; k < cnt; k++) {
-    const i = (s0 + k) % n;
-    if (!drop[i]) out.push({ ...pts[i] });
-    // Скругление вершины j вставляем, когда дошли до ребра (kb → kb+1), на котором лежит ta.
-    for (let j = 0; j < n; j++) {
-      const f = fil[j];
-      if (f && ((f.kb % n) + n) % n === i) out.push(...f.arc.map((p) => ({ ...p })));
+  // Кэш: расчёт (длина/площадь) и чертёж (путь) просят одно и то же для тех же массивов.
+  const hit = FILLET_CACHE.get(pts);
+  if (hit && hit.closed === closed && hit.radii.length === radii.length && hit.radii.every((r, i) => r === radii[i])) return hit.out;
+  // Окно поиска касания — до соседней скругляемой вершины (дальше окружность не уйдёт).
+  const active = radii.map((r, i) => (r || 0) > 0 && (closed || (i > 0 && i < n - 1)));
+  const windowTo = (i: number, dir: 1 | -1) => {
+    let len = 0;
+    for (let k = 1; k < n; k++) {
+      const a = i + dir * (k - 1), b = i + dir * k;
+      if (!closed && (b < 0 || b > n - 1)) break;
+      const pa = pts[((a % n) + n) % n], pb = pts[((b % n) + n) % n];
+      len += Math.hypot(pb.x - pa.x, pb.y - pa.y);
+      if (active[((b % n) + n) % n]) break;
+    }
+    return len;
+  };
+  const fil: (Level2Fillet | null)[] = pts.map((_, i) => (active[i] ? filletMemo(pts, i, radii[i], closed, windowTo(i, -1), windowTo(i, 1)) : null));
+  let out: Pt[];
+  if (!fil.some(Boolean)) out = pts.map((p) => ({ ...p }));
+  else {
+    const drop = pts.map(() => false);
+    const at = new Map<number, Level2Fillet[]>();
+    for (let i = 0; i < n; i++) {
+      const f = fil[i];
+      if (!f) continue;
+      for (let k = f.kb + 1; k <= f.kf - 1; k++) drop[((k % n) + n) % n] = true;
+      const key = ((f.kb % n) + n) % n;
+      const list = at.get(key);
+      if (list) list.push(f); else at.set(key, [f]);
+    }
+    out = [];
+    let s0 = 0;
+    if (closed) { s0 = drop.findIndex((v) => !v); if (s0 < 0) s0 = 0; }
+    for (let k = 0; k < n; k++) {
+      const i = (s0 + k) % n;
+      if (!drop[i]) out.push({ ...pts[i] });
+      const list = at.get(i);
+      if (list) for (const f of list) for (const p of f.arc) out.push({ ...p });
     }
   }
+  FILLET_CACHE.set(pts, { radii: radii.slice(), closed, out });
   return out;
 }
+const FILLET_CACHE = new WeakMap<Pt[], { radii: number[]; closed: boolean; out: Pt[] }>();
 
 /**
  * Радиусы по вершинам замкнутого контура для рисования: r у выпуклых углов, 0 у
@@ -467,6 +505,19 @@ export function level2CornerRadii(pts: Pt[], r: number, onWall?: boolean[], corn
 /** Радиусы для открытой линии борта: внутренние вершины (в обе стороны), концы — 0. */
 export function openLineRadii(pts: Pt[], r: number, corners?: boolean[]): number[] {
   return cornerRadiiFor(pts, r, false, true, undefined, corners);
+}
+
+/** Память окружностей скругления на массив точек (подбор R и скруглённая ломаная строят одни и те же). */
+const FILLET_MEMO = new WeakMap<Pt[], Map<string, Level2Fillet | null>>();
+function filletMemo(pts: Pt[], i: number, r: number, closed: boolean, maxBack: number, maxFwd: number): Level2Fillet | null {
+  let m = FILLET_MEMO.get(pts);
+  if (!m) { m = new Map(); FILLET_MEMO.set(pts, m); }
+  const key = `${i}:${r}:${closed ? 1 : 0}`;
+  const hit = m.get(key);
+  if (hit !== undefined) return hit;
+  const f = filletAt(pts, i, r, closed, maxBack, maxFwd);
+  m.set(key, f);
+  return f;
 }
 
 function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boolean, onWall?: boolean[], corners?: boolean[]): number[] {
@@ -497,34 +548,59 @@ function cornerRadiiFor(pts: Pt[], r: number, closed: boolean, concaveToo: boole
     return null;
   };
   const nb = pts.map((_, i) => (roundable[i] ? { back: neighbour(i, -1), fwd: neighbour(i, 1) } : null));
-  // Проход 1: сколько стороны нужно каждому углу при полном R (настоящая касательная окружность).
+  // Одна и та же окружность нужна в трёх проходах и потом в скруглённой ломаной — считаем один раз.
+  const filletAt = (p: Pt[], i: number, rr: number, cl: boolean, mb: number, mf: number) => filletMemo(p, i, rr, cl, mb, mf);
+  // Проход 1: сколько стороны нужно каждому углу при полном R (настоящая касательная окружность);
+  // не влезла — вся сторона (не «половина», иначе сосед считал долю против всей длины, ревью 10.11.2026).
   const need = pts.map((_, i) => {
     const q = nb[i];
     if (!q || !q.back || !q.fwd) return null;
     const f = filletAt(pts, i, r, closed, q.back.len, q.fwd.len);
-    return f ? { b: f.dBack, f: f.dFwd } : { b: Infinity, f: Infinity };
+    return f ? { b: f.dBack, f: f.dFwd } : { b: q.back.len, f: q.fwd.len };
   });
-  // Проход 2: сторону между соседними углами делим пропорционально их потребности (ревью
-  // 09.11.2026: «пополам» резал R у острого угла рядом с дугой, хотя место было), и R
-  // уменьшаем, пока точки касания не влезут в свою долю.
-  return pts.map((_, i) => {
+  /** Наибольший R ≤ hi, при котором касания влезают в доли hb/hf (делением пополам — без ступеней ×0,9). */
+  const fit = (i: number, hi: number, hb: number, hf: number, q: { back: { len: number }; fwd: { len: number } }) => {
+    const ok = (rr: number) => { const f = filletAt(pts, i, rr, closed, q.back.len, q.fwd.len); return !!f && f.dBack <= hb + 1e-6 && f.dFwd <= hf + 1e-6; };
+    if (ok(hi)) return hi;
+    let lo = 0, top = hi;
+    for (let k = 0; k < 14; k++) { const mid = (lo + top) / 2; if (ok(mid)) lo = mid; else top = mid; }
+    return lo < 0.5 ? 0 : Math.floor(lo * 100) / 100;
+  };
+  // Проход 2: сторону между соседними углами делим пропорционально их потребности.
+  const out = pts.map((_, i) => {
     const q = nb[i], nd = need[i];
     if (!q || !nd || !q.back || !q.fwd) return 0;
     const allow = (side: { j: number; len: number }, mine: number, theirsKey: "b" | "f") => {
       const other = side.j >= 0 && roundable[side.j] ? need[side.j] : null;
       const theirs = other ? Math.min(other[theirsKey], side.len) : 0;
-      if (!Number.isFinite(mine)) return side.len * (theirs > 0 ? 0.5 : 0.98);
       return mine + theirs <= side.len ? side.len : (side.len * mine) / (mine + theirs);
     };
-    const hb = allow(q.back, nd.b, "f"), hf = allow(q.fwd, nd.f, "b");
-    let rr = r;
-    for (let guard = 0; guard < 40 && rr > 0.5; guard++) {
-      const f = filletAt(pts, i, rr, closed, q.back.len, q.fwd.len);
-      if (f && f.dBack <= hb + 1e-6 && f.dFwd <= hf + 1e-6) return rr;
-      rr *= 0.9;
-    }
-    return 0;
+    return fit(i, r, allow(q.back, nd.b, "f"), allow(q.fwd, nd.f, "b"), q as { back: { len: number }; fwd: { len: number } });
   });
+  // Проход 3: по каждой стороне касания соседей не перекрываются (dFwd_i + dBack_j ≤ длины), иначе
+  // общий множитель обоих радиусов — делением пополам (треугольник R50 давал петлю, ревью 10.11.2026).
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (let i = 0; i < n; i++) {
+      const q = nb[i];
+      if (!q || !q.fwd || out[i] <= 0 || q.fwd.j < 0 || out[q.fwd.j] <= 0) continue;
+      const j = q.fwd.j, qj = nb[j];
+      if (!qj || !qj.back || !qj.fwd) continue;
+      const len = q.fwd.len;
+      const sum = (si: number) => {
+        const fi = filletAt(pts, i, out[i] * si, closed, q.back!.len, q.fwd!.len), fj = filletAt(pts, j, out[j] * si, closed, qj.back!.len, qj.fwd!.len);
+        return (fi ? fi.dFwd : Infinity) + (fj ? fj.dBack : Infinity);
+      };
+      if (sum(1) <= len + 1e-6) continue;
+      let lo = 0, hi = 1;
+      for (let k = 0; k < 14; k++) { const mid = (lo + hi) / 2; if (sum(mid) <= len + 1e-6) lo = mid; else hi = mid; }
+      out[i] = out[i] * lo < 0.5 ? 0 : Math.floor(out[i] * lo * 100) / 100;
+      out[j] = out[j] * lo < 0.5 ? 0 : Math.floor(out[j] * lo * 100) / 100;
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  return out;
 }
 
 /**
@@ -663,9 +739,12 @@ export function clipOffsetOvershoot(src: Pt[], dst: Pt[], corners: boolean[]): P
     } else {
       // Дуги с обеих сторон (ревью 09.11.2026, #91): ищем пересечение самих сдвинутых ломаных
       // дуг — ближайшую к углу пару рёбер — и сводим петлю в точку пересечения.
+      // Петля сдвига у угла — в пределах нескольких сдвигов от него: дальше не ищем (скорость, ревью 10.11.2026).
+      const wloc = Math.max(1, Math.hypot(dst[c].x - src[c].x, dst[c].y - src[c].y));
+      const reach = (j: number) => Math.hypot(src[j].x - src[c].x, src[j].y - src[c].y) <= 6 * wloc;
       const back: number[] = [], fwd: number[] = [];
-      for (let k = 1; k < n && back.length < n; k++) { const j = at(c - k); back.push(j); if (corners[j]) break; }
-      for (let k = 0; k < n && fwd.length < n; k++) { const j = at(c + k); fwd.push(j); if (corners[at(j + 1)]) break; }
+      for (let k = 1; k < n && back.length < n; k++) { const j = at(c - k); back.push(j); if (corners[j] || !reach(j)) break; }
+      for (let k = 0; k < n && fwd.length < n; k++) { const j = at(c + k); fwd.push(j); if (corners[at(j + 1)] || !reach(at(j + 1))) break; }
       // Петли бывают вложенными (сдвиг дуги у острого угла делает «ус» за «усом»): снимаем по одной, пока есть.
       for (let pass = 0; pass < 24; pass++) {
         let best: { X: Pt; jb: number; jf: number; score: number } | null = null;
@@ -690,23 +769,38 @@ export function clipOffsetOvershoot(src: Pt[], dst: Pt[], corners: boolean[]): P
 export function selfIntersects(pts: Pt[], closed: boolean): boolean {
   const n = pts.length;
   const segs = closed ? n : n - 1;
-  const E: [Pt, Pt][] = [];
+  if (segs < 4) return false;
+  // Сетка ячеек вместо перебора всех пар (ревью 10.11.2026: 570 точек — 1,7 мс).
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, sum = 0;
   for (let i = 0; i < segs; i++) {
     const a = pts[i], b = pts[(i + 1) % n];
-    E.push([a, b]);
+    minX = Math.min(minX, a.x, b.x); minY = Math.min(minY, a.y, b.y); maxX = Math.max(maxX, a.x, b.x); maxY = Math.max(maxY, a.y, b.y);
+    sum += Math.hypot(b.x - a.x, b.y - a.y);
   }
+  const cell = Math.max(1, (sum / segs) * 3);
+  const cols = Math.max(1, Math.ceil((maxX - minX) / cell) + 1);
+  const grid = new Map<number, number[]>();
+  const cross = (i: number, j: number) => {
+    const a = pts[i], b = pts[(i + 1) % n], c = pts[j], d = pts[(j + 1) % n];
+    const rx = b.x - a.x, ry = b.y - a.y, sx = d.x - c.x, sy = d.y - c.y;
+    if (Math.hypot(rx, ry) < 1e-6 || Math.hypot(sx, sy) < 1e-6) return false;
+    const den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-12) return false;
+    const u = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den, v = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den;
+    return u > 1e-6 && u < 1 - 1e-6 && v > 1e-6 && v < 1 - 1e-6;
+  };
+  const adjacent = (i: number, j: number) => Math.abs(i - j) <= 1 || (closed && ((i === 0 && j === segs - 1) || (j === 0 && i === segs - 1)));
   for (let i = 0; i < segs; i++) {
-    const [a, b] = E[i];
-    if (Math.hypot(b.x - a.x, b.y - a.y) < 1e-6) continue;
-    for (let j = i + 2; j < segs; j++) {
-      if (closed && i === 0 && j === segs - 1) continue;
-      const [c, d] = E[j];
-      if (Math.hypot(d.x - c.x, d.y - c.y) < 1e-6) continue;
-      const rx = b.x - a.x, ry = b.y - a.y, sx = d.x - c.x, sy = d.y - c.y;
-      const den = rx * sy - ry * sx;
-      if (Math.abs(den) < 1e-12) continue;
-      const u = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den, v = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den;
-      if (u > 1e-6 && u < 1 - 1e-6 && v > 1e-6 && v < 1 - 1e-6) return true;
+    const a = pts[i], b = pts[(i + 1) % n];
+    const x0 = Math.floor((Math.min(a.x, b.x) - minX) / cell), x1 = Math.floor((Math.max(a.x, b.x) - minX) / cell);
+    const y0 = Math.floor((Math.min(a.y, b.y) - minY) / cell), y1 = Math.floor((Math.max(a.y, b.y) - minY) / cell);
+    for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) {
+      const key = gy * cols + gx;
+      const list = grid.get(key);
+      if (list) {
+        for (const j of list) if (!adjacent(i, j) && cross(i, j)) return true;
+        list.push(i);
+      } else grid.set(key, [i]);
     }
   }
   return false;
@@ -781,6 +875,29 @@ export function sidesOnWallMask(pts: Pt[], room: Pt[] | null, tol = ON_WALL_TOL_
     }
     return false;
   });
+}
+
+/**
+ * «На стене» — только настоящие прямые стороны или участки дуги заметной длины (≥ 20 см):
+ * дуга, касающаяся стены, давала одно короткое ребро «на стене» → сдвиг 0 на нём, кромка
+ * ломалась (ревью 10.11.2026: верх 3,15 вместо 2,53).
+ */
+export function keepWallRuns(pts: Pt[], mask: boolean[], corners: boolean[], closed: boolean, minRun = 20): boolean[] {
+  const n = pts.length;
+  const segs = closed ? n : n - 1;
+  const out = mask.slice();
+  const straight = (i: number) => corners[i] && corners[(i + 1) % n];
+  const seen = new Array(n).fill(false);
+  for (let i = 0; i < segs; i++) {
+    if (!mask[i] || seen[i] || straight(i)) continue;
+    // Прогон подряд идущих рёбер дуги «на стене».
+    const run: number[] = [];
+    let j = i;
+    while (j < segs && mask[j] && !straight(j) && !seen[j]) { run.push(j); seen[j] = true; j = closed ? (j + 1) % n : j + 1; if (j === i) break; }
+    const len = run.reduce((s2, k) => s2 + Math.hypot(pts[(k + 1) % n].x - pts[k].x, pts[(k + 1) % n].y - pts[k].y), 0);
+    if (len < minRun) for (const k of run) out[k] = false;
+  }
+  return out;
 }
 
 /** Длины сторон замкнутого контура, НЕ лежащих на стене комнаты (там нужен борт). */
@@ -906,6 +1023,8 @@ export function level2LowFillPath(calc: Pick<Level2Calc, "closed" | "contour" | 
 
 export type Level2Warning =
   | "shelf_too_wide"
+  /** Кромка полки упирается сама в себя (короткий скос, узкое место) — верх посчитан по площади кромки, проверить. */
+  | "shelf_tight"
   | "inside_other_contour"
   | "contours_overlap"
   | "outside_room"
@@ -1021,7 +1140,7 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
   const w = params.led ? Math.max(0, params.shelfCm) : 0;
   const dense = densify(shape, params.lowSide ?? "left");
   const D = dense.pts;
-  const onWall = sidesOnWallMask(D, room, ON_WALL_TOL_CM, true);
+  const onWall = keepWallRuns(D, sidesOnWallMask(D, room, ON_WALL_TOL_CM, true), dense.isCorner, true);
   // Скругление: только настоящие выпуклые углы, не у стены.
   const radii = level2CornerRadii(D, r, onWall, dense.isCorner);
   const cR = roundingByRadii(D, radii);
@@ -1037,7 +1156,10 @@ function calcClosed(shape: Level2Shape, room: Pt[] | null, params: Level2Params)
   let upperCm2 = cutCm2;
   if (w > 0) {
     const U = clipOffsetOvershoot(D, offsetEdgesInward(D, onWall.map((ow) => (ow ? 0 : w))), dense.isCorner);
-    if (offsetIsValid(D, U, true, undefined, 2 * w) && !selfIntersects(U, true)) {
+    if (offsetIsValid(D, U, true, undefined, 2 * w)) {
+      // Петля кромки (скос короче 2w, узкое место) — не «полка шире контура»: верх = |площадь|
+      // кромки (петля вычитается сама), мягкое предупреждение (ревью 10.11.2026, трапеция 0,63).
+      if (selfIntersects(U, true)) warnings.push("shelf_tight");
       upper = U;
       upperRadii = level2CornerRadii(U, Math.max(0, r - w), onWall, dense.isCorner);
       upperCm2 = Math.abs(signedArea(U)) + roundingByRadii(U, upperRadii).dA;
@@ -1155,7 +1277,8 @@ function calcOpen(shape: Level2Shape, room: Pt[] | null, params: Level2Params): 
   if (w > 0 && upPoly.length >= 3) {
     const lineEdges = upPoly.map((_, i) => i < n - 1);
     const U = clipOffsetOvershoot(upPoly, offsetEdgesInward(upPoly, lineEdges.map((isLine) => (isLine ? w : 0))), upPoly.map((_, i) => (i < n ? dense.isCorner[i] : true)));
-    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w) && !selfIntersects(U.slice(0, n), false)) {
+    if (offsetIsValid(upPoly, U, true, lineEdges, 2 * w)) {
+      if (selfIntersects(U.slice(0, n), false)) warnings.push("shelf_tight");
       upperPolygon = U;
       upper = U.slice(0, n);
       upperRadii = openLineRadii(upper, Math.max(0, r - w), dense.isCorner);
