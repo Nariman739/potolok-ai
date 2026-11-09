@@ -2,6 +2,8 @@ import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { nearestPlan } from "@/lib/crm-calendar";
+import { mainObject } from "@/lib/crm-columns";
 import { ClientCard } from "./client-card";
 import type { Metadata } from "next";
 
@@ -71,6 +73,9 @@ export default async function ClientPage({
 
   if (!client) notFound();
 
+  const activeObjects = client.measurements.filter((m) => !m.deletedAt);
+  const main = mainObject(activeObjects);
+
   // Договоры (среди КП этого клиента) — для таба «Договор»
   const contracts = client.estimates
     .filter((e) => e.contractPublicId)
@@ -101,10 +106,21 @@ export default async function ClientPage({
         createdAt: client.createdAt.toISOString(),
         updatedAt: client.updatedAt.toISOString(),
       }}
+      planClient={{
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        address: client.address,
+        crmColumn: client.crmColumn,
+        objectId: main?.id ?? null,
+        installAt: main?.installAt?.toISOString() ?? null,
+      }}
+      nearest={nearestPlan(client.events, activeObjects)}
       events={client.events.map((e) => ({
         id: e.id,
         type: e.type,
         content: e.content,
+        scheduledAt: e.scheduledAt?.toISOString() ?? null,
         createdAt: e.createdAt.toISOString(),
       }))}
       estimates={client.estimates.map((e) => ({

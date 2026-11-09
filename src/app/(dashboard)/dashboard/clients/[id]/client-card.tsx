@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Clock,
   Copy,
+  CalendarPlus,
 } from "lucide-react";
 import {
   STATUS_LABELS,
@@ -36,6 +37,9 @@ import {
 } from "../constants";
 import { PhotoGallery, type ObjectPhoto, type PhotoCategoryKey } from "@/components/clients/photo-gallery";
 import { useCurrency } from "@/components/currency-provider";
+import { AddEntryDialog } from "../../calendar/add-entry-dialog";
+import { almatyDay, almatyTime, dayTitle, type CalendarKind, type PlanMoment } from "@/lib/crm-calendar";
+import type { CalendarClient } from "@/lib/crm-calendar-data";
 
 type Client = {
   id: string;
@@ -53,6 +57,7 @@ type Event = {
   id: string;
   type: EventTypeKey;
   content: string | null;
+  scheduledAt: string | null;
   createdAt: string;
 };
 
@@ -94,22 +99,17 @@ const STATUSES: DealStatusKey[] = [
   "LOST",
 ];
 
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return (
-    d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" }) +
-    ", " +
-    d.getHours().toString().padStart(2, "0") +
-    ":" +
-    d.getMinutes().toString().padStart(2, "0")
-  );
-}
-
+// По Астане и на сервере (UTC), и в браузере — иначе разметка не сходится при гидратации
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+  return new Date(`${almatyDay(new Date(iso))}T00:00:00Z`).toLocaleDateString("ru-RU", {
+    timeZone: "UTC",
     day: "2-digit",
     month: "short",
   });
+}
+
+function formatDateTime(iso: string) {
+  return formatDate(iso) + ", " + almatyTime(new Date(iso));
 }
 
 const ESTIMATE_STATUS_LABELS: Record<string, string> = {
@@ -123,6 +123,8 @@ const ESTIMATE_STATUS_LABELS: Record<string, string> = {
 
 export function ClientCard({
   client: initialClient,
+  planClient,
+  nearest,
   events: initialEvents,
   estimates,
   measurements,
@@ -130,6 +132,8 @@ export function ClientCard({
   contracts,
 }: {
   client: Client;
+  planClient: CalendarClient;
+  nearest: { measure: PlanMoment | null; install: PlanMoment | null };
   events: Event[];
   estimates: Estimate[];
   measurements: Measurement[];
@@ -146,6 +150,11 @@ export function ClientCard({
   const [eventContent, setEventContent] = useState("");
   const [eventBusy, setEventBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [planDay, setPlanDay] = useState<string | null>(null);
+  const [planKind, setPlanKind] = useState<CalendarKind>("measure");
+
+  // Запись из диалога приходит с сервера через router.refresh
+  useEffect(() => setEvents(initialEvents), [initialEvents]);
 
   const [draftName, setDraftName] = useState(client.name);
   const [draftPhone, setDraftPhone] = useState(client.phone ?? "");
@@ -228,6 +237,7 @@ export function ClientCard({
           id: event.id,
           type: event.type,
           content: event.content,
+          scheduledAt: event.scheduledAt,
           createdAt: event.createdAt,
         },
         ...prev,
@@ -254,6 +264,11 @@ export function ClientCard({
         router.push("/dashboard/clients");
       }
     });
+  }
+
+  function openPlan(kind: CalendarKind) {
+    setPlanKind(kind);
+    setPlanDay(almatyDay(new Date()));
   }
 
   function copyContractLink(publicId: string) {
@@ -336,6 +351,29 @@ export function ClientCard({
                   {client.notes}
                 </p>
               )}
+
+              <div className="space-y-2">
+                {nearest.measure && (
+                  <p data-nearest="measure" className="text-sm">
+                    Замер: <span className="font-medium">{dayTitle(nearest.measure.day)} в {nearest.measure.time}</span> по Астане
+                  </p>
+                )}
+                {nearest.install && (
+                  <p data-nearest="install" className="text-sm">
+                    Монтаж: <span className="font-medium">{dayTitle(nearest.install.day)} в {nearest.install.time}</span> по Астане
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openPlan("measure")}>
+                    <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+                    Назначить замер
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openPlan("install")}>
+                    <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+                    Назначить монтаж
+                  </Button>
+                </div>
+              </div>
 
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Сменить статус</p>
@@ -551,6 +589,11 @@ export function ClientCard({
                       <div className="text-xs font-medium text-[#1e3a5f]">
                         {EVENT_LABELS[e.type]}
                       </div>
+                      {e.scheduledAt && (
+                        <div className="text-sm mt-0.5">
+                          на {formatDateTime(e.scheduledAt)}
+                        </div>
+                      )}
                       {e.content && (
                         <div className="text-sm mt-0.5 whitespace-pre-wrap">
                           {e.content}
@@ -779,6 +822,13 @@ export function ClientCard({
           <PhotoGallery clientId={client.id} initialPhotos={photos} />
         </TabsContent>
       </Tabs>
+
+      <AddEntryDialog
+        day={planDay}
+        fixedClient={planClient}
+        initialKind={planKind}
+        onClose={() => setPlanDay(null)}
+      />
     </div>
   );
 }

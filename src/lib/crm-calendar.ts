@@ -116,6 +116,29 @@ export function monthGrid(month: string): { days: string[]; from: Date; to: Date
   return { days, from: almatyInstant(start, "00:00"), to: almatyInstant(addDays(end, 1), "00:00") };
 }
 
+export type PlanMoment = { day: string; time: string };
+
+/** Ближайшие будущие замер и монтаж клиента — по тем же источникам, что и календарь. */
+export function nearestPlan(
+  events: { type: string; scheduledAt: Date | null }[],
+  objects: { measuredAt: Date | null; installAt: Date | null }[],
+  now: Date = new Date(),
+): { measure: PlanMoment | null; install: PlanMoment | null } {
+  const nearest = (type: string, fromObject: (o: (typeof objects)[number]) => Date | null): PlanMoment | null => {
+    const dates = [
+      ...events.filter((e) => e.type === type).map((e) => e.scheduledAt),
+      ...objects.map(fromObject),
+    ].filter((d): d is Date => !!d && d > now);
+    if (dates.length === 0) return null;
+    const first = new Date(Math.min(...dates.map((d) => d.getTime())));
+    return { day: almatyDay(first), time: almatyTime(first) };
+  };
+  return {
+    measure: nearest("MEASUREMENT", (o) => o.measuredAt),
+    install: nearest("INSTALL", (o) => o.installAt),
+  };
+}
+
 function labelOf(...parts: (string | null | undefined)[]): string {
   return parts.map((p) => p?.trim()).find(Boolean) ?? "Без адреса";
 }

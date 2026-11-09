@@ -27,30 +27,36 @@ function clientTitle(c: CalendarClient) {
 
 export function AddEntryDialog({
   day,
-  clients,
+  clients = [],
+  fixedClient,
+  initialKind = "measure",
   onClose,
 }: {
   /** День по Астане; null — диалог закрыт */
   day: string | null;
-  clients: CalendarClient[];
+  clients?: CalendarClient[];
+  /** Открыт из карточки клиента: клиент уже выбран и не меняется */
+  fixedClient?: CalendarClient;
+  initialKind?: CalendarKind;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
-  const [kind, setKind] = useState<CalendarKind>("measure");
+  const [kind, setKind] = useState<CalendarKind>(initialKind);
   const [search, setSearch] = useState("");
-  const [client, setClient] = useState<CalendarClient | null>(null);
+  const [picked, setPicked] = useState<CalendarClient | null>(null);
   const [saving, setSaving] = useState(false);
+  const client = fixedClient ?? picked;
 
   useEffect(() => {
     if (!day) return;
     setDate(day);
     setTime("10:00");
-    setKind("measure");
+    setKind(initialKind);
     setSearch("");
-    setClient(null);
-  }, [day]);
+    setPicked(null);
+  }, [day, initialKind]);
 
   const matches = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -110,7 +116,9 @@ export function AddEntryDialog({
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Добавить в календарь</DialogTitle>
+          <DialogTitle>
+            {fixedClient ? (kind === "install" ? "Назначить монтаж" : "Назначить замер") : "Добавить в календарь"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex gap-2">
@@ -149,9 +157,11 @@ export function AddEntryDialog({
                 {clientTitle(client)}
                 {client.address ? <span className="text-muted-foreground"> · {client.address}</span> : null}
               </span>
-              <button className="flex-shrink-0 text-xs text-[#1e3a5f] underline" onClick={() => setClient(null)}>
-                Изменить
-              </button>
+              {!fixedClient && (
+                <button className="flex-shrink-0 text-xs text-[#1e3a5f] underline" onClick={() => setPicked(null)}>
+                  Изменить
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -167,7 +177,7 @@ export function AddEntryDialog({
                   <button
                     key={c.id}
                     data-client={c.id}
-                    onClick={() => setClient(c)}
+                    onClick={() => setPicked(c)}
                     className="block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-muted"
                   >
                     {clientTitle(c)}
