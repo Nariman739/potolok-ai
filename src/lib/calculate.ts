@@ -177,7 +177,7 @@ function calculateRoom(
     const row = chosenRow ?? main?.row;
     if (!(area <= 0)) {
       if (row) {
-        items.push({ ...variantLine(row, "canvas", area, "canvas_320"), ...(row.installerPrice != null && { installRate: row.installerPrice }) });
+        items.push({ ...variantLine(row, "canvas", area, "canvas_320"), ...(row.installerPrice != null && { installerRate: row.installerPrice }) });
       } else {
         const line = makeLineItem(main!.code!, area, prices);
         if (line) items.push({ ...line, itemName: main!.name });
