@@ -373,6 +373,10 @@ export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: cus
         .filter((ci) => ci.itemId && parseFloat(ci.quantity) > 0)
         .map((ci) => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
       oneOffItems: cleanOneOffs.length > 0 ? cleanOneOffs : undefined,
+      // Выбор вариантов сделан в дизайнере, в этой форме его нет: правка не должна его терять.
+      variantOverrides: editRoom?.variantOverrides,
+      spotsByType: editRoom?.spotsByType,
+      tracksByType: editRoom?.tracksByType,
     };
 
     onAdd(room);
