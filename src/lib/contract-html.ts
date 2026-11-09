@@ -166,7 +166,7 @@ export function worksLines(
   }
 
   // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
-  const heightExtra = (calc?.roomResults ?? []).reduce((acc, rr) => {
+  const heightExtra = roomResults.reduce((acc, rr) => {
     const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
     const before = (rr as { subtotal?: number }).subtotal;
     return acc + (after != null && before != null && after > before ? after - before : 0);
@@ -193,7 +193,8 @@ export function worksLines(
   // сохранении КП): считаем от суммы. Без строки таблица не сошлась бы с итогом.
   if (total != null) {
     const lift = Math.round(total + discount - lines.reduce((sum, line) => sum + line.total, 0));
-    if (lift > 0) {
+    // Меньше 2 ₸ — округление старых скидок, а не минимальный заказ.
+    if (lift > 1) {
       lines.push({ name: t("ct.minOrder"), quantity: "1", unit: t("ct.unitService"), unitPrice: lift, total: lift });
     }
   }
