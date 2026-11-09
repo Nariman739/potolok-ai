@@ -39,6 +39,8 @@ export interface EstimateData {
   /** ИИН заказчика — из ответа на «Данные для договора» (30.09.2026) */
   clientIin?: string | null;
   total: number;
+  /** Estimate.discountAmount: скидка клиенту, итог total уже с её учётом. */
+  discountAmount?: number | null;
   createdAt: Date;
   /** Дата создания договора; раньше в шапке стояла дата КП (15.10.2026). */
   contractCreatedAt?: Date | null;
@@ -145,6 +147,10 @@ export function worksLines(
   roomResults: RoomResult[],
   t: T,
   calc: CalculationResult | null | undefined,
+  /** Estimate.discountAmount; в старых данных скидка могла лежать в расчёте. */
+  discountAmount?: number | null,
+  /** Estimate.total — итог уже со скидкой. */
+  total?: number | null,
 ): WorksLine[] {
   const lines: WorksLine[] = [];
   for (const rr of roomResults) {
@@ -179,7 +185,19 @@ export function worksLines(
     });
   }
 
-  const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
+  const discount = (discountAmount ?? 0) > 0
+    ? (discountAmount as number)
+    : (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
+
+  // Итог мог быть поднят до минимального заказа, и не только в расчёте (при
+  // сохранении КП): считаем от суммы. Без строки таблица не сошлась бы с итогом.
+  if (total != null) {
+    const lift = Math.round(total + discount - lines.reduce((sum, line) => sum + line.total, 0));
+    if (lift > 0) {
+      lines.push({ name: t("ct.minOrder"), quantity: "1", unit: t("ct.unitService"), unitPrice: lift, total: lift });
+    }
+  }
+
   if (discount > 0) {
     lines.push({ name: t("ct.discount"), quantity: "1", unit: t("ct.unitService"), unitPrice: -discount, total: -discount });
   }
@@ -198,10 +216,12 @@ function buildWorksTable(
   calc: CalculationResult | null | undefined,
   cur: CurrencyCode,
   priceView?: string | null,
+  discountAmount?: number | null,
+  total?: number | null,
 ): string {
   const hidePrice = priceView === "summary";
   const money = (n: number) => (n < 0 ? `−${fmtPrice(-n, cur)}` : fmtPrice(n, cur));
-  return worksLines(roomResults, t, calc)
+  return worksLines(roomResults, t, calc, discountAmount, total)
     .map((line, i) => `<tr>
         <td style="${tdStyle}">${i + 1}</td>
         <td style="${tdStyle}">${esc(line.name)}</td>
@@ -274,7 +294,7 @@ export function generateContractHtml(
   const total = estimate.total;
   const cur = asCurrency(master.currency);
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, t, calc, cur, estimate.priceView);
+  const worksRows = buildWorksTable(roomResults, t, calc, cur, estimate.priceView, estimate.discountAmount, estimate.total);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
@@ -477,6 +497,8 @@ export interface ActData {
   clientPhone?: string | null;
   clientAddress?: string | null;
   total: number;
+  /** Estimate.discountAmount: скидка клиенту, итог total уже с её учётом. */
+  discountAmount?: number | null;
   /** Получено от клиента на дату акта (по платежам объекта). */
   paid: number;
   /** Дата договора (создания КП) — для строки «к Договору № … от …». */
@@ -525,7 +547,7 @@ export function generateActHtml(
   const cur = asCurrency(master.currency);
   const paid = Math.max(0, Math.min(total, Math.round(act.paid || 0)));
   const rest = Math.max(0, Math.round(total - paid));
-  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur, act.priceView);
+  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur, act.priceView, act.discountAmount, act.total);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(act.clientName) || "___________________________";
@@ -899,7 +921,7 @@ export function contractPlaceholderValues(
     город: esc(master.contractCity) || "_______________",
     дата: dateText(estimate.contractCreatedAt ?? estimate.createdAt, lang),
     номер: estimate.publicId.slice(0, 8).toUpperCase(),
-    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur, estimate.priceView),
+    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur, estimate.priceView, estimate.discountAmount, estimate.total),
     гарантия_материал: yearsText(master.warrantyMaterials, lang),
     гарантия_монтаж: yearsText(master.warrantyInstall, lang),
   };

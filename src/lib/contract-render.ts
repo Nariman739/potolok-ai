@@ -127,6 +127,7 @@ export function renderLiveContract(estimate: Estimate, master: MasterData, langu
       clientAddress: estimate.clientAddress,
       clientIin: estimate.clientIin,
       total: estimate.total,
+      discountAmount: estimate.discountAmount,
       createdAt: estimate.createdAt,
       contractCreatedAt: estimate.contractCreatedAt,
       priceView: estimate.priceView,

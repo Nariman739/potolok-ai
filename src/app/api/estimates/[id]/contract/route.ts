@@ -155,12 +155,17 @@ export async function GET(
       doc.text(h, colX[i] + 2, ty + 4, { width: i === 1 ? nameW : colW[i], align: i >= 3 ? "right" : "left" });
     });
     ty += 18;
-    worksLines(roomResults, label, calc).forEach((line, index) => {
-      if (ty > 760) { doc.addPage(); ty = 50; }
+    worksLines(roomResults, label, calc, estimate.discountAmount, total).forEach((line, index) => {
       doc.font("Sans").fontSize(8).fillColor("#000");
+      // Высота строки — по самой длинной колонке; длинную строку на новую страницу целиком.
+      const rowH = Math.max(
+        doc.heightOfString(line.name, { width: nameW - 4 }),
+        hidePrice ? 0 : doc.heightOfString(line.quantity, { width: colW[2] }),
+        hidePrice ? 0 : doc.heightOfString(line.unit, { width: colW[3] }),
+      );
+      if (ty + rowH > 780) { doc.addPage(); ty = 50; }
       doc.text(String(index + 1), colX[0] + 2, ty, { width: colW[0] });
       doc.text(line.name, colX[1] + 2, ty, { width: nameW - 4 });
-      const rowH = doc.y - ty;
       if (!hidePrice) {
         doc.text(line.quantity, colX[2] + 2, ty, { width: colW[2], align: "right" });
         doc.text(line.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
