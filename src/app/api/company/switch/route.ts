@@ -54,21 +54,33 @@ export async function POST(request: Request) {
     }
 
     if (!membership.joinedAt) {
-      // Заявка одна на мастера: иначе второе подтверждение выдернуло бы его из первой компании.
-      await prisma.$transaction([
-        prisma.member.updateMany({
+      // Только пока строка не подтверждена: владелец мог подтвердить её сразу после чтения выше.
+      const pendingSince = membership.pendingSince ?? new Date();
+      const applied = await prisma.$transaction(async (tx) => {
+        const claim = await tx.member.updateMany({
+          where: { id: membership.id, masterId: master.id, removedAt: null, joinedAt: null },
+          data: { pendingSince, pendingBringData: bringData },
+        });
+        if (claim.count !== 1) return false;
+        // Заявка одна на мастера: иначе второе подтверждение выдернуло бы его из первой компании.
+        await tx.member.updateMany({
           where: { masterId: master.id, pendingSince: { not: null }, id: { not: membership.id } },
           data: { pendingSince: null, pendingBringData: null },
-        }),
-        prisma.member.update({
-          where: { id: membership.id },
-          data: { pendingSince: membership.pendingSince ?? new Date(), pendingBringData: bringData },
-        }),
-      ]);
-      // Повторное «Принять» при висящей заявке только обновляет перенос — без уведомления.
-      if (!membership.pendingSince) await notifyOwnerOfRequest(membership.id);
-      if (body.approvalFlow === true) return NextResponse.json({ pending: true, companyId });
-      return NextResponse.json({ error: pendingApprovalText(master.language), code: "APPROVAL_PENDING" }, { status: 409 });
+        });
+        return true;
+      });
+      if (applied) {
+        // Повторное «Принять» при висящей заявке только обновляет перенос — без уведомления.
+        if (!membership.pendingSince) await notifyOwnerOfRequest(membership.id);
+        if (body.approvalFlow === true) return NextResponse.json({ pending: true, companyId });
+        return NextResponse.json({ error: pendingApprovalText(master.language), code: "APPROVAL_PENDING" }, { status: 409 });
+      }
+      // Строка изменилась: подтверждена — идём быстрым путём, убрана или отклонена — приглашения нет.
+      const fresh = await prisma.member.findFirst({
+        where: { id: membership.id, masterId: master.id, removedAt: null, joinedAt: { not: null } },
+        select: { id: true },
+      });
+      if (!fresh) return NextResponse.json({ error: "Приглашение не найдено или отозвано" }, { status: 404 });
     }
 
     const switchOps = [

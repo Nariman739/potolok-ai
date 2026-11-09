@@ -29,8 +29,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!member || !member.masterId) return NextResponse.json({ error: ALREADY_DECIDED }, { status: 404 });
     const applicantId = member.masterId;
     const language = member.master?.language;
-    // Заявка всё ещё та же: тот же аккаунт, не убран, ждёт решения.
-    const claimWhere = { id: member.id, masterId: applicantId, removedAt: null, pendingSince: { not: null } };
+    // Заявка всё ещё та же: тот же аккаунт, не убран, ещё не подтверждён, ждёт решения и с тем же
+    // выбором о переносе, который мы прочитали. Иначе устаревшее «Отклонить» сняло бы работающего.
+    const claimWhere = {
+      id: member.id,
+      masterId: applicantId,
+      removedAt: null,
+      joinedAt: null,
+      pendingSince: { not: null },
+      pendingBringData: member.pendingBringData,
+    };
 
     if (!body.approve) {
       // Строка остаётся «без приложения» (на неё могут ссылаться объекты), номер заблокирован

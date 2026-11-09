@@ -44,6 +44,11 @@ export function CompanyApprovalsBanner() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(data?.error || "Не удалось сохранить решение");
+        // Заявку уже рассмотрели или отозвали: карточке незачем висеть.
+        if (res.status === 404) {
+          setApprovals((list) => list.filter((a) => a.id !== id));
+          setConfirm(null);
+        }
         return;
       }
       toast.success(approve ? "Сотрудник подтверждён" : "Заявка отклонена");

@@ -318,6 +318,92 @@ async function invited(owner: any, label: string) {
     console.log(`  итог: подтверждение ${aWon} / отклонение ${rWon}; подтверждение ${aWon2} / отзыв ${cancelWon}`);
   }
 
+  console.log("— финальное ревью: «Принять» + подтверждение, устаревшее отклонение, смена переноса —");
+  {
+    const pAccept = (u: any, companyId: string, extra: object = {}) => asUser(u, async () => J(await sw.POST(req({ companyId, approvalFlow: true, ...extra }))));
+    const o = await ownerWithCompany("ВладелецФ");
+    let fast = 0, idem = 0;
+    for (let i = 0; i < 12; i++) {
+      const u = await invited(o, "ПринятьПодтв" + i);
+      await accept(u, o.companyId);
+      const [d, a] = await Promise.all([pDecide(o, u.memberId, true), new Promise((t) => setTimeout(t, i * 5)).then(() => pAccept(u, o.companyId))]);
+      const rw = await row(u.memberId), m = await master(u.id);
+      if (a.body?.pending) idem++; else fast++;
+      ok(`«Принять»+подтверждение #${i}: подтверждён, заявка не залипла`, d.status === 200 && a.status === 200 && !!rw.joinedAt && rw.pendingSince === null && m.activeCompanyId === o.companyId, { d, a, rw, m: m.activeCompanyId });
+    }
+    console.log(`  итог: повторная заявка до подтверждения ${idem} / быстрый путь после ${fast}`);
+
+    let before = 0;
+    for (let i = 0; i < 8; i++) {
+      const u = await invited(o, "СначалаПринять" + i);
+      await accept(u, o.companyId);
+      const [a, d] = await Promise.all([pAccept(u, o.companyId), new Promise((t) => setTimeout(t, 40 + i * 10)).then(() => pDecide(o, u.memberId, true))]);
+      const rw = await row(u.memberId);
+      if (a.body?.pending) before++;
+      ok(`сначала «Принять», потом подтверждение #${i}`, a.status === 200 && d.status === 200 && !!rw.joinedAt && rw.pendingSince === null, { a, d, rw });
+    }
+    console.log(`  итог: заявка обновилась до подтверждения ${before} из 8`);
+
+    // Детерминированно: владелец подтвердил между чтением строки и записью заявки.
+    const race = await invited(o, "МеждуЧтениемИЗаписью");
+    await accept(race, o.companyId);
+    const origFind = db.member.findFirst.bind(db.member);
+    let fired = false;
+    const hook = async (args: any) => {
+      const res = await origFind(args);
+      if (!fired && res && args?.where?.masterId === race.id && args?.select?.pendingSince) {
+        fired = true;
+        await db.member.update({ where: { id: race.memberId }, data: { joinedAt: new Date(), pendingSince: null, pendingBringData: null } });
+      }
+      return res;
+    };
+    let patched = true;
+    try { db.member.findFirst = hook; patched = db.member.findFirst === hook; } catch { patched = false; }
+    if (patched) {
+      const a = await pAccept(race, o.companyId);
+      db.member.findFirst = origFind;
+      const rw = await row(race.memberId), m = await master(race.id);
+      ok("подтверждён между чтением и записью: заявка не создаётся, быстрый путь", fired && a.status === 200 && !a.body.pending && !!rw.joinedAt && rw.pendingSince === null && m.activeCompanyId === o.companyId, { fired, a, rw });
+    } else console.log("  (подмена findFirst недоступна, ветка проверена только гонкой)");
+
+    const w = await invited(o, "Работает");
+    await accept(w, o.companyId);
+    await decide(o, w.memberId, true);
+    const late = await decide(o, w.memberId, false);
+    const r1 = await row(w.memberId);
+    ok("«Отклонить» после подтверждения: 404, участник на месте", late.status === 404 && r1.masterId === w.id && !!r1.joinedAt && r1.rejectedAt === null && (await master(w.id)).activeCompanyId === o.companyId, { late, r1 });
+    await db.member.update({ where: { id: w.memberId }, data: { pendingSince: new Date() } });
+    const stale = await decide(o, w.memberId, false);
+    const r2 = await row(w.memberId);
+    ok("устаревшая заявка у подтверждённого: отклонение не снимает", stale.status === 404 && r2.masterId === w.id && r2.rejectedAt === null && (await master(w.id)).activeCompanyId === o.companyId, { stale, r2 });
+    await db.member.update({ where: { id: w.memberId }, data: { pendingSince: null } });
+
+    let flip = 0, took = 0;
+    for (let i = 0; i < 10; i++) {
+      const u = await invited(o, "Перенос" + i);
+      const own = (await GET(u)).body.companyId;
+      const c = await db.client.create({ data: { masterId: u.id, companyId: own, name: "К", phone: "+7700000" + (4000 + i) } });
+      await accept(u, o.companyId, { bringData: true });
+      const [d] = await Promise.all([pDecide(o, u.memberId, true), new Promise((t) => setTimeout(t, i)).then(() => pAccept(u, o.companyId, { bringData: false }))]);
+      const rw = await row(u.memberId), cl = await db.client.findUnique({ where: { id: c.id } });
+      if (d.status === 200) { took++; ok(`смена переноса #${i}: подтверждено с прочитанным выбором`, !!rw.joinedAt && rw.pendingSince === null && (d.body.transferred ? cl.companyId === o.companyId : cl.companyId === own), { d, rw, cl: cl.companyId }); }
+      else { flip++; ok(`смена переноса #${i}: 404, заявка жива, перенос не применён`, d.status === 404 && rw.joinedAt === null && !!rw.pendingSince && rw.pendingBringData === false && cl.companyId === own, { d, rw, cl: cl.companyId }); }
+    }
+    console.log(`  итог: подтверждено ${took} / 404 из-за смены ${flip}`);
+  }
+
+  console.log("— подтверждённое приглашение помечено —");
+  {
+    const o = await ownerWithCompany("ВладелецК");
+    const u = await invited(o, "Вернётся");
+    let g = await GET(u);
+    ok("новое приглашение: confirmed=false", g.body.invites[0].confirmed === false, g.body.invites);
+    await accept(u, o.companyId); await decide(o, u.memberId, true);
+    as(u); await J(await sw.POST(req({ own: true })));
+    g = await GET(u);
+    ok("подтверждённый: confirmed=true", g.body.invites[0].confirmed === true, g.body.invites);
+  }
+
   console.log("— доступ требует joinedAt —");
   {
     const o = await ownerWithCompany("ВладелецJ");

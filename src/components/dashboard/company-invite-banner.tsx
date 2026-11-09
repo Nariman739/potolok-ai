@@ -7,7 +7,7 @@ import { Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-type Invite = { companyId: string; companyName: string; ownerName: string };
+type Invite = { companyId: string; companyName: string; ownerName: string; confirmed?: boolean };
 type OwnData = { objects: number; estimates: number; clients: number };
 
 // Приглашение в компанию на сайте (09.11.2026): менеджер работает с компьютера,
@@ -137,8 +137,8 @@ export function CompanyInviteBanner() {
                     работаете в «{inv.companyName}».
                   </p>
                   <p className="text-xs mt-1 leading-snug">
-                    Перенесённые данные останутся у компании, даже если вы потом выйдете. Перенос
-                    выполнится после подтверждения владельцем.
+                    Перенесённые данные останутся у компании, даже если вы потом выйдете.
+                    {inv.confirmed ? "" : " Перенос выполнится после подтверждения владельцем."}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Button size="sm" variant="outline" disabled={busy} onClick={() => switchTo(inv.companyId, true)}>
@@ -159,8 +159,8 @@ export function CompanyInviteBanner() {
                     {inv.ownerName ? `Приглашает: ${inv.ownerName}. ` : ""}
                     Вы увидите объекты и клиентов компании, цены станут общими, а ваши новые
                     замеры и КП будут видны владельцу. Вернуться в свою компанию можно в
-                    приложении: «Профиль → Люди и бригада». Доступ откроется после подтверждения
-                    владельцем.
+                    приложении: «Профиль → Люди и бригада».
+                    {inv.confirmed ? "" : " Доступ откроется после подтверждения владельцем."}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Button size="sm" disabled={busy} onClick={() => accept(inv.companyId)}>

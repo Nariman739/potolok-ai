@@ -17,12 +17,14 @@ export async function GET() {
     // ещё не работаю. Переход — только по моему согласию (POST /company/switch).
     const memberships = await prisma.member.findMany({
       where: { masterId: master.id, removedAt: null, role: { not: "owner" }, companyId: { not: scope.companyId } },
-      select: { companyId: true, pendingSince: true, company: { select: { name: true, owner: { select: { firstName: true, lastName: true } } } } },
+      select: { companyId: true, pendingSince: true, joinedAt: true, company: { select: { name: true, owner: { select: { firstName: true, lastName: true } } } } },
     });
     const toInvite = (m: (typeof memberships)[number]) => ({
       companyId: m.companyId,
       companyName: m.company.name,
       ownerName: [m.company.owner.firstName, m.company.owner.lastName].filter(Boolean).join(" "),
+      // Уже подтверждён владельцем: вход сразу, без заявки.
+      confirmed: !!m.joinedAt,
     });
     // Принятое приглашение до подтверждения владельцем — уже не приглашение, а заявка.
     const invites = memberships.filter((m) => !m.pendingSince).map(toInvite);
