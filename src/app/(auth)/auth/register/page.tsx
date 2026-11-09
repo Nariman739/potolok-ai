@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,6 @@ import {
 import { toast } from "sonner";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -60,8 +58,8 @@ export default function RegisterPage() {
       }
 
       toast.success("Регистрация успешна!");
-      router.push("/dashboard");
-      router.refresh();
+      // Полная загрузка: кабинету нужен свой CSP, клиентский переход оставил бы CSP регистрации.
+      window.location.assign("/dashboard");
     } catch {
       toast.error("Ошибка соединения");
     } finally {

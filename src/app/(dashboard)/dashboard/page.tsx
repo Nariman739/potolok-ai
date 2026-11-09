@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getScope, inScope } from "@/lib/company";
 import {
   Card,
   CardContent,
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
   if (!master) redirect("/api/auth/clear");
   // Серверный компонент: валюту передаём явно (07.10.2026).
   const formatPrice = (n: number) => formatPriceIn(n, master.currency);
+  const scope = await getScope(master);
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -63,14 +65,14 @@ export default async function DashboardPage() {
     clientsCount,
     masterFull,
   ] = await Promise.all([
-    prisma.estimate.count({ where: { masterId: master.id, deletedAt: null } }),
+    prisma.estimate.count({ where: { ...inScope(scope), deletedAt: null } }),
     prisma.estimate.aggregate({
-      where: { masterId: master.id, deletedAt: null },
+      where: { ...inScope(scope), deletedAt: null },
       _sum: { totalArea: true },
       _avg: { total: true },
     }),
     prisma.estimate.findMany({
-      where: { masterId: master.id, deletedAt: null },
+      where: { ...inScope(scope), deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -85,19 +87,19 @@ export default async function DashboardPage() {
       },
     }),
     prisma.estimate.count({
-      where: { masterId: master.id, createdAt: { gte: monthStart }, deletedAt: null },
+      where: { ...inScope(scope), createdAt: { gte: monthStart }, deletedAt: null },
     }),
     prisma.estimate.count({
-      where: { masterId: master.id, status: "CONFIRMED", deletedAt: null },
+      where: { ...inScope(scope), status: "CONFIRMED", deletedAt: null },
     }),
     prisma.estimate.aggregate({
-      where: { masterId: master.id, status: "CONFIRMED", deletedAt: null },
+      where: { ...inScope(scope), status: "CONFIRMED", deletedAt: null },
       _sum: { total: true },
     }),
     prisma.measurementObject.count({
-      where: { masterId: master.id, deletedAt: null },
+      where: { ...inScope(scope), deletedAt: null },
     }),
-    prisma.client.count({ where: { masterId: master.id, deletedAt: null } }),
+    prisma.client.count({ where: { ...inScope(scope), deletedAt: null } }),
     prisma.master.findUnique({
       where: { id: master.id },
       select: {

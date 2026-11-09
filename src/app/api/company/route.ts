@@ -93,6 +93,9 @@ export async function POST(request: Request) {
             name: name || dup.name,
             defaultFee: defaultFee ?? dup.defaultFee,
             rejectedAt: null,
+            // Возврат убранного — только через заявку и решение владельца, кто бы его ни добавил
+            // (и для убранных до этой правки, у кого joinedAt остался в базе).
+            ...(dup.removedAt ? { joinedAt: null, pendingSince: null, pendingBringData: null } : {}),
             // Владелец позвал сам — о новой заявке он должен узнать, лимит уведомлений только от цикла отзывов.
             approvalPushAt: null,
             // Новая привязка аккаунта — заново согласие и подтверждение.

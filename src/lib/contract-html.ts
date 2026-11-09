@@ -39,6 +39,8 @@ export interface EstimateData {
   /** ИИН заказчика — из ответа на «Данные для договора» (30.09.2026) */
   clientIin?: string | null;
   total: number;
+  /** Estimate.discountAmount: скидка клиенту, итог total уже с её учётом. */
+  discountAmount?: number | null;
   createdAt: Date;
   /** Дата создания договора; раньше в шапке стояла дата КП (15.10.2026). */
   contractCreatedAt?: Date | null;
@@ -130,6 +132,9 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
   return calc.roomResults ?? (calc as any).variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
 }
 
+/** Строка таблицы работ: и в договоре на странице, и в PDF одни и те же. */
+export type WorksLine = { name: string; quantity: string; unit: string; unitPrice: number; total: number };
+
 /**
  * Таблица работ договора и акта.
  *
@@ -138,6 +143,68 @@ function getRoomResults(calc: CalculationResult | null | undefined): RoomResult[
  * а в пункте «Общая стоимость» стояла другая, больше на десятки процентов
  * (аудит 24.09.2026). Теперь таблица сходится с итогом.
  */
+export function worksLines(
+  roomResults: RoomResult[],
+  t: T,
+  calc: CalculationResult | null | undefined,
+  /** Estimate.discountAmount; в старых данных скидка могла лежать в расчёте. */
+  discountAmount?: number | null,
+  /** Estimate.total — итог уже со скидкой. */
+  total?: number | null,
+): WorksLine[] {
+  const lines: WorksLine[] = [];
+  for (const rr of roomResults) {
+    for (const item of (rr.items ?? [])) {
+      lines.push({
+        name: `${item.itemName ?? ""} (${rr.roomName ?? ""})`,
+        quantity: String(item.quantity),
+        unit: item.unit ?? "",
+        unitPrice: item.unitPrice,
+        total: item.total,
+      });
+    }
+  }
+
+  // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
+  const heightExtra = roomResults.reduce((acc, rr) => {
+    const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
+    const before = (rr as { subtotal?: number }).subtotal;
+    return acc + (after != null && before != null && after > before ? after - before : 0);
+  }, 0);
+  if (heightExtra > 0) {
+    lines.push({ name: t("ct.heightExtra"), quantity: "1", unit: t("ct.unitService"), unitPrice: heightExtra, total: heightExtra });
+  }
+
+  for (const extra of (calc?.extraItems ?? [])) {
+    lines.push({
+      name: extra.itemName ?? "",
+      quantity: String(extra.quantity ?? 1),
+      unit: extra.unit ?? t("ct.unitService"),
+      unitPrice: extra.unitPrice ?? extra.total ?? 0,
+      total: extra.total ?? 0,
+    });
+  }
+
+  const discount = (discountAmount ?? 0) > 0
+    ? (discountAmount as number)
+    : (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
+
+  // Итог мог быть поднят до минимального заказа, и не только в расчёте (при
+  // сохранении КП): считаем от суммы. Без строки таблица не сошлась бы с итогом.
+  if (total != null) {
+    const lift = Math.round(total + discount - lines.reduce((sum, line) => sum + line.total, 0));
+    // Меньше 2 ₸ — округление старых скидок, а не минимальный заказ.
+    if (lift > 1) {
+      lines.push({ name: t("ct.minOrder"), quantity: "1", unit: t("ct.unitService"), unitPrice: lift, total: lift });
+    }
+  }
+
+  if (discount > 0) {
+    lines.push({ name: t("ct.discount"), quantity: "1", unit: t("ct.unitService"), unitPrice: -discount, total: -discount });
+  }
+  return lines;
+}
+
 /**
  * Кратко (Estimate.priceView = "summary", 16.10.2026): колонки «Кол.», «Ед.» и
  * «Цена» не печатаются — КП клиент получил без площади, периметра и цен за
@@ -150,62 +217,21 @@ function buildWorksTable(
   calc: CalculationResult | null | undefined,
   cur: CurrencyCode,
   priceView?: string | null,
+  discountAmount?: number | null,
+  total?: number | null,
 ): string {
   const hidePrice = priceView === "summary";
-  let rows = "";
-  let num = 0;
-  const row = (name: string, qty: string, unit: string, price: string, sum: string) => {
-    num++;
-    return `<tr>
-        <td style="${tdStyle}">${num}</td>
-        <td style="${tdStyle}">${name}</td>
-        ${hidePrice ? "" : `<td style="${tdStyle} text-align:center;">${qty}</td>
-        <td style="${tdStyle} text-align:center;">${unit}</td>
-        <td style="${tdStyle} text-align:right;">${price}</td>`}
-        <td style="${tdStyle} text-align:right;">${sum}</td>
-      </tr>`;
-  };
-
-  let roomsSum = 0;
-  for (const rr of roomResults) {
-    for (const item of (rr.items ?? [])) {
-      roomsSum += item.total ?? 0;
-      rows += row(
-        `${esc(item.itemName)} (${esc(rr.roomName)})`,
-        esc(String(item.quantity)),
-        esc(item.unit),
-        fmtPrice(item.unitPrice, cur),
-        fmtPrice(item.total, cur),
-      );
-    }
-  }
-
-  // Надбавка за высоту потолка — считается по комнатам, в позициях её нет.
-  const heightExtra = (calc?.roomResults ?? []).reduce((acc, rr) => {
-    const after = (rr as { subtotalAfterHeight?: number }).subtotalAfterHeight;
-    const before = (rr as { subtotal?: number }).subtotal;
-    return acc + (after != null && before != null && after > before ? after - before : 0);
-  }, 0);
-  if (heightExtra > 0) {
-    rows += row(t("ct.heightExtra"), "1", t("ct.unitService"), fmtPrice(heightExtra, cur), fmtPrice(heightExtra, cur));
-  }
-
-  for (const extra of (calc?.extraItems ?? [])) {
-    rows += row(
-      esc(extra.itemName),
-      esc(String(extra.quantity ?? 1)),
-      esc(extra.unit ?? t("ct.unitService")),
-      fmtPrice(extra.unitPrice ?? extra.total ?? 0, cur),
-      fmtPrice(extra.total ?? 0, cur),
-    );
-  }
-
-  const discount = (calc as { discountAmount?: number } | null | undefined)?.discountAmount ?? 0;
-  if (discount > 0) {
-    rows += row(t("ct.discount"), "1", t("ct.unitService"), `−${fmtPrice(discount, cur)}`, `−${fmtPrice(discount, cur)}`);
-  }
-  void roomsSum;
-  return rows;
+  const money = (n: number) => (n < 0 ? `−${fmtPrice(-n, cur)}` : fmtPrice(n, cur));
+  return worksLines(roomResults, t, calc, discountAmount, total)
+    .map((line, i) => `<tr>
+        <td style="${tdStyle}">${i + 1}</td>
+        <td style="${tdStyle}">${esc(line.name)}</td>
+        ${hidePrice ? "" : `<td style="${tdStyle} text-align:center;">${esc(line.quantity)}</td>
+        <td style="${tdStyle} text-align:center;">${esc(line.unit)}</td>
+        <td style="${tdStyle} text-align:right;">${money(line.unitPrice)}</td>`}
+        <td style="${tdStyle} text-align:right;">${money(line.total)}</td>
+      </tr>`)
+    .join("");
 }
 
 const tdStyle = "padding:4px 8px;border:1px solid #999;font-size:12px;";
@@ -269,7 +295,7 @@ export function generateContractHtml(
   const total = estimate.total;
   const cur = asCurrency(master.currency);
   const roomResults = getRoomResults(calc);
-  const worksRows = buildWorksTable(roomResults, t, calc, cur, estimate.priceView);
+  const worksRows = buildWorksTable(roomResults, t, calc, cur, estimate.priceView, estimate.discountAmount, estimate.total);
 
   // Условия договора (даты + схема оплаты)
   const schedule: PaymentStage[] =
@@ -472,6 +498,8 @@ export interface ActData {
   clientPhone?: string | null;
   clientAddress?: string | null;
   total: number;
+  /** Estimate.discountAmount: скидка клиенту, итог total уже с её учётом. */
+  discountAmount?: number | null;
   /** Получено от клиента на дату акта (по платежам объекта). */
   paid: number;
   /** Дата договора (создания КП) — для строки «к Договору № … от …». */
@@ -520,7 +548,7 @@ export function generateActHtml(
   const cur = asCurrency(master.currency);
   const paid = Math.max(0, Math.min(total, Math.round(act.paid || 0)));
   const rest = Math.max(0, Math.round(total - paid));
-  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur, act.priceView);
+  const worksRows = buildWorksTable(getRoomResults(calc), t, calc, cur, act.priceView, act.discountAmount, act.total);
 
   const masterName = esc(getMasterName(master));
   const clientName = esc(act.clientName) || "___________________________";
@@ -894,7 +922,7 @@ export function contractPlaceholderValues(
     город: esc(master.contractCity) || "_______________",
     дата: dateText(estimate.contractCreatedAt ?? estimate.createdAt, lang),
     номер: estimate.publicId.slice(0, 8).toUpperCase(),
-    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur, estimate.priceView),
+    таблица_работ: buildWorksTable(getRoomResults(calc), t, calc, cur, estimate.priceView, estimate.discountAmount, estimate.total),
     гарантия_материал: yearsText(master.warrantyMaterials, lang),
     гарантия_монтаж: yearsText(master.warrantyInstall, lang),
   };

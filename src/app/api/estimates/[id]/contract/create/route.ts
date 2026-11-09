@@ -147,6 +147,7 @@ export async function POST(
       clientAddress: estimate.clientAddress,
       clientIin: estimate.clientIin,
       total: estimate.total,
+      discountAmount: estimate.discountAmount,
       createdAt: estimate.createdAt,
       contractCreatedAt,
       priceView: estimate.priceView,

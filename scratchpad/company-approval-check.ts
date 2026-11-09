@@ -404,6 +404,83 @@ async function invited(owner: any, label: string) {
     ok("подтверждённый: confirmed=true", g.body.invites[0].confirmed === true, g.body.invites);
   }
 
+  console.log("— уволенный не возвращается без владельца —");
+  {
+    const o = await ownerWithCompany("ВладелецУ");
+    await db.client.create({ data: { masterId: o.id, companyId: o.companyId, name: "Клиент компании", phone: "+77000005000" } });
+    const col = await invited(o, "Коллега");
+    await accept(col, o.companyId); await decide(o, col.memberId, true);
+    const del = (u: any, id: string) => asUser(u, async () => J(await member.DELETE(new Request("http://x"), { params: Promise.resolve({ id }) })));
+
+    // Уволили → коллега добавил → заявка → владелец решает
+    const ex = await invited(o, "Уволенный");
+    await accept(ex, o.companyId); await decide(o, ex.memberId, true);
+    ok("(работал в компании)", (await master(ex.id)).activeCompanyId === o.companyId);
+    await del(o, ex.memberId);
+    let r = await row(ex.memberId);
+    ok("увольнение: joinedAt и заявка сброшены, активная компания снята", !!r.removedAt && r.joinedAt === null && r.pendingSince === null && (await master(ex.id)).activeCompanyId === null, r);
+    const back = await addPhone(col, ex.phone, "Вернул коллега");
+    r = await row(ex.memberId);
+    ok("коллега добавил: строка жива, но не подтверждена", back.status === 200 && r.removedAt === null && r.joinedAt === null, { back, r });
+    let g = await GET(ex);
+    ok("у уволенного приглашение без confirmed", g.body.invites.length === 1 && g.body.invites[0].confirmed === false, g.body.invites);
+    const a1 = await accept(ex, o.companyId);
+    ok("вход только заявкой, активной компании нет", a1.body.pending === true && (await master(ex.id)).activeCompanyId === null, a1);
+    const sc = await getScope({ id: ex.id, activeCompanyId: o.companyId });
+    ok("база компании закрыта", sc.companyId !== o.companyId, sc.companyId);
+    const notOwner = await decide(col, ex.memberId, true);
+    ok("коллега подтвердить не может", notOwner.status === 404, notOwner);
+    ok("владелец видит заявку", (await GET(o)).body.approvals.some((x: any) => x.id === ex.memberId));
+    const yes = await decide(o, ex.memberId, true);
+    ok("владелец подтвердил — снова в компании", yes.status === 200 && (await master(ex.id)).activeCompanyId === o.companyId && !!(await row(ex.memberId)).joinedAt, yes);
+
+    // Тот же путь с отказом
+    const ex2 = await invited(o, "УволенныйОтказ");
+    await accept(ex2, o.companyId); await decide(o, ex2.memberId, true);
+    await del(o, ex2.memberId); await addPhone(col, ex2.phone); await accept(ex2, o.companyId);
+    const no = await decide(o, ex2.memberId, false);
+    const r2 = await row(ex2.memberId);
+    ok("владелец отклонил — доступа нет, номер заблокирован", no.status === 200 && r2.masterId === null && !!r2.rejectedAt && r2.joinedAt === null && (await master(ex2.id)).activeCompanyId === null, { no, r2 });
+
+    // Убранный до этой правки: joinedAt остался в базе
+    const legacy = await invited(o, "УбранДоПравки");
+    await accept(legacy, o.companyId); await decide(o, legacy.memberId, true);
+    await del(o, legacy.memberId);
+    await db.member.update({ where: { id: legacy.memberId }, data: { joinedAt: new Date() } });
+    await addPhone(col, legacy.phone);
+    const lr = await row(legacy.memberId);
+    g = await GET(legacy);
+    ok("убранный до правки: восстановление сбрасывает joinedAt", lr.joinedAt === null && g.body.invites[0]?.confirmed === false, { lr, g: g.body.invites });
+    ok("…и входит только заявкой", (await accept(legacy, o.companyId)).body.pending === true);
+
+    // Владелец возвращает сам — тоже через заявку
+    const byOwner = await invited(o, "ВернулВладелец");
+    await accept(byOwner, o.companyId); await decide(o, byOwner.memberId, true);
+    await del(o, byOwner.memberId); await addPhone(o, byOwner.phone);
+    ok("возврат владельцем — тоже через заявку", (await row(byOwner.memberId)).joinedAt === null && (await accept(byOwner, o.companyId)).body.pending === true);
+
+    // Работающие не задеты
+    const before = await row(col.memberId);
+    await addPhone(o, col.phone, "Коллега");
+    const after = await row(col.memberId);
+    ok("повторное добавление работающего номера joinedAt не сбрасывает", !!after.joinedAt && after.joinedAt.getTime() === before.joinedAt.getTime() && (await master(col.id)).activeCompanyId === o.companyId, after);
+    as(col); await J(await sw.POST(req({ own: true })));
+    const tap = await accept(col, o.companyId);
+    ok("подтверждённый: «в свою и обратно» одним тапом", tap.status === 200 && !tap.body.pending && (await master(col.id)).activeCompanyId === o.companyId, tap);
+    const os = await getScope({ id: o.id, activeCompanyId: o.companyId });
+    ok("владелец не задет", os.isOwner && os.masterIds.includes(o.id) && os.masterIds.includes(col.id), os.masterIds);
+
+    // Коллега не снимает блокировку отклонённого
+    const rej = await invited(o, "ОтклонённыйНомер");
+    await accept(rej, o.companyId); await decide(o, rej.memberId, false);
+    const d1 = await del(col, rej.memberId);
+    const add1 = await addPhone(col, rej.phone);
+    const rr = await row(rej.memberId);
+    ok("коллега убрал отклонённого и добавил снова: 403, блокировка на месте", d1.status === 200 && add1.status === 403 && !!rr.rejectedAt && !!rr.removedAt, { d1, add1, rr });
+    const rs = await addPhone(o, rej.phone);
+    ok("владелец может снять", rs.status === 200 && (await row(rej.memberId)).rejectedAt === null, rs);
+  }
+
   console.log("— доступ требует joinedAt —");
   {
     const o = await ownerWithCompany("ВладелецJ");

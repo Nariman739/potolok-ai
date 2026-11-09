@@ -116,17 +116,26 @@ export async function applyCrmColumn(
   client: { id: string; status: string; crmColumn: string | null },
   column: CrmColumn | null,
 ): Promise<void> {
-  await prisma.client.update({ where: { id: client.id }, data: { crmColumn: column } });
-
-  if (column === "lost") {
-    await changeClientStatus(client.id, "LOST", "Канбан: Отказ");
-    return;
-  }
   const main = await prisma.measurementObject.findFirst({
     where: { clientId: client.id, deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: { id: true, manualStage: true },
   });
+  // Этап «смонтировали» уже поставлен в приложении: «Завершён» и так считается сам.
+  // Колонку не пишем — по ней ниже видно, что этап поставил канбан и его можно снять.
+  const stageFromApp = column === "done" && main?.manualStage === "installed";
+  await prisma.client.update({ where: { id: client.id }, data: { crmColumn: stageFromApp ? null : column } });
+
+  // Карточку уводят из «Завершён», куда её поставили на доске, в том числе через «Отказ»:
+  // «смонтировали» больше не верно, иначе доска и приложение разойдутся.
+  if (client.crmColumn === "done" && column !== "done" && main?.manualStage === "installed") {
+    await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
+  }
+
+  if (column === "lost") {
+    await changeClientStatus(client.id, "LOST", "Канбан: Отказ");
+    return;
+  }
   if (column === "done") {
     await changeClientStatus(client.id, "WON", DONE_REASON);
     // «Закрыл» (монтаж + деньги) приложение считает само — его не сбиваем.
@@ -139,11 +148,6 @@ export async function applyCrmColumn(
     await changeClientStatus(client.id, "IN_PROGRESS", "Канбан: вернули из отказа");
   }
   if (client.crmColumn !== "done") return;
-  // Карточку вернули из «Завершён», куда её ставили на доске: «смонтировали» больше
-  // не верно, даже если этап ещё раньше поставили в приложении.
-  if (main?.manualStage === "installed") {
-    await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
-  }
   // WON откатываем, только если его поставил сам канбан: сделка, закрытая раньше
   // (клиент принял КП), остаётся сделкой. Иначе клиент выпадал из напоминаний.
   const lastChange = await prisma.clientEvent.findFirst({

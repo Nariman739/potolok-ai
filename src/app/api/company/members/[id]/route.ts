@@ -49,7 +49,16 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     if (member.role === "owner") {
       return NextResponse.json({ error: "Владельца компании убрать нельзя" }, { status: 400 });
     }
-    await prisma.member.update({ where: { id }, data: { removedAt: new Date(), pendingSince: null, pendingBringData: null } });
+    await prisma.member.update({
+      where: { id },
+      data: {
+        removedAt: new Date(),
+        // Подтверждение не переживает увольнение: вернуть человека можно только новой заявкой и решением владельца.
+        joinedAt: null,
+        pendingSince: null,
+        pendingBringData: null,
+      },
+    });
     // Если у человека это была активная компания — возвращаем его в свою.
     if (member.masterId) {
       await prisma.master.updateMany({

@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { currencyFor, getScope, inScope } from "@/lib/company";
 import { activeContractTemplate } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
-import { currencySymbol, type CurrencyCode } from "@/lib/currency";
-import { numberToWordsKz } from "@/lib/contract-html";
+import { contractT } from "@/lib/i18n/contract";
+import { currencySymbol, jurisdictionOf, type CurrencyCode } from "@/lib/currency";
+import { numberToWordsKz, worksLines } from "@/lib/contract-html";
 import type { CalculationResult, RoomResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
@@ -106,10 +107,14 @@ export async function GET(
       .text(city, L, doc.y + 2, { width: CW, align: "center" });
     doc.moveDown(0.8);
 
+    // Названия реквизитов — по стране мастера: у рублёвого ОГРНИП/ИНН.
+    const label = contractT("ru", cur);
+    const isRu = jurisdictionOf(cur) === "RU";
+
     // Parties
     const executorDesc = isIp
-      ? `${masterName}${master.bin ? `, БИН ${master.bin}` : ""}${master.iin ? `, ИИН ${master.iin}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`
-      : `${masterName}${master.iin ? `, ИИН ${master.iin}` : ""}${master.passportData ? `, уд. личности ${master.passportData}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`;
+      ? `${masterName}${master.bin ? `, ${label("ct.lbl.bin")} ${master.bin}` : ""}${master.iin ? `, ${label("ct.lbl.iin")} ${master.iin}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`
+      : `${masterName}${master.iin ? `, ${label("ct.lbl.iin")} ${master.iin}` : ""}${master.passportData ? `, ${isRu ? "паспорт" : "уд. личности"} ${master.passportData}` : ""}, именуемый(-ая) в дальнейшем «Исполнитель»`;
 
     doc.font("Sans").fontSize(10)
       .text(`${executorDesc}, с одной стороны, и`, L, doc.y, { width: CW })
@@ -135,32 +140,42 @@ export async function GET(
 
     // Works table
     const colX = [L, L + 30, L + 232, L + 277, L + 322, L + 402];
-    const colW = [28, 200, 43, 43, 78, CW - 352];
+    const colW = [28, 200, 43, 43, 78, CW - 404];
+    // Те же строки, что в договоре на странице: допработы, надбавка, скидка.
+    // «Кратко» (priceView) — без количества и цены за единицу, как там же.
+    const hidePrice = estimate.priceView === "summary";
+    const nameW = hidePrice ? colX[5] - colX[1] - 4 : colW[1];
+    // Обычный дефис: «−» (U+2212) в этом шрифте печатается пустым квадратом.
+    const money = (n: number) => (n < 0 ? `-${fmtPrice(-n, cur)}` : fmtPrice(n, cur));
     let ty = doc.y;
     doc.rect(L, ty, CW, 16).fill("#f0f0f0");
     doc.font("Sans-Bold").fontSize(8).fillColor("#000");
-    ["№", "Наименование", "Кол.", "Ед.", "Цена", "Сумма"].forEach((h, i) =>
-      doc.text(h, colX[i] + 2, ty + 4, { width: colW[i], align: i >= 3 ? "right" : "left" })
-    );
+    ["№", "Наименование", "Кол.", "Ед.", "Цена", "Сумма"].forEach((h, i) => {
+      if (hidePrice && i >= 2 && i <= 4) return;
+      doc.text(h, colX[i] + 2, ty + 4, { width: i === 1 ? nameW : colW[i], align: i >= 3 ? "right" : "left" });
+    });
     ty += 18;
-    let rowNum = 0;
-    for (const rr of roomResults) {
-      for (const item of (rr.items ?? [])) {
-        if (ty > 760) { doc.addPage(); ty = 50; }
-        rowNum++;
-        doc.font("Sans").fontSize(8).fillColor("#000");
-        doc.text(String(rowNum), colX[0] + 2, ty, { width: colW[0] });
-        doc.text(`${item.itemName} (${rr.roomName})`, colX[1] + 2, ty, { width: colW[1] - 4 });
-        const rowH = doc.y - ty;
-        doc.text(`${item.quantity}`, colX[2] + 2, ty, { width: colW[2], align: "right" });
-        doc.text(item.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
-        doc.text(fmtPrice(item.unitPrice, cur), colX[4] + 2, ty, { width: colW[4], align: "right" });
-        doc.font("Sans-Bold").text(fmtPrice(item.total, cur), colX[5] + 2, ty, { width: colW[5], align: "right" });
-        ty += Math.max(rowH, 12) + 2;
-        doc.moveTo(L, ty).lineTo(L + CW, ty).strokeColor("#ccc").lineWidth(0.5).stroke();
-        ty += 2;
+    worksLines(roomResults, label, calc, estimate.discountAmount, total).forEach((line, index) => {
+      doc.font("Sans").fontSize(8).fillColor("#000");
+      // Высота строки — по самой длинной колонке; длинную строку на новую страницу целиком.
+      const rowH = Math.max(
+        doc.heightOfString(line.name, { width: nameW - 4 }),
+        hidePrice ? 0 : doc.heightOfString(line.quantity, { width: colW[2] }),
+        hidePrice ? 0 : doc.heightOfString(line.unit, { width: colW[3] }),
+      );
+      if (ty + rowH > 780) { doc.addPage(); ty = 50; }
+      doc.text(String(index + 1), colX[0] + 2, ty, { width: colW[0] });
+      doc.text(line.name, colX[1] + 2, ty, { width: nameW - 4 });
+      if (!hidePrice) {
+        doc.text(line.quantity, colX[2] + 2, ty, { width: colW[2], align: "right" });
+        doc.text(line.unit, colX[3] + 2, ty, { width: colW[3], align: "right" });
+        doc.text(money(line.unitPrice), colX[4] + 2, ty, { width: colW[4], align: "right" });
       }
-    }
+      doc.font("Sans-Bold").text(money(line.total), colX[5] + 2, ty, { width: colW[5], align: "right" });
+      ty += Math.max(rowH, 12) + 2;
+      doc.moveTo(L, ty).lineTo(L + CW, ty).strokeColor("#ccc").lineWidth(0.5).stroke();
+      ty += 2;
+    });
     doc.y = ty + 4;
 
     // 2. Оплата
@@ -243,11 +258,11 @@ export async function GET(
     doc.font("Sans").fontSize(9);
     let ey = sigY + 14;
     doc.text(masterName, L, ey, { width: halfW }); ey = doc.y + 2;
-    if (isIp && master.bin) { doc.text(`БИН: ${master.bin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
-    if (master.iin) { doc.text(`ИИН: ${master.iin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (isIp && master.bin) { doc.text(`${label("ct.lbl.bin")}: ${master.bin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (master.iin) { doc.text(`${label("ct.lbl.iin")}: ${master.iin}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (master.legalAddress) { doc.text(`Адрес: ${master.legalAddress}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (master.bankName) { doc.text(`Банк: ${master.bankName}`, L, ey, { width: halfW }); ey = doc.y + 2; }
-    if (master.iban) { doc.text(`IBAN: ${master.iban}`, L, ey, { width: halfW }); ey = doc.y + 2; }
+    if (master.iban) { doc.text(`${label("ct.lbl.iban")}: ${master.iban}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     if (masterPhone) { doc.text(`Тел: ${masterPhone}`, L, ey, { width: halfW }); ey = doc.y + 2; }
     doc.text("Подпись ________________", L, ey + 8, { width: halfW });
 
@@ -259,10 +274,10 @@ export async function GET(
     doc.text(`Тел: ${clientPhone}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     doc.text(`Адрес: ${clientAddress}`, colR, cy2, { width: halfW }); cy2 = doc.y + 2;
     if (estimate.contractSignerPassport) {
-      doc.text(`Удостоверение: ${estimate.contractSignerPassport}`, colR, cy2, { width: halfW });
+      doc.text(`${isRu ? "Паспорт" : "Удостоверение"}: ${estimate.contractSignerPassport}`, colR, cy2, { width: halfW });
       cy2 = doc.y + 2;
     } else {
-      doc.text("ИИН: _______________", colR, cy2, { width: halfW });
+      doc.text(`${label("ct.lbl.iin")}: _______________`, colR, cy2, { width: halfW });
       cy2 = doc.y + 2;
     }
     if (estimate.contractSignedAt) {

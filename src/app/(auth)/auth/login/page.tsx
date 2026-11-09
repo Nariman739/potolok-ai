@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +23,6 @@ function safeRedirectFromUrl(): string {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [expiredLink, setExpiredLink] = useState(false);
 
@@ -57,8 +55,8 @@ export default function LoginPage() {
       }
 
       toast.success(`Добро пожаловать, ${data.firstName}!`);
-      router.push(safeRedirectFromUrl());
-      router.refresh();
+      // Полная загрузка: кабинету нужен свой CSP, клиентский переход оставил бы CSP входа.
+      window.location.assign(safeRedirectFromUrl());
     } catch {
       toast.error("Ошибка соединения");
     } finally {

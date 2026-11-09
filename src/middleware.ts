@@ -109,12 +109,12 @@ export function middleware(request: NextRequest) {
     response.headers.set(key, value);
   }
   if (contractCsp) response.headers.set("Content-Security-Policy", contractCsp);
-  // «Дизайн КП»: превью PDF — blob:-URL в iframe (PdfPreview). Только на этой странице
-  // и только blob: — X-Frame-Options и CSP остальных страниц не меняются.
-  if (pathname === "/dashboard/branding") {
+  // «Дизайн КП»: превью PDF — blob:-URL в iframe (PdfPreview). На весь кабинет:
+  // меню переходит клиентски, и документ сохраняет CSP страницы, где открылся.
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     response.headers.set(
       "Content-Security-Policy",
-      securityHeaders["Content-Security-Policy"].replace(/frame-src [^;]*/, "frame-src blob:")
+      securityHeaders["Content-Security-Policy"].replace("frame-src ", "frame-src blob: ")
     );
   }
   return response;
