@@ -18,6 +18,7 @@ import {
   Crown,
   Trash2,
   Palette,
+  ScrollText,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/feedback-button";
 import { Logo } from "@/components/logo";
@@ -35,6 +36,8 @@ const navItems = [
   // «Дизайн КП» (09.11.2026): страница была только по баннеру на главной —
   // мастер с сайта (Андрей, «Небо в подарок») не нашёл, где настраивать КП.
   { href: "/dashboard/branding", label: "Дизайн КП", icon: Palette },
+  // «Договор» (09.11.2026): настройки договора жили только внизу «Профиля».
+  { href: "/dashboard/profile#contract", label: "Договор", icon: ScrollText },
   { href: "/dashboard/profile", label: "Профиль", icon: User },
   { href: "/dashboard/trash", label: "Корзина", icon: Trash2 },
 ];

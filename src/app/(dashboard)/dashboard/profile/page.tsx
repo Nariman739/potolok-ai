@@ -537,7 +537,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* Contract settings */}
-      <Card>
+      <Card id="contract" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-lg">Настройки договора</CardTitle>
           <CardDescription>
