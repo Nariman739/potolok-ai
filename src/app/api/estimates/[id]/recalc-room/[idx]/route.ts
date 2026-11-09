@@ -146,6 +146,7 @@ export async function POST(
           shape: existingRoom.shape,
           measuredArea: existingRoom.measuredArea,
           measuredPerimeter: existingRoom.measuredPerimeter,
+          measuredMinWidth: existingRoom.measuredMinWidth,
         }
       : builtRoom;
 
