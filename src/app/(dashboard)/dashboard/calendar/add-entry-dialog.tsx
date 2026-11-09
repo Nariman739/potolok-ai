@@ -13,13 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { almatyDay, almatyInstant, almatyTime, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
-import { installColumnFor } from "@/lib/crm-columns";
+import { dayTitle, plannedAt, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
+import { useClock } from "@/components/use-clock";
 
 const SEARCH_LIMIT = 6;
-// Эти колонки только ручные и важнее расчёта: без переноса карточка осталась бы в них
-const MANUAL_BEFORE_INSTALL = ["purchase", "planning"];
+
+export type PlanTarget = { at: string; eventId?: string; objectId?: string; objectLabel?: string };
 
 function clientTitle(c: CalendarClient) {
   return c.name.trim() || c.phone || "Без имени";
@@ -27,30 +27,42 @@ function clientTitle(c: CalendarClient) {
 
 export function AddEntryDialog({
   day,
-  clients,
+  clients = [],
+  fixedClient,
+  target,
+  initialKind = "measure",
+  initialTime = "10:00",
   onClose,
 }: {
-  /** День по Астане; null — диалог закрыт */
+  /** День в часах мастера; null — диалог закрыт */
   day: string | null;
-  clients: CalendarClient[];
+  clients?: CalendarClient[];
+  /** Открыт из карточки клиента или записи календаря: клиент уже выбран и не меняется */
+  fixedClient?: CalendarClient;
+  /** Конкретная запись календаря, которую переносят */
+  target?: PlanTarget;
+  initialKind?: CalendarKind;
+  initialTime?: string;
   onClose: () => void;
 }) {
   const router = useRouter();
+  const clock = useClock();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
-  const [kind, setKind] = useState<CalendarKind>("measure");
+  const [kind, setKind] = useState<CalendarKind>(initialKind);
   const [search, setSearch] = useState("");
-  const [client, setClient] = useState<CalendarClient | null>(null);
+  const [picked, setPicked] = useState<CalendarClient | null>(null);
   const [saving, setSaving] = useState(false);
+  const client = fixedClient ?? picked;
 
   useEffect(() => {
     if (!day) return;
     setDate(day);
-    setTime("10:00");
-    setKind("measure");
+    setTime(initialTime);
+    setKind(initialKind);
     setSearch("");
-    setClient(null);
-  }, [day]);
+    setPicked(null);
+  }, [day, initialKind, initialTime]);
 
   const matches = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -67,36 +79,29 @@ export function AddEntryDialog({
   }, [clients, search]);
 
   const canSave = !!client && !!date && !!time && !saving;
-  // Дата монтажа живёт в объекте, новая заменит прежнюю — как и в диалоге на доске
-  const replaced = kind === "install" && client?.objectId && client.installAt ? new Date(client.installAt) : null;
+  const currentIso = target?.at ?? (client ? plannedAt(client, kind) : null);
+  const replaced = currentIso ? new Date(currentIso) : null;
+  const noun = kind === "install" ? "монтаж" : "замер";
+  const zone = clock.local ? "" : " по Астане";
+  // Дата монтажа пишется в один объект — при нескольких видно, в какой
+  const objectAddress =
+    kind === "install" && !target?.eventId && client && client.objectCount > 1
+      ? target?.objectLabel || client.objectAddress || "Без адреса"
+      : null;
 
-  async function save() {
+  async function send(at: string | null, done: string, note?: string) {
     if (!client) return;
     setSaving(true);
     try {
-      const iso = almatyInstant(date, time).toISOString();
-      const res =
-        kind === "install" && client.objectId
-          ? await fetch(`/api/objects/${client.objectId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ installAt: iso }),
-            })
-          : await fetch(`/api/clients/${client.id}/events`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ type: kind === "install" ? "INSTALL" : "MEASUREMENT", scheduledAt: iso }),
-            });
+      const res = await fetch(`/api/clients/${client.id}/plan`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, at, eventId: target?.eventId, objectId: target?.objectId, note }),
+      });
       if (!res.ok) throw new Error();
-      if (kind === "install" && client.objectId && client.crmColumn && MANUAL_BEFORE_INSTALL.includes(client.crmColumn)) {
-        const moved = await fetch(`/api/clients/${client.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ crmColumn: installColumnFor(new Date(iso)) }),
-        });
-        if (!moved.ok) toast.error("Дата сохранена, но карточку на доске перенести не удалось");
-      }
-      toast.success("Добавлено в календарь");
+      const { moved } = await res.json();
+      if (moved === false) toast.error("Дата сохранена, но карточку на доске перенести не удалось");
+      else toast.success(done);
       onClose();
       router.refresh();
     } catch {
@@ -106,29 +111,39 @@ export function AddEntryDialog({
     }
   }
 
+  function cancelPlan() {
+    if (!replaced || !confirm(`Отменить ${noun}?`)) return;
+    const done = kind === "install" ? "Монтаж отменён" : "Замер отменён";
+    send(null, done, `${done}: ${dayTitle(clock.day(replaced))} в ${clock.time(replaced)}${zone}`);
+  }
+
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Добавить в календарь</DialogTitle>
+          <DialogTitle>
+            {fixedClient ? `${replaced ? "Перенести" : "Назначить"} ${noun}` : "Добавить в календарь"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={kind === "measure" ? "secondary" : "outline"}
-            onClick={() => setKind("measure")}
-          >
-            Замер
-          </Button>
-          <Button
-            size="sm"
-            variant={kind === "install" ? "secondary" : "outline"}
-            onClick={() => setKind("install")}
-          >
-            Монтаж
-          </Button>
-        </div>
+        {!target && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={kind === "measure" ? "secondary" : "outline"}
+              onClick={() => setKind("measure")}
+            >
+              Замер
+            </Button>
+            <Button
+              size="sm"
+              variant={kind === "install" ? "secondary" : "outline"}
+              onClick={() => setKind("install")}
+            >
+              Монтаж
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -136,7 +151,7 @@ export function AddEntryDialog({
             <Input id="entry-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="entry-time">Время по Астане</Label>
+            <Label htmlFor="entry-time">Время{zone}</Label>
             <Input id="entry-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
@@ -149,9 +164,11 @@ export function AddEntryDialog({
                 {clientTitle(client)}
                 {client.address ? <span className="text-muted-foreground"> · {client.address}</span> : null}
               </span>
-              <button className="flex-shrink-0 text-xs text-[#1e3a5f] underline" onClick={() => setClient(null)}>
-                Изменить
-              </button>
+              {!fixedClient && (
+                <button className="flex-shrink-0 text-xs text-[#1e3a5f] underline" onClick={() => setPicked(null)}>
+                  Изменить
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -167,7 +184,7 @@ export function AddEntryDialog({
                   <button
                     key={c.id}
                     data-client={c.id}
-                    onClick={() => setClient(c)}
+                    onClick={() => setPicked(c)}
                     className="block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-muted"
                   >
                     {clientTitle(c)}
@@ -179,23 +196,37 @@ export function AddEntryDialog({
           )}
         </div>
 
+        {objectAddress && (
+          <p data-object-address className="text-xs text-muted-foreground">
+            Дата запишется в объект: {objectAddress}
+          </p>
+        )}
+
         {replaced && (
           <p className="text-xs text-amber-800">
-            Сейчас монтаж {dayTitle(almatyDay(replaced))} в {almatyTime(replaced)} — дата заменится.
+            Сейчас {noun} {dayTitle(clock.day(replaced))} в {clock.time(replaced)} — дата заменится.
           </p>
         )}
 
         {date && time && (
           <p data-summary className="text-sm font-medium">
-            {kind === "install" ? "Монтаж" : "Замер"}: {dayTitle(date)} в {time} по Астане
+            {kind === "install" ? "Монтаж" : "Замер"}: {dayTitle(date)} в {time}{zone}
           </p>
         )}
 
         <DialogFooter>
+          {replaced && (
+            <Button variant="ghost" className="text-red-700 sm:mr-auto" disabled={saving} onClick={cancelPlan}>
+              Отменить {noun}
+            </Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             Отмена
           </Button>
-          <Button disabled={!canSave} onClick={save}>
+          <Button
+            disabled={!canSave}
+            onClick={() => send(clock.instant(date, time).toISOString(), replaced ? "Дата перенесена" : "Добавлено в календарь")}
+          >
             Сохранить
           </Button>
         </DialogFooter>

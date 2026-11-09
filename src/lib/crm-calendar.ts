@@ -61,6 +61,26 @@ export function almatyInstant(day: string, time: string): Date {
   return new Date(`${day}T${time}:00+05:00`);
 }
 
+/** В чьём времени показывать и вводить даты. */
+export type Clock = {
+  /** true — пояс браузера, false — Астана */
+  local: boolean;
+  day: (d: Date) => string;
+  time: (d: Date) => string;
+  instant: (day: string, time: string) => Date;
+};
+
+export const ALMATY_CLOCK: Clock = { local: false, day: almatyDay, time: almatyTime, instant: almatyInstant };
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+export const LOCAL_CLOCK: Clock = {
+  local: true,
+  day: (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+  time: (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  instant: (day, time) => new Date(`${day}T${time}:00`),
+};
+
 function addDays(day: string, n: number): string {
   const d = new Date(`${day}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -85,6 +105,39 @@ export function dayTitle(day: string): string {
     day: "numeric",
     month: "long",
   });
+}
+
+/**
+ * Дата для напоминания «через час». Пояс мастера из России серверу неизвестен,
+ * время Астаны его бы запутало — «через час» там и так говорит всё.
+ */
+export function reminderDate(at: Date, currency: string): string | null {
+  if (currency === "RUB") return null;
+  return at.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Almaty",
+  });
+}
+
+/** «12 нояб.» */
+export function dayShort(day: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("ru-RU", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+/**
+ * Запрос к базе с запасом в сутки: сетка считается по Астане, а мастеру из России
+ * записи раскладываются по его поясу, и крайние часы попадают в соседние дни.
+ */
+export function withMargin(grid: { from: Date; to: Date }): { from: Date; to: Date } {
+  const day = 24 * 60 * 60 * 1000;
+  return { from: new Date(grid.from.getTime() - day), to: new Date(grid.to.getTime() + day) };
 }
 
 /**
@@ -114,6 +167,43 @@ export function monthGrid(month: string): { days: string[]; from: Date; to: Date
   const days: string[] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) days.push(d);
   return { days, from: almatyInstant(start, "00:00"), to: almatyInstant(addDays(end, 1), "00:00") };
+}
+
+function earliest(dates: (Date | null)[], now: Date): string | null {
+  const future = dates.filter((d): d is Date => !!d && d > now).map((d) => d.getTime());
+  return future.length ? new Date(Math.min(...future)).toISOString() : null;
+}
+
+/** Ближайшие будущие замер и монтаж клиента — по тем же источникам, что и календарь. */
+export function nearestPlan(
+  events: { type: string; scheduledAt: Date | null }[],
+  objects: { measuredAt: Date | null; installAt: Date | null }[],
+  now: Date = new Date(),
+): { measure: string | null; install: string | null } {
+  const ofType = (type: string) => events.filter((e) => e.type === type).map((e) => e.scheduledAt);
+  return {
+    measure: earliest([...ofType("MEASUREMENT"), ...objects.map((o) => o.measuredAt)], now),
+    install: earliest([...ofType("INSTALL"), ...objects.map((o) => o.installAt)], now),
+  };
+}
+
+/** Будущие запланированные события клиента — их и переносит повторное назначение. */
+export function plannedEvents(
+  events: { type: string; scheduledAt: Date | null }[],
+  now: Date = new Date(),
+): { measureAt: string | null; installEventAt: string | null } {
+  const ofType = (type: string) => events.filter((e) => e.type === type).map((e) => e.scheduledAt);
+  return { measureAt: earliest(ofType("MEASUREMENT"), now), installEventAt: earliest(ofType("INSTALL"), now) };
+}
+
+/** Какую будущую дату заменит новое назначение; прошедшая дата монтажа плановой не считается. */
+export function plannedAt(
+  c: { measureAt: string | null; installEventAt: string | null; installAt: string | null },
+  kind: CalendarKind,
+  now: Date = new Date(),
+): string | null {
+  if (kind === "measure") return c.measureAt;
+  return c.installAt && new Date(c.installAt) > now ? c.installAt : c.installEventAt;
 }
 
 function labelOf(...parts: (string | null | undefined)[]): string {

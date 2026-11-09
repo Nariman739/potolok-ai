@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { reminderDate } from "@/lib/crm-calendar";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 
@@ -48,18 +49,12 @@ export async function GET(request: NextRequest) {
   for (const ev of events) {
     const master = ev.client.master;
     const eventTypeLabel = EVENT_TYPE_LABELS[ev.type] ?? ev.type;
-    const dateStr = ev.scheduledAt!.toLocaleString("ru-RU", {
-      day: "numeric",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Asia/Almaty",
-    });
+    const dateStr = reminderDate(ev.scheduledAt!, master.currency);
     const lines = [
       `🔔 <b>Через час:</b> ${eventTypeLabel}`,
       `👤 ${ev.client.name ?? "Клиент"}`,
-      `📅 ${dateStr}`,
     ];
+    if (dateStr) lines.push(`📅 ${dateStr}`);
     if (ev.client.address) lines.push(`📍 ${ev.client.address}`);
     if (ev.client.phone) lines.push(`📞 ${ev.client.phone}`);
     const text = lines.join("\n");
@@ -67,7 +62,7 @@ export async function GET(request: NextRequest) {
       // Пуш без адреса и телефона — он виден на заблокированном экране.
       await sendPushToMaster(master.id, {
         title: `Через час: ${eventTypeLabel.toLowerCase()}`,
-        body: `${ev.client.name ?? "Клиент"}, ${dateStr}`,
+        body: [ev.client.name ?? "Клиент", dateStr].filter(Boolean).join(", "),
         data: { screen: `/client/${ev.client.id}` },
       });
       if (master.telegramChatId) await sendTelegramMessage(master.telegramChatId, text);

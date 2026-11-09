@@ -27,6 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCurrency } from "@/components/currency-provider";
+import { useClock } from "@/components/use-clock";
+import { dayShort, type Clock } from "@/lib/crm-calendar";
 import {
   CRM_COLUMNS,
   CRM_COLUMN_LABELS,
@@ -48,14 +50,6 @@ const CHIP_LABELS: Partial<Record<CrmColumn, string>> = {
   planning: "План",
   install_planned: "Монтаж запл.",
 };
-
-function formatDay(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
-    timeZone: "Asia/Almaty",
-    day: "2-digit",
-    month: "short",
-  });
-}
 
 function formatPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -86,18 +80,19 @@ function cardLines(item: BoardItem) {
   return { title, phone, address };
 }
 
-// Значение для <input type="datetime-local"> по времени Астаны
-function almatyInput(iso: string) {
-  return new Date(new Date(iso).getTime() + 5 * 60 * 60 * 1000).toISOString().slice(0, 16);
+// Значение для <input type="datetime-local"> в часах мастера
+function inputValue(clock: Clock, iso: string) {
+  const d = new Date(iso);
+  return `${clock.day(d)}T${clock.time(d)}`;
 }
 
-function almatyPreset(days: number) {
-  const day = new Date(Date.now() + 5 * 60 * 60 * 1000 + days * 86_400_000).toISOString().slice(0, 10);
-  return `${day}T10:00`;
+function presetValue(clock: Clock, days: number) {
+  return `${clock.day(new Date(Date.now() + days * 86_400_000))}T10:00`;
 }
 
 function CardBody({ item, showOwner }: { item: BoardItem; showOwner: boolean }) {
   const { format: formatMoney } = useCurrency();
+  const clock = useClock();
   const { title, phone, address } = cardLines(item);
   const owner = showOwner && item.ownerName ? item.ownerName : null;
   return (
@@ -129,7 +124,7 @@ function CardBody({ item, showOwner }: { item: BoardItem; showOwner: boolean }) 
           <span className="min-w-0 truncate">{address}</span>
           {item.date && (
             <span className="flex-shrink-0 whitespace-nowrap">
-              {item.date.kind === "install" ? "Монтаж" : "Замер"} {formatDay(item.date.at)}
+              {item.date.kind === "install" ? "Монтаж" : "Замер"} {dayShort(clock.day(new Date(item.date.at)))}
             </span>
           )}
         </div>
@@ -220,6 +215,7 @@ export function ClientsBoard({
   initialItems: BoardItem[];
   isTeam: boolean;
 }) {
+  const clock = useClock();
   const [items, setItems] = useState(initialItems);
   const [search, setSearch] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
@@ -364,7 +360,7 @@ export function ClientsBoard({
     if (needsDate && item.objectId) {
       setColumn(item.id, target);
       setInstallValue(
-        item.installAt && !dateDisagrees ? almatyInput(item.installAt) : almatyPreset(target === "install" ? 0 : 1),
+        item.installAt && !dateDisagrees ? inputValue(clock, item.installAt) : presetValue(clock, target === "install" ? 0 : 1),
       );
       setPendingInstall({ item, from: item.column, target });
       return;
@@ -382,7 +378,8 @@ export function ClientsBoard({
     setSavingDate(true);
     const { item, from, target } = pendingInstall;
     if (withDate) {
-      const at = new Date(`${installValue}:00+05:00`);
+      const [day, time] = installValue.split("T");
+      const at = clock.instant(day, time);
       // Колонка по выбранной дате: «запланирован» на сегодня — это уже «Монтаж»
       await commitMove(item, from, installColumnFor(at), at.toISOString());
     } else {
@@ -508,13 +505,13 @@ export function ClientsBoard({
             {pendingLines?.address ? ` · ${pendingLines.address}` : ""}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(almatyPreset(0))}>
+            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 0))}>
               Сегодня
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(almatyPreset(1))}>
+            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 1))}>
               Завтра
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(almatyPreset(2))}>
+            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 2))}>
               Послезавтра
             </Button>
           </div>

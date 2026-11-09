@@ -2,6 +2,8 @@ import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { nearestPlan, plannedAt, plannedEvents } from "@/lib/crm-calendar";
+import { mainObject } from "@/lib/crm-columns";
 import { ClientCard } from "./client-card";
 import type { Metadata } from "next";
 
@@ -28,6 +30,7 @@ export default async function ClientPage({
         take: 100,
       },
       estimates: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -43,6 +46,7 @@ export default async function ClientPage({
         },
       },
       measurements: {
+        where: { deletedAt: null },
         orderBy: { updatedAt: "desc" },
         include: {
           rooms: {
@@ -70,6 +74,21 @@ export default async function ClientPage({
   });
 
   if (!client) notFound();
+
+  const main = mainObject(client.measurements);
+
+  const planClient = {
+    id: client.id,
+    name: client.name,
+    phone: client.phone,
+    address: client.address,
+    crmColumn: client.crmColumn,
+    objectId: main?.id ?? null,
+    installAt: main?.installAt?.toISOString() ?? null,
+    objectAddress: main?.address ?? null,
+    objectCount: client.measurements.length,
+    ...plannedEvents(client.events),
+  };
 
   // Договоры (среди КП этого клиента) — для таба «Договор»
   const contracts = client.estimates
@@ -101,10 +120,14 @@ export default async function ClientPage({
         createdAt: client.createdAt.toISOString(),
         updatedAt: client.updatedAt.toISOString(),
       }}
+      planClient={planClient}
+      planned={{ measure: plannedAt(planClient, "measure"), install: plannedAt(planClient, "install") }}
+      nearest={nearestPlan(client.events, client.measurements)}
       events={client.events.map((e) => ({
         id: e.id,
         type: e.type,
         content: e.content,
+        scheduledAt: e.scheduledAt?.toISOString() ?? null,
         createdAt: e.createdAt.toISOString(),
       }))}
       estimates={client.estimates.map((e) => ({
