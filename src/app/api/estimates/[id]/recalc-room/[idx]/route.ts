@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
-import { buildRoomInputFromDesigner, roomForCalculation } from "@/lib/room-input-builder";
+import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
 import type { CalculationResult, RoomInput } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
@@ -160,7 +160,7 @@ export async function POST(
 
     const existingForAdjust = estimate;
     const baseCalc: CalculationResult = calculate(
-      newRoomsData.map(roomForCalculation),
+      newRoomsData,
       priceMap,
       customItemsMap,
       undefined,

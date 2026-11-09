@@ -13,6 +13,13 @@ function sameDims(a: unknown, b: unknown): boolean {
   return a === b || (a == null && b == null);
 }
 
+/** КП из приложения: комнаты без length/width, расчёт сайта их не воспроизводит точно. */
+export function isAppFormatRoom(room: RoomInput): boolean {
+  return !Number.isFinite(room.length) || !Number.isFinite(room.width);
+}
+
+export const APP_ESTIMATE_RECALC_MESSAGE = "Это КП из приложения, пересчитайте его в приложении";
+
 /** Площадь не прямоугольной комнаты задана чертежом, а не длиной и шириной. */
 export function isDrawnRoom(room: RoomInput): boolean {
   return room.measuredArea != null;

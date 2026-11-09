@@ -63,7 +63,9 @@ export function installSeenKey(installCode: string, itemCode: string): string {
 }
 
 /** Свой вариант прайса приходит из мобилки с itemCode = pickerKey («canvas», «spot:v:<id>»…). */
-function installCodeFor(itemCode: string): string | undefined {
+function installCodeFor(itemCode: string | null | undefined): string | undefined {
+  // В старых КП приложения код бывает null.
+  if (!itemCode) return undefined;
   if (INSTALL_MAP[itemCode]) return INSTALL_MAP[itemCode];
   const head = itemCode.split(":")[0];
   switch (head) {

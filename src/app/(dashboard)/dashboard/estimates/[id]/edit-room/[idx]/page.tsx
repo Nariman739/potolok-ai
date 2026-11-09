@@ -1,3 +1,4 @@
+import { APP_ESTIMATE_RECALC_MESSAGE, isAppFormatRoom } from "@/lib/room-edit";
 import { getCurrentMaster } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -44,15 +45,17 @@ export default async function EditRoomPage({
           <h1 className="text-lg font-semibold">{room.name}</h1>
         </div>
         <div className="rounded-xl border bg-amber-50 border-amber-200 p-4 text-sm text-amber-900">
-          У этой комнаты нет данных чертежа — она была создана старым способом
-          (через калькулятор без замера). Откройте «Пересчитать», чтобы
-          отредактировать через калькулятор.
+          {isAppFormatRoom(room)
+            ? APP_ESTIMATE_RECALC_MESSAGE
+            : "У этой комнаты нет данных чертежа — она была создана старым способом (через калькулятор без замера). Откройте «Пересчитать», чтобы отредактировать через калькулятор."}
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/calculator?from=${estimate.id}`}>
-            Перейти в калькулятор
-          </Link>
-        </Button>
+        {!isAppFormatRoom(room) && (
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/calculator?from=${estimate.id}`}>
+              Перейти в калькулятор
+            </Link>
+          </Button>
+        )}
       </div>
     );
   }

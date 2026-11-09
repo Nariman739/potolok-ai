@@ -13,7 +13,7 @@ import { useCalculator } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { roomForCalculation } from "@/lib/room-input-builder";
+import { APP_ESTIMATE_RECALC_MESSAGE, isAppFormatRoom } from "@/lib/room-edit";
 import type { RoomInput } from "@/lib/types";
 
 export default function CalculatorPage() {
@@ -126,7 +126,13 @@ function CalculatorContent() {
       .then((r) => r.ok ? r.json() : null)
       .then((est) => {
         if (!est) return;
-        const importedRooms: RoomInput[] = ((est.roomsData ?? est.calculationData?.rooms ?? []) as RoomInput[]).map(roomForCalculation);
+        const importedRooms: RoomInput[] = est.roomsData ?? est.calculationData?.rooms ?? [];
+        // КП из приложения: сайт посчитал бы правдоподобно, но неверно.
+        if (importedRooms.some(isAppFormatRoom)) {
+          toast.info(APP_ESTIMATE_RECALC_MESSAGE);
+          router.replace("/dashboard/calculator", { scroll: false });
+          return;
+        }
         if (importedRooms.length > 0) {
           loadRooms(importedRooms);
           setFormOpen(false);
