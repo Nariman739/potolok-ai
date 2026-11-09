@@ -61,13 +61,32 @@ export async function notifyOwnerOfRequest(memberId: string): Promise<void> {
 }
 
 /** Приглашённому — решение владельца. */
-export async function notifyMemberOfDecision(masterId: string, language: Lang, companyName: string, approved: boolean): Promise<void> {
+export async function notifyMemberOfDecision(
+  masterId: string,
+  language: Lang,
+  companyName: string,
+  d: { approved: false } | { approved: true; movedIn: boolean; transferSkipped: boolean },
+): Promise<void> {
   const kk = language === "kk";
-  const title = approved
-    ? (kk ? `Сіз «${companyName}» компаниясында расталдыңыз` : `Вас подтвердили в «${companyName}»`)
-    : (kk ? `Иесі «${companyName}» өтінімін растамады` : `Владелец не подтвердил заявку в «${companyName}»`);
-  const body = approved
-    ? (kk ? "Компания нысандары мен клиенттері енді қолжетімді." : "Объекты и клиенты компании теперь доступны.")
-    : (kk ? "Сіздің деректеріңіз өзгерген жоқ." : "Ваши данные не изменились.");
+  let title: string;
+  let body: string;
+  if (!d.approved) {
+    title = kk ? `Иесі «${companyName}» өтінімін растамады` : `Владелец не подтвердил заявку в «${companyName}»`;
+    body = kk ? "Сіздің деректеріңіз өзгерген жоқ." : "Ваши данные не изменились.";
+  } else {
+    title = kk ? `Сіз «${companyName}» компаниясында расталдыңыз` : `Вас подтвердили в «${companyName}»`;
+    if (!d.movedIn) {
+      body = kk
+        ? "Сіз басқа компанияда жұмыс істеп жатырсыз, сондықтан ауыстырмадық. Өту үшін басты экрандағы шақыруды қабылдаңыз."
+        : "Вы работаете в другой компании, поэтому мы вас не переключили. Чтобы перейти, примите приглашение на главном экране.";
+    } else {
+      body = kk ? "Компания объектілері мен клиенттері енді қолжетімді." : "Объекты и клиенты компании теперь доступны.";
+      if (d.transferSkipped) {
+        body += kk
+          ? " Сіздің деректеріңіз көшірілмеді, олар өзіңізде қалды: компанияңызда басқа адамдар жұмыс істейді."
+          : " Ваши данные не перенесены и остались у вас: в вашей компании работают другие люди.";
+      }
+    }
+  }
   await sendPushToMaster(masterId, { title, body, data: { screen: "/(tabs)/today" } });
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 type Approval = {
   id: string;
   name: string;
+  invitedName: string;
   phone: string | null;
   bring: { objects: number; estimates: number; clients: number } | null;
 };
@@ -93,6 +94,7 @@ export function CompanyApprovalsBanner() {
                     <p className="font-semibold text-sm">
                       {a.name}{a.phone ? `, ${a.phone}` : ""} просит доступ к компании
                     </p>
+                    <p className="text-xs mt-1 leading-snug">Вы приглашали: {a.invitedName}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-snug">
                       Номер при регистрации не проверяется. Если не уверены, что это ваш сотрудник, сначала позвоните ему.
                     </p>

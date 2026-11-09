@@ -32,7 +32,7 @@ export async function contractOwnerId(masterId: string, companyId?: string | nul
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (!me?.activeCompanyId) return masterId;
     const company = await prisma.company.findFirst({
-      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, pendingSince: null } } },
+      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, joinedAt: { not: null } } } },
       select: { ownerId: true },
     });
     return company?.ownerId ?? masterId;

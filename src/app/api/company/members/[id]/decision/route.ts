@@ -4,10 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { ownCompanyHasOtherPeople, transferOwnDataOps } from "@/lib/company";
 import { notifyMemberOfDecision } from "@/lib/company-approval";
 
+const ALREADY_DECIDED = "Заявка не найдена или уже рассмотрена";
+
 /**
  * POST { approve: boolean } — решение владельца по заявке на вступление (09.11.2026).
  * Только настоящий владелец компании и независимо от того, в какой компании он сейчас
  * работает: «Людей» может менять любой участник, а открыть базу — только владелец.
+ *
+ * Решение и его последствия — одна интерактивная транзакция, первым шагом условное
+ * взятие заявки: при одновременных «подтвердить», «отклонить» и «отозвать» выигрывает
+ * один, остальные ничего не меняют и не шлют уведомлений (код-ревью 09.11.2026).
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,43 +26,63 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       where: { id, removedAt: null, masterId: { not: null }, pendingSince: { not: null }, company: { ownerId: master.id } },
       select: { id: true, masterId: true, companyId: true, pendingBringData: true, company: { select: { name: true } }, master: { select: { language: true } } },
     });
-    if (!member || !member.masterId) return NextResponse.json({ error: "Заявка не найдена или уже рассмотрена" }, { status: 404 });
+    if (!member || !member.masterId) return NextResponse.json({ error: ALREADY_DECIDED }, { status: 404 });
     const applicantId = member.masterId;
     const language = member.master?.language;
+    // Заявка всё ещё та же: тот же аккаунт, не убран, ждёт решения.
+    const claimWhere = { id: member.id, masterId: applicantId, removedAt: null, pendingSince: { not: null } };
 
     if (!body.approve) {
       // Строка остаётся «без приложения» (на неё могут ссылаться объекты), номер заблокирован
       // до нового приглашения владельцем: иначе отклонённый слал бы заявки снова.
-      await prisma.member.updateMany({
-        where: { id: member.id, pendingSince: { not: null } },
+      const claim = await prisma.member.updateMany({
+        where: claimWhere,
         data: { masterId: null, pendingSince: null, pendingBringData: null, rejectedAt: new Date() },
       });
-      await notifyMemberOfDecision(applicantId, language, member.company.name, false);
+      if (claim.count !== 1) return NextResponse.json({ error: ALREADY_DECIDED }, { status: 404 });
+      await notifyMemberOfDecision(applicantId, language, member.company.name, { approved: false });
       return NextResponse.json({ ok: true, approved: false });
     }
 
     // За время ожидания в своей компании могли появиться люди: подтверждаем без переноса,
     // чтобы решение владельца не падало из-за чужих данных.
     const wantsTransfer = member.pendingBringData === true;
-    const transferSkipped = wantsTransfer && (await ownCompanyHasOtherPeople(applicantId));
-    const bring = wantsTransfer && !transferSkipped;
-    const baseOps = [
-      prisma.member.updateMany({
-        where: { id: member.id, pendingSince: { not: null } },
-        data: { joinedAt: new Date(), pendingSince: null, pendingBringData: null, rejectedAt: null },
-      }),
-      prisma.master.update({ where: { id: applicantId }, data: { activeCompanyId: member.companyId } }),
-    ];
-    const transferOps = bring ? await transferOwnDataOps(applicantId, member.companyId) : [];
-    const results = await prisma.$transaction([...baseOps, ...transferOps]);
-    const counts = results.slice(baseOps.length) as { count: number }[];
-    await notifyMemberOfDecision(applicantId, language, member.company.name, true);
-    return NextResponse.json({
-      ok: true,
+    const blocked = wantsTransfer && (await ownCompanyHasOtherPeople(applicantId));
+
+    const outcome = await prisma.$transaction(
+      async (tx) => {
+        const claim = await tx.member.updateMany({
+          where: claimWhere,
+          data: { joinedAt: new Date(), pendingSince: null, pendingBringData: null, rejectedAt: null },
+        });
+        if (claim.count !== 1) return null;
+
+        // Работает в другой компании — не выдёргиваем: подтверждён, перейдёт сам через «Принять»
+        // (там же решит про перенос). Сразу в компанию — только если он работает у себя.
+        const [me, own] = [
+          await tx.master.findUnique({ where: { id: applicantId }, select: { activeCompanyId: true } }),
+          await tx.company.findUnique({ where: { ownerId: applicantId }, select: { id: true } }),
+        ];
+        const worksElsewhere = !!me?.activeCompanyId && me.activeCompanyId !== own?.id && me.activeCompanyId !== member.companyId;
+        if (worksElsewhere) return { movedIn: false, transferSkipped: false, transferred: null };
+
+        await tx.master.update({ where: { id: applicantId }, data: { activeCompanyId: member.companyId } });
+        if (!wantsTransfer || blocked) return { movedIn: true, transferSkipped: wantsTransfer, transferred: null };
+
+        const [objects, estimates, clients, payments] = await transferOwnDataOps(applicantId, member.companyId, tx);
+        const counts = { objects: (await objects).count, estimates: (await estimates).count, clients: (await clients).count, payments: (await payments).count };
+        return { movedIn: true, transferSkipped: false, transferred: counts };
+      },
+      { maxWait: 10_000, timeout: 20_000 },
+    );
+    if (!outcome) return NextResponse.json({ error: ALREADY_DECIDED }, { status: 404 });
+
+    await notifyMemberOfDecision(applicantId, language, member.company.name, {
       approved: true,
-      transferSkipped,
-      transferred: bring ? { objects: counts[0].count, estimates: counts[1].count, clients: counts[2].count, payments: counts[3].count } : null,
+      movedIn: outcome.movedIn,
+      transferSkipped: outcome.transferSkipped,
     });
+    return NextResponse.json({ ok: true, approved: true, ...outcome });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

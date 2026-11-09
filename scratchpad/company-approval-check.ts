@@ -10,7 +10,10 @@ process.env.DATABASE_URL = LOCAL;
 delete process.env.TELEGRAM_BOT_TOKEN;
 
 let token: string | null = null;
-const store = { get: (n: string) => (token ? { name: n, value: token } : undefined), set: (a: any, b?: any) => { token = typeof a === "string" ? b : a.value; }, delete: () => { token = null; } };
+const { AsyncLocalStorage } = require("async_hooks");
+const als = new AsyncLocalStorage();
+const cur = () => (als.getStore() as string | undefined) ?? token;
+const store = { get: (n: string) => (cur() ? { name: n, value: cur() as string } : undefined), set: (a: any, b?: any) => { token = typeof a === "string" ? b : a.value; }, delete: () => { token = null; } };
 const hdr = new Map<string, string>();
 const orig = Module._load;
 Module._load = function (req: string, ...rest: any[]) {
@@ -58,6 +61,9 @@ const acceptOld = async (u: any, companyId: string, extra: object = {}) => { as(
 const addPhone = async (owner: any, phone: string, name = "Ерлан") => { as(owner); return J(await company.POST(req({ name, phone }))); };
 const decide = async (u: any, id: string, approve: boolean) => { as(u); return J(await decision.POST(req({ approve }), { params: Promise.resolve({ id }) })); };
 const patch = async (u: any, id: string, body: object) => { as(u); return J(await member.PATCH(new Request("http://x", { method: "PATCH", body: JSON.stringify(body) }), { params: Promise.resolve({ id }) })); };
+const asUser = <T,>(u: any, f: () => Promise<T>) => als.run(u.token, f) as Promise<T>;
+const pDecide = (u: any, id: string, approve: boolean) => asUser(u, async () => J(await decision.POST(req({ approve }), { params: Promise.resolve({ id }) })));
+const pCancel = (u: any) => asUser(u, async () => J(await sw.POST(req({ cancelPending: true }))));
 const row = (id: string) => db.member.findUnique({ where: { id } });
 const master = (id: string) => db.master.findUnique({ where: { id } });
 const device = (id: string, t: string) => db.pushDevice.create({ data: { masterId: id, token: `ExponentPushToken[${t}]`, platform: "ios" } });
@@ -279,6 +285,94 @@ async function invited(owner: any, label: string) {
     ok("…через сутки уведомление снова приходит", pushesTo(o.tag) === 2, pushesTo(o.tag));
     as(u); await J(await sw.POST(req({ cancelPending: true })));
     ok("отзыв снимает заявку, приглашение остаётся", (await row(u.memberId)).pendingSince === null && (await GET(u)).body.invites.length === 1);
+  }
+
+  console.log("— гонки (настоящие параллельные запросы) —");
+  {
+    const o = await ownerWithCompany("ВладелецГонки");
+    let aWon = 0, rWon = 0, cancelWon = 0, aWon2 = 0;
+    for (let i = 0; i < 12; i++) {
+      const u = await invited(o, "Гонка" + i);
+      const own = (await GET(u)).body.companyId;
+      const c = await db.client.create({ data: { masterId: u.id, companyId: own, name: "К", phone: "+7700000" + (1000 + i) } });
+      await accept(u, o.companyId, { bringData: true });
+      const before = pushes.filter((p) => p.to.includes(u.tag)).length;
+      const [a, r] = await Promise.all([pDecide(o, u.memberId, true), new Promise((t) => setTimeout(t, i * 6)).then(() => pDecide(o, u.memberId, false))]);
+      const m = await master(u.id), rw = await row(u.memberId), cl = await db.client.findUnique({ where: { id: c.id } });
+      const sent = pushes.filter((p) => p.to.includes(u.tag)).length - before;
+      const approved = a.status === 200 && r.status === 404, rejected = r.status === 200 && a.status === 404;
+      ok(`подтвердить+отклонить #${i}: победил один, один пуш`, (approved || rejected) && sent === 1, { a, r, sent });
+      if (approved) { aWon++; ok(`  подтверждено: в компании, перенос`, m.activeCompanyId === o.companyId && !!rw.joinedAt && rw.masterId === u.id && cl.companyId === o.companyId, { m: m.activeCompanyId, rw, cl: cl.companyId }); }
+      if (rejected) { rWon++; ok(`  отклонено: не в компании, без переноса`, m.activeCompanyId !== o.companyId && rw.joinedAt === null && rw.masterId === null && cl.companyId === own, { m: m.activeCompanyId, rw, cl: cl.companyId }); }
+    }
+    for (let i = 0; i < 12; i++) {
+      const u = await invited(o, "Отзыв" + i);
+      const own = (await GET(u)).body.companyId;
+      const c = await db.client.create({ data: { masterId: u.id, companyId: own, name: "К", phone: "+7700000" + (2000 + i) } });
+      await accept(u, o.companyId, { bringData: true });
+      const [a] = await Promise.all([pDecide(o, u.memberId, true), new Promise((t) => setTimeout(t, i * 6)).then(() => pCancel(u))]);
+      const m = await master(u.id), rw = await row(u.memberId), cl = await db.client.findUnique({ where: { id: c.id } });
+      if (a.status === 200) { aWon2++; ok(`подтвердить+отозвать #${i}: подтверждено целиком`, m.activeCompanyId === o.companyId && !!rw.joinedAt && rw.pendingSince === null && cl.companyId === o.companyId, { m: m.activeCompanyId, rw, cl: cl.companyId }); }
+      else { cancelWon++; ok(`подтвердить+отозвать #${i}: отозвано, ничего не применилось`, a.status === 404 && m.activeCompanyId !== o.companyId && rw.joinedAt === null && rw.pendingSince === null && cl.companyId === own, { a, m: m.activeCompanyId, rw, cl: cl.companyId }); }
+    }
+    console.log(`  итог: подтверждение ${aWon} / отклонение ${rWon}; подтверждение ${aWon2} / отзыв ${cancelWon}`);
+  }
+
+  console.log("— доступ требует joinedAt —");
+  {
+    const o = await ownerWithCompany("ВладелецJ");
+    const u = await invited(o, "БезJoined");
+    await db.client.create({ data: { masterId: o.id, companyId: o.companyId, name: "К", phone: "+77000003000" } });
+    await db.master.update({ where: { id: u.id }, data: { activeCompanyId: o.companyId } });
+    const sc = await getScope({ id: u.id, activeCompanyId: o.companyId });
+    ok("неподтверждённая строка с устаревшим activeCompanyId: своя компания", sc.companyId !== o.companyId, sc.companyId);
+    ok("companyIdFor: не компания", (await companyIdFor(u.id)) !== o.companyId);
+    const os = await getScope({ id: o.id, activeCompanyId: o.companyId });
+    ok("такой человек не в masterIds компании и не «в приложении»", !os.masterIds.includes(u.id) && os.members.find((m: any) => m.id === u.memberId)?.hasApp === false, os.masterIds);
+    await db.master.update({ where: { id: u.id }, data: { activeCompanyId: null } });
+    const ownerRow = await db.member.findFirst({ where: { companyId: o.companyId, role: "owner" } });
+    await db.member.update({ where: { id: ownerRow.id }, data: { joinedAt: null } });
+    await db.master.update({ where: { id: o.id }, data: { activeCompanyId: o.companyId } });
+    const os2 = await getScope({ id: o.id, activeCompanyId: o.companyId });
+    ok("владелец со строкой без joinedAt доступ не теряет", os2.companyId === o.companyId && os2.isOwner && os2.masterIds.includes(o.id), os2.companyId);
+    await db.member.update({ where: { id: ownerRow.id }, data: { joinedAt: new Date() } });
+  }
+
+  console.log("— подтверждение при работе в другой компании, текст про перенос, имя приглашения —");
+  {
+    const o = await ownerWithCompany("ВладелецЗ");
+    const other = await ownerWithCompany("ДругаяКомпания");
+    const phone = nextPhone();
+    const a1 = await addPhone(o, phone, "Записан Владельцем");
+    const a2 = await addPhone(other, phone, "В другой");
+    const u = await reg(phone, "ИмяАккаунта");
+    await device(u.id, "usr" + u.id);
+    await accept(u, other.companyId); await decide(other, a2.body.member.id, true);
+    ok("(работает в другой компании)", (await master(u.id)).activeCompanyId === other.companyId);
+    const own = (await db.company.findUnique({ where: { ownerId: u.id } })).id;
+    const c = await db.client.create({ data: { masterId: u.id, companyId: own, name: "К", phone: "+77000003001" } });
+    await accept(u, o.companyId, { bringData: true });
+    const ap = (await GET(o)).body.approvals[0];
+    ok("карточка: имя аккаунта и как записал владелец", ap.name === "ИмяАккаунта" && ap.invitedName === "Записан Владельцем", ap);
+    const d = await decide(o, a1.body.member.id, true);
+    const m = await master(u.id), rw = await row(a1.body.member.id);
+    ok("не перекинут: joinedAt есть, activeCompanyId прежний", d.body.movedIn === false && !!rw.joinedAt && m.activeCompanyId === other.companyId, { d, m: m.activeCompanyId });
+    ok("перенос не выполнен", (await db.client.findUnique({ where: { id: c.id } })).companyId === own);
+    ok("пуш говорит, что не переключили", pushes.some((p) => p.to.includes("usr" + u.id) && /не переключили/.test(p.body)));
+    const inv = (await GET(u)).body.invites.find((x: any) => x.companyId === o.companyId);
+    ok("приглашение видно для быстрого перехода", !!inv);
+    const back = await accept(u, o.companyId);
+    ok("«Принять» — сразу, без заявки", back.status === 200 && !back.body.pending && (await master(u.id)).activeCompanyId === o.companyId, back);
+
+    const b = await ownerWithCompany("ВладелецП");
+    const l = await invited(b, "ПереносПропущен");
+    const lOwn = (await GET(l)).body.companyId;
+    await db.client.create({ data: { masterId: l.id, companyId: lOwn, name: "К", phone: "+77000003002" } });
+    await accept(l, b.companyId, { bringData: true });
+    const h = await invited(l, "Появился");
+    await accept(h, lOwn); await decide(l, h.memberId, true);
+    const d2 = await decide(b, l.memberId, true);
+    ok("transferSkipped: в пуше про данные", d2.body.transferSkipped === true && pushes.some((p) => p.to.includes(l.tag) && /остались у вас/.test(p.body)), d2);
   }
 
   console.log("— края —");

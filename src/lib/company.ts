@@ -97,7 +97,7 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
           where: {
             id: master.activeCompanyId,
             // Активной может быть только компания, где он всё ещё участник
-            members: { some: { masterId: master.id, removedAt: null, pendingSince: null } },
+            members: { some: { masterId: master.id, removedAt: null, joinedAt: { not: null } } },
           },
           include: { members: { where: { removedAt: null }, orderBy: { createdAt: "asc" }, include: { master: { select: { activeCompanyId: true } } } } },
         })
@@ -114,11 +114,13 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
   // увидел бы все объекты другого мастера с его собственной фирмой
   // (найдено код-ревью 20.09.2026). Владелец — всегда.
   const cid = company.id;
+  const worksInCompany = (m: { joinedAt: Date | null; master?: { activeCompanyId: string | null } | null }) =>
+    !!m.joinedAt && m.master?.activeCompanyId === cid;
   const masterIds = Array.from(
     new Set([
       company.ownerId,
       ...company.members
-        .filter((m) => m.masterId && m.masterId !== company.ownerId && m.master?.activeCompanyId === cid)
+        .filter((m) => m.masterId && m.masterId !== company.ownerId && worksInCompany(m))
         .map((m) => m.masterId as string),
     ]),
   );
@@ -132,15 +134,15 @@ export async function getScope(master: { id: string; activeCompanyId?: string | 
     members: company.members.map((m) => ({
       id: m.id,
       // До согласия приглашённого его masterId владельцу не отдаём (см. hasApp ниже).
-      masterId: m.masterId && (m.masterId === master.id || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id) ? m.masterId : null,
+      masterId: m.masterId && (m.masterId === master.id || m.masterId === company.ownerId || worksInCompany(m)) ? m.masterId : null,
       name: m.name,
       phone: m.phone,
       role: m.role,
       defaultFee: m.defaultFee,
       // «В приложении» показываем только после того, как человек сам принял приглашение:
       // иначе по бейджу можно узнать, зарегистрирован ли чужой номер (21.09.2026).
-      hasApp: !!m.masterId && (m.masterId === company.ownerId || m.master?.activeCompanyId === company.id),
-      worksHere: !m.masterId || m.masterId === company.ownerId || m.master?.activeCompanyId === company.id,
+      hasApp: !!m.masterId && (m.masterId === company.ownerId || worksInCompany(m)),
+      worksHere: !m.masterId || m.masterId === company.ownerId || worksInCompany(m),
       isMe: m.masterId === master.id,
       pending: !!m.pendingSince,
       rejected: !!m.rejectedAt,
@@ -182,7 +184,7 @@ export async function companyIdFor(masterId: string): Promise<string | null> {
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (me?.activeCompanyId) {
       const active = await prisma.company.findFirst({
-        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, pendingSince: null } } },
+        where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, joinedAt: { not: null } } } },
         select: { id: true },
       });
       if (active) return active.id;
@@ -205,7 +207,7 @@ export async function ownerBrandFor<M extends object>(masterId: string, master: 
     const me = await prisma.master.findUnique({ where: { id: masterId }, select: { activeCompanyId: true } });
     if (!me?.activeCompanyId) return master;
     const company = await prisma.company.findFirst({
-      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, pendingSince: null } } },
+      where: { id: me.activeCompanyId, members: { some: { masterId, removedAt: null, joinedAt: { not: null } } } },
       select: { ownerId: true },
     });
     if (!company || company.ownerId === masterId) return master;
@@ -245,15 +247,19 @@ export async function ownDataCounts(masterId: string): Promise<{ objects: number
  * при выходе обратно не возвращаются — об этом приложение предупреждает.
  * Корзину переносим тоже: восстановить из неё должна уметь бригада.
  */
-export async function transferOwnDataOps(masterId: string, companyId: string) {
+export async function transferOwnDataOps(
+  masterId: string,
+  companyId: string,
+  client: Pick<typeof prisma, "measurementObject" | "estimate" | "client" | "payment"> = prisma,
+) {
   const where = await ownDataWhere(masterId);
   const data = { companyId };
   // Без своего $transaction: вызывающий выполняет их вместе с переходом в компанию.
   return [
-    prisma.measurementObject.updateMany({ where, data }),
-    prisma.estimate.updateMany({ where, data }),
-    prisma.client.updateMany({ where, data }),
-    prisma.payment.updateMany({ where, data }),
+    client.measurementObject.updateMany({ where, data }),
+    client.estimate.updateMany({ where, data }),
+    client.client.updateMany({ where, data }),
+    client.payment.updateMany({ where, data }),
   ];
 }
 

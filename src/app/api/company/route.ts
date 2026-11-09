@@ -33,10 +33,12 @@ export async function GET() {
     const requests = await prisma.member.findMany({
       where: { removedAt: null, masterId: { not: null }, pendingSince: { not: null }, company: { ownerId: master.id } },
       orderBy: { pendingSince: "asc" },
-      select: { id: true, masterId: true, pendingSince: true, pendingBringData: true, master: { select: { firstName: true, lastName: true, phone: true } } },
+      select: { id: true, name: true, masterId: true, pendingSince: true, pendingBringData: true, master: { select: { firstName: true, lastName: true, phone: true } } },
     });
     const approvals = await Promise.all(requests.map(async (r) => ({
       id: r.id,
+      // Как владелец записал человека — сверить с именем, которое указано в аккаунте.
+      invitedName: r.name,
       name: [r.master?.firstName, r.master?.lastName].filter(Boolean).join(" ") || "Мастер",
       phone: r.master?.phone ?? null,
       since: r.pendingSince,
