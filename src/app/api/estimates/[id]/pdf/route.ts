@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { KpDocument } from "@/lib/kp/pdf/KpDocument";
@@ -31,10 +32,15 @@ export async function GET(
     const scope = await getScope(master);
     const { id } = await params;
 
+    // Доступ — по компании, как и у остальных действий с КП: владелец скачивает КП
+    // ушедшего сотрудника, а сам ушедший — уже нет.
+    const allowed = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null }, select: { id: true } });
+    if (!allowed) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
+
     // Собираем все нужные данные одним вызовом — мастер, портфолио, отзывы,
     // тема, шрифты, QR-код. Внутри проверяется что КП принадлежит мастеру.
     const t0 = Date.now();
-    const data = await buildPdfData(id, scope.masterIds);
+    const data = await buildPdfData(id);
     const tData = Date.now() - t0;
 
     // Если КП был создан как «быстрый» (мастер пометил calc.quickEstimate
