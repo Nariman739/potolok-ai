@@ -6,6 +6,19 @@ import type { RoomInput, CalculationResult, ExtraItem } from "@/lib/types";
 const AUTOSAVE_KEY = "calculator-rooms-draft";
 const EXTRA_ITEMS_KEY = "calculator-extra-items-draft";
 const DRAFT_SOURCE_KEY = "calculator-draft-source";
+/** Клиент замера, из которого собран черновик: на нём встаёт окно «Сохранить КП». */
+const DRAFT_CLIENT_KEY = "calculator-draft-client";
+
+function setDraftClient(clientId: string | null) {
+  try {
+    if (clientId) localStorage.setItem(DRAFT_CLIENT_KEY, clientId);
+    else localStorage.removeItem(DRAFT_CLIENT_KEY);
+  } catch {}
+}
+
+export function draftClientId(): string | null {
+  try { return localStorage.getItem(DRAFT_CLIENT_KEY) || null; } catch { return null; }
+}
 
 // ── localStorage as the single source of truth ──
 
@@ -171,14 +184,16 @@ export function useCalculator() {
     setRoomsStore(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
     setResult(null);
     setError(null);
+    setDraftClient(null);
   }, []);
 
-  /** Весь замер в калькулятор: заменяет черновик вместе с доп. работами прошлого клиента. */
-  const replaceWithMeasurement = useCallback((importedRooms: RoomInput[], sourceId: string) => {
+  /** Весь замер в калькулятор: заменяет черновик вместе с доп. работами и клиентом прошлого замера. */
+  const replaceWithMeasurement = useCallback((importedRooms: RoomInput[], sourceId: string, clientId: string | null = null) => {
     setRoomsStore(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
     setResult(null);
     setError(null);
     setExtraItems([]);
+    setDraftClient(clientId);
     try { localStorage.setItem(DRAFT_SOURCE_KEY, sourceId); } catch {}
   }, [setExtraItems, setResult]);
 
@@ -187,6 +202,7 @@ export function useCalculator() {
     setResult(null);
     setError(null);
     setExtraItems([]);
+    setDraftClient(null);
   }, [setExtraItems, setResult]);
 
   return {

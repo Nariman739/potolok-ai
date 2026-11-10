@@ -9,7 +9,7 @@ import { RoomCard } from "@/components/calculator/room-card";
 import { CalculationResults, type KpMoneyInputs } from "@/components/calculator/calculation-results";
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
-import { useCalculator } from "@/hooks/use-calculator";
+import { useCalculator, draftClientId } from "@/hooks/use-calculator";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -57,6 +57,8 @@ function CalculatorContent() {
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
+  // КП из замера с клиентом: окно сохранения сразу стоит на этом клиенте.
+  const [saveClientId, setSaveClientId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [kpInputs, setKpInputs] = useState<KpMoneyInputs>({ discount: null, partner: null });
   const [priceMap, setPriceMap] = useState<Record<string, number>>({});
@@ -93,6 +95,8 @@ function CalculatorContent() {
         const sourceId = localStorage.getItem("vision-rooms-source") ?? "";
         localStorage.removeItem("vision-rooms");
         localStorage.removeItem("vision-rooms-source");
+        const measurementClientId = localStorage.getItem("vision-rooms-client") || null;
+        localStorage.removeItem("vision-rooms-client");
         if (stored) {
           const imported: RoomInput[] = JSON.parse(stored);
           const draftSource = localStorage.getItem("calculator-draft-source");
@@ -101,7 +105,7 @@ function CalculatorContent() {
           const replace = !hasDraft || sameMeasurement
             || confirm("В калькуляторе есть несохранённый расчёт. Заменить его этим замером?");
           if (replace) {
-            replaceWithMeasurement(imported, sourceId);
+            replaceWithMeasurement(imported, sourceId, measurementClientId);
             setFormOpen(false);
           } else {
             toast.info("Оставили текущий расчёт, замер не загружен");
@@ -258,12 +262,14 @@ function CalculatorContent() {
           result={result}
           onSave={(inputs) => {
             setKpInputs(inputs);
+            setSaveClientId(draftClientId());
             setSaveOpen(true);
           }}
           onReset={reset}
         />
         <SaveDialog
           open={saveOpen}
+          initialClientId={saveClientId}
           onOpenChange={setSaveOpen}
           onSave={handleSave}
           saving={saving}

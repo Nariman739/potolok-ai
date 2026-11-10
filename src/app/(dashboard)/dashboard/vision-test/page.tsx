@@ -2505,6 +2505,7 @@ export default function ZameryPage() {
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
     localStorage.setItem("vision-rooms-source", activeObjectId ?? "");
+    localStorage.setItem("vision-rooms-client", activeClientId ?? "");
     // Весь замер заменяет черновик. ?from=vision — добавить комнату в черновик калькулятора.
     router.push("/dashboard/calculator?from=measurement");
   }
