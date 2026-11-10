@@ -1,6 +1,7 @@
 /**
  * Профиль по стенам: один код для сайта и приложения.
- * ФАЙЛ-БЛИЗНЕЦ: potolok-ai-app/src/lib/shared/wall-profile-pricing.ts — держать идентичным.
+ * ФАЙЛ-БЛИЗНЕЦ, байт-в-байт в двух репо: potolok-ai/src/lib/wall-profile-pricing.ts (сайт)
+ * и potolok-ai-app/src/lib/shared/wall-profile-pricing.ts (приложение). Править оба сразу.
  *
  * Перенесено из calcRoom приложения (app/estimate.tsx, 10.11.2026) без изменения логики:
  * багет по стенам (пластик, алюминий, теневой, бесщелевой, парящий, подшторник, ЛДСП,
