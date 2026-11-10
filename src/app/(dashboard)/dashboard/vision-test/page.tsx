@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, level2Fields, measuredGeometry, insertFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { spotBreakdown, level2Fields, measuredGeometry, insertFields, wallProfileFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2527,6 +2527,7 @@ export default function ZameryPage() {
         podshtornikOnWallLength,
         roundedCornersCount,
         ...insertFields(room, objectNoInsert),
+        ...wallProfileFields(room),
         furnitureCeilingArea,
         furnitureCeilingPerimeterDelta,
         furnitureCeilingBypassM: Math.round(fcStats.bypassPerimeterCm) / 100,

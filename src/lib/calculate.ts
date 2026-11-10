@@ -9,6 +9,7 @@ import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 import { isStandardSpotCode } from "./spot-types";
 import { canvasMinSideCm, pickFilmStep, pickMainCanvas, type CanvasCatalog, type CanvasCode, type CanvasFilm } from "./canvas-pricing";
+import { wallProfilePricing, type WallProfileResult, type WallProfileVariant } from "./wall-profile-pricing";
 
 type PriceMap = Record<string, number>;
 
@@ -27,6 +28,9 @@ export interface CustomItemInfo {
   maxWidthCm?: number | null;
   filmKey?: string | null;
   filmName?: string | null;
+  /** Свой багет: на него ставится вставка. Свой профиль комнаты: без вставки. */
+  withInsert?: boolean;
+  noInsert?: boolean;
 }
 
 /** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
@@ -99,6 +103,42 @@ function spotInstallRate(item: LineItem, ownItemsById?: Record<string, CustomIte
   }
   if (!isStandardSpotCode(item.itemCode)) return undefined;
   return ownItemsById?.[`catalog:${item.itemCode}`]?.installerPrice ?? Math.round(item.unitPrice * 0.3);
+}
+
+/** Профиль по стенам (wallProfileData из замера приложения) или null — тогда профиль по комнате целиком. */
+function profilesByWalls(
+  room: RoomInput,
+  adjustedPerimeterM: number,
+  prices: PriceMap,
+  ownItemsById: Record<string, CustomItemInfo> | undefined,
+  variantFor: (category: string) => (CustomItemInfo & { id: string }) | null,
+): WallProfileResult | null {
+  const data = room.wallProfileData;
+  if (!data || Object.keys(data.wallProfiles ?? {}).length === 0) return null;
+  const asVariant = (id: string, v: CustomItemInfo): WallProfileVariant => ({
+    id, name: v.name, unit: v.unit, price: v.price, installerPrice: v.installerPrice, photoUrl: v.photoUrl, withInsert: v.withInsert, noInsert: v.noInsert,
+  });
+  const wallVariants = Object.entries(ownItemsById ?? {})
+    .filter(([id, v]) => !id.startsWith("catalog:") && (v.category === "profile" || v.category === "podshtornik"))
+    .map(([id, v]) => asVariant(id, v));
+  const override = variantFor("profile");
+  return wallProfilePricing({
+    walls: data.walls,
+    wallProfiles: data.wallProfiles,
+    elements: data.elements,
+    // Периметр замера, как в приложении (room.perimeter), с обходом мебели.
+    adjustedPerimeterM: data.perimeterM != null ? data.perimeterM + (room.furnitureCeilingPerimeterDelta ?? 0) : adjustedPerimeterM,
+    bypassPerimeterM: room.furnitureCeilingBypassM ?? 0,
+    wallVariants,
+    profileOverride: override ? asVariant(override.id, override) : undefined,
+    insert: room.withInsert !== false,
+    insertColor: room.insertColor,
+    price: (code) => getPrice(prices, code),
+    // Наряд сайт собирает сам по installCode (work-order-lines); ставки здесь не нужны.
+    installerRate: () => 0,
+    workOnly: () => 0,
+    isHidden: (code) => ownItemsById?.[`catalog:${code}`]?.isHidden === true,
+  });
 }
 
 function calculateRoom(
@@ -199,9 +239,26 @@ function calculateRoom(
     }
   }
 
+  // Профили по стенам из приложения — тем же кодом, что в приложении (файл-близнец).
+  // Комнаты без них считаются как раньше.
+  const byWalls = profilesByWalls(room, perimeter + furniturePerimDelta, prices, ownItemsById, variantFor);
   // Profile — master's choice or default
   const profileCode = room.profileType || "profile_insert";
-  if (profileCode === "profile_galtel") {
+  if (byWalls) {
+    for (const l of byWalls.lines) {
+      const own = l.variantId ? ownItemsById?.[l.variantId] : undefined;
+      items.push({
+        itemCode: l.code ?? own?.code ?? "profile_plastic",
+        itemName: l.name,
+        quantity: l.qty,
+        unit: l.unit,
+        unitPrice: l.price,
+        total: Math.round(l.price * l.qty),
+        ...(l.variantId && { variantId: l.variantId, installCode: "install_profile", ...(own?.installerPrice != null && { installerRate: own.installerPrice }) }),
+        ...(l.photoUrl && { photoUrl: l.photoUrl }),
+      });
+    }
+  } else if (profileCode === "profile_galtel") {
     // Plastic profile only (galtel installed by others)
     const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
     if (plasticItem) items.push(plasticItem);
@@ -221,6 +278,7 @@ function calculateRoom(
   // Отдельная позиция «Парящий профиль» — только если он не основной
   // (для basic-профилей плacтик/вставка/галтель/теневой).
   if (
+    !byWalls &&
     floatingLen > 0 &&
     profileCode !== "profile_floating"
   ) {
@@ -367,8 +425,9 @@ function calculateRoom(
   const cornersTotal = room.cornersCount > 0 ? room.cornersCount : 4;
   const extraCorners = Math.max(0, cornersTotal - 4);
   if (extraCorners > 0) {
-    const cornerCode = PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
-    const cornerItem = makeLineItem(cornerCode, extraCorners, prices);
+    // По стенам: алюминиевые, если есть теневая/бесщелевая/парящая/алюминиевая стена; скрытый угол — не в КП, как в приложении.
+    const cornerCode = byWalls ? (byWalls.aluminumCorners ? "corner_aluminum" : "corner_plastic") : PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
+    const cornerItem = byWalls && ownItemsById?.[`catalog:${cornerCode}`]?.isHidden ? null : makeLineItem(cornerCode, extraCorners, prices);
     if (cornerItem) items.push(cornerItem);
   }
 

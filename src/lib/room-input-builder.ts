@@ -15,6 +15,7 @@ import { polygonMinThickness } from "@/lib/canvas-pricing";
 import { calcRoomLevel2, type Level2ElementLike } from "@/lib/level2-geometry";
 import { spotTypeKey, parseSpotTypeKey } from "@/lib/spot-types";
 import { computeSubcurtainStats } from "@/lib/subcurtain-stats";
+import { legacyInsertFlag, type WallProfileElement } from "@/lib/wall-profile-pricing";
 
 interface DesignerRoom {
   id?: string;
@@ -78,6 +79,15 @@ function minWidthFromWalls(walls: number[], normalCorners?: boolean[], angles?: 
   }
 }
 
+/** Профили по стенам для RoomInput: только если в замере они есть. */
+export function wallProfileFields(room: { walls: number[]; perimeter: number; wallProfiles?: Record<string, string> | null; elements?: unknown[] }): Pick<RoomInput, "wallProfileData"> {
+  if (!room.wallProfiles || Object.keys(room.wallProfiles).length === 0) return {};
+  const elements = ((room.elements ?? []) as WallProfileElement[])
+    .filter((e) => e.type === "subcurtain" || e.type === "floating")
+    .map((e) => ({ type: e.type, wallIndex: e.wallIndex, length: e.length, shape: e.shape, depth: e.depth }));
+  return { wallProfileData: { walls: room.walls, wallProfiles: room.wallProfiles, elements, perimeterM: room.perimeter } };
+}
+
 /** «2 уровня» с чертежа, как считает приложение. Вершины без замыкающего дубля. */
 /** Вставка в комнате: решение комнаты, иначе настройка объекта («убрать везде»), иначе да.
  *  Как roomInsertEnabled в приложении (src/lib/wall-profiles.ts). */
@@ -85,10 +95,13 @@ export function roomInsertEnabled(room: { withInsert?: boolean | null }, noInser
   return room.withInsert ?? !noInsertAll;
 }
 
-/** Поля вставки для RoomInput: без вставки — withInsert: false, чёрная — insertColor. */
-export function insertFields(room: { withInsert?: boolean | null; insertColor?: string | null }, noInsertAll: boolean): Pick<RoomInput, "withInsert" | "insertColor"> {
+/** Поля вставки для RoomInput: без вставки — withInsert: false, чёрная — insertColor.
+ *  Старые замеры хранили «со вставкой / без» в типах стен: как migrateRoomInsert приложения,
+ *  нерешённая комната берёт решение из этих меток. */
+export function insertFields(room: { withInsert?: boolean | null; insertColor?: string | null; wallProfiles?: Record<string, string> | null; walls?: number[] }, noInsertAll: boolean): Pick<RoomInput, "withInsert" | "insertColor"> {
+  const withInsert = room.withInsert ?? legacyInsertFlag(room.wallProfiles, room.walls?.length);
   return {
-    ...(!roomInsertEnabled(room, noInsertAll) && { withInsert: false }),
+    ...(!roomInsertEnabled({ withInsert }, noInsertAll) && { withInsert: false }),
     ...(room.insertColor === "black" && { insertColor: "black" as const }),
   };
 }
@@ -250,6 +263,9 @@ export function buildRoomInputFromDesigner(
     profileType: profileTypeForRoom,
     // Решение по вставке не на чертеже: правка комнаты в КП его сохраняет.
     ...(existing?.withInsert === false && { withInsert: false }),
+    // Профили по стенам не на веб-чертеже: держим из сохранённой комнаты, пока число стен то же.
+    ...(existing?.wallProfileData && existing.wallProfileData.walls.length === room.walls.length
+      && wallProfileFields({ walls: room.walls, perimeter: room.perimeter, wallProfiles: existing.wallProfileData.wallProfiles, elements: room.elements })),
     ...(existing?.insertColor === "black" && { insertColor: "black" as const }),
     spotsCount,
     spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,

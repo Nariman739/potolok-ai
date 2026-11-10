@@ -1,4 +1,5 @@
 import type { CanvasType } from "./constants";
+import type { WallProfileElement } from "./wall-profile-pricing";
 
 // ============================================
 // Room Shapes
@@ -122,6 +123,17 @@ export interface RoomInput {
   withInsert?: boolean;
   /** Цвет вставки: чёрная идёт той же позицией, в названии «(чёрная)». */
   insertColor?: "white" | "black";
+  /** Профили по стенам из замера приложения. Есть — профиль, вставку и парящий считает
+   *  файл-близнец wall-profile-pricing (как в приложении); нет — профиль по комнате целиком. */
+  wallProfileData?: {
+    /** Стены, см. */
+    walls: number[];
+    wallProfiles: Record<string, string>;
+    /** Подшторник и парящий с чертежа: занимают стену. */
+    elements: WallProfileElement[];
+    /** Периметр замера, м — его берёт приложение. */
+    perimeterM?: number;
+  };
   /** Площадь мебели «до потолка» в м² — вычитается из площади натяжного потолка. */
   furnitureCeilingArea?: number;
   /** Изменение периметра профиля от обхода мебели до потолка (м, может быть отрицательным).
