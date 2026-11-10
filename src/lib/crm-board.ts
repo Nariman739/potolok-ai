@@ -188,10 +188,11 @@ export async function applyCrmColumn(
 
   // Карточку уводят из «Завершён»: «смонтировали»/«закрыл» больше не верно, иначе доска и
   // приложение разойдутся, а дата монтажа на таком объекте снова поднимала бы статус до «Сделка»
-  // (syncClientStatusForObject). Раньше проверялось только crmColumn === "done" и только installed,
-  // но после «Завершён» с уже смонтированным объектом колонка пустая, а closed не снимался вовсе.
-  // «Отказ» — исключение: возврат или спор после монтажа не стирает факт монтажа в приложении.
-  if (column !== "done" && column !== "lost" && finished) {
+  // (syncClientStatusForObject). «Из Завершён» — это ручная колонка done или пустая колонка при
+  // завершённом объекте (после «Завершён» колонку не пишем), и не «Отказ». Монтаж — физический
+  // факт: канбан его не отменяет ни переносом в «Отказ», ни возвратом из «Отказа».
+  const fromDone = client.status !== "LOST" && (client.crmColumn === "done" || (client.crmColumn === null && finished));
+  if (column !== "done" && column !== "lost" && finished && fromDone) {
     await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
   }
 

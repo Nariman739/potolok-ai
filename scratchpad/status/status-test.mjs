@@ -199,8 +199,20 @@ o2 = await getObj();
 ok("Отказ при смонтированном объекте: LOST/lost, manualStage installed остался", c.status === "LOST" && c.crmColumn === "lost" && o2.manualStage === "installed", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
 // объект «закрыт» → «Завершён» → увели в «Замер»: как для installed
 await patch({ crmColumn: "new" });
+c = await get();
 o2 = await getObj();
-ok("из Отказа в Новую заявку: installed снят (как при уходе из Завершён)", o2.manualStage == null, `manualStage=${o2.manualStage}`);
+ok("из Отказа в Новую заявку: installed остался (монтаж — факт), статус NEW", o2.manualStage === "installed" && c.status === "NEW" && c.crmColumn === "new", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+// замечание ad: «Отказ» после монтажа, потом «В работе» из приложения — installed тоже остаётся
+await patch({ crmColumn: "lost" });
+await patch({ status: "IN_PROGRESS" });
+c = await get();
+o2 = await getObj();
+ok("из Отказа «В работе» из приложения: installed остался", o2.manualStage === "installed" && c.status === "IN_PROGRESS", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+// а уход из «Завершён» по-прежнему снимает этап
+await patch({ crmColumn: "done" });
+await patch({ crmColumn: "measure" });
+o2 = await getObj();
+ok("Завершён → Замер: installed снят", o2.manualStage == null, `manualStage=${o2.manualStage}`);
 await objPatch({ manualStage: "closed" });
 await patch({ crmColumn: "done" });
 c = await get();
