@@ -4,9 +4,11 @@
  * EstimatePartner. Единственное место, где посредник попадает в базу.
  */
 import { prisma } from "@/lib/prisma";
-import type { CalculationResult } from "@/lib/types";
+import type { CalculationResult, RoomResult } from "@/lib/types";
 import {
   applyKpAdjustments,
+  scaleCalc,
+  sumCalc,
   parseMoneyInput,
   type MoneyInput,
   type PartnerResult,
@@ -55,6 +57,41 @@ export function readAdjustInputs(body: Record<string, unknown>): {
   return { discount, partner };
 }
 
+const priceOf = (r: RoomResult) => r.subtotalAfterHeight ?? r.subtotal ?? 0;
+
+/**
+ * Посредник суммой после правки комнаты (recalc-room): комнаты стоят по разным
+ * коэффициентам, поэтому правленая помнит partnerBase (сумма по прайсу) и
+ * partnerPrice (её цены тогда; не совпали — цены переписал другой путь, метка
+ * не действует). Комната без метки — «старая»: старые и «Дополнительно» делят
+ * остаток базы пропорционально ценам (общий c0, k = 1/c0). Полная база — из
+ * записи: coef всегда пишется как (база + сумма) / база.
+ */
+export function partnerRoomBases(calc: CalculationResult, amount: number, coef: number) {
+  const totalBase = amount / (coef - 1);
+  const marked = (r: RoomResult) => {
+    const m = r as RoomResult & { partnerBase?: number; partnerPrice?: number };
+    return typeof m.partnerBase === "number" && m.partnerPrice === priceOf(r) ? m.partnerBase : null;
+  };
+  const rooms = calc.roomResults ?? [];
+  const markedRooms = rooms.filter((r) => marked(r) != null);
+  const unmarkedPrices = sumCalc(calc) - markedRooms.reduce((s, r) => s + priceOf(r), 0);
+  const baseLeft = Math.max(0, totalBase - markedRooms.reduce((s, r) => s + (marked(r) ?? 0), 0));
+  const k = unmarkedPrices > 0 ? baseLeft / unmarkedPrices : 1 / coef;
+  return { totalBase, k, hasMarks: markedRooms.length > 0, baseOf: (r: RoomResult) => marked(r) ?? priceOf(r) * k };
+}
+
+/** Снимает наценку с каждой комнаты по её коэффициенту и убирает метки → расчёт по прайсу. */
+function unscaleMarked(calc: CalculationResult, pb: ReturnType<typeof partnerRoomBases>): CalculationResult {
+  const roomResults = (calc.roomResults ?? []).map((r) => {
+    const { partnerBase: _b, partnerPrice: _p, ...rest } = r as RoomResult & { partnerBase?: number; partnerPrice?: number };
+    const price = priceOf(r);
+    return scaleCalc({ roomResults: [rest as RoomResult], total: 0 }, price > 0 ? pb.baseOf(r) / price : 1).roomResults[0];
+  });
+  const extraItems = calc.extraItems && scaleCalc({ extraItems: calc.extraItems, total: 0 }, pb.k).extraItems;
+  return { ...calc, roomResults, extraItems };
+}
+
 /** Ошибка ввода мастера — роуты отдают её как 400 с текстом. */
 export class KpAdjustError extends Error {
   constructor(message: string) { super(message); this.name = "KpAdjustError"; }
@@ -84,8 +121,24 @@ export function resolveAdjust(
     inputs.discount !== undefined ? inputs.discount : prev ? discountInputFromState(prev) : null;
   const partner =
     inputs.partner !== undefined ? inputs.partner : prev ? partnerInputFromState(prev) : null;
-  const prevCoef = opts.calcIsBase ? 1 : prev?.partner?.coef ?? 1;
-  const r = applyKpAdjustments(calc, { discount, partner, prevCoef });
+  let prevCoef = opts.calcIsBase ? 1 : prev?.partner?.coef ?? 1;
+  // КП после правки комнаты с посредником суммой: общий coef снимал бы наценку
+  // неточно (сдвиг итога ~300 ₸ на округлении) — снимаем по коэффициенту каждой комнаты.
+  const pp = prev?.partner;
+  if (!opts.calcIsBase && pp && pp.amount > 0 && pp.percent == null && pp.coef > 1 && !calc.minOrderApplied) {
+    const pb = partnerRoomBases(calc, pp.amount, pp.coef);
+    if (pb.hasMarks) {
+      calc = unscaleMarked(calc, pb);
+      prevCoef = 1;
+    }
+  }
+  // Минималку со скидкой снимаем только когда мастер сейчас ставит или меняет скидку.
+  // Та же скидка, что уже сохранена (или её нет в запросе), минималку КП не снимает.
+  const prevDiscount = prev ? discountInputFromState(prev) : null;
+  const discountChanged =
+    inputs.discount !== undefined &&
+    (inputs.discount?.mode !== prevDiscount?.mode || inputs.discount?.value !== prevDiscount?.value);
+  const r = applyKpAdjustments(calc, { discount, partner, prevCoef, keepMinOrder: !!prev && !discountChanged });
   // Скидка, съедающая всё КП, даёт total = 0 → договор и акт на ноль тенге.
   // На симуляторе так и вышло («10» + «5000» = 105 000 ₸). Не даём сохранить.
   if (r.clientPrice > 0 && r.discount.amount >= r.clientPrice) {

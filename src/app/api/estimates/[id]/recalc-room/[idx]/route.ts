@@ -6,8 +6,9 @@ import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
-import type { CalculationResult, RoomInput } from "@/lib/types";
-import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
+import type { CalculationResult, RoomInput, RoomResult } from "@/lib/types";
+import { resolveAdjust, estimateAdjustData, discountInputFromState, persistPartner, partnerRoomBases } from "@/lib/kp-adjust-server";
+import { scaleCalc, sumCalc, computeDiscount, computePartner } from "@/lib/kp-adjust";
 import { priceBookCompanyId, priceMapFor, customItemsMapFor, ownItemsByIdFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 
@@ -49,7 +50,8 @@ function sameGeometry(saved: SavedDrawing, next: DesignerPayload): boolean {
 /**
  * POST /api/estimates/[id]/recalc-room/[idx]
  * Принимает обновлённый чертёж одной комнаты, перестраивает её RoomInput,
- * вызывает calculate() для всего КП и сохраняет.
+ * пересчитывает позиции только этой комнаты и сохраняет; строки остальных
+ * комнат и «Дополнительно» остаются как в сохранённом КП.
  */
 export async function POST(
   request: Request,
@@ -158,20 +160,115 @@ export async function POST(
     const customItemsMap = await customItemsMapFor(companyId);
     const ownItemsById = await ownItemsByIdFor(companyId);
 
-    const existingForAdjust = estimate;
-    const baseCalc: CalculationResult = calculate(
-      newRoomsData,
-      priceMap,
-      customItemsMap,
-      undefined,
-      ownItemsById
-    );
+    // Итоги площади/периметра/софитов — по всем комнатам; позиции берём ТОЛЬКО
+    // у комнаты idx. Остальные комнаты считаются здесь лишь ради этих итогов.
+    const fresh: CalculationResult = calculate(newRoomsData, priceMap, customItemsMap, undefined, ownItemsById);
+    const savedCalc = estimate.calculationData as unknown as CalculationResult | null;
+
+    // Правка одной комнаты не трогает остальные (10.11.2026). Раньше calculate()
+    // пересчитывал все комнаты по текущему прайсу: в старом КП менялись полотно,
+    // пары софитов и цены комнат, которые мастер не открывал, и пропадал блок
+    // «Дополнительно». Теперь строки других комнат и «Дополнительно» остаются
+    // как сохранены, комната idx встаёт на своё место.
+    if (Array.isArray(savedCalc?.roomResults) && savedCalc.roomResults.length === roomsData.length) {
+      // В сохранённых ценах уже сидит посредник (коэффициент coef).
+      const p = estimate.partner;
+      const coef = p?.coef && p.coef > 0 ? p.coef : 1;
+      const partnerPercent = p?.percent != null && p.percent > 0 ? p.percent : null;
+      const freshRoom = fresh.roomResults[idx];
+      const newRoomBase = freshRoom.subtotalAfterHeight ?? freshRoom.subtotal ?? 0;
+      // Остальные комнаты и «Дополнительно» как сохранены: их цены и сколько в них посредника.
+      const otherPrices = sumCalc({ ...savedCalc, roomResults: savedCalc.roomResults.filter((_, i) => i !== idx) });
+      let otherBase = otherPrices / coef;
+      // Посредник в %: коэффициент везде один — новой комнате тот же.
+      // Посредник суммой: новая комната несёт остаток суммы, которого нет в ценах
+      // остальных (это доля старой комнаты idx). Так в ценах всегда ровно сумма
+      // мастера, и расхождение не копится от правки к правке.
+      const partnerAmount = p && p.amount > 0 && coef > 1 && partnerPercent == null ? p.amount : null;
+      if (partnerAmount != null) {
+        // Комнаты стоят по разным коэффициентам — база каждой из меток partnerBase/partnerPrice
+        // (см. partnerRoomBases; без меток комната «старая», по общему c0).
+        const pb = partnerRoomBases(savedCalc, partnerAmount, coef);
+        otherBase = pb.totalBase - pb.baseOf(savedCalc.roomResults[idx]);
+      }
+      const roomCoef =
+        partnerAmount != null
+          ? newRoomBase > 0 ? 1 + Math.max(0, partnerAmount - (otherPrices - otherBase)) / newRoomBase : 1
+          : coef;
+      const scaled = roomCoef === 1 ? freshRoom : scaleCalc({ roomResults: [freshRoom], total: 0 }, roomCoef).roomResults[0];
+      const room: RoomResult =
+        partnerAmount != null
+          ? ({ ...scaled, partnerBase: newRoomBase, partnerPrice: scaled.subtotalAfterHeight } as RoomResult)
+          : scaled;
+      const roomResults = savedCalc.roomResults.map((r, i) => (i === idx ? room : r));
+      const sum = sumCalc({ ...savedCalc, roomResults });
+      // Минимальный заказ, применённый в КП, держим как был (его сумма — в calc.total);
+      // иначе — порог по текущему прайсу, как при обычном расчёте.
+      const floor = savedCalc.minOrderApplied
+        ? Math.round(savedCalc.total)
+        : calculate([], priceMap).total;
+      const clientPrice = Math.max(sum, floor);
+      const discount = computeDiscount(clientPrice, discountInputFromState(estimate));
+      if (clientPrice > 0 && discount.amount >= clientPrice) {
+        return NextResponse.json({ error: "Скидка не может быть больше суммы КП" }, { status: 400 });
+      }
+      const total = clientPrice - discount.amount;
+      if (!Number.isFinite(total)) {
+        return NextResponse.json({ error: "Не удалось пересчитать: у комнаты нет размеров" }, { status: 400 });
+      }
+      const calculationData: CalculationResult = {
+        ...savedCalc,
+        rooms: newRoomsData,
+        roomResults,
+        subtotal: clientPrice,
+        total: clientPrice,
+        minOrderApplied: clientPrice > sum,
+        totalArea: fresh.totalArea,
+        totalPerimeter: fresh.totalPerimeter,
+        totalSpots: fresh.totalSpots,
+        totalChandeliers: fresh.totalChandeliers,
+        pricePerM2: fresh.totalArea > 0 ? Math.round(clientPrice / fresh.totalArea) : 0,
+        calculatedAt: fresh.calculatedAt,
+      };
+
+      await prisma.estimate.update({
+        where: { id },
+        data: {
+          roomsData: newRoomsData as unknown as object,
+          calculationData: calculationData as unknown as object,
+          total,
+          standardTotal: total,
+          discountPercent: discount.percent,
+          discountAmount: discount.amount,
+          totalArea: calculationData.totalArea,
+        },
+      });
+      // Посредник в %: его сумма идёт от суммы по прайсу, она изменилась. Коэффициент
+      // тот же, поэтому цены остальных комнат не трогаем.
+      if (partnerPercent != null) {
+        await persistPartner(id, computePartner(Math.round(clientPrice / coef), { mode: "percent", value: partnerPercent }));
+      }
+      // Посредник суммой: сумма — как ввёл мастер; коэффициент — для записи, от новой
+      // суммы по прайсу (по нему следующая правка скидки/позиций снимет наценку).
+      if (partnerAmount != null) {
+        const base = otherBase + newRoomBase;
+        if (base > 0) {
+          await persistPartner(id, { amount: partnerAmount, percent: null, coef: (base + partnerAmount) / base });
+        }
+      }
+
+      revalidatePath(`/dashboard/estimates/${id}`);
+      revalidatePath(`/dashboard/estimates/${id}/edit-room/${idx}`);
+      return NextResponse.json({ success: true, total, previousTotal: estimate.total, areaFromDrawing: !keepsSavedArea });
+    }
+
+    // Старое КП без позиций по комнатам — сопоставить не с чем, считаем всё КП заново.
     // calculate() даёт цены по прайсу (без посредника) — накладываем скидку и
     // посредника КП заново, иначе пересчёт одной комнаты сбрасывал бы оба.
     const adjust = resolveAdjust(
-      baseCalc,
+      fresh,
       { discount: undefined, partner: undefined },
-      existingForAdjust,
+      estimate,
       { calcIsBase: true }
     );
     const newCalc = adjust.calculationData;
