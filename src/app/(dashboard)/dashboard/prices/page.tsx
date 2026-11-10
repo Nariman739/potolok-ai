@@ -313,9 +313,13 @@ export default function PricesPage() {
                   onEdit={(v) => setVariantDialog({ mode: "edit", category: group.category, variant: v })}
                   onPhotoClick={(url) => setLightboxUrl(url)}
                 />
-                <AddVariantButton
-                  onClick={() => setVariantDialog({ mode: "create", category: group.category })}
-                />
+                {/* Новое полотно — только плёнкой с ценами по ширинам (FilmsSection), как в приложении:
+                    вариант с одной ценой путал (10.11.2026). Старые варианты полотен правятся как раньше. */}
+                {group.category !== "canvas" && (
+                  <AddVariantButton
+                    onClick={() => setVariantDialog({ mode: "create", category: group.category })}
+                  />
+                )}
               </>
             )}
           </CardContent>

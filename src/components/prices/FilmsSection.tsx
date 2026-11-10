@@ -105,7 +105,7 @@ export function FilmsSection() {
       {isOwner && (
         <Button variant="outline" size="sm" className="w-full border-dashed" onClick={() => setEditing({ ...EMPTY })}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Новая плёнка с ценами по ширине
+          Добавить плёнку
         </Button>
       )}
 
