@@ -196,6 +196,9 @@ export interface LineItem {
   installerRate?: number;
   /** Код монтажной позиции для наряда монтажнику, когда itemCode не каталожный (свой софит → install_spot). */
   installCode?: string;
+  /** Своя строка наряда, как у мобилки («Монтаж алюминиевого профиля»): с ней строка КП идёт
+   *  в наряд отдельно, по installerRate, без схлопывания с профилем. Публичная КП её не видит. */
+  installerName?: string;
 }
 
 export interface RoomResult {

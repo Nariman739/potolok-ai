@@ -50,14 +50,23 @@ export const INSTALL_MAP: Record<string, string> = {
   corner_plastic: "install_corner",
   corner_aluminum: "install_corner",
   pipe_bypass: "install_pipe",
+  // Подшторник монтируется по ставке карниза, как в приложении.
+  podshtornik_aluminum: "install_curtain",
+  podshtornik_plastic: "install_curtain",
+  podshtornik_ldsp: "install_curtain",
+  // Своей строки «Для бригады» нет: цена работы позиции, иначе 30 % (см. autoWorkOrderLines).
+  corner_rounded: "install_corner_rounded",
 };
+
+/** Строки, которые не схлопываются с карнизом или углами: у них свой метраж и своя ставка. */
+const OWN_LINE_CODES = new Set(["podshtornik_aluminum", "podshtornik_plastic", "podshtornik_ldsp", "corner_rounded"]);
 
 /** Эти работы оплачиваются по метрам каждой строки КП: схлопывать нельзя. */
 const PER_LINE_INSTALL = new Set(["install_track", "install_lightline", "install_gardina"]);
 
 /** Ключ схлопывания строк одной комнаты. Профиль и вставка — один монтаж, остальное построчно. */
 export function installSeenKey(installCode: string, itemCode: string): string {
-  return installCode === "install_spot" || itemCode === "level2_canvas" || PER_LINE_INSTALL.has(installCode)
+  return installCode === "install_spot" || itemCode === "level2_canvas" || PER_LINE_INSTALL.has(installCode) || OWN_LINE_CODES.has(itemCode)
     ? `${installCode}:${itemCode}`
     : installCode;
 }
@@ -208,6 +217,11 @@ export function autoWorkOrderLines(
     const seen = new Set<string>();
     const usedCodes = new Set<string>();
     for (const [i, item] of ((rr.items ?? []) as LineItem[]).entries()) {
+      // Строка со своим монтажом (профиль по стенам, подшторник, скругление) — как у мобилки.
+      if (item.installerName) {
+        if (item.quantity > 0) out.push({ key: `${roomKey}:wp:${i}:${item.itemCode}`, room: roomName, name: item.installerName, qty: round2(item.quantity), unit: item.unit, price: Math.max(0, Math.round(item.installerRate ?? 0)), ...(item.installCode && { code: item.installCode }) });
+        continue;
+      }
       const kind = noRateKind(item);
       if (kind) {
         if (item.quantity > 0) out.push({ key: `${roomKey}:kp:${i}:${kind}`, room: roomName, name: noRateName(kind), qty: round2(item.quantity), unit: item.unit, price: 0 });
@@ -220,7 +234,8 @@ export function autoWorkOrderLines(
       const seenKey = installSeenKey(installCode, item.itemCode);
       if (seen.has(seenKey)) continue;
       seen.add(seenKey);
-      const price = item.installerRate ?? Math.max(0, priceOf(installCode));
+      const price = item.installerRate
+        ?? (item.itemCode === "corner_rounded" ? Math.round(item.unitPrice * 0.3) : Math.max(0, priceOf(installCode)));
       if (item.quantity <= 0) continue;
       // Первая строка трека, линии и гардины хранит прежний ключ: на него ссылаются правки мастера.
       const lineKey = PER_LINE_INSTALL.has(installCode) && !usedCodes.has(installCode) ? installCode : seenKey;

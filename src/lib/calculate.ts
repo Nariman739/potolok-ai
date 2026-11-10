@@ -135,9 +135,10 @@ function profilesByWalls(
     insert: room.withInsert !== false,
     insertColor: room.insertColor,
     price: (code) => getPrice(prices, code),
-    // Наряд сайт собирает сам по installCode (work-order-lines); ставки здесь не нужны.
-    installerRate: () => 0,
-    workOnly: () => 0,
+    // Ставки монтажа как в calcRoom: строки «Для бригады» (install_*) — как есть,
+    // вставка и LED-лента — только явная цена работы в прайсе, иначе 0.
+    installerRate: (code) => getPrice(prices, code),
+    workOnly: (code) => ownItemsById?.[`catalog:${code}`]?.installerPrice ?? 0,
     isHidden: (code) => ownItemsById?.[`catalog:${code}`]?.isHidden === true,
   });
 }
@@ -264,8 +265,12 @@ function calculateRoom(
         unit: l.unit,
         unitPrice: l.price,
         total: Math.round(l.price * l.qty),
-        ...(l.variantId && { variantId: l.variantId, installCode: "install_profile", ...(own?.installerPrice != null && { installerRate: own.installerPrice }) }),
+        ...(l.variantId && { variantId: l.variantId }),
         ...(l.photoUrl && { photoUrl: l.photoUrl }),
+        // Монтаж — строкой как у мобилки: у каждого багета своя (алюминий, теневой, подшторник…).
+        installCode: l.code === "insert" || l.code === "led_strip" ? undefined : "install_profile",
+        installerName: l.installName,
+        installerRate: l.installPrice,
       });
     }
   } else if (profileCode === "profile_galtel") {
@@ -279,7 +284,13 @@ function calculateRoom(
     // Скрытая в прайсе вставка не попадает в КП; свой профиль «без вставки» её снимает (как в приложении).
     const insertItem = room.withInsert === false || hiddenInPrice("insert") || profileVariant?.noInsert === true
       ? null : makeLineItem("insert", baseProfileLen, prices);
-    if (insertItem) items.push(room.insertColor === "black" ? { ...insertItem, itemName: `${insertItem.itemName} (чёрная)` } : insertItem);
+    // Монтаж вставки — только явная цена работы в прайсе, иначе 0 (как workOnly в приложении).
+    if (insertItem) items.push({
+      ...insertItem,
+      ...(room.insertColor === "black" && { itemName: `${insertItem.itemName} (чёрная)` }),
+      installerName: "Монтаж вставки",
+      installerRate: ownItemsById?.[`catalog:insert`]?.installerPrice ?? 0,
+    });
   } else {
     // Shadow or floating — single aluminum profile.
     // Если у комнаты явно указан profile_floating, по периметру весь парящий.
@@ -493,14 +504,20 @@ function calculateRoom(
   if ((room.podshtornikLength ?? 0) > 0) {
     const podshtornikCode = room.podshtornikType || "podshtornik_aluminum";
     const podshtornikItem = makeLineItem(podshtornikCode, room.podshtornikLength, prices);
-    if (podshtornikItem) items.push(podshtornikItem);
+    // Монтаж подшторника — по ставке карниза, как в приложении.
+    if (podshtornikItem) items.push({ ...podshtornikItem, installCode: "install_curtain", installerName: "Монтаж подшторника", installerRate: getPrice(prices, "install_curtain") });
   }
 
   // Скруглённые углы — отдельная позиция (сложнее в монтаже).
   // Площадь и периметр уже скорректированы выше; здесь только надбавка за каждый скруглённый угол.
   if ((room.roundedCornersCount ?? 0) > 0) {
     const roundedItem = hiddenInPrice("corner_rounded") ? null : makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
-    if (roundedItem) items.push(roundedItem);
+    // Работа по скруглению — своя цена работы позиции, иначе 30 % от цены клиенту (как в приложении).
+    if (roundedItem) items.push({
+      ...roundedItem,
+      installerName: "Скруглённый угол (работа)",
+      installerRate: ownItemsById?.[`catalog:corner_rounded`]?.installerPrice ?? Math.round(roundedItem.unitPrice * 0.3),
+    });
   }
 
   // Обвод мебели до потолка (м.п.) — отдельная позиция, чтобы было видно почему дороже.

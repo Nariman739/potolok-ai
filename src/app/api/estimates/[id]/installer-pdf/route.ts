@@ -102,6 +102,12 @@ export async function GET(
       const seen = new Set<string>();
 
       for (const item of (rr.items ?? []) as LineItem[]) {
+        // Своя строка монтажа (профиль по стенам, подшторник, скругление, вставка) — как в наряде.
+        if (item.installerName) {
+          const price = Math.max(0, Math.round(item.installerRate ?? 0));
+          if (price > 0 && item.quantity > 0) installItems.push({ name: item.installerName, quantity: item.quantity, unit: item.unit, unitPrice: price, total: item.quantity * price });
+          continue;
+        }
         const installCode = item.installCode ?? INSTALL_MAP[item.itemCode];
         if (!installCode) continue;
         // Софиты разных типов (28.10.2026) — каждая строка монтируется отдельно;
@@ -110,7 +116,8 @@ export async function GET(
         if (seen.has(seenKey)) continue;
         seen.add(seenKey);
 
-        const price = item.installerRate ?? getInstallPrice(installCode);
+        const price = item.installerRate
+          ?? (item.itemCode === "corner_rounded" ? Math.round(item.unitPrice * 0.3) : getInstallPrice(installCode));
         if (price <= 0) continue;
 
         // Use same quantity as client item
