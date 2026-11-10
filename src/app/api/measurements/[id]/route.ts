@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 import { isActiveMine, activeByFor } from "@/lib/measurement-active";
+import { normalizeWallFurniture } from "@/lib/wall-furniture";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function GET(
   _request: Request,
@@ -57,7 +59,7 @@ export async function PATCH(
       /** Плёнка на весь объект (filmKey); null — снять выбор */
       canvasItemId?: string | null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null; wallFurniture?: unknown }[];
     };
 
     // Привязка клиента: явный clientId → валидируем; иначе auto-create по имени/телефону.
@@ -151,12 +153,21 @@ export async function PATCH(
         };
         // Цвет вставки: старые клиенты поля не шлют — при обновлении не затираем (код-ревью 11.11.2026).
         const insertColor = r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null;
+        // «Фасад шкафа (только для 3D)»: так же — старые сборки и сайт поля не шлют, не затираем.
+        const wallFurniture = normalizeWallFurniture(r.wallFurniture, r.walls?.length);
         const rid = (r as { id?: string }).id;
         if (rid && known.has(rid)) {
-          await prisma.measurementRoom.update({ where: { id: rid }, data: r.insertColor !== undefined ? { ...data, insertColor } : data });
+          await prisma.measurementRoom.update({
+            where: { id: rid },
+            data: {
+              ...data,
+              ...(r.insertColor !== undefined && { insertColor }),
+              ...(wallFurniture !== undefined && { wallFurniture: wallFurniture ?? Prisma.DbNull }),
+            },
+          });
           keep.add(rid);
         } else {
-          const created = await prisma.measurementRoom.create({ data: { objectId: id, ...data, insertColor }, select: { id: true } });
+          const created = await prisma.measurementRoom.create({ data: { objectId: id, ...data, insertColor, wallFurniture: wallFurniture ?? undefined }, select: { id: true } });
           keep.add(created.id);
         }
       }

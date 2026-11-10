@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { normalizeWallFurniture } from "@/lib/wall-furniture";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function PATCH(
   request: Request,
@@ -12,7 +14,7 @@ export async function PATCH(
     const scope = await getScope(master);
     const { id, roomId } = await params;
     const body = await request.json();
-    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d, withInsert, insertColor } = body as {
+    const { name, walls, normalCorners, angles, arcBulges, cornerRadii, columns, measureDiagonals, obliqueDiagonals, area, perimeter, elements, wallProfiles, variantOverrides, previewUrl3d, withInsert, insertColor, wallFurniture } = body as {
       name?: string;
       walls?: number[];
       normalCorners?: boolean[];
@@ -32,6 +34,8 @@ export async function PATCH(
       withInsert?: boolean | null;
       /** Цвет вставки: "white" | "black", null — белая (09.11.2026) */
       insertColor?: string | null;
+      /** «Фасад шкафа (только для 3D)»: [{wall, color}], null/[] — снять; нет поля — не трогать (10.11.2026) */
+      wallFurniture?: unknown;
     };
 
     // Verify ownership
@@ -62,6 +66,8 @@ export async function PATCH(
     if (previewUrl3d !== undefined) data.previewUrl3d = previewUrl3d;
     if (withInsert !== undefined) data.withInsert = typeof withInsert === "boolean" ? withInsert : null;
     if (insertColor !== undefined) data.insertColor = insertColor === "black" || insertColor === "white" ? insertColor : null;
+    const wf = normalizeWallFurniture(wallFurniture, walls?.length);
+    if (wf !== undefined) data.wallFurniture = wf ?? Prisma.DbNull;
 
     const result = await prisma.measurementRoom.updateMany({
       where: { id: roomId, objectId: id },

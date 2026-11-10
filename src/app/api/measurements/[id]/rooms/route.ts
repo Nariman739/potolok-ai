@@ -5,6 +5,7 @@ type Master = Awaited<ReturnType<typeof requireAuth>>;
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { withIdempotency } from "@/lib/idempotency";
+import { normalizeWallFurniture } from "@/lib/wall-furniture";
 
 export async function POST(
   request: Request,
@@ -63,6 +64,8 @@ async function addRooms(request: Request, master: Master, id: string) {
         variantOverrides?: Record<string, string>;
         withInsert?: boolean | null;
         insertColor?: string | null;
+        /** «Фасад шкафа (только для 3D)»: [{wall, color}] */
+        wallFurniture?: unknown;
         previewUrl3d?: string;
       };
 
@@ -85,6 +88,7 @@ async function addRooms(request: Request, master: Master, id: string) {
           variantOverrides: r.variantOverrides ?? undefined,
           withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
           insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
+          wallFurniture: normalizeWallFurniture(r.wallFurniture, r.walls?.length) ?? undefined,
           previewUrl3d: r.previewUrl3d ?? undefined,
           sortOrder: obj._count.rooms + i,
         },
