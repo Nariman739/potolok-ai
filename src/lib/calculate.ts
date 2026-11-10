@@ -43,6 +43,7 @@ const VARIANT_INSTALL_CODE: Record<string, string> = {
   gardina: "install_gardina",
   track: "install_track",
   lightline: "install_lightline",
+  profile: "install_profile",
 };
 
 const roundTenth = (n: number) => Math.round(n * 10) / 10;
@@ -244,6 +245,15 @@ function calculateRoom(
   const byWalls = profilesByWalls(room, perimeter + furniturePerimDelta, prices, ownItemsById, variantFor);
   // Profile — master's choice or default
   const profileCode = room.profileType || "profile_insert";
+  // Скрытое в прайсе не попадает в КП, если это авто-добавка (вставка, углы) — как в приложении.
+  const hiddenInPrice = (code: string) => ownItemsById?.[`catalog:${code}`]?.isHidden === true;
+  // Профиль, выбранный на комнату, заменяет пластиковый, как в приложении.
+  const profileVariant = !byWalls && (profileCode === "profile_insert" || profileCode === "profile_galtel") ? variantFor("profile") : null;
+  const plasticLine = (): LineItem | null => {
+    if (!profileVariant) return makeLineItem("profile_plastic", baseProfileLen, prices);
+    if (baseProfileLen <= 0) return null;
+    return { ...variantLine(profileVariant, "profile", baseProfileLen, "profile_plastic"), ...(profileVariant.installerPrice != null && { installerRate: profileVariant.installerPrice }) };
+  };
   if (byWalls) {
     for (const l of byWalls.lines) {
       const own = l.variantId ? ownItemsById?.[l.variantId] : undefined;
@@ -260,13 +270,15 @@ function calculateRoom(
     }
   } else if (profileCode === "profile_galtel") {
     // Plastic profile only (galtel installed by others)
-    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
+    const plasticItem = plasticLine();
     if (plasticItem) items.push(plasticItem);
   } else if (profileCode === "profile_insert") {
     // Plastic profile + insert strip (2 line items)
-    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
+    const plasticItem = plasticLine();
     if (plasticItem) items.push(plasticItem);
-    const insertItem = room.withInsert === false ? null : makeLineItem("insert", baseProfileLen, prices);
+    // Скрытая в прайсе вставка не попадает в КП; свой профиль «без вставки» её снимает (как в приложении).
+    const insertItem = room.withInsert === false || hiddenInPrice("insert") || profileVariant?.noInsert === true
+      ? null : makeLineItem("insert", baseProfileLen, prices);
     if (insertItem) items.push(room.insertColor === "black" ? { ...insertItem, itemName: `${insertItem.itemName} (чёрная)` } : insertItem);
   } else {
     // Shadow or floating — single aluminum profile.
@@ -427,7 +439,7 @@ function calculateRoom(
   if (extraCorners > 0) {
     // По стенам: алюминиевые, если есть теневая/бесщелевая/парящая/алюминиевая стена; скрытый угол — не в КП, как в приложении.
     const cornerCode = byWalls ? (byWalls.aluminumCorners ? "corner_aluminum" : "corner_plastic") : PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
-    const cornerItem = byWalls && ownItemsById?.[`catalog:${cornerCode}`]?.isHidden ? null : makeLineItem(cornerCode, extraCorners, prices);
+    const cornerItem = hiddenInPrice(cornerCode) ? null : makeLineItem(cornerCode, extraCorners, prices);
     if (cornerItem) items.push(cornerItem);
   }
 
@@ -487,7 +499,7 @@ function calculateRoom(
   // Скруглённые углы — отдельная позиция (сложнее в монтаже).
   // Площадь и периметр уже скорректированы выше; здесь только надбавка за каждый скруглённый угол.
   if ((room.roundedCornersCount ?? 0) > 0) {
-    const roundedItem = makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
+    const roundedItem = hiddenInPrice("corner_rounded") ? null : makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
     if (roundedItem) items.push(roundedItem);
   }
 
