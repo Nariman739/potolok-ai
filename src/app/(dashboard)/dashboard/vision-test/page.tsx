@@ -1802,12 +1802,12 @@ export default function ZameryPage() {
               if (parsed.length > 0) {
                 setRooms(parsed);
                 if (lo) setObjectName(lo);
-                // Привязываем копию к объекту, только если он на сервере всё ещё активный:
-                // иначе правки старой копии ушли бы в уже сохранённый замер.
+                // Привязываем копию к объекту, только если он на сервере всё ещё открыт у меня:
+                // иначе правки старой копии ушли бы в сохранённый или чужой открытый замер.
                 if (loid) {
                   const check = await fetch(`/api/measurements/${loid}`).catch(() => null);
                   const objOnServer = check?.ok ? await check.json() : null;
-                  if (objOnServer?.status === "active") setActiveObjectId(loid);
+                  if (objOnServer?.activeMine === true) setActiveObjectId(loid);
                 }
               }
             }

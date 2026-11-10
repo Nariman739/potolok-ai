@@ -5,6 +5,7 @@ import { getScope, inScope, type Scope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { checkObjectLimit } from "@/lib/billing";
+import { activeMineWhere, activeByFor } from "@/lib/measurement-active";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +15,9 @@ export async function GET(request: NextRequest) {
 
     const objects = await prisma.measurementObject.findMany({
       where: {
-        ...inScope(scope),
+        // Активный объект веба — свой у каждого: чужой открытый объект не подхватываем.
+        AND: [...inScope(scope).AND, status === "active" ? activeMineWhere(master.id) : status ? { status } : {}],
         deletedAt: null,
-        ...(status && { status }),
       },
       include: {
         rooms: { orderBy: { sortOrder: "asc" } },
@@ -126,6 +127,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
         measuredByMemberId: scope.members.find((m) => m.isMe)?.id ?? null,
         address: address || "",
         status: status || "active",
+        ...activeByFor(status || "active", master.id),
         totalArea,
         ...(latitude != null && { latitude }),
         ...(longitude != null && { longitude }),
