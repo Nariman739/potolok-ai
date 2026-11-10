@@ -7,6 +7,7 @@ import type { BillingPeriod } from "@/lib/billing";
 import type { PaymentMethod } from "@/lib/payment";
 import { reportError } from "@/lib/report-error";
 import { currencyFor } from "@/lib/company";
+import { VTB_COMMENT } from "@/lib/vtb";
 
 /**
  * Заявка на оплату вручную (Kaspi-перевод + скрин чека). Срок и сумма
@@ -47,6 +48,11 @@ export async function POST(request: Request) {
     // Сумма в валюте мастера: ₽ для России (27.10.2026).
     const quote = quotePayment(period, new Date(), await currencyFor(master.id));
 
+    // Комментарий «Оплата картой (ВТБ)» — служебная метка заявок картой ВТБ
+    // (по ней их сверяет и закрывает крон): ручной заявке её не даём.
+    let note = (comment ?? "").trim() || null;
+    if (note === VTB_COMMENT) note = `Мастер: ${note}`;
+
     const payment = await prisma.pendingPayment.create({
       data: {
         masterId: master.id,
@@ -54,7 +60,7 @@ export async function POST(request: Request) {
         currency: quote.currency,
         activatedDays: quote.days,
         screenshotUrl: screenshotUrl?.trim() || null,
-        comment: (comment ?? "").trim() || null,
+        comment: note,
       },
       include: { master: true },
     });

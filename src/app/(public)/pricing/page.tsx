@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaymentConfig } from "@/lib/payment";
 import { BILLING_ENABLED, PAYMENTS_OPEN, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
 import { TIPTOP_ENABLED } from "@/lib/tiptop";
+import { VTB_COMMENT, VTB_ENABLED, cardQuote } from "@/lib/vtb";
 import { currencyFor } from "@/lib/company";
 import { PricingClient } from "./PricingClient";
 
@@ -20,7 +21,9 @@ export const dynamic = "force-dynamic";
  * Страница тарифов. Открыта всегда (её смотрит платёжка при подключении),
  * но кнопка «Оплатить» появляется только при PAYMENTS_OPEN (или
  * BILLING_ENABLED) — до этого страница информационная: «пока бесплатно».
- * Картой (виджет TipTop) — когда заданы ключи TIPTOP_*.
+ * Картой (виджет TipTop) — когда заданы ключи TIPTOP_*. Картой ВТБ (страница
+ * банка) — при VTB_ENABLED; тогда она заменяет TipTop и открыта мастерам из
+ * России (карты «Мир», списание в рублях по курсу их банка).
  *
  * Из iOS-приложения (кука app_platform=ios) страницу не показываем вовсе —
  * App Store 3.1.1: цены и внешняя оплата из приложения запрещены.
@@ -41,6 +44,10 @@ export default async function PricingPage() {
     billingEnabled: BILLING_ENABLED,
     paymentsOpen: PAYMENTS_OPEN,
     cardEnabled: PAYMENTS_OPEN && TIPTOP_ENABLED && currency !== "RUB",
+    // Карта ВТБ: сумма всегда в тенге (для ₽-мастера — по правилу из vtb.ts).
+    vtb: PAYMENTS_OPEN && VTB_ENABLED
+      ? { month: cardQuote("month", currency), year: cardQuote("year", currency) }
+      : null,
   };
 
   if (!me) {
@@ -81,7 +88,7 @@ export default async function PricingPage() {
         createdAt: p.createdAt.toISOString(),
         days: p.activatedDays ?? 30,
         // Заявка картой: PENDING = виджет открыли, но не оплатили (не «на проверке»).
-        card: p.comment === "Оплата картой (TipTop)",
+        card: p.comment === "Оплата картой (TipTop)" || p.comment === VTB_COMMENT,
       }))}
     />
   );

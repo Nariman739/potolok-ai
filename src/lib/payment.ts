@@ -183,14 +183,22 @@ export async function activateSubscription(params: {
   adminId: string;
   /** Переопределить срок (админка). По умолчанию — срок из заявки. */
   days?: number;
-}): Promise<{ master: Master; payment: PendingPayment; firstApproved: boolean }> {
+  /** false — не слать «Оплату» в Meta (тестовые оплаты песочницы банка). */
+  trackPurchase?: boolean;
+}): Promise<{
+  master: Master;
+  payment: PendingPayment;
+  firstApproved: boolean;
+  /** true — эта активация и включила PRO; false — заявку уже одобрили раньше или параллельно. */
+  claimed: boolean;
+}> {
   const payment = await prisma.pendingPayment.findUnique({
     where: { id: params.paymentId },
     include: { master: true },
   });
   if (!payment) throw new Error("Payment not found");
   if (payment.status === "APPROVED") {
-    return { master: payment.master, payment, firstApproved: false };
+    return { master: payment.master, payment, firstApproved: false, claimed: false };
   }
 
   const days = params.days ?? payment.activatedDays ?? DAYS_MONTH;
@@ -249,12 +257,12 @@ export async function activateSubscription(params: {
       where: { id: payment.id },
       include: { master: true },
     });
-    return { master: fresh.master, payment: fresh, firstApproved: false };
+    return { master: fresh.master, payment: fresh, firstApproved: false, claimed: false };
   }
 
   // Meta Conversions API (08.11.2026): «Оплата» — чтобы в кабинете была видна
   // цена платящего мастера с рекламы. Идёт после транзакции, оплату не роняет.
-  await sendMetaEvent({
+  if (params.trackPurchase !== false) await sendMetaEvent({
     event: "Purchase",
     phone: result.master.phone,
     masterId: result.master.id,
@@ -264,7 +272,7 @@ export async function activateSubscription(params: {
     currency: result.payment.currency === "RUB" ? "RUB" : "KZT",
   });
 
-  return result;
+  return { ...result, claimed: true };
 }
 
 export async function rejectPayment(params: {

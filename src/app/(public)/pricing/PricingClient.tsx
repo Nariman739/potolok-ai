@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check } from "lucide-react";
@@ -32,7 +32,17 @@ type Config = {
   paymentsOpen: boolean;
   /** Оплата картой через виджет TipTop настроена. */
   cardEnabled: boolean;
+  /**
+   * Оплата картой ВТБ (страница банка). Когда есть — заменяет TipTop и открыта
+   * мастерам из России (только «Мир»). Суммы всегда в тенге.
+   */
+  vtb: { month: CardQuoteView; year: CardQuoteView } | null;
 };
+
+type CardQuoteView = { amountKzt: number; days: number; rub: number | null };
+
+/** Итог возврата из банка ВТБ: проверяем у сервера, он спрашивает банк. */
+type VtbReturn = "checking" | "pending" | "failed" | "review" | null;
 
 // Виджет TipTop Pay: скрипт грузим только с их домена и только когда нажали «картой».
 // status: success | fail | cancel…; номер транзакции — в data.transactionId.
@@ -145,8 +155,82 @@ export function PricingClient(props: Props) {
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [method, setMethod] = useState<"transfer" | "invoice" | "card">("transfer");
   const [cardPaidUntil, setCardPaidUntil] = useState<string | null>(null);
+  const [vtbReturn, setVtbReturn] = useState<VtbReturn>(null);
 
   const amountToPay = period === "year" && !launchOpen ? priceYear : priceMonth;
+  // Карта ВТБ: сумма в тенге по тому же периоду (стартовая цена — только месяц).
+  const vtbQuote = cfg.vtb ? (period === "year" && !launchOpen ? cfg.vtb.year : cfg.vtb.month) : null;
+  const cardOn = !!cfg.vtb || cfg.cardEnabled;
+  const cardLabel = vtbQuote
+    ? `💳 Оплатить картой ${vtbQuote.rub ? formatMoney(vtbQuote.rub, "RUB") : formatMoney(vtbQuote.amountKzt, "KZT")}`
+    : `💳 Оплатить картой ${fmt(amountToPay)}`;
+
+  // Возврат со страницы банка ВТБ: /pricing?vtb=<id заявки>. Спрашиваем сервер
+  // (он — банк) несколько раз: сразу после 3DS статус может ещё догоняться.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("vtb");
+    if (!id) return;
+    window.history.replaceState(null, "", "/pricing");
+    let stop = false;
+    setVtbReturn("checking");
+    setSubmittedId(null);
+    setPayOpen(true);
+    (async () => {
+      for (let i = 0; i < 4 && !stop; i++) {
+        try {
+          const res = await fetch("/api/payment/vtb/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId: id }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.ok) {
+            setVtbReturn(null);
+            setMethod("card");
+            setCardPaidUntil(data.paidUntil ?? null);
+            setSubmittedId(id);
+            startTransition(() => router.refresh());
+            return;
+          }
+          if (data.status === "FAILED") {
+            setVtbReturn("failed");
+            return;
+          }
+          if (data.status === "REVIEW") {
+            setVtbReturn("review");
+            return;
+          }
+        } catch {}
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+      if (!stop) setVtbReturn("pending");
+    })();
+    return () => { stop = true; };
+  }, [router]);
+
+  /** Картой ВТБ: заявка и заказ на сервере → страница банка. Карту видит только банк. */
+  async function payByVtb() {
+    setError(null);
+    setSubmitting(true);
+    setMethod("card");
+    try {
+      const res = await fetch("/api/payment/vtb/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.formUrl) {
+        setError(data.error || "Не удалось начать оплату");
+        setSubmitting(false);
+        return;
+      }
+      window.location.href = data.formUrl;
+    } catch {
+      setError("Не удалось открыть оплату картой. Можно оплатить переводом ниже.");
+      setSubmitting(false);
+    }
+  }
 
   function openPay(p: Period) {
     setPeriod(p);
@@ -408,7 +492,7 @@ export function PricingClient(props: Props) {
             </Button>
           )}
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            {fromRf ? "Перевод из России за 5 минут." : "Kaspi или карта."} Без автосписания — продлеваете сами, когда удобно.
+            {fromRf ? (cfg.vtb ? "Картой «Мир» или переводом из России." : "Перевод из России за 5 минут.") : "Kaspi или карта."} Без автосписания — продлеваете сами, когда удобно.
           </p>
         </Card>
       </div>
@@ -445,7 +529,38 @@ export function PricingClient(props: Props) {
       {/* Оплата */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="max-w-md">
-          {submittedId ? (
+          {vtbReturn ? (
+            <div className="py-4">
+              <DialogHeader>
+                <DialogTitle>
+                  {vtbReturn === "checking"
+                    ? "Проверяем оплату…"
+                    : vtbReturn === "failed"
+                      ? "Оплата не прошла"
+                      : vtbReturn === "review"
+                        ? "Оплата получена"
+                        : "Банк ещё подтверждает оплату"}
+                </DialogTitle>
+                <DialogDescription>
+                  {vtbReturn === "checking"
+                    ? "Спрашиваем банк, это несколько секунд."
+                    : vtbReturn === "failed"
+                      ? "Деньги не списаны. Попробуйте ещё раз или другую карту."
+                      : vtbReturn === "review"
+                        ? "Проверяем вручную — напишем в течение дня. Повторно платить не нужно."
+                        : "Если деньги списались, PRO включится автоматически в течение 10 минут — придёт уведомление."}
+                </DialogDescription>
+              </DialogHeader>
+              {vtbReturn !== "checking" && (
+                <div className="mt-4 space-y-2">
+                  {vtbReturn === "failed" && canPay && (
+                    <Button className="w-full" onClick={() => { setVtbReturn(null); openPay(period); }}>Попробовать ещё раз</Button>
+                  )}
+                  <Button className="w-full" variant={vtbReturn === "failed" ? "outline" : "default"} onClick={() => { setVtbReturn(null); setPayOpen(false); }}>Понятно</Button>
+                </div>
+              )}
+            </div>
+          ) : submittedId ? (
             <div className="py-4">
               <DialogHeader>
                 <DialogTitle>{method === "card" ? "✅ Оплата прошла" : "✅ Заявка отправлена"}</DialogTitle>
@@ -464,18 +579,27 @@ export function PricingClient(props: Props) {
               <DialogHeader>
                 <DialogTitle>PRO на {period === "year" && !launchOpen ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
                 <DialogDescription>
-                  {fromRf
+                  {fromRf && cfg.vtb
+                    ? "Картой «Мир» любого российского банка — PRO включится сразу, списание в рублях по курсу банка. Или переводом на карту Kaspi по номеру ниже с чеком — включим после проверки, обычно в течение часа."
+                    : fromRf
                     ? "Карты банков России через нашу платёжку не проходят. Переведите на карту Kaspi по номеру ниже и загрузите чек — PRO включим после проверки, обычно в течение часа."
-                    : cfg.cardEnabled
+                    : cardOn
                       ? "Картой — PRO включится сразу. Или переводом Kaspi: переведите на номер ниже и загрузите чек, либо попросите счёт."
                       : "Переведите по Kaspi на номер ниже и загрузите скрин чека — или попросите счёт, он придёт прямо в ваш Kaspi."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
-                {cfg.cardEnabled && (
-                  <Button className="w-full" size="lg" disabled={submitting} onClick={payByCard}>
-                    {submitting && method === "card" ? "Открываем оплату…" : `💳 Оплатить картой ${fmt(amountToPay)}`}
-                  </Button>
+                {cardOn && (
+                  <div>
+                    <Button className="w-full" size="lg" disabled={submitting} onClick={cfg.vtb ? payByVtb : payByCard}>
+                      {submitting && method === "card" ? "Открываем оплату…" : cardLabel}
+                    </Button>
+                    {fromRf && vtbQuote?.rub && (
+                      <p className="text-xs text-muted-foreground mt-1.5 text-center">
+                        Картой «Мир» любого российского банка. Спишется в рублях по курсу вашего банка, ≈ {formatMoney(vtbQuote.amountKzt, "KZT")}
+                      </p>
+                    )}
+                  </div>
                 )}
                 <div className="rounded-lg bg-muted p-4 space-y-2">
                   <div>
@@ -513,7 +637,7 @@ export function PricingClient(props: Props) {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <DialogFooter className="flex-col sm:flex-col gap-2">
-                <Button className="w-full" variant={cfg.cardEnabled ? "outline" : "default"} onClick={() => setStep("form")}>Я перевёл → загрузить чек</Button>
+                <Button className="w-full" variant={cardOn ? "outline" : "default"} onClick={() => setStep("form")}>Я перевёл → загрузить чек</Button>
                 {!fromRf && (
                   <Button className="w-full" variant="secondary" disabled={submitting} onClick={() => handleSubmit("invoice")}>
                     {submitting ? "Отправляем…" : "Пришлите мне счёт в Kaspi"}
