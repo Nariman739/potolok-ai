@@ -179,6 +179,7 @@ ok("WON при «Монтаж запланирован» — колонка не
 // колонка «Замер», статус не WON) не собрать: «смонтировали» само поднимает статус до WON,
 // а перенос с доски снимает «смонтировали». Это старые данные — готовим их напрямую в базе.
 await objPatch({ manualStage: "installed" });
+await page.waitForTimeout(1500); // «смонтировали» поднимает статус до WON после ответа — ждём, иначе UPDATE перетирается
 await sql`UPDATE "Client" SET status = 'IN_PROGRESS', "crmColumn" = 'measure' WHERE id = ${id}`;
 c = await get();
 ok("подготовка (как старые данные): IN_PROGRESS/measure, объект installed", c.status === "IN_PROGRESS" && c.crmColumn === "measure", `${c.status}/${c.crmColumn}`);
@@ -187,6 +188,31 @@ c = await get();
 o2 = await getObj();
 await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
 ok("WON при смонтированном объекте → этап Завершён", c.status === "WON" && c.crmColumn === null && o2.manualStage === "installed" && (await page.locator("[data-stage]").getAttribute("data-stage")) === "done", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+
+// ── 8. Замечания 0e: «Отказ» не стирает монтаж; closed симметрично installed ──
+// объект смонтирован, клиент в «Завершён» → «Отказ»: manualStage остаётся
+await objPatch({ manualStage: "installed" });
+await patch({ crmColumn: "done" });
+await patch({ crmColumn: "lost" });
+c = await get();
+o2 = await getObj();
+ok("Отказ при смонтированном объекте: LOST/lost, manualStage installed остался", c.status === "LOST" && c.crmColumn === "lost" && o2.manualStage === "installed", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+// объект «закрыт» → «Завершён» → увели в «Замер»: как для installed
+await patch({ crmColumn: "new" });
+o2 = await getObj();
+ok("из Отказа в Новую заявку: installed снят (как при уходе из Завершён)", o2.manualStage == null, `manualStage=${o2.manualStage}`);
+await objPatch({ manualStage: "closed" });
+await patch({ crmColumn: "done" });
+c = await get();
+o2 = await getObj();
+ok("closed → Завершён: ручная колонка не пишется (этап из приложения), manualStage closed", c.crmColumn === null && o2.manualStage === "closed" && c.status === "WON", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
+ok("closed: в карточке этап Завершён", (await page.locator("[data-stage]").getAttribute("data-stage")) === "done");
+await patch({ crmColumn: "measure" });
+c = await get();
+o2 = await getObj();
+await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
+ok("closed → увели в Замер: manualStage снят, колонка Замер, карточка «Замер»", o2.manualStage == null && c.crmColumn === "measure" && (await page.locator("[data-stage]").getAttribute("data-stage")) === "measure", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
 
 ok("консоль чистая", errs.length === 0, errs.slice(0, 3).join(" | "));
 await browser.close();

@@ -180,16 +180,18 @@ export async function applyCrmColumn(
     orderBy: { createdAt: "desc" },
     select: { id: true, manualStage: true },
   });
-  // Этап «смонтировали» уже поставлен в приложении: «Завершён» и так считается сам.
-  // Колонку не пишем — по ней ниже видно, что этап поставил канбан и его можно снять.
-  const stageFromApp = column === "done" && main?.manualStage === "installed";
+  // Этап «смонтировали»/«закрыл» уже поставлен в приложении: «Завершён» и так считается сам.
+  // Колонку не пишем — иначе ручная колонка перекрыла бы этап из приложения.
+  const finished = main?.manualStage === "installed" || main?.manualStage === "closed";
+  const stageFromApp = column === "done" && finished;
   await prisma.client.update({ where: { id: client.id }, data: { crmColumn: stageFromApp ? null : column } });
 
-  // Карточку уводят из «Завершён», в том числе через «Отказ»: «смонтировали» больше не верно,
-  // иначе доска и приложение разойдутся, а дата монтажа на таком объекте снова поднимала бы
-  // статус до «Сделка» (syncClientStatusForObject). Раньше проверялось только crmColumn === "done",
-  // но после «Завершён» с уже смонтированным объектом колонка остаётся пустой — и этап не снимался.
-  if (column !== "done" && main?.manualStage === "installed") {
+  // Карточку уводят из «Завершён»: «смонтировали»/«закрыл» больше не верно, иначе доска и
+  // приложение разойдутся, а дата монтажа на таком объекте снова поднимала бы статус до «Сделка»
+  // (syncClientStatusForObject). Раньше проверялось только crmColumn === "done" и только installed,
+  // но после «Завершён» с уже смонтированным объектом колонка пустая, а closed не снимался вовсе.
+  // «Отказ» — исключение: возврат или спор после монтажа не стирает факт монтажа в приложении.
+  if (column !== "done" && column !== "lost" && finished) {
     await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
   }
 
