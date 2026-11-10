@@ -5,6 +5,7 @@ import { inScope, type Scope } from "./company";
 import { pickPrimaryEstimate } from "./object-stage";
 import {
   autoCrmColumn,
+  CRM_COLUMNS,
   CRM_COLUMN_LABELS,
   mainObject,
   resolveCrmColumn,
@@ -256,9 +257,24 @@ export async function syncColumnForStatus(clientId: string, status: DealStatus):
       }
       return;
     }
-    case "WON":
-      if (current !== "done") await applyCrmColumn(client, "done");
+    case "WON": {
+      // WON — «сделка заключена», не «смонтировано»: за 30 дней автоматический WON «Объект
+      // согласован» ставился 79 раз у 47 мастеров без монтажа. Поэтому manualStage здесь не
+      // трогаем никогда (в «Завершён» на доске мастер говорит это явно — там installed ставится).
+      // Колонка: объект уже смонтирован → «Завершён» (считается сам), иначе не ниже «Договора».
+      const main = mainObject(c.measurements);
+      if (main?.manualStage === "installed" || main?.manualStage === "closed") {
+        if (current !== "done" && c.crmColumn !== null) {
+          await prisma.client.update({ where: { id: c.id }, data: { crmColumn: null } });
+        }
+        return;
+      }
+      if (isMiddleColumn(current) && CRM_COLUMNS.indexOf(current) >= CRM_COLUMNS.indexOf("contract")) return;
+      if (c.crmColumn !== "contract") {
+        await prisma.client.update({ where: { id: c.id }, data: { crmColumn: "contract" } });
+      }
       return;
+    }
     case "LOST":
       if (c.crmColumn !== "lost") await applyCrmColumn(client, "lost");
       return;

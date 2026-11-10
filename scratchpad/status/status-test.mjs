@@ -60,7 +60,8 @@ c = await get();
 ok("приложение: В работе при промежуточном этапе — этап не трогаем", c.crmColumn === "negotiation", c.crmColumn);
 await patch({ status: "WON" });
 c = await get();
-ok("приложение: Сделка → Завершён", c.status === "WON" && c.crmColumn === "done", `${c.status}/${c.crmColumn}`);
+// WON = «сделка заключена», не «смонтировано»: без объекта — «Договор», manualStage не трогаем
+ok("приложение: Сделка без объекта → Договор", c.status === "WON" && c.crmColumn === "contract", `${c.status}/${c.crmColumn}`);
 await patch({ status: "LOST" });
 c = await get();
 ok("приложение: Отказ → Отказ", c.status === "LOST" && c.crmColumn === "lost", `${c.status}/${c.crmColumn}`);
@@ -153,6 +154,39 @@ ok("доска: → Завершён даёт WON", c.status === "WON" && (c.crm
 await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
 ok("карточка после доски: этап Завершён, статус Сделка", (await page.locator("[data-stage]").getAttribute("data-stage")) === "done" && (await page.locator("h1 + div").first().textContent())?.includes("Сделка"));
 await shot("05-доска-завершён");
+
+// ── 7. Блокер контролёра: WON напрямую не ставит «смонтировали» ──
+const objPatch = (data) => api.patch(`${BASE}/api/objects/${obj.id}`, { data });
+const getObj = async () => (await api.get(`${BASE}/api/measurements/${obj.id}`)).json();
+await objPatch({ manualStage: null, installAt: null });
+await patch({ crmColumn: "measure" });
+c = await get();
+ok("Б: подготовка — IN_PROGRESS, объект без этапа, колонка Замер", c.status === "IN_PROGRESS" && c.crmColumn === "measure" && (await getObj()).manualStage == null, `${c.status}/${c.crmColumn}`);
+await patch({ status: "WON" });
+c = await get();
+let o2 = await getObj();
+ok("Б: PATCH WON → клиент WON, колонка Договор, объект без manualStage", c.status === "WON" && c.crmColumn === "contract" && o2.manualStage == null, `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
+ok("Б: в карточке этап Договор", (await page.locator("[data-stage]").getAttribute("data-stage")) === "contract");
+// WON при колонке install_planned — колонка не меняется
+await patch({ status: "NEW" });
+await patch({ crmColumn: "install_planned" });
+await patch({ status: "WON" });
+c = await get();
+o2 = await getObj();
+ok("WON при «Монтаж запланирован» — колонка не меняется, объект без manualStage", c.status === "WON" && c.crmColumn === "install_planned" && o2.manualStage == null, `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
+// WON при объекте installed → Завершён. Через API такое состояние (объект смонтирован, ручная
+// колонка «Замер», статус не WON) не собрать: «смонтировали» само поднимает статус до WON,
+// а перенос с доски снимает «смонтировали». Это старые данные — готовим их напрямую в базе.
+await objPatch({ manualStage: "installed" });
+await sql`UPDATE "Client" SET status = 'IN_PROGRESS', "crmColumn" = 'measure' WHERE id = ${id}`;
+c = await get();
+ok("подготовка (как старые данные): IN_PROGRESS/measure, объект installed", c.status === "IN_PROGRESS" && c.crmColumn === "measure", `${c.status}/${c.crmColumn}`);
+await patch({ status: "WON" });
+c = await get();
+o2 = await getObj();
+await page.goto(`${BASE}/dashboard/clients/${id}`, { waitUntil: "networkidle" });
+ok("WON при смонтированном объекте → этап Завершён", c.status === "WON" && c.crmColumn === null && o2.manualStage === "installed" && (await page.locator("[data-stage]").getAttribute("data-stage")) === "done", `${c.status}/${c.crmColumn} manualStage=${o2.manualStage}`);
 
 ok("консоль чистая", errs.length === 0, errs.slice(0, 3).join(" | "));
 await browser.close();
