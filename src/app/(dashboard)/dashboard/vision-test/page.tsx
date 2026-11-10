@@ -1637,10 +1637,16 @@ export default function ZameryPage() {
   // Плёнка на весь объект. Список есть только у тех, кто завёл такие плёнки.
   const [objectFilmId, setObjectFilmId] = useState<string | null>(null);
   const [canvasFilms, setCanvasFilms] = useState<{ key: string; name: string }[]>([]);
+  // Строки полотна прайса: выбор комнаты из них важнее плёнки объекта. null — ещё не загружены.
+  const [canvasRowIds, setCanvasRowIds] = useState<Set<string> | null>(null);
   useEffect(() => {
     fetch("/api/prices/films", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data?.films)) setCanvasFilms(data.films); })
+      .catch(() => {});
+    fetch("/api/prices/variants?category=canvas", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { id: string }[] | null) => { if (Array.isArray(data)) setCanvasRowIds(new Set(data.map((v) => v.id))); })
       .catch(() => {});
   }, []);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
@@ -2375,10 +2381,12 @@ export default function ZameryPage() {
 
   /** Выбор на комнату важнее выбора на объект. В КП плёнка объекта уходит как выбор комнаты. */
   function estimateVariantOverrides(room: Room): { variantOverrides?: Record<string, string> } {
-    // Плёнка комнаты удалена из прайса: действует выбор на объект, как в приложении.
-    const roomFilm = room.variantOverrides?.canvas;
-    const roomFilmGone = !!roomFilm && canvasFilms.length > 0 && !canvasFilms.some(f => f.key === roomFilm);
-    if (objectFilmId && (!roomFilm || roomFilmGone)) {
+    // Выбор комнаты (плёнка или своя строка полотна) важнее плёнки объекта, как в приложении.
+    // Выбор удалён из прайса — нет ни среди плёнок, ни среди строк полотна — действует объект.
+    const roomCanvas = room.variantOverrides?.canvas;
+    const roomCanvasGone = !!roomCanvas && canvasRowIds !== null
+      && !canvasFilms.some(f => f.key === roomCanvas) && !canvasRowIds.has(roomCanvas);
+    if (objectFilmId && (!roomCanvas || roomCanvasGone)) {
       return { variantOverrides: { ...room.variantOverrides, canvas: objectFilmId } };
     }
     return room.variantOverrides ? { variantOverrides: room.variantOverrides } : {};
