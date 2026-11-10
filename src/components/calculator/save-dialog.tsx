@@ -47,7 +47,7 @@ export function SaveDialog({ open, onOpenChange, onSave, saving, initialClientId
         <DialogHeader>
           <DialogTitle>Сохранить КП</DialogTitle>
           <DialogDescription>
-            Выберите клиента из CRM или введите данные нового
+            {clientId ? "Клиент из CRM подставлен, можно изменить" : "Выберите клиента из CRM или введите данные нового"}
           </DialogDescription>
         </DialogHeader>
 

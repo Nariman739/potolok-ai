@@ -143,7 +143,8 @@ export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; is
         onlyMine={onlyMine}
         onOnlyMine={setOnlyMine}
         view="list"
-        showToggle={isTeam}
+        // Канбан есть у всех (с доски «Список» виден всем) — из списка путь обратно нужен и одиночке
+        showToggle
         onAdd={() => setShowNewDialog(true)}
       />
 
