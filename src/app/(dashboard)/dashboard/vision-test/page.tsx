@@ -552,6 +552,8 @@ function toSavedObject(o: ServerObject): SavedObject {
       angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
       arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
       columns: (r.columns as RoomColumn[]) ?? [],
+      // Скругления из приложения: без поля КП теряло строку «Скруглённый угол».
+      ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
       area: r.area,
       perimeter: r.perimeter,
       // Без этих полей открытый из «Сохранённых» замер приходил пустым,
@@ -1757,6 +1759,7 @@ export default function ZameryPage() {
               angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
               arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
               columns: (r.columns as RoomColumn[]) ?? [],
+              ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
