@@ -37,6 +37,8 @@ interface Room {
   /** Радиус скругления каждого угла (см). Индекс i = угол МЕЖДУ стеной i-1 и i.
    *  0 или undefined = прямой угол. */
   cornerRadii?: number[];
+  /** Диагонали, намеренные рулеткой в приложении: индексы углов (вершина i — начало стены i), длина в см */
+  obliqueDiagonals?: { from: number; to: number; length: number }[];
   area: number;
   perimeter: number;
   elements?: RoomElement[];
@@ -2965,13 +2967,15 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
         <button onClick={onCancel} className="p-1 -ml-1 text-muted-foreground">
           <X className="h-5 w-5" />
         </button>
+        {/* На 390 название, селект полотна и «Готово» не помещались: название переносилось,
+            селект вылезал за край и его стрелка обрезалась. Теперь всё ужимается с многоточием. */}
         <button
           onClick={() => setNameEdit(editableName)}
-          className="text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted active:bg-muted"
+          className="min-w-0 text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted active:bg-muted"
           title="Тап — переименовать"
         >
-          {editableName} · {computedArea.toFixed(2)} м²
-          <Pencil className="h-3 w-3 text-muted-foreground" />
+          <span className="truncate">{editableName} · {computedArea.toFixed(2)} м²</span>
+          <Pencil className="h-3 w-3 shrink-0 text-muted-foreground" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
         {roomVariants && canvasFilms.length > 0 && (
@@ -2983,13 +2987,13 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
               if (e.target.value) next.canvas = e.target.value; else delete next.canvas;
               return next;
             })}
-            className="max-w-[220px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700">
+            className="min-w-0 max-w-[150px] truncate sm:max-w-[220px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700">
             <option value="">{canvasFilms.find((f) => f.key === objectFilmId)?.name ?? "Полотно: обычный расчёт"}</option>
             {canvasFilms.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}
           </select>
         )}
         <button onClick={() => onDone(elements, { walls: editableWalls, area: computedArea, perimeter: computedPerimeter, name: editableName, normalCorners: editableNormalCorners, angles: editableAngles, ...(roomVariants && { variantOverrides }) })}
-          className="flex items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
+          className="flex shrink-0 items-center gap-1 text-sm font-semibold text-[#1e3a5f] px-3 py-2 -mr-2 active:bg-blue-50 rounded-lg min-h-[44px]">
           <Check className="h-4 w-4" /> Готово
         </button>
         </div>
@@ -3213,6 +3217,55 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
               })}
             </g>
           )}
+
+          {/* Диагонали, намеренные рулеткой в приложении (obliqueDiagonals): рыжий пунктир с
+              разрывом под цифру и точками в углах — как в PDF цеха. Показываем, только пока
+              стены на сайте не менялись: после правки длин углы и длины могли разойтись. */}
+          {room.obliqueDiagonals && editableWalls.length === room.walls.length &&
+            editableWalls.every((w, i) => w === room.walls[i]) && (() => {
+            const n = vertices.length - 1;
+            const COLOR = "#b45309";
+            const fs = labelSize * 0.7;
+            const placed: { x: number; y: number }[] = [];
+            return room.obliqueDiagonals.map((d, k) => {
+              const a = vertices[d.from], b = vertices[d.to];
+              if (!a || !b || d.from >= n || d.to >= n || d.from === d.to || !(d.length > 0)) return null;
+              const dx = b.x - a.x, dy = b.y - a.y;
+              const len = Math.hypot(dx, dy);
+              if (len < 1) return null;
+              const ux = dx / len, uy = dy / len;
+              // Если середина занята цифрой соседней диагонали — сдвигаем подпись вдоль своей линии
+              let t = 0.5;
+              for (const cand of [0.5, 0.33, 0.67, 0.22, 0.78]) {
+                const px = a.x + dx * cand, py = a.y + dy * cand;
+                if (placed.every((p) => Math.hypot(p.x - px, p.y - py) >= fs * 2.2)) { t = cand; break; }
+              }
+              const mx = a.x + dx * t, my = a.y + dy * t;
+              placed.push({ x: mx, y: my });
+              const text = String(Math.round(d.length));
+              const half = (text.length * fs * 0.62) / 2 + fs * 0.35;
+              let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              if (angle > 90) angle -= 180;
+              if (angle < -90) angle += 180;
+              const sw = strokeW * 0.5;
+              const dash = `${strokeW * 2.4} ${strokeW * 1.8}`;
+              return (
+                <g key={`diag-${k}`} data-diagonal={`${d.from}-${d.to}`} pointerEvents="none">
+                  <line x1={a.x} y1={a.y} x2={mx - ux * half} y2={my - uy * half}
+                    stroke={COLOR} strokeWidth={sw} strokeDasharray={dash} />
+                  <line x1={mx + ux * half} y1={my + uy * half} x2={b.x} y2={b.y}
+                    stroke={COLOR} strokeWidth={sw} strokeDasharray={dash} />
+                  <circle cx={a.x} cy={a.y} r={strokeW * 1.1} fill={COLOR} />
+                  <circle cx={b.x} cy={b.y} r={strokeW * 1.1} fill={COLOR} />
+                  <text x={mx} y={my} textAnchor="middle" dominantBaseline="central"
+                    fontSize={fs} fontWeight="600" fill={COLOR}
+                    transform={`rotate(${angle}, ${mx}, ${my})`}>
+                    {text}
+                  </text>
+                </g>
+              );
+            });
+          })()}
 
           {/* Wall dimension labels — архитектурный стиль:
               - подложка-плашка под текстом (читаемо на любом фоне)

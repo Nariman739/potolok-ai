@@ -494,6 +494,8 @@ interface Room {
   angles: number[];         // turn angles in degrees (+90, -90, or any custom)
   arcBulges?: number[];     // bulge per wall (cm). 0 = straight, >0 = outward arc, <0 = inward arc
   cornerRadii?: number[];   // радиус скругления каждого угла (см). 0 = прямой угол. Индекс i = угол МЕЖДУ стеной i-1 и i.
+  /** Диагонали, намеренные рулеткой в приложении: индексы углов (вершина i — начало стены i) и длина, см */
+  obliqueDiagonals?: { from: number; to: number; length: number }[];
   columns?: RoomColumn[];   // columns/pillars inside room (area subtracted)
   cutouts?: RoomCutout[];   // internal rectangular cutouts (area subtracted)
   area: number;
@@ -561,6 +563,8 @@ function toSavedObject(o: ServerObject): SavedObject {
       columns: (r.columns as RoomColumn[]) ?? [],
       // Скругления из приложения: без поля КП теряло строку «Скруглённый угол».
       ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
+      // Диагонали из приложения: без них чертёж на сайте показывал только контур
+      ...(Array.isArray(r.obliqueDiagonals) && { obliqueDiagonals: r.obliqueDiagonals }),
       withInsert: r.withInsert ?? null,
       insertColor: r.insertColor ?? null,
       wallProfiles: r.wallProfiles ?? null,
@@ -1773,6 +1777,7 @@ export default function ZameryPage() {
               arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
               columns: (r.columns as RoomColumn[]) ?? [],
               ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
+              ...(Array.isArray(r.obliqueDiagonals) && { obliqueDiagonals: r.obliqueDiagonals }),
               withInsert: r.withInsert ?? null,
               insertColor: r.insertColor ?? null,
               wallProfiles: r.wallProfiles ?? null,
@@ -2501,7 +2506,8 @@ export default function ZameryPage() {
         length: Math.round(l * 100) / 100,
         width: Math.round(w * 100) / 100,
         ceilingHeight: 2.7,
-        canvasType: "matte" as CanvasType,
+        // "matte" нет в CANVAS_TYPES — чип в калькуляторе показывал ключ по-английски
+        canvasType: "mat" as CanvasType,
         profileType: profileTypeForRoom,
         spotsCount,
         spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined,

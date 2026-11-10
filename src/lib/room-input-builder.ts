@@ -259,7 +259,7 @@ export function buildRoomInputFromDesigner(
     length: Math.round(length * 100) / 100,
     width: Math.round(width * 100) / 100,
     ceilingHeight: existing?.ceilingHeight ?? 2.7,
-    canvasType: (existing?.canvasType ?? "matte") as CanvasType,
+    canvasType: (existing?.canvasType ?? "mat") as CanvasType,
     profileType: profileTypeForRoom,
     // Решение по вставке не на чертеже: правка комнаты в КП его сохраняет.
     ...(existing?.withInsert === false && { withInsert: false }),
