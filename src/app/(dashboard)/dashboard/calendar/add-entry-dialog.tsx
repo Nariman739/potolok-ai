@@ -119,7 +119,9 @@ export function AddEntryDialog({
 
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      {/* Единственная колонка с minmax(0): иначе поле времени и длинные строки клиентов
+          растягивали диалог шире экрана телефона (418px при 390) */}
+      <DialogContent aria-describedby={undefined} className="grid-cols-[minmax(0,1fr)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {fixedClient ? `${replaced ? "Перенести" : "Назначить"} ${noun}` : "Добавить в календарь"}
@@ -145,14 +147,14 @@ export function AddEntryDialog({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3">
+          <div className="min-w-0 space-y-1">
             <Label htmlFor="entry-date">Дата</Label>
-            <Input id="entry-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input id="entry-date" type="date" className="min-w-0" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <Label htmlFor="entry-time">Время{zone}</Label>
-            <Input id="entry-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <Input id="entry-time" type="time" className="min-w-0" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
 

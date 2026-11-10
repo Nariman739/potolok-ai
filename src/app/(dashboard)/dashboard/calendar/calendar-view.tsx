@@ -24,13 +24,24 @@ function entryClass(e: CalendarEntry) {
 }
 
 // Объект без клиента и адреса подписан «Без адреса» — одним словом не понять, что это за запись
-function entryLabel(e: CalendarEntry) {
+function entryLabel(e: CalendarEntry, clientName?: string) {
   if (!e.clientId && e.label === "Без адреса") return e.kind === "install" ? "Монтаж без адреса" : "Замер без адреса";
+  // Менеджер ищет по имени: сначала клиент, потом адрес (без адреса в label уже имя)
+  const name = clientName?.trim();
+  if (name && e.label !== name) return `${name} · ${e.label}`;
   return e.label;
 }
 
-function Entry({ entry, onEdit }: { entry: CalendarEntry; onEdit?: (e: CalendarEntry) => void }) {
-  const label = entryLabel(entry);
+function Entry({
+  entry,
+  clientName,
+  onEdit,
+}: {
+  entry: CalendarEntry;
+  clientName?: string;
+  onEdit?: (e: CalendarEntry) => void;
+}) {
+  const label = entryLabel(entry, clientName);
   const body = (
     <>
       <span className="font-medium">{entry.time}</span> {label}
@@ -162,6 +173,7 @@ function MobileCalendar({
   today,
   byDay,
   initialDay,
+  nameOf,
   editHandler,
   onAdd,
 }: {
@@ -170,6 +182,7 @@ function MobileCalendar({
   today: string;
   byDay: Map<string, CalendarEntry[]>;
   initialDay: string;
+  nameOf: (e: CalendarEntry) => string | undefined;
   editHandler: (e: CalendarEntry) => ((e: CalendarEntry) => void) | undefined;
   onAdd: (day: string) => void;
 }) {
@@ -312,7 +325,7 @@ function MobileCalendar({
             {list.length === 0 ? (
               <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">На этот день записей нет</p>
             ) : (
-              list.map((e) => <Entry key={e.id} entry={e} onEdit={editHandler(e)} />)
+              list.map((e) => <Entry key={e.id} entry={e} clientName={nameOf(e)} onEdit={editHandler(e)} />)
             )}
           </div>
         )}
@@ -345,6 +358,9 @@ export function CalendarView({
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [addDay, setAddDay] = useState<string | null>(null);
   const [editing, setEditing] = useState<CalendarEntry | null>(null);
+  // «Сегодня» в шапке: адрес может не измениться (уже ?d=сегодня) — тогда мобильный блок
+  // пересобирается по счётчику, чтобы выбранный день сбросился на сегодня
+  const [todayTick, setTodayTick] = useState(0);
   const clock = useClock();
   const today = clock.local ? clock.day(new Date()) : almatyToday;
   const defaultDay = today.startsWith(month) ? today : `${month}-01`;
@@ -358,6 +374,7 @@ export function CalendarView({
     [serverEntries, clock],
   );
   const clientFor = (e: CalendarEntry) => clients.find((c) => c.id === e.clientId);
+  const nameOf = (e: CalendarEntry) => clientFor(e)?.name;
   const editHandler = (e: CalendarEntry) => (isPlanned(e) && clientFor(e) ? setEditing : undefined);
 
   const byDay = useMemo(() => {
@@ -377,7 +394,9 @@ export function CalendarView({
           <Link href={`/dashboard/calendar?m=${shiftMonth(month, -1)}`} aria-label="Предыдущий месяц" className={navLink}>
             <ChevronLeft className="h-4 w-4" />
           </Link>
-          <Link href="/dashboard/calendar" className={navLink}>
+          {/* После свайпов недель адрес тот же — ссылка на тот же адрес ничего не делала.
+              Теперь ведёт на ?d=сегодня (текущий месяц, выбран сегодняшний день) и пересобирает мобильный блок */}
+          <Link href={`/dashboard/calendar?d=${today}`} onClick={() => setTodayTick((t) => t + 1)} className={navLink}>
             Сегодня
           </Link>
           <Link href={`/dashboard/calendar?m=${shiftMonth(month, 1)}`} aria-label="Следующий месяц" className={navLink}>
@@ -410,10 +429,13 @@ export function CalendarView({
           </span>
           {!clock.local && <span className="whitespace-nowrap">Время по Астане</span>}
         </div>
-        <Button onClick={() => setAddDay(defaultDay)} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить
-        </Button>
+        {/* На телефоне «Добавить» есть у выбранного дня — вторая кнопка в шапке дублировала её */}
+        <div className="hidden md:contents">
+          <Button onClick={() => setAddDay(defaultDay)} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
+            <Plus className="h-4 w-4 mr-2" />
+            Добавить
+          </Button>
+        </div>
       </div>
 
       <div className="hidden overflow-hidden rounded-lg border md:block">
@@ -450,7 +472,7 @@ export function CalendarView({
                   {Number(day.slice(8))}
                 </div>
                 {shown.map((e) => (
-                  <Entry key={e.id} entry={e} onEdit={editHandler(e)} />
+                  <Entry key={e.id} entry={e} clientName={nameOf(e)} onEdit={editHandler(e)} />
                 ))}
                 {list.length > shown.length && (
                   <button
@@ -472,12 +494,13 @@ export function CalendarView({
       {/* key: переход через границу месяца (?m=&d=) не пересоздаёт компонент сам по себе,
           и выбранный день оставался старым — месяц и день из адреса пересобирают мобильный блок */}
       <MobileCalendar
-        key={`${month}:${initialDay ?? ""}`}
+        key={`${month}:${initialDay ?? ""}:${todayTick}`}
         month={month}
         days={days}
         today={today}
         byDay={byDay}
         initialDay={initialDay && days.includes(initialDay) ? initialDay : defaultDay}
+        nameOf={nameOf}
         editHandler={editHandler}
         onAdd={setAddDay}
       />
@@ -492,6 +515,7 @@ export function CalendarView({
               <Entry
                 key={e.id}
                 entry={e}
+                clientName={nameOf(e)}
                 onEdit={
                   editHandler(e) &&
                   ((x) => {
