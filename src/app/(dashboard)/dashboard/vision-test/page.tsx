@@ -507,6 +507,13 @@ interface Room {
   previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
   withInsert?: boolean | null; // Вставка в комнате из приложения; null — как на объекте
   insertColor?: string | null; // "black" — чёрная вставка
+  /** Профили по стенам из приложения. Сайт пока считает профиль по комнате целиком — только для предупреждения. */
+  wallProfiles?: Record<string, string> | null;
+}
+
+/** Комнаты, где профиль задан по стенам (в том числе старые метки вставки): сайт посчитает их иначе, чем приложение. */
+function roomsWithWallProfiles(list: Room[]): Room[] {
+  return list.filter(r => r.wallProfiles && Object.keys(r.wallProfiles).length > 0);
 }
 
 /** Копия из localStorage могла быть сделана без elements: такие комнаты не должны затирать сервер. */
@@ -561,6 +568,7 @@ function toSavedObject(o: ServerObject): SavedObject {
       ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
       withInsert: r.withInsert ?? null,
       insertColor: r.insertColor ?? null,
+      wallProfiles: r.wallProfiles ?? null,
       area: r.area,
       perimeter: r.perimeter,
       // Без этих полей открытый из «Сохранённых» замер приходил пустым,
@@ -1772,6 +1780,7 @@ export default function ZameryPage() {
               ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
               withInsert: r.withInsert ?? null,
               insertColor: r.insertColor ?? null,
+              wallProfiles: r.wallProfiles ?? null,
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
@@ -2861,6 +2870,16 @@ export default function ZameryPage() {
                 }}
               />
             ))}
+            {(() => {
+              const byWalls = roomsWithWallProfiles(rooms);
+              if (!byWalls.length) return null;
+              const names = byWalls.map(r => `«${r.name || "Помещение"}»`).join(", ");
+              return (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {byWalls.length === 1 ? `В комнате ${names}` : `В комнатах ${names}`} профили заданы по стенам в приложении — на сайте профиль посчитан по комнате целиком. Проверьте строки профиля или посчитайте КП в приложении
+                </p>
+              );
+            })()}
             {/* Summary + actions */}
             <div className="rounded-lg border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/5 p-4 flex items-center justify-between flex-wrap gap-3">
               <div>
