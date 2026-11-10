@@ -6,6 +6,7 @@ import { getOrCreateClient } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { checkObjectLimit } from "@/lib/billing";
 import { activeMineWhere, activeByFor } from "@/lib/measurement-active";
+import { normalizeWallFurniture } from "@/lib/wall-furniture";
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
       /** Плёнка на весь объект (filmKey); null — снять выбор */
       canvasItemId?: string | null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null }[];
+      rooms?: { name: string; walls: number[]; normalCorners: boolean[]; angles?: number[]; arcBulges?: number[]; cornerRadii?: number[]; columns?: any[]; measureDiagonals?: number[]; obliqueDiagonals?: { from: number; to: number; length: number }[]; area: number; perimeter: number; elements?: any[]; wallProfiles?: Record<number, string>; variantOverrides?: Record<string, string>; withInsert?: boolean | null; insertColor?: string | null; wallFurniture?: unknown }[];
     };
 
     const totalArea = rooms
@@ -155,6 +156,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
                 variantOverrides: r.variantOverrides ?? undefined,
                 withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
                 insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
+                // «Фасад шкафа (только для 3D)» — пусто/нет поля: колонка остаётся NULL.
+                wallFurniture: normalizeWallFurniture(r.wallFurniture, r.walls?.length) ?? undefined,
                 sortOrder: i,
               })),
             }

@@ -833,6 +833,10 @@ model MeasurementRoom {
   withInsert       Boolean?
   // Цвет вставки (09.11.2026, для 3D и строки КП «Вставка (чёрная)»): "white" | "black", null — белая.
   insertColor      String?
+  // «Фасад шкафа (только для 3D)», 10.11.2026: [{wall, color}] — целые стены контура,
+  // на которых в 3D рисуется фасад встроенного шкафа. Только вид: расчёт, цех, наряд не читают.
+  // Колонка добавлена на проде SQL-ом, без миграции (src/lib/wall-furniture.ts).
+  wallFurniture    Json?
   // Per-комната выбор кастомных вариантов из прайса мастера:
   // Record<positionType, variantId>. При расчёте КП в estimate.tsx
   // переопределяет дефолтные позиции (canvas, profile, spot, etc.).
