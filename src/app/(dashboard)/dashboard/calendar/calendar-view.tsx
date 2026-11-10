@@ -468,7 +468,10 @@ export function CalendarView({
         </div>
       </div>
 
+      {/* key: переход через границу месяца (?m=&d=) не пересоздаёт компонент сам по себе,
+          и выбранный день оставался старым — месяц и день из адреса пересобирают мобильный блок */}
       <MobileCalendar
+        key={`${month}:${initialDay ?? ""}`}
         month={month}
         days={days}
         today={today}
