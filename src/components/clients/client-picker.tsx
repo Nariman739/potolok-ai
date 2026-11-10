@@ -31,6 +31,8 @@ export function ClientPicker({
 }) {
   const [allClients, setAllClients] = useState<ClientHit[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // «Выбрать из CRM»: список показывается и без набранного текста
+  const [browsing, setBrowsing] = useState(false);
   const [activeField, setActiveField] = useState<"name" | "phone" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +70,8 @@ export function ClientPicker({
     }
   }, [initialClientId, allClients, value.clientId, onChange]);
 
+  // Закрываем по click, а не по mousedown: иначе список схлопывался ещё до отпускания
+  // кнопки, «Сохранить» уезжала вверх из-под пальца и первое нажатие пропадало
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (
@@ -75,10 +79,11 @@ export function ClientPicker({
         !containerRef.current.contains(e.target as Node)
       ) {
         setShowSuggestions(false);
+        setBrowsing(false);
       }
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("click", onClickOutside);
+    return () => document.removeEventListener("click", onClickOutside);
   }, []);
 
   const query = (
@@ -102,6 +107,10 @@ export function ClientPicker({
         .slice(0, 5)
     : allClients.slice(0, 5);
 
+  // Пустое поле в фокусе список не открывает — только набранный текст или «Выбрать из CRM»
+  const listOpen =
+    showSuggestions && !value.clientId && suggestions.length > 0 && (!!query || browsing);
+
   function pick(c: ClientHit) {
     onChange({
       clientId: c.id,
@@ -110,6 +119,7 @@ export function ClientPicker({
       clientAddress: c.address ?? "",
     });
     setShowSuggestions(false);
+    setBrowsing(false);
   }
 
   function clearLink() {
@@ -119,6 +129,11 @@ export function ClientPicker({
       clientPhone: value.clientPhone,
       clientAddress: value.clientAddress,
     });
+  }
+
+  function focusField(field: "name" | "phone") {
+    setActiveField(field);
+    setShowSuggestions(true);
   }
 
   return (
@@ -140,24 +155,24 @@ export function ClientPicker({
         </div>
       )}
 
-      <div className="relative">
+      <div>
         <Label htmlFor="cp-name">Имя клиента</Label>
         <div className="relative">
           <Input
             id="cp-name"
             value={value.clientName}
-            onChange={(e) =>
+            onChange={(e) => {
+              setBrowsing(false);
+              setShowSuggestions(true);
               onChange({
                 ...value,
                 clientId: null,
                 clientName: e.target.value,
-              })
-            }
-            onFocus={() => {
-              setActiveField("name");
-              setShowSuggestions(true);
+              });
             }}
+            onFocus={() => focusField("name")}
             placeholder="Иван"
+            autoComplete="off"
           />
           {!value.clientName && (
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -170,28 +185,28 @@ export function ClientPicker({
         <Input
           id="cp-phone"
           value={value.clientPhone}
-          onChange={(e) =>
+          onChange={(e) => {
+            setBrowsing(false);
+            setShowSuggestions(true);
             onChange({
               ...value,
               clientId: null,
               clientPhone: e.target.value,
-            })
-          }
-          onFocus={() => {
-            setActiveField("phone");
-            setShowSuggestions(true);
+            });
           }}
+          onFocus={() => focusField("phone")}
           placeholder="+7 777 123-45-67"
           type="tel"
+          autoComplete="off"
         />
       </div>
 
-      {showSuggestions && suggestions.length > 0 && !value.clientId && (
-        <div className="rounded-md border bg-white shadow-sm">
+      {listOpen && (
+        <div data-client-suggestions className="rounded-md border bg-white shadow-sm">
           <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground border-b">
             Существующие клиенты
           </div>
-          <div className="max-h-56 overflow-y-auto">
+          <div className="max-h-40 overflow-y-auto">
             {suggestions.map((c) => (
               <button
                 key={c.id}
@@ -230,13 +245,14 @@ export function ClientPicker({
         </p>
       )}
 
-      {allClients.length > 0 && !value.clientId && !value.clientName && !value.clientPhone && (
+      {allClients.length > 0 && !value.clientId && !value.clientName && !value.clientPhone && !browsing && (
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={() => {
             setActiveField("name");
+            setBrowsing(true);
             setShowSuggestions(true);
           }}
         >
