@@ -73,6 +73,8 @@ export const TEMPLATE_ROLES: Record<string, RoleMeta> = {
   gardina_plastic: { role: "linear", appliesTo: ["gardina"] },
   gardina_aluminum: { role: "linear", appliesTo: ["gardina"] },
   pk14: { role: "linear", appliesTo: ["gardina"] },
+  // Добавка к гардине с подсветкой, сама гардиной не выбирается (как led_strip у подшторника).
+  gardina_led: { role: "linear", appliesTo: ["gardina_light"] },
 
   podshtornik_plastic: { role: "wall", appliesTo: ["subcurtain", "subcurtain_light"], wallKind: { endsCeiling: true } },
   podshtornik_ldsp: { role: "wall", appliesTo: ["ldsp"], wallKind: { endsCeiling: true } },

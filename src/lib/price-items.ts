@@ -66,8 +66,8 @@ export async function ownItemsByIdFor(companyId: string): Promise<Record<string,
       deletedAt: null,
       OR: [
         { templateCode: null, code: { startsWith: "own:" } },
-        // insert и углы — ради скрытия в прайсе: скрытые авто-добавки не идут в КП, как в приложении.
-        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led", "canvas_320", "canvas_550", "canvas_over", "insert", "corner_plastic", "corner_aluminum", "corner_rounded", "led_strip"] } },
+        // insert и углы — ради скрытия в прайсе: скрытые авто-добавки не идут в КП, как в приложении; gardina_led — так же.
+        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led", "canvas_320", "canvas_550", "canvas_over", "insert", "corner_plastic", "corner_aluminum", "corner_rounded", "led_strip", "gardina_led"] } },
       ],
     },
     select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true, maxWidthCm: true, filmKey: true, filmName: true, wallKind: true },

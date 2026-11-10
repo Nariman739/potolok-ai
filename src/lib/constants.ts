@@ -106,6 +106,9 @@ export const PRODUCT_ITEMS: ProductItem[] = [
   { code: "gardina_single", name: "Гардина для шторки ванны", unit: "м.п.", defaultPrice: 15000, category: "gardina" },
   // Аудит 01.10.2026: ПК-14 мастера заводили вариантом 90 раз — каталог его не знал.
   { code: "pk14", name: "Карниз ПК-14", unit: "м.п.", defaultPrice: 15000, category: "gardina", description: "Алюминиевый потолочный карниз под шторы" },
+  // Нариман 10.11.2026: надбавка за подсветку гардины — строка прайса, а не 3000 в коде.
+  // В КП не своей строкой: «Гардина с подсветкой» = цена гардины + эта цена (м.п.).
+  { code: "gardina_led", name: "Подсветка гардины", unit: "м.п.", defaultPrice: 3000, category: "gardina", description: "Добавляется к цене гардины с подсветкой, за м.п." },
 
   // Подшторник (за м.п.)
   { code: "podshtornik_plastic", name: "Подшторник пластиковый (брус)", unit: "м.п.", defaultPrice: 2500, category: "podshtornik" },
@@ -215,6 +218,7 @@ export const DEFAULT_PRICES_RUB: Record<string, number> = {
   gardina_aluminum: 1800,
   gardina_single: 2500,
   pk14: 2500,
+  gardina_led: 500,
   podshtornik_plastic: 450,
   podshtornik_ldsp: 900,
   podshtornik_aluminum: 1400,

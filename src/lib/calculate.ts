@@ -33,9 +33,6 @@ export interface CustomItemInfo {
   noInsert?: boolean;
 }
 
-/** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
-const LED_SURCHARGE_PER_M = 3000;
-
 /** Монтажная позиция для строки со своим вариантом: код own:… не сопоставить с нарядом. */
 const VARIANT_INSTALL_CODE: Record<string, string> = {
   canvas: "install_canvas",
@@ -496,7 +493,10 @@ function calculateRoom(
     if (singleItem) items.push(singleItem);
   }
   if (gardinaLightM > 0) {
-    const unitPrice = (gardinaVariant?.price ?? getPrice(prices, "gardina_plastic")) + LED_SURCHARGE_PER_M;
+    // Подсветка — строка прайса «Подсветка гардины» (gardina_led, 10.11.2026), а не
+    // константа: мастер ставит свою цену, 0 — без надбавки; скрыта — тоже без надбавки.
+    const ledPrice = ownItemsById?.["catalog:gardina_led"]?.isHidden ? 0 : getPrice(prices, "gardina_led");
+    const unitPrice = (gardinaVariant?.price ?? getPrice(prices, "gardina_plastic")) + ledPrice;
     items.push({
       itemCode: gardinaVariant ? `${gardinaVariant.code}:led` : "gardina_led",
       itemName: `${gardinaVariant?.name ?? "Гардина"} с подсветкой`,
