@@ -151,20 +151,21 @@ export function CalendarView({
             </Button>
           </div>
         )}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground md:ml-auto">
-          <span className="flex items-center gap-1.5">
+        {/* На 390px легенда переносится целыми подписями, а не по словам */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground md:ml-auto">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="h-2.5 w-2.5 rounded-sm bg-blue-200" />
             Замер
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="h-2.5 w-2.5 rounded-sm bg-amber-200" />
             Монтаж
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="h-2.5 w-2.5 rounded-sm border border-muted-foreground/40" />
             Прошло — бледнее
           </span>
-          {!clock.local && <span>Время по Астане</span>}
+          {!clock.local && <span className="whitespace-nowrap">Время по Астане</span>}
         </div>
         <Button onClick={() => setAddDay(defaultDay)} className="bg-[#1e3a5f] hover:bg-[#152d4a]">
           <Plus className="h-4 w-4 mr-2" />
@@ -242,7 +243,7 @@ export function CalendarView({
       </div>
 
       <Dialog open={!!openDay} onOpenChange={(open) => !open && setOpenDay(null)}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="first-letter:uppercase">{openDay ? dayTitle(openDay) : ""}</DialogTitle>
           </DialogHeader>

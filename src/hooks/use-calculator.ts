@@ -24,8 +24,10 @@ function getRooms(): RoomInput[] {
       }
     }
   } catch {}
+  // Тот же массив, что и в кэше: новый `[]` на каждый вызов React считал сменой снимка
+  // («getServerSnapshot should be cached») при открытии калькулятора
   cachedRooms = [];
-  return [];
+  return cachedRooms;
 }
 
 function setRoomsStore(next: RoomInput[]) {
