@@ -1,10 +1,43 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Share2, MessageCircle, Check, Trash2, Download, FileText, ClipboardCheck, RotateCcw, Copy, Calendar } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Share2,
+  MessageCircle,
+  Check,
+  Trash2,
+  Download,
+  FileText,
+  ClipboardCheck,
+  RotateCcw,
+  Copy,
+  Calendar,
+  ExternalLink,
+  RefreshCcw,
+  MoreHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
+import { APP_ESTIMATE_RECALC_MESSAGE } from "@/lib/room-edit";
 
 interface EstimateActionsProps {
   estimateId: string;
@@ -15,8 +48,15 @@ interface EstimateActionsProps {
   validUntil?: Date | null;
   /** Вид цен для клиента: detailed | summary (16.10.2026) */
   priceView?: string | null;
+  /** Куда ведёт «Пересчитать»; null — КП из приложения, кнопка только объясняет */
+  recalcHref: string | null;
+  visualizationHref: string;
 }
 
+/**
+ * Действия над КП. На телефоне (до sm) — три главных: «Открыть КП», «WhatsApp», «КП клиенту»,
+ * остальное в меню «Ещё»; от sm — всё в ряд, как раньше. Логика кнопок одна на оба вида.
+ */
 export function EstimateActions({
   estimateId,
   publicId,
@@ -25,11 +65,14 @@ export function EstimateActions({
   contractConfigured,
   validUntil,
   priceView,
+  recalcHref,
+  visualizationHref,
 }: EstimateActionsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState<"detailed" | "summary">(priceView === "summary" ? "summary" : "detailed");
   const [viewSaving, setViewSaving] = useState(false);
+  const [validOpen, setValidOpen] = useState(false);
 
   // «Подробно» — количество × цена по позициям; «Кратко» — только названия и
   // итоги по комнатам, чтобы клиент не пересылал смету конкурентам.
@@ -122,6 +165,28 @@ export function EstimateActions({
     }
   };
 
+  const handleRevise = async () => {
+    if (!confirm("Пометить КП как пересмотренное? Клиент увидит, что оно недействительно.")) return;
+    setRevising(true);
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REVISED" }),
+      });
+      if (res.ok) {
+        toast.success("КП помечено как пересмотренное");
+        router.refresh();
+      } else {
+        toast.error("Ошибка");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setRevising(false);
+    }
+  };
+
   const handleValidUntil = async (dateStr: string) => {
     try {
       const res = await fetch(`/api/estimates/${estimateId}`, {
@@ -143,21 +208,21 @@ export function EstimateActions({
   const validUntilValue = validUntil
     ? new Date(validUntil).toISOString().split("T")[0]
     : "";
+  // «24.11.2026» для пункта меню — из той же строки, без часового пояса
+  const validUntilLabel = validUntilValue ? validUntilValue.split("-").reverse().join(".") : "не задан";
+
+  const canRevise = status === "CONFIRMED" || status === "SENT" || status === "VIEWED";
+  const showAct = contractConfigured && status === "CONFIRMED";
+  const publicUrl = `/kp/${publicId}`;
 
   return (
     <div className="flex flex-wrap gap-3">
-      <Button variant="outline" size="sm" onClick={handleCopy}>
-        {copied ? (
-          <>
-            <Check className="h-4 w-4 mr-2 text-green-600" />
-            Скопировано!
-          </>
-        ) : (
-          <>
-            <Share2 className="h-4 w-4 mr-2" />
-            Скопировать ссылку
-          </>
-        )}
+      {/* Главные — на любом экране */}
+      <Button variant="outline" size="sm" asChild>
+        <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Открыть КП
+        </a>
       </Button>
       <Button variant="outline" size="sm" onClick={handleWhatsApp}>
         <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
@@ -169,113 +234,254 @@ export function EstimateActions({
           КП клиенту
         </a>
       </Button>
-      <Button variant="outline" size="sm" asChild>
-        <a href={`/api/estimates/${estimateId}/installer-pdf`}>
-          <FileText className="h-4 w-4 mr-2 text-blue-600" />
-          КП монтажнику
-        </a>
-      </Button>
-      {contractConfigured && (
+
+      {/* Остальное — в ряд от sm */}
+      <div className="hidden sm:contents">
+        {recalcHref ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={recalcHref}>
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Пересчитать
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => toast.info(APP_ESTIMATE_RECALC_MESSAGE)}>
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Пересчитать
+          </Button>
+        )}
         <Button variant="outline" size="sm" asChild>
-          <a href={`/api/estimates/${estimateId}/contract?web=1`}>
-            <FileText className="h-4 w-4 mr-2" />
-            Договор
+          <Link href={visualizationHref}>✨ AI-фото</Link>
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleCopy}>
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 mr-2 text-green-600" />
+              Скопировано!
+            </>
+          ) : (
+            <>
+              <Share2 className="h-4 w-4 mr-2" />
+              Скопировать ссылку
+            </>
+          )}
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/api/estimates/${estimateId}/installer-pdf`}>
+            <FileText className="h-4 w-4 mr-2 text-blue-600" />
+            КП монтажнику
           </a>
         </Button>
-      )}
-      {contractConfigured && status === "CONFIRMED" && (
-        <Button variant="outline" size="sm" asChild>
-          <a href={`/api/estimates/${estimateId}/act`}>
-            <ClipboardCheck className="h-4 w-4 mr-2" />
-            Акт
-          </a>
+        {contractConfigured && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/estimates/${estimateId}/contract?web=1`}>
+              <FileText className="h-4 w-4 mr-2" />
+              Договор
+            </a>
+          </Button>
+        )}
+        {showAct && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/estimates/${estimateId}/act`}>
+              <ClipboardCheck className="h-4 w-4 mr-2" />
+              Акт
+            </a>
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={handleDuplicate} disabled={duplicating}>
+          <Copy className="h-4 w-4 mr-2" />
+          {duplicating ? "..." : "Дублировать"}
         </Button>
-      )}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDuplicate}
-        disabled={duplicating}
-      >
-        <Copy className="h-4 w-4 mr-2" />
-        {duplicating ? "..." : "Дублировать"}
-      </Button>
-      {(status === "CONFIRMED" || status === "SENT" || status === "VIEWED") && (
+        {canRevise && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRevise}
+            disabled={revising}
+            className="text-orange-600 hover:text-orange-700"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {revising ? "..." : "Пересмотреть"}
+          </Button>
+        )}
+
+        {/* Вид цен для клиента */}
+        <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
+          <label className="text-muted-foreground text-xs whitespace-nowrap">Клиент увидит:</label>
+          <div className="flex rounded-md bg-muted p-0.5">
+            {(["detailed", "summary"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => handlePriceView(v)}
+                disabled={viewSaving}
+                className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors ${
+                  view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={v === "summary" ? "Только названия позиций и итог по комнате" : "Количество × цена по каждой позиции"}
+              >
+                {v === "detailed" ? "Подробно" : "Кратко"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Срок действия КП */}
+        <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
+          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          <label className="text-muted-foreground text-xs whitespace-nowrap">Действительно до:</label>
+          <input
+            type="date"
+            defaultValue={validUntilValue}
+            className="text-sm bg-transparent outline-none w-32"
+            onChange={(e) => handleValidUntil(e.target.value)}
+          />
+        </div>
+
         <Button
           variant="outline"
           size="sm"
-          onClick={async () => {
-            if (!confirm("Пометить КП как пересмотренное? Клиент увидит, что оно недействительно.")) return;
-            setRevising(true);
-            try {
-              const res = await fetch(`/api/estimates/${estimateId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "REVISED" }),
-              });
-              if (res.ok) {
-                toast.success("КП помечено как пересмотренное");
-                router.refresh();
-              } else {
-                toast.error("Ошибка");
-              }
-            } catch {
-              toast.error("Ошибка соединения");
-            } finally {
-              setRevising(false);
-            }
-          }}
-          disabled={revising}
-          className="text-orange-600 hover:text-orange-700"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-destructive hover:text-destructive"
         >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          {revising ? "..." : "Пересмотреть"}
+          <Trash2 className="h-4 w-4 mr-2" />
+          {deleting ? "Удаляем..." : "Удалить"}
         </Button>
-      )}
+      </div>
 
-      {/* Вид цен для клиента */}
-      <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
-        <label className="text-muted-foreground text-xs whitespace-nowrap">Клиент увидит:</label>
-        <div className="flex rounded-md bg-muted p-0.5">
-          {(["detailed", "summary"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => handlePriceView(v)}
-              disabled={viewSaving}
-              className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors ${
-                view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-              title={v === "summary" ? "Только названия позиций и итог по комнате" : "Количество × цена по каждой позиции"}
+      {/* До sm — меню «Ещё» */}
+      <div className="sm:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" aria-label="Ещё действия">
+              <MoreHorizontal className="h-4 w-4 mr-2" />
+              Ещё
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            {recalcHref ? (
+              <DropdownMenuItem asChild>
+                <Link href={recalcHref}>
+                  <RefreshCcw />
+                  Пересчитать
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => toast.info(APP_ESTIMATE_RECALC_MESSAGE)}>
+                <RefreshCcw />
+                Пересчитать
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem asChild>
+              <Link href={visualizationHref}>
+                <span className="w-4 text-center leading-none">✨</span>
+                AI-фото
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                handleCopy();
+                toast.success("Ссылка на КП скопирована");
+              }}
             >
-              {v === "detailed" ? "Подробно" : "Кратко"}
-            </button>
-          ))}
-        </div>
-      </div>
+              <Share2 />
+              Скопировать ссылку
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={`/api/estimates/${estimateId}/installer-pdf`}>
+                <FileText className="text-blue-600" />
+                КП монтажнику
+              </a>
+            </DropdownMenuItem>
+            {contractConfigured && (
+              <DropdownMenuItem asChild>
+                <a href={`/api/estimates/${estimateId}/contract?web=1`}>
+                  <FileText />
+                  Договор
+                </a>
+              </DropdownMenuItem>
+            )}
+            {showAct && (
+              <DropdownMenuItem asChild>
+                <a href={`/api/estimates/${estimateId}/act`}>
+                  <ClipboardCheck />
+                  Акт
+                </a>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={handleDuplicate} disabled={duplicating}>
+              <Copy />
+              {duplicating ? "Копируем…" : "Дублировать"}
+            </DropdownMenuItem>
+            {canRevise && (
+              <DropdownMenuItem onSelect={handleRevise} disabled={revising} className="text-orange-600 focus:text-orange-700">
+                <RotateCcw className="text-orange-600" />
+                {revising ? "…" : "Пересмотреть"}
+              </DropdownMenuItem>
+            )}
 
-      {/* Срок действия КП */}
-      <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 text-sm bg-background">
-        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-        <label className="text-muted-foreground text-xs whitespace-nowrap">Действительно до:</label>
-        <input
-          type="date"
-          defaultValue={validUntilValue}
-          className="text-sm bg-transparent outline-none w-32"
-          onChange={(e) => handleValidUntil(e.target.value)}
-        />
-      </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Клиент увидит</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={view} onValueChange={(v) => handlePriceView(v as "detailed" | "summary")}>
+              <DropdownMenuRadioItem value="detailed" disabled={viewSaving}>
+                Подробно
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="summary" disabled={viewSaving}>
+                Кратко
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDelete}
-        disabled={deleting}
-        className="text-destructive hover:text-destructive"
-      >
-        <Trash2 className="h-4 w-4 mr-2" />
-        {deleting ? "Удаляем..." : "Удалить"}
-      </Button>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setValidOpen(true)}>
+              <Calendar />
+              <span>
+                Действительно до: <span className="font-medium">{validUntilLabel}</span>
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={handleDelete} disabled={deleting}>
+              <Trash2 />
+              {deleting ? "Удаляем..." : "Удалить"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Дата в выпадающем меню на телефоне неудобна — отдельное окно с тем же обработчиком */}
+        <Dialog open={validOpen} onOpenChange={setValidOpen}>
+          <DialogContent aria-describedby={undefined} className="max-w-xs">
+            <DialogHeader>
+              <DialogTitle>Срок действия КП</DialogTitle>
+            </DialogHeader>
+            <label className="text-sm text-muted-foreground" htmlFor="kp-valid-until">
+              Действительно до
+            </label>
+            <input
+              id="kp-valid-until"
+              type="date"
+              defaultValue={validUntilValue}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none"
+              onChange={(e) => handleValidUntil(e.target.value)}
+            />
+            <DialogFooter>
+              {validUntilValue && (
+                <Button
+                  variant="ghost"
+                  className="sm:mr-auto"
+                  onClick={() => {
+                    handleValidUntil("");
+                    setValidOpen(false);
+                  }}
+                >
+                  Убрать срок
+                </Button>
+              )}
+              <Button onClick={() => setValidOpen(false)}>Готово</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
