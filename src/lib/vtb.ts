@@ -3,6 +3,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { activateSubscription, notifyOwnerPush, notifyUserAboutPaymentDecision, quotePayment, DAYS_YEAR } from "@/lib/payment";
 import type { BillingPeriod } from "@/lib/billing";
 import { asCurrency, type CurrencyCode } from "@/lib/currency";
+import { reportError } from "@/lib/report-error";
 
 /**
  * Оплата картой через эквайринг ВТБ Казахстан (шлюз RBS), 10.11.2026.
@@ -137,6 +138,8 @@ export type VtbOrderStatus = {
   cardAuthInfo?: { maskedPan?: string };
   bankInfo?: { bankCountryName?: string };
   paymentAmountInfo?: { paymentState?: string; depositedAmount?: number; refundedAmount?: number };
+  /** Здесь банк отдаёт mdOrder — свой id заказа (для ЛК банка). */
+  attributes?: { name: string; value: string }[];
 };
 
 /** null — заказа в шлюзе нет (мастер не дошёл до банка или register упал). */
@@ -150,7 +153,7 @@ export async function getOrderStatus(cfg: VtbConfig, by: { orderNumber: string }
 // ── Зачисление ───────────────────────────────────────────────────────────
 export type SettleResult =
   | { ok: true; paymentId: string; alreadyApproved: boolean; paidUntil: Date | null }
-  | { ok: false; reason: string; final: boolean; declined?: boolean };
+  | { ok: false; reason: string; final: boolean; declined?: boolean; mismatch?: boolean };
 
 /**
  * Включает PRO по заказу, оплату которого подтвердил шлюз. Идемпотентно:
@@ -177,11 +180,18 @@ export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()):
     const declined = final || (st.orderStatus === 0 && !!st.actionCode && st.actionCode !== 0);
     return { ok: false, reason: `статус ${st.orderStatus}${st.actionCodeDescription ? ` · ${st.actionCodeDescription}` : ""}`, final, declined };
   }
-  if (st.currency !== KZT_NUMERIC || payment.currency !== "KZT") {
-    return { ok: false, reason: `валюта ${st.currency} / ${payment.currency}`, final: true };
-  }
-  if (st.amount !== payment.amount * 100) {
-    return { ok: false, reason: `сумма ${st.amount} ≠ ${payment.amount * 100}`, final: true };
+  // Банк говорит «оплачено», но сумма или валюта не те, что в заявке: деньги
+  // списаны, а автоматически PRO не включаем. Заявка остаётся PENDING (крон
+  // её не закрывает), Нариману — один раз в Telegram, решает вручную.
+  const mismatch =
+    st.currency !== KZT_NUMERIC || payment.currency !== "KZT"
+      ? `валюта ${st.currency} / ${payment.currency}`
+      : st.amount !== payment.amount * 100
+        ? `сумма ${(st.amount ?? 0) / 100} ₸ ≠ ${payment.amount} ₸`
+        : null;
+  if (mismatch) {
+    await flagVtbMismatch(payment.id, mismatch, st, cfg).catch((err) => console.error("vtb mismatch flag failed:", err));
+    return { ok: false, reason: `оплачено, но ${mismatch}`, final: false, mismatch: true };
   }
 
   const result = await activateSubscription({ paymentId: payment.id, adminId: VTB_REVIEWER, trackPurchase: !cfg.test });
@@ -226,6 +236,42 @@ export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()):
   return { ok: true, paymentId, alreadyApproved: false, paidUntil: result.master.paidUntil };
 }
 
+/**
+ * Оплата прошла, но не сходится с заявкой. Отметка в reviewNotes ставится
+ * атомарно (только если её ещё нет), поэтому сообщение уходит один раз, хоть
+ * callback, confirm и крон придут по этой заявке много раз.
+ */
+const MISMATCH_NOTE = "ВТБ: оплачено, но";
+
+async function flagVtbMismatch(paymentId: string, mismatch: string, st: VtbOrderStatus, cfg: VtbConfig): Promise<void> {
+  const note = `${MISMATCH_NOTE} ${mismatch} — проверить вручную`;
+  const claimed = await prisma.pendingPayment.updateMany({
+    where: { id: paymentId, status: "PENDING", OR: [{ reviewNotes: null }, { NOT: { reviewNotes: { startsWith: MISMATCH_NOTE } } }] },
+    data: { reviewNotes: note },
+  });
+  if (claimed.count === 0) return;
+  const orderId = st.attributes?.find((a) => a.name === "mdOrder")?.value ?? "—";
+  const bank = `${(st.amount ?? 0) / 100} ₸, валюта ${st.currency ?? "?"}`;
+  reportError(new Error(`VTB paid order mismatch: ${mismatch}`), "payment/vtb", "оплата не сходится с заявкой", {
+    paymentId,
+    orderId,
+    bank,
+    test: cfg.test,
+  });
+  const chatId = process.env.ADMIN_TG_CHAT_ID;
+  if (!chatId) return;
+  const p = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, include: { master: true } });
+  if (!p) return;
+  const card = st.cardAuthInfo?.maskedPan ? ` · карта ${st.cardAuthInfo.maskedPan}` : "";
+  await sendTelegramMessage(
+    chatId,
+    `⚠️ <b>ВТБ${cfg.test ? " (ТЕСТ)" : ""}: оплата не сходится с заявкой</b>\n${p.master.firstName ?? ""} · <code>${p.master.phone}</code>${card}\n` +
+      `В банке: ${bank}. В заявке: ${p.amount} ${p.currency}.\n` +
+      `Деньги списаны, PRO сам НЕ включился — проверь в ЛК банка и включи вручную в админке (Оплаты); мастеру обещали ответ в течение дня.\n` +
+      `Заявка ${p.id}\nЗаказ банка ${orderId}`,
+  );
+}
+
 /** Владельцу: по оплаченному заказу прошёл возврат или отмена (PRO не трогаем — решает Нариман). */
 export async function notifyVtbRefund(paymentId: string, operation: string): Promise<void> {
   const chatId = process.env.ADMIN_TG_CHAT_ID;
@@ -252,6 +298,8 @@ export async function reconcileVtbPayments(now = new Date()): Promise<{ checked:
     where: {
       comment: VTB_COMMENT,
       status: "PENDING",
+      // Оплачено, но не сошлось — уже у Наримана на ручной проверке, не трогаем.
+      OR: [{ reviewNotes: null }, { NOT: { reviewNotes: { startsWith: MISMATCH_NOTE } } }],
       createdAt: { gte: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), lte: new Date(now.getTime() - 2 * 60 * 1000) },
     },
     select: { id: true },

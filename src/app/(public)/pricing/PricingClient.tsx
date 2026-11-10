@@ -42,7 +42,7 @@ type Config = {
 type CardQuoteView = { amountKzt: number; days: number; rub: number | null };
 
 /** Итог возврата из банка ВТБ: проверяем у сервера, он спрашивает банк. */
-type VtbReturn = "checking" | "pending" | "failed" | null;
+type VtbReturn = "checking" | "pending" | "failed" | "review" | null;
 
 // Виджет TipTop Pay: скрипт грузим только с их домена и только когда нажали «картой».
 // status: success | fail | cancel…; номер транзакции — в data.transactionId.
@@ -194,6 +194,10 @@ export function PricingClient(props: Props) {
           }
           if (data.status === "FAILED") {
             setVtbReturn("failed");
+            return;
+          }
+          if (data.status === "REVIEW") {
+            setVtbReturn("review");
             return;
           }
         } catch {}
@@ -529,14 +533,22 @@ export function PricingClient(props: Props) {
             <div className="py-4">
               <DialogHeader>
                 <DialogTitle>
-                  {vtbReturn === "checking" ? "Проверяем оплату…" : vtbReturn === "failed" ? "Оплата не прошла" : "Банк ещё подтверждает оплату"}
+                  {vtbReturn === "checking"
+                    ? "Проверяем оплату…"
+                    : vtbReturn === "failed"
+                      ? "Оплата не прошла"
+                      : vtbReturn === "review"
+                        ? "Оплата получена"
+                        : "Банк ещё подтверждает оплату"}
                 </DialogTitle>
                 <DialogDescription>
                   {vtbReturn === "checking"
                     ? "Спрашиваем банк, это несколько секунд."
                     : vtbReturn === "failed"
                       ? "Деньги не списаны. Попробуйте ещё раз или другую карту."
-                      : "Если деньги списались, PRO включится автоматически в течение 10 минут — придёт уведомление."}
+                      : vtbReturn === "review"
+                        ? "Проверяем вручную — напишем в течение дня. Повторно платить не нужно."
+                        : "Если деньги списались, PRO включится автоматически в течение 10 минут — придёт уведомление."}
                 </DialogDescription>
               </DialogHeader>
               {vtbReturn !== "checking" && (

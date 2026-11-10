@@ -28,7 +28,8 @@ export async function POST(request: Request) {
 
     const r = await settleVtbPayment(paymentId);
     if (r.ok) return NextResponse.json({ ok: true, status: "APPROVED", paidUntil: r.paidUntil });
-    return NextResponse.json({ ok: false, status: r.final || r.declined ? "FAILED" : "PENDING", reason: r.reason });
+    const status = r.mismatch ? "REVIEW" : r.final || r.declined ? "FAILED" : "PENDING";
+    return NextResponse.json({ ok: false, status, reason: r.reason });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
