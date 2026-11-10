@@ -1,4 +1,5 @@
 import type { CanvasType } from "./constants";
+import type { WallProfileElement } from "./wall-profile-pricing";
 
 // ============================================
 // Room Shapes
@@ -122,6 +123,17 @@ export interface RoomInput {
   withInsert?: boolean;
   /** Цвет вставки: чёрная идёт той же позицией, в названии «(чёрная)». */
   insertColor?: "white" | "black";
+  /** Профили по стенам из замера приложения. Есть — профиль, вставку и парящий считает
+   *  файл-близнец wall-profile-pricing (как в приложении); нет — профиль по комнате целиком. */
+  wallProfileData?: {
+    /** Стены, см. */
+    walls: number[];
+    wallProfiles: Record<string, string>;
+    /** Подшторник и парящий с чертежа: занимают стену. */
+    elements: WallProfileElement[];
+    /** Периметр замера, м — его берёт приложение. */
+    perimeterM?: number;
+  };
   /** Площадь мебели «до потолка» в м² — вычитается из площади натяжного потолка. */
   furnitureCeilingArea?: number;
   /** Изменение периметра профиля от обхода мебели до потолка (м, может быть отрицательным).
@@ -184,6 +196,9 @@ export interface LineItem {
   installerRate?: number;
   /** Код монтажной позиции для наряда монтажнику, когда itemCode не каталожный (свой софит → install_spot). */
   installCode?: string;
+  /** Своя строка наряда, как у мобилки («Монтаж алюминиевого профиля»): с ней строка КП идёт
+   *  в наряд отдельно, по installerRate, без схлопывания с профилем. Публичная КП её не видит. */
+  installerName?: string;
 }
 
 export interface RoomResult {

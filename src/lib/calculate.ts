@@ -9,6 +9,7 @@ import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 import { isStandardSpotCode } from "./spot-types";
 import { canvasMinSideCm, pickFilmStep, pickMainCanvas, type CanvasCatalog, type CanvasCode, type CanvasFilm } from "./canvas-pricing";
+import { wallProfilePricing, type WallProfileResult, type WallProfileVariant } from "./wall-profile-pricing";
 
 type PriceMap = Record<string, number>;
 
@@ -27,6 +28,9 @@ export interface CustomItemInfo {
   maxWidthCm?: number | null;
   filmKey?: string | null;
   filmName?: string | null;
+  /** Свой багет: на него ставится вставка. Свой профиль комнаты: без вставки. */
+  withInsert?: boolean;
+  noInsert?: boolean;
 }
 
 /** Надбавка за LED-подсветку гардины, ₸ за м.п., как в приложении. */
@@ -39,6 +43,7 @@ const VARIANT_INSTALL_CODE: Record<string, string> = {
   gardina: "install_gardina",
   track: "install_track",
   lightline: "install_lightline",
+  profile: "install_profile",
 };
 
 const roundTenth = (n: number) => Math.round(n * 10) / 10;
@@ -99,6 +104,43 @@ function spotInstallRate(item: LineItem, ownItemsById?: Record<string, CustomIte
   }
   if (!isStandardSpotCode(item.itemCode)) return undefined;
   return ownItemsById?.[`catalog:${item.itemCode}`]?.installerPrice ?? Math.round(item.unitPrice * 0.3);
+}
+
+/** Профиль по стенам (wallProfileData из замера приложения) или null — тогда профиль по комнате целиком. */
+function profilesByWalls(
+  room: RoomInput,
+  adjustedPerimeterM: number,
+  prices: PriceMap,
+  ownItemsById: Record<string, CustomItemInfo> | undefined,
+  variantFor: (category: string) => (CustomItemInfo & { id: string }) | null,
+): WallProfileResult | null {
+  const data = room.wallProfileData;
+  if (!data || Object.keys(data.wallProfiles ?? {}).length === 0) return null;
+  const asVariant = (id: string, v: CustomItemInfo): WallProfileVariant => ({
+    id, name: v.name, unit: v.unit, price: v.price, installerPrice: v.installerPrice, photoUrl: v.photoUrl, withInsert: v.withInsert, noInsert: v.noInsert,
+  });
+  const wallVariants = Object.entries(ownItemsById ?? {})
+    .filter(([id, v]) => !id.startsWith("catalog:") && (v.category === "profile" || v.category === "podshtornik"))
+    .map(([id, v]) => asVariant(id, v));
+  const override = variantFor("profile");
+  return wallProfilePricing({
+    walls: data.walls,
+    wallProfiles: data.wallProfiles,
+    elements: data.elements,
+    // Периметр замера, как в приложении (room.perimeter), с обходом мебели.
+    adjustedPerimeterM: data.perimeterM != null ? data.perimeterM + (room.furnitureCeilingPerimeterDelta ?? 0) : adjustedPerimeterM,
+    bypassPerimeterM: room.furnitureCeilingBypassM ?? 0,
+    wallVariants,
+    profileOverride: override ? asVariant(override.id, override) : undefined,
+    insert: room.withInsert !== false,
+    insertColor: room.insertColor,
+    price: (code) => getPrice(prices, code),
+    // Ставки монтажа как в calcRoom: строки «Для бригады» (install_*) — как есть,
+    // вставка и LED-лента — только явная цена работы в прайсе, иначе 0.
+    installerRate: (code) => getPrice(prices, code),
+    workOnly: (code) => ownItemsById?.[`catalog:${code}`]?.installerPrice ?? 0,
+    isHidden: (code) => ownItemsById?.[`catalog:${code}`]?.isHidden === true,
+  });
 }
 
 function calculateRoom(
@@ -199,18 +241,56 @@ function calculateRoom(
     }
   }
 
+  // Профили по стенам из приложения — тем же кодом, что в приложении (файл-близнец).
+  // Комнаты без них считаются как раньше.
+  const byWalls = profilesByWalls(room, perimeter + furniturePerimDelta, prices, ownItemsById, variantFor);
   // Profile — master's choice or default
   const profileCode = room.profileType || "profile_insert";
-  if (profileCode === "profile_galtel") {
+  // Скрытое в прайсе не попадает в КП, если это авто-добавка (вставка, углы) — как в приложении.
+  const hiddenInPrice = (code: string) => ownItemsById?.[`catalog:${code}`]?.isHidden === true;
+  // Профиль, выбранный на комнату, заменяет пластиковый, как в приложении.
+  const profileVariant = !byWalls && (profileCode === "profile_insert" || profileCode === "profile_galtel") ? variantFor("profile") : null;
+  const plasticLine = (): LineItem | null => {
+    if (!profileVariant) return makeLineItem("profile_plastic", baseProfileLen, prices);
+    if (baseProfileLen <= 0) return null;
+    return { ...variantLine(profileVariant, "profile", baseProfileLen, "profile_plastic"), ...(profileVariant.installerPrice != null && { installerRate: profileVariant.installerPrice }) };
+  };
+  if (byWalls) {
+    for (const l of byWalls.lines) {
+      const own = l.variantId ? ownItemsById?.[l.variantId] : undefined;
+      items.push({
+        itemCode: l.code ?? own?.code ?? "profile_plastic",
+        itemName: l.name,
+        quantity: l.qty,
+        unit: l.unit,
+        unitPrice: l.price,
+        total: Math.round(l.price * l.qty),
+        ...(l.variantId && { variantId: l.variantId }),
+        ...(l.photoUrl && { photoUrl: l.photoUrl }),
+        // Монтаж — строкой как у мобилки: у каждого багета своя (алюминий, теневой, подшторник…).
+        installCode: l.code === "insert" || l.code === "led_strip" ? undefined : "install_profile",
+        installerName: l.installName,
+        installerRate: l.installPrice,
+      });
+    }
+  } else if (profileCode === "profile_galtel") {
     // Plastic profile only (galtel installed by others)
-    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
+    const plasticItem = plasticLine();
     if (plasticItem) items.push(plasticItem);
   } else if (profileCode === "profile_insert") {
     // Plastic profile + insert strip (2 line items)
-    const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
+    const plasticItem = plasticLine();
     if (plasticItem) items.push(plasticItem);
-    const insertItem = room.withInsert === false ? null : makeLineItem("insert", baseProfileLen, prices);
-    if (insertItem) items.push(room.insertColor === "black" ? { ...insertItem, itemName: `${insertItem.itemName} (чёрная)` } : insertItem);
+    // Скрытая в прайсе вставка не попадает в КП; свой профиль «без вставки» её снимает (как в приложении).
+    const insertItem = room.withInsert === false || hiddenInPrice("insert") || profileVariant?.noInsert === true
+      ? null : makeLineItem("insert", baseProfileLen, prices);
+    // Монтаж вставки — только явная цена работы в прайсе, иначе 0 (как workOnly в приложении).
+    if (insertItem) items.push({
+      ...insertItem,
+      ...(room.insertColor === "black" && { itemName: `${insertItem.itemName} (чёрная)` }),
+      installerName: "Монтаж вставки",
+      installerRate: ownItemsById?.[`catalog:insert`]?.installerPrice ?? 0,
+    });
   } else {
     // Shadow or floating — single aluminum profile.
     // Если у комнаты явно указан profile_floating, по периметру весь парящий.
@@ -221,6 +301,7 @@ function calculateRoom(
   // Отдельная позиция «Парящий профиль» — только если он не основной
   // (для basic-профилей плacтик/вставка/галтель/теневой).
   if (
+    !byWalls &&
     floatingLen > 0 &&
     profileCode !== "profile_floating"
   ) {
@@ -367,8 +448,9 @@ function calculateRoom(
   const cornersTotal = room.cornersCount > 0 ? room.cornersCount : 4;
   const extraCorners = Math.max(0, cornersTotal - 4);
   if (extraCorners > 0) {
-    const cornerCode = PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
-    const cornerItem = makeLineItem(cornerCode, extraCorners, prices);
+    // По стенам: алюминиевые, если есть теневая/бесщелевая/парящая/алюминиевая стена; скрытый угол — не в КП, как в приложении.
+    const cornerCode = byWalls ? (byWalls.aluminumCorners ? "corner_aluminum" : "corner_plastic") : PROFILE_CORNER_MAP[profileCode] || "corner_plastic";
+    const cornerItem = hiddenInPrice(cornerCode) ? null : makeLineItem(cornerCode, extraCorners, prices);
     if (cornerItem) items.push(cornerItem);
   }
 
@@ -422,14 +504,20 @@ function calculateRoom(
   if ((room.podshtornikLength ?? 0) > 0) {
     const podshtornikCode = room.podshtornikType || "podshtornik_aluminum";
     const podshtornikItem = makeLineItem(podshtornikCode, room.podshtornikLength, prices);
-    if (podshtornikItem) items.push(podshtornikItem);
+    // Монтаж подшторника — по ставке карниза, как в приложении.
+    if (podshtornikItem) items.push({ ...podshtornikItem, installCode: "install_curtain", installerName: "Монтаж подшторника", installerRate: getPrice(prices, "install_curtain") });
   }
 
   // Скруглённые углы — отдельная позиция (сложнее в монтаже).
   // Площадь и периметр уже скорректированы выше; здесь только надбавка за каждый скруглённый угол.
   if ((room.roundedCornersCount ?? 0) > 0) {
-    const roundedItem = makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
-    if (roundedItem) items.push(roundedItem);
+    const roundedItem = hiddenInPrice("corner_rounded") ? null : makeLineItem("corner_rounded", room.roundedCornersCount ?? 0, prices);
+    // Работа по скруглению — своя цена работы позиции, иначе 30 % от цены клиенту (как в приложении).
+    if (roundedItem) items.push({
+      ...roundedItem,
+      installerName: "Скруглённый угол (работа)",
+      installerRate: ownItemsById?.[`catalog:corner_rounded`]?.installerPrice ?? Math.round(roundedItem.unitPrice * 0.3),
+    });
   }
 
   // Обвод мебели до потолка (м.п.) — отдельная позиция, чтобы было видно почему дороже.

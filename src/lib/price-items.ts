@@ -66,10 +66,11 @@ export async function ownItemsByIdFor(companyId: string): Promise<Record<string,
       deletedAt: null,
       OR: [
         { templateCode: null, code: { startsWith: "own:" } },
-        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led", "canvas_320", "canvas_550", "canvas_over"] } },
+        // insert и углы — ради скрытия в прайсе: скрытые авто-добавки не идут в КП, как в приложении.
+        { templateCode: { in: [...STANDARD_SPOT_CODES, "level2_canvas", "level2_step", "level2_led", "canvas_320", "canvas_550", "canvas_over", "insert", "corner_plastic", "corner_aluminum", "corner_rounded", "led_strip"] } },
       ],
     },
-    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true, maxWidthCm: true, filmKey: true, filmName: true },
+    select: { id: true, code: true, name: true, unit: true, price: true, photoUrl: true, category: true, templateCode: true, installerPrice: true, isHidden: true, maxWidthCm: true, filmKey: true, filmName: true, wallKind: true },
     // Порядок как в /prices/variants: при равной ширине строку выбирает тот же порядок.
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
@@ -77,7 +78,8 @@ export async function ownItemsByIdFor(companyId: string): Promise<Record<string,
   for (const r of rows) {
     // Каталожные софиты и «2 уровня» лежат отдельным ключом: расчёту нужны их ставка и скрытие.
     const key = r.templateCode ? `catalog:${r.templateCode}` : r.id;
-    map[key] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category, installerPrice: r.installerPrice, isHidden: r.isHidden, maxWidthCm: r.maxWidthCm, filmKey: r.filmKey, filmName: r.filmName };
+    const wk = (r.wallKind ?? {}) as WallKind;
+    map[key] = { code: r.code, name: r.name, unit: r.unit, price: r.price, photoUrl: r.photoUrl, category: r.category, installerPrice: r.installerPrice, isHidden: r.isHidden, maxWidthCm: r.maxWidthCm, filmKey: r.filmKey, filmName: r.filmName, withInsert: wk.withInsert === true, noInsert: wk.noInsert === true };
   }
   return map;
 }
