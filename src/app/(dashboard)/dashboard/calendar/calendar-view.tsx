@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,17 +23,24 @@ function entryClass(e: CalendarEntry) {
   return e.done ? "text-blue-900/55 hover:bg-blue-50" : "bg-blue-100 text-blue-900 hover:bg-blue-200";
 }
 
+// Объект без клиента и адреса подписан «Без адреса» — одним словом не понять, что это за запись
+function entryLabel(e: CalendarEntry) {
+  if (!e.clientId && e.label === "Без адреса") return e.kind === "install" ? "Монтаж без адреса" : "Замер без адреса";
+  return e.label;
+}
+
 function Entry({ entry, onEdit }: { entry: CalendarEntry; onEdit?: (e: CalendarEntry) => void }) {
+  const label = entryLabel(entry);
   const body = (
     <>
-      <span className="font-medium">{entry.time}</span> {entry.label}
+      <span className="font-medium">{entry.time}</span> {label}
     </>
   );
   const className = `block truncate rounded px-1.5 py-0.5 text-xs leading-4 ${entryClass(entry)}`;
   if (!entry.clientId) {
     return (
       <div
-        title={`${entry.label} — объект без клиента`}
+        title={`${label} — объект без клиента`}
         onClick={(e) => e.stopPropagation()}
         className={`${className} cursor-default`}
       >
@@ -43,7 +51,7 @@ function Entry({ entry, onEdit }: { entry: CalendarEntry; onEdit?: (e: CalendarE
   const link = (
     <Link
       href={`/dashboard/clients/${entry.clientId}`}
-      title={entry.label}
+      title={label}
       onClick={(e) => e.stopPropagation()}
       className={onEdit ? `${className} min-w-0 flex-1` : className}
     >
@@ -81,6 +89,240 @@ function targetOf(e: CalendarEntry): PlanTarget {
   return e.id.startsWith("e:") ? { at: e.at, eventId: id } : { at: e.at, objectId: id, objectLabel: e.label };
 }
 
+// ───────────────────────── Телефон ─────────────────────────
+
+type MobileMode = "today" | "week" | "month";
+const MODES: { key: MobileMode; label: string }[] = [
+  { key: "today", label: "Сегодня" },
+  { key: "week", label: "Неделя" },
+  { key: "month", label: "Месяц" },
+];
+
+// Режим живёт в sessionStorage как внешнее хранилище: на сервере его нет, гидратация не расходится
+const MOBILE_MODE_KEY = "calendar-mode-v1";
+const modeListeners = new Set<() => void>();
+function readMode(): MobileMode | null {
+  try {
+    const v = sessionStorage.getItem(MOBILE_MODE_KEY);
+    return v === "today" || v === "week" || v === "month" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function subscribeMode(cb: () => void) {
+  modeListeners.add(cb);
+  return () => {
+    modeListeners.delete(cb);
+  };
+}
+function writeMode(m: MobileMode) {
+  try {
+    sessionStorage.setItem(MOBILE_MODE_KEY, m);
+  } catch {}
+  modeListeners.forEach((fn) => fn());
+}
+
+// Сдвиг дня YYYY-MM-DD на n суток — только для навигации по сетке, без часовых поясов
+function addDays(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Точки-счётчики по типам записей дня: синяя — замер, янтарная — монтаж */
+function Dots({ list, onDark }: { list: CalendarEntry[]; onDark: boolean }) {
+  const measure = list.filter((e) => e.kind === "measure").length;
+  const install = list.filter((e) => e.kind === "install").length;
+  return (
+    <span className="flex h-3 items-center justify-center gap-1 text-[9px] font-semibold leading-none">
+      {measure > 0 && (
+        <span className={`inline-flex items-center gap-px ${onDark ? "text-white" : "text-blue-700"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${onDark ? "bg-blue-200" : "bg-blue-400"}`} />
+          {measure > 1 ? measure : ""}
+        </span>
+      )}
+      {install > 0 && (
+        <span className={`inline-flex items-center gap-px ${onDark ? "text-white" : "text-amber-700"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${onDark ? "bg-amber-200" : "bg-amber-400"}`} />
+          {install > 1 ? install : ""}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Календарь на телефоне: «Сегодня» — записи на сегодня, «Неделя» — полоска пн–вс с точками,
+ * «Месяц» — компактная сетка. Тап по дню показывает его записи ниже, свайп листает неделю/месяц.
+ * Данные те же, что у десктопной сетки.
+ */
+function MobileCalendar({
+  month,
+  days,
+  today,
+  byDay,
+  initialDay,
+  editHandler,
+  onAdd,
+}: {
+  month: string;
+  days: string[];
+  today: string;
+  byDay: Map<string, CalendarEntry[]>;
+  initialDay: string;
+  editHandler: (e: CalendarEntry) => ((e: CalendarEntry) => void) | undefined;
+  onAdd: (day: string) => void;
+}) {
+  const router = useRouter();
+  const savedMode = useSyncExternalStore(subscribeMode, readMode, () => null);
+  const [localMode, setLocalMode] = useState<MobileMode | null>(null);
+  const mode: MobileMode = localMode ?? savedMode ?? "week";
+  const [selected, setSelected] = useState(initialDay);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  const weeks = useMemo(() => {
+    const out: string[][] = [];
+    for (let i = 0; i < days.length; i += 7) out.push(days.slice(i, i + 7));
+    return out;
+  }, [days]);
+  const weekIndex = Math.max(0, weeks.findIndex((w) => w.includes(selected)));
+  const week = weeks[weekIndex] ?? weeks[0];
+  const todayInGrid = days.includes(today);
+  const shownDay = mode === "today" ? today : selected;
+  const list = byDay.get(shownDay) ?? [];
+
+  function goTo(day: string) {
+    // День внутри сетки — просто выбираем; снаружи — соседний месяц с этим днём в адресе
+    if (days.includes(day)) setSelected(day);
+    else router.push(`/dashboard/calendar?m=${day.slice(0, 7)}&d=${day}`);
+  }
+
+  function setMode(next: MobileMode) {
+    setLocalMode(next);
+    writeMode(next);
+    if (next === "today") {
+      if (todayInGrid) setSelected(today);
+      else router.push(`/dashboard/calendar?d=${today}`);
+    }
+  }
+
+  function swipe(delta: number) {
+    if (mode === "week") goTo(addDays(selected, 7 * delta));
+    else if (mode === "month") router.push(`/dashboard/calendar?m=${shiftMonth(month, delta)}`);
+  }
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touch.current;
+    touch.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) swipe(dx < 0 ? 1 : -1);
+  }
+
+  const dayCell = (day: string, compact: boolean) => {
+    const isSelected = day === shownDay;
+    const isToday = day === today;
+    const outside = !day.startsWith(month);
+    return (
+      <button
+        key={day}
+        type="button"
+        data-mday={day}
+        aria-pressed={isSelected}
+        onClick={() => setSelected(day)}
+        className={`flex flex-col items-center gap-0.5 rounded-lg ${compact ? "py-1" : "py-1.5"} ${
+          isSelected ? "bg-[#1e3a5f] text-white" : outside ? "text-muted-foreground/50" : "text-foreground hover:bg-muted"
+        }`}
+      >
+        {!compact && <span className={`text-[10px] ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>{WEEKDAYS[days.indexOf(day) % 7]}</span>}
+        <span
+          className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm ${
+            isToday && !isSelected ? "border border-[#1e3a5f] font-semibold text-[#1e3a5f]" : isToday ? "font-semibold" : ""
+          }`}
+        >
+          {Number(day.slice(8))}
+        </span>
+        <Dots list={byDay.get(day) ?? []} onDark={isSelected} />
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-3 md:hidden" data-cal-mobile={mode}>
+      <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            data-mode={m.key}
+            aria-pressed={mode === m.key}
+            onClick={() => setMode(m.key)}
+            className={`rounded-md px-3 py-1 text-sm font-medium ${mode === m.key ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="space-y-3">
+        {mode === "week" && (
+          <div className="grid grid-cols-7 gap-0.5 rounded-lg border p-1" data-week={week[0]}>
+            {week.map((day) => dayCell(day, false))}
+          </div>
+        )}
+
+        {mode === "month" && (
+          <div className="rounded-lg border p-1" data-month-grid>
+            <div className="grid grid-cols-7">
+              {WEEKDAYS.map((w) => (
+                <div key={w} className="py-0.5 text-center text-[10px] text-muted-foreground">
+                  {w}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-0.5">{days.map((day) => dayCell(day, true))}</div>
+          </div>
+        )}
+
+        {mode === "today" && !todayInGrid && (
+          <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+            Открыт другой месяц.{" "}
+            <button type="button" onClick={() => setMode("today")} className="font-medium text-[#1e3a5f] underline">
+              К сегодняшнему дню
+            </button>
+          </p>
+        )}
+
+        {(mode !== "today" || todayInGrid) && (
+          <div className="space-y-1.5" data-day-entries={shownDay}>
+            <div className="flex items-center justify-between gap-2">
+              <p className={`text-sm font-medium first-letter:uppercase ${shownDay === today ? "text-[#1e3a5f]" : ""}`}>
+                {dayTitle(shownDay)}
+              </p>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onAdd(shownDay)}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Добавить
+              </Button>
+            </div>
+            {list.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">На этот день записей нет</p>
+            ) : (
+              list.map((e) => <Entry key={e.id} entry={e} onEdit={editHandler(e)} />)
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Общий вид ─────────────────────────
+
 export function CalendarView({
   month,
   days,
@@ -88,6 +330,7 @@ export function CalendarView({
   entries: serverEntries,
   clients,
   isTeam,
+  initialDay,
 }: {
   month: string;
   days: string[];
@@ -95,6 +338,8 @@ export function CalendarView({
   entries: CalendarEntry[];
   clients: CalendarClient[];
   isTeam: boolean;
+  /** День из адреса (?d=), выбранный на телефоне; null — сегодня или 1-е число */
+  initialDay?: string | null;
 }) {
   const [onlyMine, setOnlyMine] = useState(false);
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -123,8 +368,6 @@ export function CalendarView({
     }
     return map;
   }, [entries, onlyMine]);
-
-  const monthDays = days.filter((d) => d.startsWith(month) && byDay.has(d));
 
   return (
     <div className="space-y-3">
@@ -225,21 +468,15 @@ export function CalendarView({
         </div>
       </div>
 
-      <div className="space-y-3 md:hidden">
-        {monthDays.length === 0 && (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            В этом месяце записей нет
-          </p>
-        )}
-        {monthDays.map((day) => (
-          <div key={day} className="space-y-1">
-            <p className={`text-sm font-medium ${day === today ? "text-[#1e3a5f]" : ""}`}>{dayTitle(day)}</p>
-            {byDay.get(day)!.map((e) => (
-              <Entry key={e.id} entry={e} onEdit={editHandler(e)} />
-            ))}
-          </div>
-        ))}
-      </div>
+      <MobileCalendar
+        month={month}
+        days={days}
+        today={today}
+        byDay={byDay}
+        initialDay={initialDay && days.includes(initialDay) ? initialDay : defaultDay}
+        editHandler={editHandler}
+        onAdd={setAddDay}
+      />
 
       <Dialog open={!!openDay} onOpenChange={(open) => !open && setOpenDay(null)}>
         <DialogContent>
