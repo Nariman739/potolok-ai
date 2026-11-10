@@ -528,6 +528,42 @@ interface SavedObject {
   canvasItemId?: string | null;
 }
 
+type ServerRoom = Room & { arcBulges?: number[]; columns?: RoomColumn[] };
+type ServerObject = SavedObject & { rooms?: ServerRoom[] };
+
+/** Объект замера с сервера в вид для «Сохранённых» и «Открыть». */
+function toSavedObject(o: ServerObject): SavedObject {
+  return {
+    id: o.id,
+    address: o.address,
+    totalArea: o.totalArea,
+    savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
+    latitude: o.latitude,
+    longitude: o.longitude,
+    canvasItemId: o.canvasItemId ?? null,
+    // Без клиента открытый замер терял привязку, и КП уходило без клиента.
+    clientId: o.clientId ?? o.client?.id ?? null,
+    client: o.client ?? null,
+    rooms: (o.rooms || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      walls: r.walls as number[],
+      normalCorners: r.normalCorners as boolean[],
+      angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
+      arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
+      columns: (r.columns as RoomColumn[]) ?? [],
+      area: r.area,
+      perimeter: r.perimeter,
+      // Без этих полей открытый из «Сохранённых» замер приходил пустым,
+      // а «Готово» затирало расстановку на сервере (09.11.2026).
+      elements: (r.elements as RoomElement[]) || [],
+      previewUrl3d: r.previewUrl3d,
+      photoUrls: (r.photoUrls as string[]) || [],
+      variantOverrides: r.variantOverrides ?? undefined,
+    })),
+  };
+}
+
 // ─────────────────────────────────────────────────────
 // Wall Wizard — full-screen numpad
 // ─────────────────────────────────────────────────────
@@ -1748,33 +1784,8 @@ export default function ZameryPage() {
           } catch { /* ignore */ }
         }
         if (savedRes.ok) {
-          const savedList = await savedRes.json();
-          setSavedObjects(savedList.map((o: SavedObject & { createdAt?: string; updatedAt?: string }) => ({
-            id: o.id,
-            address: o.address,
-            totalArea: o.totalArea,
-            savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
-            latitude: o.latitude,
-            longitude: o.longitude,
-            canvasItemId: o.canvasItemId ?? null,
-            rooms: (o.rooms || []).map((r: Room & { arcBulges?: number[]; columns?: RoomColumn[] }) => ({
-              id: r.id,
-              name: r.name,
-              walls: r.walls as number[],
-              normalCorners: r.normalCorners as boolean[],
-              angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
-              arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
-              columns: (r.columns as RoomColumn[]) ?? [],
-              area: r.area,
-              perimeter: r.perimeter,
-              // Без этих полей открытый из «Сохранённых» замер приходил пустым,
-              // а «Готово» затирало расстановку на сервере (09.11.2026).
-              elements: (r.elements as RoomElement[]) || [],
-              previewUrl3d: r.previewUrl3d,
-              photoUrls: (r.photoUrls as string[]) || [],
-              variantOverrides: r.variantOverrides ?? undefined,
-            })),
-          })));
+          const savedList: ServerObject[] = await savedRes.json();
+          setSavedObjects(savedList.map(toSavedObject));
         }
       } catch {
         // Fallback to localStorage if offline
@@ -2068,6 +2079,30 @@ export default function ZameryPage() {
     setActiveObjectId(obj.id);
     setObjectFilmId(obj.canvasItemId ?? null);
   }
+
+  // ── ?open=<id> из карточки клиента: то же, что «Открыть» в «Сохранённых» ──
+  const openId = searchParams.get("open");
+  const openHandledRef = useRef(false);
+  useEffect(() => {
+    if (loading || !openId || openHandledRef.current || isCalculatorMode) return;
+    openHandledRef.current = true;
+    (async () => {
+      if (openId !== activeObjectIdRef.current) {
+        let target = savedObjects.find(o => o.id === openId) ?? null;
+        if (!target) {
+          const res = await fetch(`/api/measurements/${openId}`).catch(() => null);
+          if (res?.ok) target = toSavedObject(await res.json());
+          else alert(res?.status === 404
+            ? "Замер не найден: он удалён или принадлежит другой компании."
+            : "Не удалось открыть замер. Попробуйте ещё раз.");
+        }
+        if (target) await handleResume(target);
+      }
+      router.replace("/dashboard/vision-test", { scroll: false });
+    })();
+  // Срабатывает один раз, когда замеры загрузились: остальное читается в этот момент.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, openId]);
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {

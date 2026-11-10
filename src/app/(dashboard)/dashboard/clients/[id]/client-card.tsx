@@ -665,6 +665,12 @@ export function ClientCard({
                           ))}
                         </div>
                       )}
+                      <Button asChild variant="outline" size="sm" className="w-full">
+                        <Link href={`/dashboard/vision-test?open=${m.id}`}>
+                          <Ruler className="h-3.5 w-3.5 mr-1.5" />
+                          Открыть и посчитать
+                        </Link>
+                      </Button>
                     </CardContent>
                   </Card>
                 );
