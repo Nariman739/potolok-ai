@@ -94,7 +94,8 @@ export function PdfPreview({
         {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
 
-      <div className="relative rounded-lg border bg-muted/30 overflow-hidden" style={{ aspectRatio: "210 / 297", minHeight: 600 }}>
+      {/* Высота только от ширины: min-height вместе с aspect-ratio растягивал рамку до 424px, и на телефоне PDF уезжал за край экрана */}
+      <div className="relative w-full max-w-full aspect-[210/297] rounded-lg border bg-muted/30 overflow-hidden">
         {pdfUrl && (
           <iframe
             src={pdfUrl}
