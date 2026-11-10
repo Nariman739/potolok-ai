@@ -13,13 +13,16 @@ export const metadata: Metadata = {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  searchParams: Promise<{ m?: string; d?: string }>;
 }) {
   const master = await getCurrentMaster();
   if (!master) redirect("/api/auth/clear");
 
   const scope = await getScope(master);
-  const month = parseMonth((await searchParams).m);
+  const params = await searchParams;
+  const month = parseMonth(params.m);
+  // ?d=YYYY-MM-DD — день, выбранный на телефоне (свайп недели через границу месяца); мусор — игнорируем
+  const initialDay = params.d && /^20\d{2}-\d{2}-\d{2}$/.test(params.d) ? params.d : null;
   const [entries, clients] = await Promise.all([
     getCalendarEntries(scope, master.id, month),
     getCalendarClients(scope),
@@ -34,6 +37,7 @@ export default async function CalendarPage({
         entries={entries}
         clients={clients}
         isTeam={scope.isTeam}
+        initialDay={initialDay}
       />
     </div>
   );
