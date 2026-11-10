@@ -248,6 +248,9 @@ export function buildRoomInputFromDesigner(
     ceilingHeight: existing?.ceilingHeight ?? 2.7,
     canvasType: (existing?.canvasType ?? "matte") as CanvasType,
     profileType: profileTypeForRoom,
+    // Решение по вставке не на чертеже: правка комнаты в КП его сохраняет.
+    ...(existing?.withInsert === false && { withInsert: false }),
+    ...(existing?.insertColor === "black" && { insertColor: "black" as const }),
     spotsCount,
     spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,
     spotsByType: spotsByType.length > 0 ? spotsByType : undefined,
