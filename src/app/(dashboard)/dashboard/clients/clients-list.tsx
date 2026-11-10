@@ -25,6 +25,9 @@ import {
 import { NewClientDialog } from "./new-client-dialog";
 import { CLIENTS_VIEW_KEY, ClientsHeader } from "./clients-header";
 import { useCurrency } from "@/components/currency-provider";
+import { useClock } from "@/components/use-clock";
+import { dayShort, type Clock } from "@/lib/crm-calendar";
+import { formatPhone } from "@/lib/phone-format";
 
 type Item = {
   id: string;
@@ -56,27 +59,17 @@ function canonicalStatus(s: DealStatusKey): DealStatusKey {
   return LEGACY_STATUSES.includes(s) ? "IN_PROGRESS" : s;
 }
 
-function formatDate(iso: string) {
+// Часы мастера, а не браузера: сервер на Vercel живёт в UTC, и «сегодня, 14:05» с него
+// не совпадало с клиентом — React ронял гидратацию (#418) на каждом открытии списка.
+function formatDate(clock: Clock, iso: string) {
   const d = new Date(iso);
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) {
-    return `сегодня, ${d.getHours().toString().padStart(2, "0")}:${d
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-  }
-  return d.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "short",
-  });
+  if (clock.day(d) === clock.day(new Date())) return `сегодня, ${clock.time(d)}`;
+  return dayShort(clock.day(d));
 }
 
 export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; isTeam: boolean }) {
   const { format: formatMoney } = useCurrency(); // валюта мастера вместо зашитого «₸» (07.10.2026)
+  const clock = useClock();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [activeStatus, setActiveStatus] = useState<DealStatusKey | "ALL">("ALL");
   const [search, setSearch] = useState("");
@@ -238,7 +231,7 @@ export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; is
                       {c.phone && (
                         <span className="inline-flex items-center gap-1">
                           <Phone className="h-3 w-3" />
-                          {c.phone}
+                          {formatPhone(c.phone)}
                         </span>
                       )}
                       {c.estimatesCount > 0 && (
@@ -263,7 +256,7 @@ export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; is
                   <div className="text-right flex-shrink-0">
                     <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {formatDate(c.updatedAt)}
+                      {formatDate(clock, c.updatedAt)}
                     </div>
                   </div>
                 </CardContent>
