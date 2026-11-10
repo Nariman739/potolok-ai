@@ -20,7 +20,7 @@ import {
   GARDINA_TYPES,
   PODSHTORNIK_TYPES,
   PROFILE_CORNER_MAP,
-  DEFAULT_PRICES,
+  defaultPricesFor,
 } from "@/lib/constants";
 import { getDefaultCorners, validateLShape, validateTShape, validateCustomDims, wallsToVertices, shoelaceArea, polygonGap } from "@/lib/room-geometry";
 import { RoomShapeSvg, CustomRoomSvg } from "./room-shape-svg";
@@ -79,8 +79,9 @@ const DEFAULT_CUSTOM_WALLS = [
 
 export function RoomForm({ onAdd, onCancel, priceMap, editRoom, customItems: customItemsProp }: RoomFormProps) {
   const router = useRouter();
-  const prices = priceMap ?? DEFAULT_PRICES;
-  const { symbol } = useCurrency(); // знак валюты мастера вместо зашитого «₸» (07.10.2026)
+  const { symbol, code: currencyCode } = useCurrency(); // знак валюты мастера вместо зашитого «₸» (07.10.2026)
+  // Без прайса — дефолты каталога в валюте мастера, а не тенге (10.11.2026)
+  const prices = priceMap ?? defaultPricesFor(currencyCode);
   const er = editRoom; // shorthand
   const drawnRoom = !!er && isDrawnRoom(er);
 

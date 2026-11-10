@@ -84,7 +84,8 @@ export async function POST(request: Request) {
 
     // Load master prices
     // Прайс компании мастера (PriceItem, 01.10.2026)
-    const prices = await priceMapFor(await priceBookCompanyIdForMaster(master.id));
+    // Дефолты каталога — в валюте мастера, иначе рублёвому ИИ считал по тенге (10.11.2026)
+    const prices = await priceMapFor(await priceBookCompanyIdForMaster(master.id), master.currency);
 
     // Get or create chat session
     let sessionId = inputSessionId;
@@ -347,7 +348,7 @@ export async function POST(request: Request) {
                 }
               );
 
-              calculationResult = calculate(extractedRooms!, prices);
+              calculationResult = calculate(extractedRooms!, prices, undefined, undefined, undefined, master.currency);
 
               // Send calculation result
               controller.enqueue(

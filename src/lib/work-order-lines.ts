@@ -12,7 +12,7 @@
  * мастер ничего не трогал и не отправлял. installerFee на объекте всегда
  * равен сумме строк — модуль «Деньги» его так и читает.
  */
-import { DEFAULT_PRICES } from "@/lib/constants";
+import { defaultPricesFor } from "@/lib/constants";
 import type { CalculationResult, LineItem } from "@/lib/types";
 
 /** Клиентская позиция КП → монтажная ставка из прайса (для КП, посчитанных на сайте). */
@@ -179,9 +179,12 @@ type ExtraWithInstaller = LineItem & { installerPrice?: number; installerTotal?:
 export function autoWorkOrderLines(
   calc: CalculationResult | null | undefined,
   installPrices: Record<string, number>,
+  /** Валюта владельца — дефолтные ставки монтажа, если в прайсе нет строки (10.11.2026). */
+  currency?: string | null,
 ): WorkOrderLine[] {
   if (!calc) return [];
-  const priceOf = (code: string) => installPrices[code] ?? DEFAULT_PRICES[code] ?? 0;
+  const defaults = defaultPricesFor(currency);
+  const priceOf = (code: string) => installPrices[code] ?? defaults[code] ?? 0;
   const out: WorkOrderLine[] = [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

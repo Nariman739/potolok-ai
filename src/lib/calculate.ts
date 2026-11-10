@@ -5,7 +5,7 @@ import type {
   CalculationResult,
   ExtraItem,
 } from "./types";
-import { PRODUCT_BY_CODE, DEFAULT_PRICES, PROFILE_CORNER_MAP } from "./constants";
+import { PRODUCT_BY_CODE, PROFILE_CORNER_MAP, defaultPricesFor } from "./constants";
 import { computeArea, computePerimeter, getBoundingBoxMinDim } from "./room-geometry";
 import { isStandardSpotCode } from "./spot-types";
 import { canvasMinSideCm, pickFilmStep, pickMainCanvas, type CanvasCatalog, type CanvasCode, type CanvasFilm } from "./canvas-pricing";
@@ -49,8 +49,23 @@ const VARIANT_INSTALL_CODE: Record<string, string> = {
 const roundTenth = (n: number) => Math.round(n * 10) / 10;
 const roundHundredth = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * Цена по коду из полного прайса (см. `priceBook`). Раньше тут был запасной
+ * DEFAULT_PRICES — тенговые дефолты, которые у рублёвого мастера давали
+ * 90 000 ₽ минималки и 15 000 ₽ за ПК-14 (аудит 10.11.2026).
+ */
 function getPrice(prices: PriceMap, code: string): number {
-  return prices[code] ?? DEFAULT_PRICES[code] ?? 0;
+  return prices[code] ?? 0;
+}
+
+/**
+ * Полный прайс для расчёта: дефолты каталога в валюте мастера, поверх — его
+ * цены. Для тенге дефолты те же, что были в getPrice, итог не меняется.
+ */
+function priceBook(prices: PriceMap, currency: string | null | undefined): PriceMap {
+  const book: PriceMap = { ...defaultPricesFor(currency) };
+  for (const [code, price] of Object.entries(prices)) if (price != null) book[code] = price;
+  return book;
 }
 
 function getItemName(code: string): string {
@@ -597,12 +612,15 @@ function calculateRoom(
 
 export function calculate(
   rooms: RoomInput[],
-  prices: PriceMap,
+  rawPrices: PriceMap,
   customItemsMap?: Record<string, CustomItemInfo>,
   extraItems?: ExtraItem[],
   /** Свои позиции прайса по id — для софитов с типом «свой вариант» (28.10.2026). */
-  ownItemsById?: Record<string, CustomItemInfo>
+  ownItemsById?: Record<string, CustomItemInfo>,
+  /** Валюта мастера: дефолты каталога для позиций, которых нет в `prices` (10.11.2026). */
+  currency?: string | null
 ): CalculationResult {
+  const prices = priceBook(rawPrices, currency);
   const totalArea = rooms.reduce((sum, r) => sum + computeArea(r), 0);
   const totalPerimeter = rooms.reduce(
     (sum, r) => sum + computePerimeter(r),
