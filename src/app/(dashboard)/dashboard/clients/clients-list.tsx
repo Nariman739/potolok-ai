@@ -84,13 +84,12 @@ export function ClientsList({ initialItems, isTeam }: { initialItems: Item[]; is
   const router = useRouter();
 
   useEffect(() => {
-    if (!isTeam) return;
     try {
-      // На узком экране доска скрыта: «Открыть список» иначе возвращал бы на неё
-      const wide = window.matchMedia("(min-width: 768px)").matches;
-      if (wide && localStorage.getItem(CLIENTS_VIEW_KEY) === "board") router.replace("/dashboard/clients?view=board");
+      // Запомненный вид действует для всех и на телефоне: доска там теперь работает,
+      // а «К клиентам» из карточки должен возвращать на неё
+      if (localStorage.getItem(CLIENTS_VIEW_KEY) === "board") router.replace("/dashboard/clients?view=board");
     } catch {}
-  }, [isTeam, router]);
+  }, [router]);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
   const counts = useMemo(() => {

@@ -31,9 +31,8 @@ export function ClientsHeader({
   showToggle: boolean;
   onAdd: () => void;
 }) {
-  // Последний вид помнит только команда: она работает на доске весь день
+  // Последний вид помним для всех: с телефона на доску иначе не вернуться из карточки клиента
   const remember = (v: "list" | "board") => {
-    if (!isTeam) return;
     try {
       localStorage.setItem(CLIENTS_VIEW_KEY, v);
     } catch {}
@@ -75,8 +74,9 @@ export function ClientsHeader({
             <CalendarDays className="h-4 w-4" />
           </Link>
         )}
+        {/* Канбан теперь есть и на телефоне — переключатель виден везде */}
         {showToggle && (
-          <div className="hidden gap-1 rounded-lg bg-muted p-1 md:inline-flex">
+          <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
             <Link href="/dashboard/clients" onClick={() => remember("list")} className={tab(view === "list")}>
               Список
             </Link>
