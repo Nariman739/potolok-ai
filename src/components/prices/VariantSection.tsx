@@ -433,7 +433,8 @@ export function VariantDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map((c) => (
+                  {/* В полотно позицию не переносим: новое полотно — только плёнкой с ценами по ширинам (10.11.2026) */}
+                  {CATEGORY_OPTIONS.filter((c) => c !== "canvas" || state.variant.category === "canvas").map((c) => (
                     <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
                   ))}
                 </SelectContent>
