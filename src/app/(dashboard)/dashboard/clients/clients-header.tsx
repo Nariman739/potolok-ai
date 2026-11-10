@@ -64,16 +64,15 @@ export function ClientsHeader({
         </div>
       )}
       <div className="ml-auto flex items-center gap-3">
-        {isTeam && (
-          <Link
-            href="/dashboard/calendar"
-            aria-label="Календарь"
-            title="Календарь"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background hover:bg-muted"
-          >
-            <CalendarDays className="h-4 w-4" />
-          </Link>
-        )}
+        {/* Календарь нужен и одиночке: иначе до него не добраться, кроме как по прямой ссылке */}
+        <Link
+          href="/dashboard/calendar"
+          aria-label="Календарь"
+          title="Календарь"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background hover:bg-muted"
+        >
+          <CalendarDays className="h-4 w-4" />
+        </Link>
         {/* Канбан теперь есть и на телефоне — переключатель виден везде */}
         {showToggle && (
           <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
