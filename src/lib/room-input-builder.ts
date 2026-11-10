@@ -79,6 +79,20 @@ function minWidthFromWalls(walls: number[], normalCorners?: boolean[], angles?: 
 }
 
 /** «2 уровня» с чертежа, как считает приложение. Вершины без замыкающего дубля. */
+/** Вставка в комнате: решение комнаты, иначе настройка объекта («убрать везде»), иначе да.
+ *  Как roomInsertEnabled в приложении (src/lib/wall-profiles.ts). */
+export function roomInsertEnabled(room: { withInsert?: boolean | null }, noInsertAll: boolean): boolean {
+  return room.withInsert ?? !noInsertAll;
+}
+
+/** Поля вставки для RoomInput: без вставки — withInsert: false, чёрная — insertColor. */
+export function insertFields(room: { withInsert?: boolean | null; insertColor?: string | null }, noInsertAll: boolean): Pick<RoomInput, "withInsert" | "insertColor"> {
+  return {
+    ...(!roomInsertEnabled(room, noInsertAll) && { withInsert: false }),
+    ...(room.insertColor === "black" && { insertColor: "black" as const }),
+  };
+}
+
 export function level2Fields(room: { walls: number[]; normalCorners?: boolean[]; angles?: number[]; elements?: unknown[] }): { level2?: RoomInput["level2"] } {
   if (!room.elements?.some((e) => (e as { type?: string }).type === "level2")) return {};
   const vertices = getVertices(room.walls, room.normalCorners ?? room.walls.map(() => true), room.angles?.length ? room.angles : undefined);
@@ -234,6 +248,9 @@ export function buildRoomInputFromDesigner(
     ceilingHeight: existing?.ceilingHeight ?? 2.7,
     canvasType: (existing?.canvasType ?? "matte") as CanvasType,
     profileType: profileTypeForRoom,
+    // Решение по вставке не на чертеже: правка комнаты в КП его сохраняет.
+    ...(existing?.withInsert === false && { withInsert: false }),
+    ...(existing?.insertColor === "black" && { insertColor: "black" as const }),
     spotsCount,
     spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,
     spotsByType: spotsByType.length > 0 ? spotsByType : undefined,

@@ -724,6 +724,9 @@ model MeasurementObject {
   address   String  @default("")
   totalArea Float   @default(0)
   status    String  @default("active") // "active" | "saved"
+  /// Кто держит объект открытым в вебе (status "active"), 10.11.2026. null у старых — значит автор (masterId).
+  /// Активный объект веба свой у каждого человека компании. Приложение поле не читает.
+  activeById String?
   latitude  Float?
   longitude Float?
 

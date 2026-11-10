@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
+import { isActiveMine, activeByFor } from "@/lib/measurement-active";
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,8 @@ export async function GET(
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
 
-    return NextResponse.json(obj);
+    // activeMine — открыт в вебе именно у меня (а не у коллеги по компании).
+    return NextResponse.json({ ...obj, activeMine: isActiveMine(obj, master.id) });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
@@ -97,6 +99,7 @@ export async function PATCH(
       data: {
         ...(address !== undefined && { address }),
         ...(status !== undefined && { status }),
+        ...activeByFor(status, master.id),
         ...(totalArea !== undefined && { totalArea }),
         ...(latitude != null && { latitude }),
         ...(longitude != null && { longitude }),

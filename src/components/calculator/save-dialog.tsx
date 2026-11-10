@@ -24,13 +24,17 @@ interface SaveDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (payload: SaveDialogPayload) => void;
   saving: boolean;
+  /** Клиент замера: выбран сразу, менять можно. */
+  initialClientId?: string | null;
 }
 
-export function SaveDialog({ open, onOpenChange, onSave, saving }: SaveDialogProps) {
+export function SaveDialog({ open, onOpenChange, onSave, saving, initialClientId }: SaveDialogProps) {
   const [clientId, setClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientAddress, setClientAddress] = useState("");
+  // Клиента замера подставляем один раз: после «Отвязать» он не должен вернуться сам.
+  const [initialApplied, setInitialApplied] = useState(false);
 
   function handleSave() {
     onSave({ clientId, clientName, clientPhone, clientAddress });
@@ -49,7 +53,9 @@ export function SaveDialog({ open, onOpenChange, onSave, saving }: SaveDialogPro
         <div className="py-2">
           <ClientPicker
             value={{ clientId, clientName, clientPhone, clientAddress }}
+            initialClientId={initialApplied ? undefined : initialClientId ?? undefined}
             onChange={(v) => {
+              if (v.clientId && v.clientId === initialClientId) setInitialApplied(true);
               setClientId(v.clientId);
               setClientName(v.clientName);
               setClientPhone(v.clientPhone);

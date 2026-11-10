@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, level2Fields, measuredGeometry, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { spotBreakdown, level2Fields, measuredGeometry, insertFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -505,6 +505,15 @@ interface Room {
   photoUrls?: string[];     // Фото потолка комнаты
   variantOverrides?: Record<string, string>; // Вариант из прайса на комнату, как в приложении
   previewUrl3d?: string;    // PNG-снимок 3D-сцены (для публичной КП)
+  withInsert?: boolean | null; // Вставка в комнате из приложения; null — как на объекте
+  insertColor?: string | null; // "black" — чёрная вставка
+  /** Профили по стенам из приложения. Сайт пока считает профиль по комнате целиком — только для предупреждения. */
+  wallProfiles?: Record<string, string> | null;
+}
+
+/** Комнаты, где профиль задан по стенам (в том числе старые метки вставки): сайт посчитает их иначе, чем приложение. */
+function roomsWithWallProfiles(list: Room[]): Room[] {
+  return list.filter(r => r.wallProfiles && Object.keys(r.wallProfiles).length > 0);
 }
 
 /** Копия из localStorage могла быть сделана без elements: такие комнаты не должны затирать сервер. */
@@ -526,6 +535,50 @@ interface SavedObject {
   client?: { id: string; name: string; phone: string | null } | null;
   /** Плёнка на весь объект (filmKey) */
   canvasItemId?: string | null;
+  /** «Убрать вставку везде» из приложения */
+  noInsert?: boolean;
+}
+
+type ServerRoom = Room & { arcBulges?: number[]; columns?: RoomColumn[] };
+type ServerObject = SavedObject & { rooms?: ServerRoom[] };
+
+/** Объект замера с сервера в вид для «Сохранённых» и «Открыть». */
+function toSavedObject(o: ServerObject): SavedObject {
+  return {
+    id: o.id,
+    address: o.address,
+    totalArea: o.totalArea,
+    savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
+    latitude: o.latitude,
+    longitude: o.longitude,
+    canvasItemId: o.canvasItemId ?? null,
+    noInsert: o.noInsert ?? false,
+    // Без клиента открытый замер терял привязку, и КП уходило без клиента.
+    clientId: o.clientId ?? o.client?.id ?? null,
+    client: o.client ?? null,
+    rooms: (o.rooms || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      walls: r.walls as number[],
+      normalCorners: r.normalCorners as boolean[],
+      angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
+      arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
+      columns: (r.columns as RoomColumn[]) ?? [],
+      // Скругления из приложения: без поля КП теряло строку «Скруглённый угол».
+      ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
+      withInsert: r.withInsert ?? null,
+      insertColor: r.insertColor ?? null,
+      wallProfiles: r.wallProfiles ?? null,
+      area: r.area,
+      perimeter: r.perimeter,
+      // Без этих полей открытый из «Сохранённых» замер приходил пустым,
+      // а «Готово» затирало расстановку на сервере (09.11.2026).
+      elements: (r.elements as RoomElement[]) || [],
+      previewUrl3d: r.previewUrl3d,
+      photoUrls: (r.photoUrls as string[]) || [],
+      variantOverrides: r.variantOverrides ?? undefined,
+    })),
+  };
 }
 
 // ─────────────────────────────────────────────────────
@@ -1600,11 +1653,19 @@ export default function ZameryPage() {
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null);
   // Плёнка на весь объект. Список есть только у тех, кто завёл такие плёнки.
   const [objectFilmId, setObjectFilmId] = useState<string | null>(null);
+  // «Убрать вставку везде» с объекта (ставится в приложении), для КП как в приложении.
+  const [objectNoInsert, setObjectNoInsert] = useState(false);
   const [canvasFilms, setCanvasFilms] = useState<{ key: string; name: string }[]>([]);
+  // Строки полотна прайса: выбор комнаты из них важнее плёнки объекта. null — ещё не загружены.
+  const [canvasRowIds, setCanvasRowIds] = useState<Set<string> | null>(null);
   useEffect(() => {
     fetch("/api/prices/films", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data?.films)) setCanvasFilms(data.films); })
+      .catch(() => {});
+    fetch("/api/prices/variants?category=canvas", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { id: string }[] | null) => { if (Array.isArray(data)) setCanvasRowIds(new Set(data.map((v) => v.id))); })
       .catch(() => {});
   }, []);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
@@ -1699,6 +1760,7 @@ export default function ZameryPage() {
             const obj = activeList[0];
             setActiveObjectId(obj.id);
             setObjectFilmId(obj.canvasItemId ?? null);
+            setObjectNoInsert(obj.noInsert === true);
             setObjectName(obj.address || "");
             if (obj.client) {
               setActiveClientId(obj.client.id);
@@ -1715,6 +1777,10 @@ export default function ZameryPage() {
               angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
               arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
               columns: (r.columns as RoomColumn[]) ?? [],
+              ...(Array.isArray(r.cornerRadii) && { cornerRadii: r.cornerRadii }),
+              withInsert: r.withInsert ?? null,
+              insertColor: r.insertColor ?? null,
+              wallProfiles: r.wallProfiles ?? null,
               area: r.area,
               perimeter: r.perimeter,
               elements: (r.elements as RoomElement[]) || [],
@@ -1736,45 +1802,20 @@ export default function ZameryPage() {
               if (parsed.length > 0) {
                 setRooms(parsed);
                 if (lo) setObjectName(lo);
-                // Привязываем копию к объекту, только если он на сервере всё ещё активный:
-                // иначе правки старой копии ушли бы в уже сохранённый замер.
+                // Привязываем копию к объекту, только если он на сервере всё ещё открыт у меня:
+                // иначе правки старой копии ушли бы в сохранённый или чужой открытый замер.
                 if (loid) {
                   const check = await fetch(`/api/measurements/${loid}`).catch(() => null);
                   const objOnServer = check?.ok ? await check.json() : null;
-                  if (objOnServer?.status === "active") setActiveObjectId(loid);
+                  if (objOnServer?.activeMine === true) setActiveObjectId(loid);
                 }
               }
             }
           } catch { /* ignore */ }
         }
         if (savedRes.ok) {
-          const savedList = await savedRes.json();
-          setSavedObjects(savedList.map((o: SavedObject & { createdAt?: string; updatedAt?: string }) => ({
-            id: o.id,
-            address: o.address,
-            totalArea: o.totalArea,
-            savedAt: o.updatedAt ? new Date(o.updatedAt).getTime() : Date.now(),
-            latitude: o.latitude,
-            longitude: o.longitude,
-            canvasItemId: o.canvasItemId ?? null,
-            rooms: (o.rooms || []).map((r: Room & { arcBulges?: number[]; columns?: RoomColumn[] }) => ({
-              id: r.id,
-              name: r.name,
-              walls: r.walls as number[],
-              normalCorners: r.normalCorners as boolean[],
-              angles: (r.angles as number[]) ?? (r.normalCorners as boolean[]).map(nc => nc ? 90 : -90),
-              arcBulges: (r.arcBulges as number[]) ?? (r.walls as number[]).map(() => 0),
-              columns: (r.columns as RoomColumn[]) ?? [],
-              area: r.area,
-              perimeter: r.perimeter,
-              // Без этих полей открытый из «Сохранённых» замер приходил пустым,
-              // а «Готово» затирало расстановку на сервере (09.11.2026).
-              elements: (r.elements as RoomElement[]) || [],
-              previewUrl3d: r.previewUrl3d,
-              photoUrls: (r.photoUrls as string[]) || [],
-              variantOverrides: r.variantOverrides ?? undefined,
-            })),
-          })));
+          const savedList: ServerObject[] = await savedRes.json();
+          setSavedObjects(savedList.map(toSavedObject));
         }
       } catch {
         // Fallback to localStorage if offline
@@ -1974,10 +2015,12 @@ export default function ZameryPage() {
         totalArea,
         savedAt: Date.now(),
         canvasItemId: objectFilmId,
+        noInsert: objectNoInsert,
         ...(geoCoords && { latitude: geoCoords.lat, longitude: geoCoords.lng }),
       };
       setSavedObjects(prev => [...prev, savedObj]);
       setObjectFilmId(null);
+      setObjectNoInsert(false);
       setRooms([]);
       setObjectName("");
       setActiveObjectId(null);
@@ -2048,6 +2091,7 @@ export default function ZameryPage() {
         totalArea: Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100,
         savedAt: Date.now(),
         clientId: activeClientId,
+        noInsert: objectNoInsert,
       };
     }
 
@@ -2067,7 +2111,32 @@ export default function ZameryPage() {
     activeObjectIdRef.current = obj.id;
     setActiveObjectId(obj.id);
     setObjectFilmId(obj.canvasItemId ?? null);
+    setObjectNoInsert(obj.noInsert === true);
   }
+
+  // ── ?open=<id> из карточки клиента: то же, что «Открыть» в «Сохранённых» ──
+  const openId = searchParams.get("open");
+  const openHandledRef = useRef(false);
+  useEffect(() => {
+    if (loading || !openId || openHandledRef.current || isCalculatorMode) return;
+    openHandledRef.current = true;
+    (async () => {
+      if (openId !== activeObjectIdRef.current) {
+        let target = savedObjects.find(o => o.id === openId) ?? null;
+        if (!target) {
+          const res = await fetch(`/api/measurements/${openId}`).catch(() => null);
+          if (res?.ok) target = toSavedObject(await res.json());
+          else alert(res?.status === 404
+            ? "Замер не найден: он удалён или принадлежит другой компании."
+            : "Не удалось открыть замер. Попробуйте ещё раз.");
+        }
+        if (target) await handleResume(target);
+      }
+      router.replace("/dashboard/vision-test", { scroll: false });
+    })();
+  // Срабатывает один раз, когда замеры загрузились: остальное читается в этот момент.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, openId]);
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {
@@ -2340,10 +2409,12 @@ export default function ZameryPage() {
 
   /** Выбор на комнату важнее выбора на объект. В КП плёнка объекта уходит как выбор комнаты. */
   function estimateVariantOverrides(room: Room): { variantOverrides?: Record<string, string> } {
-    // Плёнка комнаты удалена из прайса: действует выбор на объект, как в приложении.
-    const roomFilm = room.variantOverrides?.canvas;
-    const roomFilmGone = !!roomFilm && canvasFilms.length > 0 && !canvasFilms.some(f => f.key === roomFilm);
-    if (objectFilmId && (!roomFilm || roomFilmGone)) {
+    // Выбор комнаты (плёнка или своя строка полотна) важнее плёнки объекта, как в приложении.
+    // Выбор удалён из прайса — нет ни среди плёнок, ни среди строк полотна — действует объект.
+    const roomCanvas = room.variantOverrides?.canvas;
+    const roomCanvasGone = !!roomCanvas && canvasRowIds !== null
+      && !canvasFilms.some(f => f.key === roomCanvas) && !canvasRowIds.has(roomCanvas);
+    if (objectFilmId && (!roomCanvas || roomCanvasGone)) {
       return { variantOverrides: { ...room.variantOverrides, canvas: objectFilmId } };
     }
     return room.variantOverrides ? { variantOverrides: room.variantOverrides } : {};
@@ -2455,6 +2526,7 @@ export default function ZameryPage() {
         podshtornikLength,
         podshtornikOnWallLength,
         roundedCornersCount,
+        ...insertFields(room, objectNoInsert),
         furnitureCeilingArea,
         furnitureCeilingPerimeterDelta,
         furnitureCeilingBypassM: Math.round(fcStats.bypassPerimeterCm) / 100,
@@ -2470,6 +2542,7 @@ export default function ZameryPage() {
     });
     localStorage.setItem("vision-rooms", JSON.stringify(roomInputs));
     localStorage.setItem("vision-rooms-source", activeObjectId ?? "");
+    localStorage.setItem("vision-rooms-client", activeClientId ?? "");
     // Весь замер заменяет черновик. ?from=vision — добавить комнату в черновик калькулятора.
     router.push("/dashboard/calculator?from=measurement");
   }
@@ -2797,6 +2870,16 @@ export default function ZameryPage() {
                 }}
               />
             ))}
+            {(() => {
+              const byWalls = roomsWithWallProfiles(rooms);
+              if (!byWalls.length) return null;
+              const names = byWalls.map(r => `«${r.name || "Помещение"}»`).join(", ");
+              return (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {byWalls.length === 1 ? `В комнате ${names}` : `В комнатах ${names}`} профили заданы по стенам в приложении — на сайте профиль посчитан по комнате целиком. Проверьте строки профиля или посчитайте КП в приложении
+                </p>
+              );
+            })()}
             {/* Summary + actions */}
             <div className="rounded-lg border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/5 p-4 flex items-center justify-between flex-wrap gap-3">
               <div>
