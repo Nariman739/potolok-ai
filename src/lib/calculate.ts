@@ -209,8 +209,8 @@ function calculateRoom(
     // Plastic profile + insert strip (2 line items)
     const plasticItem = makeLineItem("profile_plastic", baseProfileLen, prices);
     if (plasticItem) items.push(plasticItem);
-    const insertItem = makeLineItem("insert", baseProfileLen, prices);
-    if (insertItem) items.push(insertItem);
+    const insertItem = room.withInsert === false ? null : makeLineItem("insert", baseProfileLen, prices);
+    if (insertItem) items.push(room.insertColor === "black" ? { ...insertItem, itemName: `${insertItem.itemName} (чёрная)` } : insertItem);
   } else {
     // Shadow or floating — single aluminum profile.
     // Если у комнаты явно указан profile_floating, по периметру весь парящий.
