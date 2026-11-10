@@ -6,7 +6,7 @@ import { asCurrency, currencySymbol, type CurrencyCode } from "@/lib/currency";
 import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
-import { DEFAULT_PRICES } from "@/lib/constants";
+import { defaultPricesFor } from "@/lib/constants";
 import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
@@ -71,10 +71,12 @@ export async function GET(
     const cur = asCurrency(estimate.master.currency);
 
     // Load master's install prices (overrides)
-    const priceOverrides = await priceMapFor(await priceBookCompanyId(scope.ownerId));
+    // Дефолты монтажных ставок — в валюте владельца (10.11.2026)
+    const priceOverrides = await priceMapFor(await priceBookCompanyId(scope.ownerId), cur);
+    const installDefaults = defaultPricesFor(cur);
 
     function getInstallPrice(code: string): number {
-      return priceOverrides[code] ?? DEFAULT_PRICES[code] ?? 0;
+      return priceOverrides[code] ?? installDefaults[code] ?? 0;
     }
 
     const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult;

@@ -156,13 +156,14 @@ export async function POST(
 
     // Готовим prices и custom items для пересчёта (как в /api/calculate).
     const companyId = await priceBookCompanyId(scope.ownerId);
-    const priceMap = await priceMapFor(companyId, await currencyFor(scope.ownerId));
+    const currency = await currencyFor(scope.ownerId);
+    const priceMap = await priceMapFor(companyId, currency);
     const customItemsMap = await customItemsMapFor(companyId);
     const ownItemsById = await ownItemsByIdFor(companyId);
 
     // Итоги площади/периметра/софитов — по всем комнатам; позиции берём ТОЛЬКО
     // у комнаты idx. Остальные комнаты считаются здесь лишь ради этих итогов.
-    const fresh: CalculationResult = calculate(newRoomsData, priceMap, customItemsMap, undefined, ownItemsById);
+    const fresh: CalculationResult = calculate(newRoomsData, priceMap, customItemsMap, undefined, ownItemsById, currency);
     const savedCalc = estimate.calculationData as unknown as CalculationResult | null;
 
     // Правка одной комнаты не трогает остальные (10.11.2026). Раньше calculate()

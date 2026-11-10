@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { X, Undo2, Check, Share2, RotateCw, AlignHorizontalSpaceBetween, Move, ZoomIn, ZoomOut, Box, Square, Pencil } from "lucide-react";
-import { DEFAULT_PRICES } from "@/lib/constants";
+import { defaultPricesFor } from "@/lib/constants";
 import { furnitureCeilingStats, classifyEdges, getFurnitureCorners, snapFurnitureToWallAndNeighbors } from "@/lib/furniture-ceiling";
 import { Scene3DBoundary } from "@/components/room-3d/Scene3DBoundary";
 import { PriceVariantPicker } from "@/components/visualization/price-variant-picker";
@@ -362,7 +362,7 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
   roomVariants?: boolean;
 }) {
   // Валюта мастера вместо зашитого «₸» (07.10.2026): formatPrice уже со знаком.
-  const { format: formatPrice } = useCurrency();
+  const { format: formatPrice, code: currencyCode } = useCurrency();
   // На маунте мигрируем legacy span-подшторники в single-anchor модель,
   // чтобы вся остальная логика работала с одной формой данных.
   const [elements, setElements] = useState<RoomElement[]>(() => {
@@ -2813,7 +2813,8 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
 
   // ── Live cost estimate ──
   function calcLiveCost(): number {
-    const p = DEFAULT_PRICES;
+    // Живой прикид — по дефолтам в валюте мастера, а не в тенге (10.11.2026)
+    const p = defaultPricesFor(currencyCode);
     let cost = 0;
     // Площадь натяжного потолка минус мебель «до потолка» (она съедает площадь)
     const fcStats = furnitureCeilingStats(

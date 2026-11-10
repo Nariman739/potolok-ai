@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { PRODUCT_ITEMS, DEFAULT_PRICES, CATEGORY_LABELS } from "@/lib/constants";
+import { PRODUCT_ITEMS, CATEGORY_LABELS, defaultPricesFor } from "@/lib/constants";
 import type { ProductCategory } from "@/lib/constants";
 import { CatalogConfigurator } from "./catalog-configurator";
 import { priceBookCompanyIdForMaster, priceMapFor } from "@/lib/price-items";
@@ -59,9 +59,11 @@ export default async function CatalogPage({
 
   // Load master's price overrides
   // Цены компании мастера (PriceItem, 01.10.2026)
-  const priceOverrides = await priceMapFor(await priceBookCompanyIdForMaster(master.id));
   // Валюта мастера-владельца каталога (07.10.2026)
   const currency = await currencyFor(master.id);
+  // Дефолты каталога — в его валюте (10.11.2026)
+  const priceOverrides = await priceMapFor(await priceBookCompanyIdForMaster(master.id), currency);
+  const defaults = defaultPricesFor(currency);
 
   // Build catalog items with master's prices
   const catalogItems = PRODUCT_ITEMS
@@ -72,7 +74,7 @@ export default async function CatalogPage({
       unit: item.unit,
       category: item.category,
       description: item.description || "",
-      price: priceOverrides[item.code] ?? DEFAULT_PRICES[item.code] ?? item.defaultPrice,
+      price: priceOverrides[item.code] ?? defaults[item.code] ?? item.defaultPrice,
     }));
 
   // Group by category

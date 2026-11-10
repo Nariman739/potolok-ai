@@ -42,13 +42,14 @@ async function loadObject(id: string, scope: Scope) {
 type Obj = NonNullable<Awaited<ReturnType<typeof loadObject>>>;
 
 /** Авто-строки из главного КП + от какого КП они. */
-async function autoLinesFor(obj: Obj, scope: Scope) {
+async function autoLinesFor(obj: Obj, scope: Scope, currency: string) {
   const primary = pickPrimaryEstimate(obj.estimates);
   const calc = primary
     ? (await prisma.estimate.findUnique({ where: { id: primary.id }, select: { calculationData: true } }))?.calculationData
     : null;
-  const prices = await priceMapFor(await priceBookCompanyId(scope.ownerId));
-  const lines = autoWorkOrderLines(calc as CalculationResult | null, prices);
+  // Ставки по умолчанию — в валюте владельца (10.11.2026)
+  const prices = await priceMapFor(await priceBookCompanyId(scope.ownerId), currency);
+  const lines = autoWorkOrderLines(calc as CalculationResult | null, prices, currency);
   return { lines, primary };
 }
 
@@ -84,6 +85,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!obj) return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
     const doc = parseWorkOrderDoc(obj.workOrderLines);
     const primary = pickPrimaryEstimate(obj.estimates);
+    const currency = await currencyFor(scope.ownerId);
     let lines: WorkOrderLine[];
     let edited = !!doc;
     let stale = false;
@@ -96,14 +98,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       lines = [{ key: "fee", room: "", name: "Оплата за монтаж", qty: 1, unit: "усл.", price: obj.installerFee }];
       edited = true;
     } else {
-      lines = (await autoLinesFor(obj, scope)).lines;
+      lines = (await autoLinesFor(obj, scope, currency)).lines;
       // Без КП, но у монтажника из «Людей» есть обычная ставка за объект — подставим.
       const fee = obj.installer?.defaultFee;
       if (lines.length === 0 && fee) lines = [{ key: "fee", room: "", name: "Оплата за монтаж", qty: 1, unit: "усл.", price: fee }];
     }
     // Ставки из прайса по видам работ, которые есть в наряде: мобилка сравнивает
     // с ними и предлагает «сохранить в прайс», если мастер поменял (29.10.2026).
-    const priceBook = await priceMapFor(await priceBookCompanyId(scope.ownerId));
+    const priceBook = await priceMapFor(await priceBookCompanyId(scope.ownerId), currency);
     const rates: Record<string, number> = {};
     for (const l of lines) if (l.code && rates[l.code] === undefined) rates[l.code] = priceBook[l.code] ?? 0;
     return NextResponse.json({
@@ -115,7 +117,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       hasEstimate: !!primary,
       total: workOrderTotal(lines),
       installerFee: obj.installerFee,
-      currency: await currencyFor(scope.ownerId),
+      currency,
     });
   } catch (error) {
     const u = unauthorized(error); if (u) return u;
@@ -136,7 +138,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // «Пересчитать из КП»: строки снова считаются из КП. installerFee обнуляем —
     // сумма без строк читается как «вбито руками». Зафиксируется при отправке (POST).
     if (body.reset === true) {
-      const { lines } = await autoLinesFor(obj, scope);
+      const { lines } = await autoLinesFor(obj, scope, await currencyFor(scope.ownerId));
       await prisma.measurementObject.update({
         where: { id },
         data: { workOrderLines: Prisma.DbNull, installerFee: null },
@@ -178,7 +180,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     // видит то, что мастер видел на экране, и «Деньги» знают, сколько ему должны.
     // Сумму, вбитую руками раньше, не трогаем — она и так уходит в наряд.
     if (!parseWorkOrderDoc(obj.workOrderLines) && obj.installerFee == null) {
-      const { lines, primary } = await autoLinesFor(obj, scope);
+      const { lines, primary } = await autoLinesFor(obj, scope, await currencyFor(scope.ownerId));
       if (lines.length > 0) {
         data.workOrderLines = docFrom(lines, primary);
         data.installerFee = workOrderTotal(lines);

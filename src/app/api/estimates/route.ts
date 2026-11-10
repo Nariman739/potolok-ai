@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_PRICES } from "@/lib/constants";
-import { getScope, inScope } from "@/lib/company";
+import { getScope, inScope, currencyFor } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
-import { KP_LIMITS } from "@/lib/constants";
+import { KP_LIMITS, defaultPriceFor } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { priceBookCompanyId } from "@/lib/price-items";
@@ -180,7 +179,9 @@ async function createEstimate(request: Request): Promise<NextResponse> {
         where: { companyId: await priceBookCompanyId(scope.ownerId), templateCode: "min_order", deletedAt: null },
         select: { price: true },
       });
-      const minOrder = ownerPrices[0]?.price ?? DEFAULT_PRICES.min_order ?? 0;
+      // Нет строки в прайсе — дефолт в валюте владельца (12 000 ₽, а не 90 000 ₸ у рублёвого; 10.11.2026).
+      // Валюту спрашиваем только в этой ветке, обычный путь без лишнего запроса.
+      const minOrder = ownerPrices[0]?.price ?? defaultPriceFor("min_order", await currencyFor(scope.ownerId)) ?? 0;
       if (minOrder > 0 && total > 0 && total < minOrder) total = minOrder;
     }
 
