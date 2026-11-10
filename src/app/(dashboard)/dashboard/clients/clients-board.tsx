@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { MoreHorizontal } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -38,7 +39,7 @@ import {
 } from "@/lib/crm-columns";
 import type { BoardItem } from "@/lib/crm-board";
 import { formatPhone } from "@/lib/phone-format";
-import { ClientsHeader } from "./clients-header";
+import { CLIENTS_VIEW_KEY, ClientsHeader } from "./clients-header";
 import { NewClientDialog } from "./new-client-dialog";
 
 // В закрытых колонках показываем только свежие карточки, счётчик — полный.
@@ -201,6 +202,171 @@ function Column({
   );
 }
 
+// Выбранный этап переживает переход в карточку клиента и назад (в рамках вкладки).
+// sessionStorage как внешнее хранилище: на сервере этапа нет, гидратация не расходится.
+const MOBILE_COLUMN_KEY = "clients-board-col-v1";
+const columnListeners = new Set<() => void>();
+function readMobileColumn(): CrmColumn | null {
+  try {
+    const v = sessionStorage.getItem(MOBILE_COLUMN_KEY);
+    return isCrmColumn(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+function subscribeMobileColumn(cb: () => void) {
+  columnListeners.add(cb);
+  return () => {
+    columnListeners.delete(cb);
+  };
+}
+function writeMobileColumn(c: CrmColumn) {
+  try {
+    sessionStorage.setItem(MOBILE_COLUMN_KEY, c);
+  } catch {}
+  columnListeners.forEach((fn) => fn());
+}
+
+/**
+ * Канбан на телефоне: один этап за раз, сверху чипы этапов со счётчиками, свайп влево/вправо
+ * листает этапы, перенос — через «⋯» на карточке. Данные и перенос те же, что у доски.
+ */
+function MobileBoard({
+  byColumn,
+  showOwner,
+  onMove,
+}: {
+  byColumn: Map<CrmColumn, BoardItem[]>;
+  showOwner: boolean;
+  onMove: (item: BoardItem, target: CrmColumn) => void;
+}) {
+  const saved = useSyncExternalStore(subscribeMobileColumn, readMobileColumn, () => null);
+  // Локальное состояние — на случай, если sessionStorage недоступен (приватный режим)
+  const [local, setLocal] = useState<CrmColumn | null>(null);
+  const column: CrmColumn = local ?? saved ?? "new";
+  const [moving, setMoving] = useState<BoardItem | null>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  function select(next: CrmColumn) {
+    setLocal(next);
+    writeMobileColumn(next);
+  }
+
+  useEffect(() => {
+    chipsRef.current
+      ?.querySelector<HTMLElement>(`[data-mchip="${column}"]`)
+      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [column]);
+
+  function shift(delta: number) {
+    const i = CRM_COLUMNS.indexOf(column);
+    const next = CRM_COLUMNS[Math.min(CRM_COLUMNS.length - 1, Math.max(0, i + delta))];
+    if (next !== column) select(next);
+  }
+
+  // Горизонтальный свайп по списку — соседний этап; вертикальный — обычная прокрутка
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touch.current;
+    touch.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) shift(dx < 0 ? 1 : -1);
+  }
+
+  const all = byColumn.get(column)!;
+  const shown = TAIL_COLUMNS.includes(column) ? all.slice(0, TAIL_LIMIT) : all;
+  const movingLines = moving ? cardLines(moving) : null;
+
+  return (
+    <div className="space-y-2 md:hidden">
+      <div ref={chipsRef} className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {CRM_COLUMNS.map((c) => {
+          const active = c === column;
+          return (
+            <button
+              key={c}
+              data-mchip={c}
+              aria-pressed={active}
+              onClick={() => select(c)}
+              className={`inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+                active ? "border-[#1e3a5f] bg-[#1e3a5f] text-white" : "bg-background text-muted-foreground"
+              }`}
+            >
+              {CRM_COLUMN_LABELS[c]}
+              <span className={`font-semibold ${active ? "text-white/80" : ""}`}>{byColumn.get(c)!.length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div data-mobile-column={column} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="min-h-[50vh] space-y-1.5">
+        {shown.length === 0 && (
+          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            В этапе «{CRM_COLUMN_LABELS[column]}» пока пусто. Перенести сюда клиента можно через «⋯» на его карточке.
+          </p>
+        )}
+        {shown.map((item) => (
+          <div key={item.id} data-mcard={item.id} className="flex items-stretch rounded-md border bg-background">
+            <Link href={`/dashboard/clients/${item.id}`} className="min-w-0 flex-1 px-2.5 py-2">
+              <CardBody item={item} showOwner={showOwner} />
+            </Link>
+            <button
+              type="button"
+              aria-label="Перенести на другой этап"
+              onClick={() => setMoving(item)}
+              className="flex w-10 flex-shrink-0 items-center justify-center border-l text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        {all.length > shown.length && (
+          <p className="px-1 py-1 text-center text-xs text-muted-foreground">
+            Показаны последние {shown.length} из {all.length}
+          </p>
+        )}
+      </div>
+
+      <Dialog open={!!moving} onOpenChange={(open) => !open && setMoving(null)}>
+        <DialogContent aria-describedby={undefined} className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Перенести в …</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {movingLines?.title}
+            {movingLines?.address ? ` · ${movingLines.address}` : ""}
+          </p>
+          <div className="grid gap-1">
+            {moving &&
+              CRM_COLUMNS.filter((c) => c !== moving.column).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  data-move={c}
+                  onClick={() => {
+                    const item = moving;
+                    setMoving(null);
+                    onMove(item, c);
+                  }}
+                  className="rounded-md border px-3 py-2 text-left text-sm hover:bg-muted"
+                >
+                  {CRM_COLUMN_LABELS[c]}
+                </button>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export function ClientsBoard({
   initialItems,
   isTeam,
@@ -226,6 +392,13 @@ export function ClientsBoard({
   // Отпускание карточки не должно считаться кликом и открывать клиента
   const suppressClick = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // Открытая доска = выбранный вид: «К клиентам» из карточки возвращает сюда, а не в список
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLIENTS_VIEW_KEY, "board");
+    } catch {}
+  }, []);
 
   const visible = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -344,7 +517,13 @@ export function ClientsBoard({
     releaseClick();
     const target = e.over?.id;
     const item = items.find((i) => i.id === e.active.id);
-    if (!item || !isCrmColumn(target) || target === item.column) return;
+    if (!item || !isCrmColumn(target)) return;
+    requestMove(item, target);
+  }
+
+  // Один путь переноса для drag-and-drop и меню «⋯» на телефоне
+  function requestMove(item: BoardItem, target: CrmColumn) {
+    if (target === item.column) return;
 
     // Монтаж следует за датой: перенос, расходящийся с датой, без её правки откатился бы при перезагрузке
     const dateDisagrees = item.installAt && installColumnFor(new Date(item.installAt)) !== target;
@@ -419,13 +598,8 @@ export function ClientsBoard({
         onAdd={() => setShowNewDialog(true)}
       />
 
-      {/* На телефоне touch-none карточек мешает прокрутке, и 12 колонок там негде показать */}
-      <div className="md:hidden rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        Канбан работает на компьютере.{" "}
-        <Link href="/dashboard/clients" className="font-medium text-[#1e3a5f] underline">
-          Открыть список
-        </Link>
-      </div>
+      {/* На телефоне drag-and-drop с touch-none мешает прокрутке, и 12 колонок негде показать — один этап за раз */}
+      <MobileBoard byColumn={byColumn} showOwner={isTeam && !onlyMine} onMove={requestMove} />
 
       <div className="hidden space-y-2 md:block">
         <div className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
