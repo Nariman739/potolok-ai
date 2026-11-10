@@ -537,16 +537,21 @@ export function ClientCard({
                 <p className="text-xs text-muted-foreground mb-1">
                   Последнее событие
                 </p>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm min-w-0">
+                {/* Одним абзацем до двух строк: длинный тип («Создан акт выполненных работ») раньше ломал строку на три */}
+                <div className="flex items-start justify-between gap-2">
+                  <p
+                    className="text-sm min-w-0 line-clamp-2"
+                    title={
+                      EVENT_LABELS[lastEvent.type] +
+                      (lastEvent.content ? ` — ${lastEvent.content}` : "")
+                    }
+                  >
                     <span className="font-medium text-[#1e3a5f]">
                       {EVENT_LABELS[lastEvent.type]}
                     </span>
-                    {lastEvent.content && (
-                      <span className="truncate">— {lastEvent.content}</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {lastEvent.content && <> — {lastEvent.content}</>}
+                  </p>
+                  <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
                     {formatDateTime(lastEvent.createdAt)}
                   </span>
                 </div>
