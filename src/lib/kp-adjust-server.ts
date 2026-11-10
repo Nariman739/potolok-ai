@@ -85,7 +85,13 @@ export function resolveAdjust(
   const partner =
     inputs.partner !== undefined ? inputs.partner : prev ? partnerInputFromState(prev) : null;
   const prevCoef = opts.calcIsBase ? 1 : prev?.partner?.coef ?? 1;
-  const r = applyKpAdjustments(calc, { discount, partner, prevCoef });
+  // Минималку со скидкой снимаем только когда мастер сейчас ставит или меняет скидку.
+  // Та же скидка, что уже сохранена (или её нет в запросе), минималку КП не снимает.
+  const prevDiscount = prev ? discountInputFromState(prev) : null;
+  const discountChanged =
+    inputs.discount !== undefined &&
+    (inputs.discount?.mode !== prevDiscount?.mode || inputs.discount?.value !== prevDiscount?.value);
+  const r = applyKpAdjustments(calc, { discount, partner, prevCoef, keepMinOrder: !!prev && !discountChanged });
   // Скидка, съедающая всё КП, даёт total = 0 → договор и акт на ноль тенге.
   // На симуляторе так и вышло («10» + «5000» = 105 000 ₸). Не даём сохранить.
   if (r.clientPrice > 0 && r.discount.amount >= r.clientPrice) {

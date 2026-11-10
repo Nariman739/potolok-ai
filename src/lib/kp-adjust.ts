@@ -172,11 +172,13 @@ export interface KpAdjustment<T extends AdjCalc> {
  */
 export function applyKpAdjustments<T extends AdjCalc>(
   calc: T,
-  opts: { partner?: MoneyInput | null; discount?: MoneyInput | null; prevCoef?: number }
+  opts: { partner?: MoneyInput | null; discount?: MoneyInput | null; prevCoef?: number; keepMinOrder?: boolean }
 ): KpAdjustment<T> {
   const prevCoef = opts.prevCoef && opts.prevCoef > 0 ? opts.prevCoef : 1;
   // Как в приложении: со скидкой минимальный заказ не действует, мастер ставит её осознанно.
-  const discounted = !!opts.discount && opts.discount.value > 0;
+  // keepMinOrder — сохранённое КП, скидку в этот раз не трогали: минималку не снимаем
+  // молча, иначе итог старого КП падал бы ниже неё при любой правке (10.11.2026).
+  const discounted = !!opts.discount && opts.discount.value > 0 && !opts.keepMinOrder;
   const baseCalc = scaleCalc(discounted && calc.minOrderApplied ? { ...calc, minOrderApplied: false } : calc, 1 / prevCoef);
   const base = baseCalc.total;
   const partner = computePartner(base, opts.partner);
