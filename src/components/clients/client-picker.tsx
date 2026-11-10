@@ -74,10 +74,15 @@ export function ClientPicker({
   // кнопки, «Сохранить» уезжала вверх из-под пальца и первое нажатие пропадало
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const box = containerRef.current;
+      if (!box) return;
+      const target = e.target as Node | null;
+      // «Выбрать из CRM» прячется на том же клике: React перерисовывает синхронно, и к моменту
+      // всплытия до document кнопки уже нет в DOM — contains() даёт false. Смотрим путь события,
+      // зафиксированный при отправке, и не считаем снаружи уже отсоединённый элемент.
+      const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+      const inside = path.includes(box) || (target ? box.contains(target) || !target.isConnected : false);
+      if (!inside) {
         setShowSuggestions(false);
         setBrowsing(false);
       }
