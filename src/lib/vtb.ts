@@ -52,41 +52,39 @@ export const VTB_ENABLED = getVtbConfig() !== null;
 
 // ── Сумма в тенге ────────────────────────────────────────────────────────
 /**
- * Сколько тенге списать с рублёвого мастера за тариф (банк принимает только
- * KZT). ВРЕМЕННОЕ правило до решения Наримана: та же сумма в тенге, что у
- * мастеров из Казахстана (1 990 / 4 990 / 39 900 ₸) — при ~6,4 ₸ за рубль это
- * ≈ 310 / 780 / 6 230 ₽ против рублёвых 390 / 790 / 6 900 ₽. Меняется через
- * env без деплоя: VTB_RUB_LAUNCH_KZT, VTB_RUB_MONTH_KZT, VTB_RUB_YEAR_KZT.
+ * Сколько тенге списать с рублёвого мастера (банк принимает только KZT).
+ * Решение Наримана 10.11.2026 «для России рубли»: мастер видит свои рублёвые
+ * цены (390 / 790 / 6 900 ₽, см. pricesFor), а в банк уходит сумма в тенге,
+ * подогнанная под них (≈ 6,4 ₸ за рубль): 2 500 / 5 000 / 44 000 ₸. Меняется
+ * через env без деплоя: VTB_RUB_LAUNCH_KZT, VTB_RUB_MONTH_KZT, VTB_RUB_YEAR_KZT.
  */
-function rubCardKzt(q: { launch: boolean; period: BillingPeriod }): number | null {
-  const key = q.launch ? "VTB_RUB_LAUNCH_KZT" : q.period === "year" ? "VTB_RUB_YEAR_KZT" : "VTB_RUB_MONTH_KZT";
-  const v = Number(process.env[key]);
-  return Number.isFinite(v) && v > 0 ? Math.round(v) : null;
-}
+const RUB_CARD_KZT_DEFAULT = { launch: 2500, month: 5000, year: 44000 } as const;
 
-/** Курс только для подсказки «около N ₽» рублёвому мастеру — на сумму не влияет. */
-const KZT_PER_RUB = Number(process.env.VTB_KZT_PER_RUB ?? 6.4);
+function rubCardKzt(q: { launch: boolean; period: BillingPeriod }): number {
+  const [key, def] = q.launch
+    ? (["VTB_RUB_LAUNCH_KZT", RUB_CARD_KZT_DEFAULT.launch] as const)
+    : q.period === "year"
+      ? (["VTB_RUB_YEAR_KZT", RUB_CARD_KZT_DEFAULT.year] as const)
+      : (["VTB_RUB_MONTH_KZT", RUB_CARD_KZT_DEFAULT.month] as const);
+  const v = Number(process.env[key]);
+  return Number.isFinite(v) && v > 0 ? Math.round(v) : def;
+}
 
 export type CardQuote = {
   /** Сумма заказа в банке, ₸. */
   amountKzt: number;
   days: number;
   period: BillingPeriod;
-  /** Для рублёвого мастера: примерно столько рублей спишет его банк. */
-  approxRub: number | null;
+  /** Для рублёвого мастера: его цена тарифа в ₽ — главная цифра на кнопке. */
+  rub: number | null;
 };
 
-/** Сумма оплаты картой ВТБ: всегда в тенге, для рублёвых — по правилу выше. */
+/** Сумма оплаты картой ВТБ: в банк всегда тенге; рублёвому — его цена в ₽ и ₸ по правилу выше. */
 export function cardQuote(period: BillingPeriod, currency: CurrencyCode | string | null | undefined, now = new Date()): CardQuote {
   const kz = quotePayment(period, now, "KZT");
-  if (asCurrency(currency) !== "RUB") return { amountKzt: kz.amount, days: kz.days, period: kz.period, approxRub: null };
-  const amountKzt = rubCardKzt(kz) ?? kz.amount;
-  return {
-    amountKzt,
-    days: kz.days,
-    period: kz.period,
-    approxRub: KZT_PER_RUB > 0 ? Math.round(amountKzt / KZT_PER_RUB / 10) * 10 : null,
-  };
+  if (asCurrency(currency) !== "RUB") return { amountKzt: kz.amount, days: kz.days, period: kz.period, rub: null };
+  const ru = quotePayment(period, now, "RUB");
+  return { amountKzt: rubCardKzt(kz), days: kz.days, period: kz.period, rub: ru.amount };
 }
 
 // ── Шлюз ─────────────────────────────────────────────────────────────────

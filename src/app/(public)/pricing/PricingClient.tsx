@@ -39,7 +39,7 @@ type Config = {
   vtb: { month: CardQuoteView; year: CardQuoteView } | null;
 };
 
-type CardQuoteView = { amountKzt: number; days: number; approxRub: number | null };
+type CardQuoteView = { amountKzt: number; days: number; rub: number | null };
 
 /** Итог возврата из банка ВТБ: проверяем у сервера, он спрашивает банк. */
 type VtbReturn = "checking" | "pending" | "failed" | null;
@@ -162,7 +162,7 @@ export function PricingClient(props: Props) {
   const vtbQuote = cfg.vtb ? (period === "year" && !launchOpen ? cfg.vtb.year : cfg.vtb.month) : null;
   const cardOn = !!cfg.vtb || cfg.cardEnabled;
   const cardLabel = vtbQuote
-    ? `💳 Оплатить картой ${formatMoney(vtbQuote.amountKzt, "KZT")}${vtbQuote.approxRub ? ` (≈ ${formatMoney(vtbQuote.approxRub, "RUB")})` : ""}`
+    ? `💳 Оплатить картой ${vtbQuote.rub ? formatMoney(vtbQuote.rub, "RUB") : formatMoney(vtbQuote.amountKzt, "KZT")}`
     : `💳 Оплатить картой ${fmt(amountToPay)}`;
 
   // Возврат со страницы банка ВТБ: /pricing?vtb=<id заявки>. Спрашиваем сервер
@@ -582,9 +582,9 @@ export function PricingClient(props: Props) {
                     <Button className="w-full" size="lg" disabled={submitting} onClick={cfg.vtb ? payByVtb : payByCard}>
                       {submitting && method === "card" ? "Открываем оплату…" : cardLabel}
                     </Button>
-                    {fromRf && cfg.vtb && (
+                    {fromRf && vtbQuote?.rub && (
                       <p className="text-xs text-muted-foreground mt-1.5 text-center">
-                        Картой «Мир» любого российского банка, списание в рублях по курсу банка
+                        Картой «Мир» любого российского банка. Спишется в рублях по курсу вашего банка, ≈ {formatMoney(vtbQuote.amountKzt, "KZT")}
                       </p>
                     )}
                   </div>
