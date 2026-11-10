@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ExternalLink, RefreshCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { formatPrice as formatPriceIn, formatDate, formatArea } from "@/lib/format";
 import type { CalculationResult } from "@/lib/types";
 import { computeArea } from "@/lib/room-geometry";
@@ -19,7 +19,6 @@ import { EstimateActions } from "./estimate-actions";
 import { ContractSection } from "./contract-section";
 import { ActSection } from "./act-section";
 import { ItemsEditor } from "./items-editor";
-import { AppRecalcButton } from "./app-recalc-button";
 import { isAppFormatRoom } from "@/lib/room-edit";
 import type { RoomInput } from "@/lib/types";
 
@@ -130,39 +129,18 @@ export default async function EstimateDetailPage({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button variant="outline" size="sm" asChild>
-          <a href={`/kp/${estimate.publicId}`} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Открыть КП
-          </a>
-        </Button>
-        {isAppEstimate ? (
-          <AppRecalcButton />
-        ) : (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/dashboard/calculator?from=${estimate.id}`}>
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Пересчитать
-            </Link>
-          </Button>
-        )}
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/dashboard/visualization?estimateId=${estimate.id}`}>
-            ✨ AI-фото
-          </Link>
-        </Button>
-        <EstimateActions
-          estimateId={estimate.id}
-          publicId={estimate.publicId}
-          clientPhone={estimate.clientPhone}
-          status={estimate.status}
-          contractConfigured={isContractConfigured(requisites)}
-          validUntil={estimate.validUntil}
-          priceView={estimate.priceView}
-        />
-      </div>
+      {/* Actions: на телефоне 3 главных + «Ещё», на широком экране всё в ряд */}
+      <EstimateActions
+        estimateId={estimate.id}
+        publicId={estimate.publicId}
+        clientPhone={estimate.clientPhone}
+        status={estimate.status}
+        contractConfigured={isContractConfigured(requisites)}
+        validUntil={estimate.validUntil}
+        priceView={estimate.priceView}
+        recalcHref={isAppEstimate ? null : `/dashboard/calculator?from=${estimate.id}`}
+        visualizationHref={`/dashboard/visualization?estimateId=${estimate.id}`}
+      />
 
       {/* Client info */}
       {(estimate.clientName || estimate.clientPhone || estimate.clientAddress) && (
