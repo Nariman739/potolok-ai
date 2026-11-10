@@ -6,3 +6,11 @@ export function formatPhone(phone: string): string {
   }
   return /^\+?[\d\s()-]+$/.test(phone) ? `+${digits}` : phone;
 }
+
+/** Ссылка wa.me без «+», как в приложении: «8 701…» и «701…» → 7701… */
+export function whatsappUrl(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const intl = digits.length === 10 ? "7" + digits : digits.replace(/^8/, "7");
+  return `https://wa.me/${intl}`;
+}

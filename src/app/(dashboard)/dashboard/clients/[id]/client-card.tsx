@@ -24,6 +24,7 @@ import {
   Clock,
   Copy,
   CalendarPlus,
+  MessageCircle,
 } from "lucide-react";
 import {
   STATUS_LABELS,
@@ -42,7 +43,7 @@ import { AddEntryDialog } from "../../calendar/add-entry-dialog";
 import { dayShort, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 import { useClock } from "@/components/use-clock";
-import { formatPhone } from "@/lib/phone-format";
+import { formatPhone, whatsappUrl } from "@/lib/phone-format";
 
 type Client = {
   id: string;
@@ -331,13 +332,29 @@ export function ClientCard({
 
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 {client.phone ? (
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="flex items-center gap-2 hover:text-[#1e3a5f]"
-                  >
-                    <Phone className="h-4 w-4" />
-                    {formatPhone(client.phone)}
-                  </a>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="flex items-center gap-2 hover:text-[#1e3a5f] min-w-0"
+                    >
+                      <Phone className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{formatPhone(client.phone)}</span>
+                    </a>
+                    {/* Менеджер чаще пишет, чем звонит: WhatsApp рядом с номером, без текста-заготовки */}
+                    {whatsappUrl(client.phone) && (
+                      <a
+                        href={whatsappUrl(client.phone)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Написать в WhatsApp"
+                        title="Написать в WhatsApp"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 hover:bg-emerald-100 flex-shrink-0"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
                 ) : (
                   <span className="text-muted-foreground">Телефон не указан</span>
                 )}
