@@ -42,6 +42,7 @@ import { AddEntryDialog } from "../../calendar/add-entry-dialog";
 import { dayShort, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 import { useClock } from "@/components/use-clock";
+import { formatPhone } from "@/lib/phone-format";
 
 type Client = {
   id: string;
@@ -296,7 +297,8 @@ export function ClientCard({
             <>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                  <h1 className="text-2xl font-bold truncate">{client.name}</h1>
+                  {/* На телефоне длинное имя переносим, а не режем в «QA Заказчик Докумен…» */}
+                  <h1 className="text-2xl font-bold break-words">{client.name}</h1>
                   <div className="mt-1 flex items-center gap-2 flex-wrap">
                     <Badge
                       className={STATUS_COLORS[client.status]}
@@ -334,7 +336,7 @@ export function ClientCard({
                     className="flex items-center gap-2 hover:text-[#1e3a5f]"
                   >
                     <Phone className="h-4 w-4" />
-                    {client.phone}
+                    {formatPhone(client.phone)}
                   </a>
                 ) : (
                   <span className="text-muted-foreground">Телефон не указан</span>
@@ -696,38 +698,39 @@ export function ClientCard({
             </p>
           ) : (
             <div className="space-y-2">
+              {/* Ссылка на КП и ссылка для клиента — соседи, а не <a> внутри <a>: вложенные теряли гидратацию */}
               {estimates.map((est) => (
-                <Link key={est.id} href={`/dashboard/estimates/${est.id}`}>
-                  <Card className="cursor-pointer hover:bg-muted/40 transition-colors">
-                    <CardContent className="p-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {formatMoney(est.total)}
-                          </span>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {ESTIMATE_STATUS_LABELS[est.status] ?? est.status}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {est.totalArea.toFixed(1)} м² ·{" "}
-                          {formatDateTime(est.createdAt)}
-                        </div>
+                <Card key={est.id} className="hover:bg-muted/40 transition-colors">
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <Link
+                      href={`/dashboard/estimates/${est.id}`}
+                      className="min-w-0 flex-1 block"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {formatMoney(est.total)}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {ESTIMATE_STATUS_LABELS[est.status] ?? est.status}
+                        </Badge>
                       </div>
-                      <a
-                        href={`/kp/${est.publicId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-[#1e3a5f] hover:underline inline-flex items-center gap-1 flex-shrink-0"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        ссылка
-                      </a>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {est.totalArea.toFixed(1)} м² ·{" "}
+                        {formatDateTime(est.createdAt)}
+                      </div>
+                    </Link>
+                    <a
+                      href={`/kp/${est.publicId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#1e3a5f] hover:underline inline-flex items-center gap-1 flex-shrink-0 py-2"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      ссылка
+                    </a>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
