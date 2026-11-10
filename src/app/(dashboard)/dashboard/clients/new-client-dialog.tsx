@@ -93,7 +93,7 @@ export function NewClientDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Новый клиент</DialogTitle>
         </DialogHeader>

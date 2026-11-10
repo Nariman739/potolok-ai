@@ -24,6 +24,7 @@ import {
   Clock,
   Copy,
   CalendarPlus,
+  MessageCircle,
 } from "lucide-react";
 import {
   STATUS_LABELS,
@@ -42,6 +43,7 @@ import { AddEntryDialog } from "../../calendar/add-entry-dialog";
 import { dayShort, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 import { useClock } from "@/components/use-clock";
+import { formatPhone, whatsappUrl } from "@/lib/phone-format";
 
 type Client = {
   id: string;
@@ -296,7 +298,8 @@ export function ClientCard({
             <>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                  <h1 className="text-2xl font-bold truncate">{client.name}</h1>
+                  {/* На телефоне длинное имя переносим, а не режем в «QA Заказчик Докумен…» */}
+                  <h1 className="text-2xl font-bold break-words">{client.name}</h1>
                   <div className="mt-1 flex items-center gap-2 flex-wrap">
                     <Badge
                       className={STATUS_COLORS[client.status]}
@@ -329,13 +332,29 @@ export function ClientCard({
 
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 {client.phone ? (
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="flex items-center gap-2 hover:text-[#1e3a5f]"
-                  >
-                    <Phone className="h-4 w-4" />
-                    {client.phone}
-                  </a>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="flex items-center gap-2 hover:text-[#1e3a5f] min-w-0"
+                    >
+                      <Phone className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{formatPhone(client.phone)}</span>
+                    </a>
+                    {/* Менеджер чаще пишет, чем звонит: WhatsApp рядом с номером, без текста-заготовки */}
+                    {whatsappUrl(client.phone) && (
+                      <a
+                        href={whatsappUrl(client.phone)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Написать в WhatsApp"
+                        title="Написать в WhatsApp"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 hover:bg-emerald-100 flex-shrink-0"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
                 ) : (
                   <span className="text-muted-foreground">Телефон не указан</span>
                 )}
@@ -518,16 +537,21 @@ export function ClientCard({
                 <p className="text-xs text-muted-foreground mb-1">
                   Последнее событие
                 </p>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm min-w-0">
+                {/* Одним абзацем до двух строк: длинный тип («Создан акт выполненных работ») раньше ломал строку на три */}
+                <div className="flex items-start justify-between gap-2">
+                  <p
+                    className="text-sm min-w-0 line-clamp-2"
+                    title={
+                      EVENT_LABELS[lastEvent.type] +
+                      (lastEvent.content ? ` — ${lastEvent.content}` : "")
+                    }
+                  >
                     <span className="font-medium text-[#1e3a5f]">
                       {EVENT_LABELS[lastEvent.type]}
                     </span>
-                    {lastEvent.content && (
-                      <span className="truncate">— {lastEvent.content}</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {lastEvent.content && <> — {lastEvent.content}</>}
+                  </p>
+                  <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
                     {formatDateTime(lastEvent.createdAt)}
                   </span>
                 </div>
@@ -702,38 +726,39 @@ export function ClientCard({
             </p>
           ) : (
             <div className="space-y-2">
+              {/* Ссылка на КП и ссылка для клиента — соседи, а не <a> внутри <a>: вложенные теряли гидратацию */}
               {estimates.map((est) => (
-                <Link key={est.id} href={`/dashboard/estimates/${est.id}`}>
-                  <Card className="cursor-pointer hover:bg-muted/40 transition-colors">
-                    <CardContent className="p-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {formatMoney(est.total)}
-                          </span>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {ESTIMATE_STATUS_LABELS[est.status] ?? est.status}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {est.totalArea.toFixed(1)} м² ·{" "}
-                          {formatDateTime(est.createdAt)}
-                        </div>
+                <Card key={est.id} className="hover:bg-muted/40 transition-colors">
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <Link
+                      href={`/dashboard/estimates/${est.id}`}
+                      className="min-w-0 flex-1 block"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {formatMoney(est.total)}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {ESTIMATE_STATUS_LABELS[est.status] ?? est.status}
+                        </Badge>
                       </div>
-                      <a
-                        href={`/kp/${est.publicId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-[#1e3a5f] hover:underline inline-flex items-center gap-1 flex-shrink-0"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        ссылка
-                      </a>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {est.totalArea.toFixed(1)} м² ·{" "}
+                        {formatDateTime(est.createdAt)}
+                      </div>
+                    </Link>
+                    <a
+                      href={`/kp/${est.publicId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#1e3a5f] hover:underline inline-flex items-center gap-1 flex-shrink-0 py-2"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      ссылка
+                    </a>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}

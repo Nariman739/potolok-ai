@@ -37,6 +37,7 @@ import {
   type CrmColumn,
 } from "@/lib/crm-columns";
 import type { BoardItem } from "@/lib/crm-board";
+import { formatPhone } from "@/lib/phone-format";
 import { ClientsHeader } from "./clients-header";
 import { NewClientDialog } from "./new-client-dialog";
 
@@ -50,14 +51,6 @@ const CHIP_LABELS: Partial<Record<CrmColumn, string>> = {
   planning: "План",
   install_planned: "Монтаж запл.",
 };
-
-function formatPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("7")) {
-    return `+7 ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9)}`;
-  }
-  return /^\+?[\d\s()-]+$/.test(phone) ? `+${digits}` : phone;
-}
 
 function initials(name: string) {
   return name
@@ -496,7 +489,7 @@ export function ClientsBoard({
       </div>
 
       <Dialog open={!!pendingInstall} onOpenChange={(open) => !open && cancelInstall()}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Когда монтаж?</DialogTitle>
           </DialogHeader>

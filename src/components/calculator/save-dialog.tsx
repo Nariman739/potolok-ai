@@ -42,7 +42,8 @@ export function SaveDialog({ open, onOpenChange, onSave, saving, initialClientId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      {/* На телефоне с подсказками клиентов диалог выше экрана — пусть прокручивается, а не прячет «Сохранить» */}
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Сохранить КП</DialogTitle>
           <DialogDescription>

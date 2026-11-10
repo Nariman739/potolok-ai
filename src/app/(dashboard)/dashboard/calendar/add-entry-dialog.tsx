@@ -119,7 +119,7 @@ export function AddEntryDialog({
 
   return (
     <Dialog open={!!day} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             {fixedClient ? `${replaced ? "Перенести" : "Назначить"} ${noun}` : "Добавить в календарь"}
