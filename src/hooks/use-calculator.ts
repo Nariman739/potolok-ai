@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { RoomInput, CalculationResult, ExtraItem } from "@/lib/types";
 
 const AUTOSAVE_KEY = "calculator-rooms-draft";
@@ -103,7 +103,12 @@ export function useCalculator() {
   }, []);
 
   // Очистка результата при смене extraItems (так же как при изменении комнат)
+  // Только при реальной смене: на монтировании эффект стирал сохранённый результат,
+  // и после перезагрузки страницы «Сохранить КП» пропадало до нового «Рассчитать».
+  const extraItemsSeen = useRef(extraItems);
   useEffect(() => {
+    if (extraItemsSeen.current === extraItems) return;
+    extraItemsSeen.current = extraItems;
     if (result) setResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extraItems]);
