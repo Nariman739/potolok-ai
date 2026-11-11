@@ -109,24 +109,45 @@ function mapWallProfile(p: string | undefined): PerimeterProfile | "niche_light"
  * Слои масок для AI-захвата («Фото клиенту», AiSceneCapture) на мешах файла-близнеца
  * Room3D (он слоёв не знает): плоскости потолка (ShapeGeometry, повёрнутые на +90° —
  * полотно и оба уровня «2 уровня») → CEILING_MASK_LAYER; коробки стен (ExtrudeGeometry)
- * → OCCLUDER_MASK_LAYER; аддитивные полосы засвета парящего → FLOATING_MASK_LAYER.
+ * → OCCLUDER_MASK_LAYER. Маска парящего — отдельные невидимые полосы FloatingMaskBand.
  */
 function markRoomMaskLayers(root: THREE.Object3D | null): void {
   root?.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     const g = m.geometry;
-    const mat = m.material as THREE.Material;
     // Группа "level2" (Level2Ceiling3D): низ, верх, борт, полка, лента — всё это потолок.
     if ((g.type === "ShapeGeometry" && m.rotation.x > 0) || m.parent?.name === "level2") m.layers.enable(CEILING_MASK_LAYER);
     else if (g.type === "ExtrudeGeometry") m.layers.enable(OCCLUDER_MASK_LAYER);
-    else if (mat && mat.blending === THREE.AdditiveBlending && m.renderOrder === 2) m.layers.enable(FLOATING_MASK_LAYER);
   });
 }
-function markFloatingMaskLayer(root: THREE.Object3D | null): void {
-  root?.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh) o.layers.enable(FLOATING_MASK_LAYER);
-  });
+
+/**
+ * Невидимая в beauty полоса-помощник ТОЛЬКО на слое маски парящего (как раньше в
+ * WallElement3D сайта): верх стены 4…20 см под потолком, 16 см — ровно та высота, из
+ * которой addPerimeterGlow (visualization-mask.ts, maskBandCm 16) строит физичный профиль
+ * свечения на AI-фото. Засвет самого 3D (WallTopProfile близнеца) в маску не идёт — он
+ * 60 см и обманул бы масштаб профиля.
+ */
+function FloatingMaskBand({ position, rotationY, lengthM, ceilingM, inwardZ }: { position: [number, number, number]; rotationY: number; lengthM: number; ceilingM: number; inwardZ: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {/* 1,5 см перед гранью стены (грань на 3 см от оси): на самой грани полоса
+          z-файтилась с заслонкой-стеной в проходе маски и выходила пунктиром. */}
+      <mesh
+        position={[0, ceilingM - 0.12, inwardZ * 0.045]}
+        ref={(m) => {
+          if (m) {
+            m.layers.disableAll();
+            m.layers.set(FLOATING_MASK_LAYER);
+          }
+        }}
+      >
+        <planeGeometry args={[lengthM, 0.16]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
 }
 
 export function Scene3D({
@@ -617,8 +638,19 @@ export function Scene3D({
     const eye = HUMAN_EYE_HEIGHT - 0.05;
     // Камера: прежний угол (minX,minY)·frac; в renderMode — лучший из выпуклых углов
     // комнаты (см. pickHeroCorner). Взгляд — чуть за центр, в сторону дальнего угла.
+    // Парящий/подшторник теперь приходят профилем стены (wallProfiles), а не элементом —
+    // для выбора угла съёмки добавляем их как «продающие» точки на стене, иначе камера
+    // вставала спиной к парящему и маска засвета для AI-фото выходила пустой (11.11.2026).
+    const heroElements = renderMode
+      ? [
+          ...elements,
+          ...Object.entries(wallProfiles ?? {})
+            .filter(([, p]) => p === "floating" || p === "subcurtain" || p === "subcurtain_light")
+            .map(([i, p]) => ({ id: `profile-${i}`, type: (p === "floating" ? "floating" : "subcurtain") as ElementType, wallIndex: Number(i), wallPosition: 0.5 })),
+        ]
+      : elements;
     const [cx, cz] = renderMode
-      ? pickHeroCorner(vertices, elements, centerOffset, halfX, halfZ, frac, fov)
+      ? pickHeroCorner(vertices, heroElements, centerOffset, halfX, halfZ, frac, fov)
       : [-halfX * frac, -halfZ * frac];
     const lookK = 0.15 / frac;
     return {
@@ -628,7 +660,7 @@ export function Scene3D({
       look: [-cx * lookK, ceilingM * lookYf, -cz * lookK],
       fov,
     };
-  }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, centerOffset]);
+  }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, wallProfiles, centerOffset]);
 
   useEffect(() => {
     // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
@@ -857,6 +889,28 @@ export function Scene3D({
     }
     return out;
   }, [wallElements, freeRoomElements]);
+
+  // Полосы маски парящего для AI-фото: стены с профилем «парящий» + элементы floating.
+  const floatingMaskBands = useMemo(() => {
+    const out: Array<{ key: string; pos: [number, number, number]; rotationY: number; lengthM: number; inwardZ: number }> = [];
+    const inwardZ = interiorSign(vertices);
+    (wallProfileList ?? []).forEach((p, i) => {
+      if (p !== "floating") return;
+      const a = vertices[i];
+      const b = vertices[i + 1];
+      if (!a || !b) return;
+      const ax = cm2m(a.x) - centerOffset.x;
+      const az = cm2m(a.y) - centerOffset.z;
+      const bx = cm2m(b.x) - centerOffset.x;
+      const bz = cm2m(b.y) - centerOffset.z;
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 0.05) return;
+      out.push({ key: `fm-wall-${i}`, pos: [(ax + bx) / 2, 0, (az + bz) / 2], rotationY: -Math.atan2(bz - az, bx - ax), lengthM: len, inwardZ });
+    });
+    for (const w of wallElements) if (w.type === "floating") out.push({ key: `fm-${w.id}`, pos: w.pos, rotationY: w.rotationY, lengthM: w.lengthM, inwardZ: w.inwardZ });
+    for (const e of freeRoomElements) if (e.type === "floating") out.push({ key: `fm-${e.id}`, pos: e.pos, rotationY: e.rotationY, lengthM: e.lengthM, inwardZ });
+    return out;
+  }, [wallProfileList, vertices, centerOffset.x, centerOffset.z, wallElements, freeRoomElements]);
 
   // Данные для запечённой карты полотна и стен (Room3D.bake): софиты, люстры, линии.
   const bakeData = useMemo(() => {
@@ -1126,17 +1180,18 @@ export function Scene3D({
         </group>
 
         {wallElements.map((w) => (
-          <group key={w.id} ref={w.type === "floating" ? markFloatingMaskLayer : undefined}>
-            <WallElement3D position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} nicheOffsetZ={w.type === "curtain" || w.type === "builtin_gardina" || w.type === "subcurtain" ? w.nicheOffsetZ : 0} inwardZ={w.inwardZ} rows={w.rows} color={w.color} trackKind={w.trackKind} />
-          </group>
+          <WallElement3D key={w.id} position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} nicheOffsetZ={w.type === "curtain" || w.type === "builtin_gardina" || w.type === "subcurtain" ? w.nicheOffsetZ : 0} inwardZ={w.inwardZ} rows={w.rows} color={w.color} trackKind={w.trackKind} />
         ))}
 
         {/* Свободные элементы потолка: магнитный трек / световая линия /
             парящий / гардина, которые мастер рисует поперёк комнаты (не на стене). */}
         {freeRoomElements.map((w) => (
-          <group key={w.id} ref={w.type === "floating" ? markFloatingMaskLayer : undefined}>
-            <WallElement3D position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} rows={w.rows} color={w.color} trackKind={w.trackKind} />
-          </group>
+          <WallElement3D key={w.id} position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} rows={w.rows} color={w.color} trackKind={w.trackKind} />
+        ))}
+
+        {/* Маска парящего для AI-фото: полосы на стенах с профилем «парящий» и у элементов floating. */}
+        {floatingMaskBands.map((b) => (
+          <FloatingMaskBand key={b.key} position={b.pos} rotationY={b.rotationY} lengthM={b.lengthM} ceilingM={ceilingM} inwardZ={b.inwardZ} />
         ))}
 
         {/* В renderMode живая камера сразу стоит в геройском ракурсе: прогревочные кадры

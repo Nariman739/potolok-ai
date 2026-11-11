@@ -1,0 +1,15 @@
+import { chromium } from "playwright";
+import { readFileSync, writeFileSync } from "node:fs";
+const [out, base] = process.argv.slice(2);
+const old = JSON.parse(readFileSync(`${out}/old-snapshot.json`, "utf8"));
+const b = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader"] });
+const ctx = await b.newContext({ viewport: { width: 1536, height: 1024 } });
+await ctx.addInitScript((payload) => { window.__SNAPSHOT__ = payload; }, { snapshot: old.snapshot, presets: old.presets });
+const p = await ctx.newPage();
+await p.goto(`${base}/render-scene`, { waitUntil: "domcontentloaded", timeout: 120000 });
+await p.waitForFunction(() => window.__SCENE_READY__ === true || typeof window.__SCENE_ERROR__ === "string", null, { timeout: 180000 });
+const frames = await p.evaluate(() => window.__captureFrames());
+await b.close();
+const save = (name, dataUrl) => { const m = /^data:image\/(png|jpeg);base64,(.+)$/.exec(dataUrl); writeFileSync(`${out}/${name}.${m[1] === "jpeg" ? "jpg" : "png"}`, Buffer.from(m[2], "base64")); };
+save("dry-beauty", frames.beauty); save("dry-floatingMask", frames.floatingMask); save("dry-ceilingMask", frames.ceilingMask);
+console.log("dry frames saved");
