@@ -37,7 +37,8 @@ import { Furniture3D } from "./Furniture3D";
 import { furnitureRotationDeg, furnitureRotationY, furnitureWallGaps } from "./furnitureOrientation";
 import { buildLevel2, level2CeilingAt, splitSegmentByLevel } from "./level2Geometry3D";
 import { WallElement3D, gardinaWidth, GARDINA_OFFSET, NICHE_W, NICHE_OFFSET } from "./WallElement3D";
-import { cm2m, interiorSign, type ElementType, type FurnitureType, type RoomElement, type Scene3DProps, type ViewSpot } from "./types";
+import { cm2m, interiorSign, type ElementType, type FurnitureType, type RoomElement, type Scene3DProps } from "./types";
+import { pickViewsByGroups, type StartCamera } from "./cameraPlacement";
 import { WALL_FURNITURE_HEX, wallFurnitureColor } from "@/lib/wall-furniture";
 import { CEILING_MASK_LAYER, FLOATING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
 
@@ -49,13 +50,6 @@ if (typeof globalThis !== "undefined" && typeof (globalThis as { __DEV__?: boole
 interface SpotInfo {
   position: THREE.Vector3;
   lookAt: THREE.Vector3;
-}
-
-interface WallAnchor {
-  x: number;
-  z: number;
-  nx: number;
-  nz: number;
 }
 
 const HUMAN_EYE_HEIGHT = 1.6;
@@ -173,7 +167,8 @@ export function Scene3D({
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
   const [sceneSettled, setSceneSettled] = useState(false);
-  const [spot, setSpot] = useState<ViewSpot>("center");
+  // Индекс ракурса (0 — стартовый общий вид; дальше окно/гардина, дверь, линии — см. views).
+  const [spot, setSpot] = useState(0);
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
@@ -552,66 +547,6 @@ export function Scene3D({
     setAiTrigger((n) => n + 1);
   }, [captureTrigger]);
 
-  const findWallAnchor = useCallback((targetType: ElementType): WallAnchor | undefined => {
-    const el = elements.find((e) => e.type === targetType && e.wallIndex !== undefined);
-    if (!el || el.wallIndex === undefined) return undefined;
-    const a = vertices[el.wallIndex];
-    const b = vertices[el.wallIndex + 1];
-    if (!a || !b) return undefined;
-    const ax = cm2m(a.x) - centerOffset.x;
-    const az = cm2m(a.y) - centerOffset.z;
-    const bx = cm2m(b.x) - centerOffset.x;
-    const bz = cm2m(b.y) - centerOffset.z;
-    const t = el.wallPosition ?? 0.5;
-    const x = ax + (bx - ax) * t;
-    const z = az + (bz - az) * t;
-    const dx = bx - ax;
-    const dz = bz - az;
-    const len = Math.hypot(dx, dz);
-    if (len < 0.01) return undefined;
-    let nx = -dz / len;
-    let nz = dx / len;
-    if (Math.hypot(x + nx, z + nz) > Math.hypot(x - nx, z - nz)) {
-      nx = -nx;
-      nz = -nz;
-    }
-    return { x, z, nx, nz };
-  }, [elements, vertices, centerOffset.x, centerOffset.z]);
-
-  const spots = useMemo<Record<ViewSpot, SpotInfo | null>>(() => {
-    const ceilLook = ceilingHeight / 100 * 0.55;
-    // Центр-вью теперь из угла комнаты, чтобы в кадре одновременно были
-    // пол, мебель, две стены и потолок. Раньше камера стояла в центре пола
-    // на уровне глаз — приходилось драг-rotate вверх, чтобы увидеть потолок.
-    const half = roomSize / 2;
-    const cornerPos = new THREE.Vector3(-half * 0.78, HUMAN_EYE_HEIGHT, -half * 0.78);
-    const result: Record<ViewSpot, SpotInfo | null> = {
-      center: {
-        position: cornerPos.clone(),
-        // Взгляд почти горизонтальный, чуть выше центра — в кадре и потолок
-        // со светильниками, и две стены, и пол с мебелью (сбалансированно).
-        lookAt: new THREE.Vector3(0, ceilLook * 0.92, 0),
-      },
-      door: null,
-      window: null,
-    };
-    const door = findWallAnchor("door");
-    if (door) {
-      result.door = {
-        position: new THREE.Vector3(door.x + door.nx * 0.4, HUMAN_EYE_HEIGHT, door.z + door.nz * 0.4),
-        lookAt: new THREE.Vector3(0, ceilLook, 0),
-      };
-    }
-    const win = findWallAnchor("window");
-    if (win) {
-      result.window = {
-        position: new THREE.Vector3(win.x + win.nx * 0.6, HUMAN_EYE_HEIGHT, win.z + win.nz * 0.6),
-        lookAt: new THREE.Vector3(0, ceilLook, 0),
-      };
-    }
-    return result;
-  }, [findWallAnchor, ceilingHeight, roomSize]);
-
   // «Геройский» ракурс для AI-кадра: из угла, чуть выше уровня глаз и с наклоном
   // ВВЕРХ на потолок + шире угол обзора → потолок (наш продукт) крупно в кадре,
   // при этом видны пол/мебель/две стены. Одинаково работает на любой комнате.
@@ -661,23 +596,6 @@ export function Scene3D({
       fov,
     };
   }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, wallProfiles, centerOffset]);
-
-  useEffect(() => {
-    // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
-    // useEffect lookRef ещё null. Поэтому ретраим через requestAnimationFrame пока
-    // ref не появится, чтобы камера встала в спот, а не висела в initial-позиции.
-    let raf = 0;
-    const tryInit = () => {
-      const target = spots[spot] ?? spots.center;
-      if (lookRef.current && target) {
-        lookRef.current.setView(target.position, target.lookAt);
-      } else {
-        raf = requestAnimationFrame(tryInit);
-      }
-    };
-    raf = requestAnimationFrame(tryInit);
-    return () => cancelAnimationFrame(raf);
-  }, [spot, spots]);
 
   const wallCutouts = useMemo<WallCutout[][]>(() => {
     const result: WallCutout[][] = vertices.length > 1
@@ -995,17 +913,100 @@ export function Scene3D({
     return items;
   }, [elements, vertices, centerOffset.x, centerOffset.z]);
 
-  // Прогоняем 2-3 пресет-ракурса и снимаем каждый → набор красивых картинок
+  // Стартовая камера и ракурсы — алгоритм приложения (cameraPlacement.ts — близнец;
+  // логика сборки входа — Scene3DNative.initialCamComputed): точка внутри контура с
+  // отступом от стен, откуда видна цель (парящие стены → светильники и элементы потолка →
+  // мебель), не в мебели и не под люстрой; до 4 ракурсов по группам (общий вид →
+  // окно/гардина → дверь → линии/трек). Раньше камера вставала в угол bbox по большей
+  // стороне — в неквадратной, Г-образной и многоугольной комнате оказывалась в стене
+  // (P7, 11.11.2026). Высота глаз 1,58 м — как в приложении; FOV — в Canvas (104/68).
+  const views = useMemo<StartCamera[]>(() => {
+    const floatingMids: Array<[number, number]> = [];
+    if (wallProfileList) {
+      for (let i = 0; i < wallProfileList.length && i + 1 < vertices.length; i++) {
+        if (wallProfileList[i] !== "floating") continue;
+        const a = vertices[i];
+        const b = vertices[i + 1];
+        floatingMids.push([cm2m((a.x + b.x) / 2) - centerOffset.x, cm2m((a.y + b.y) / 2) - centerOffset.z]);
+      }
+    }
+    // Порядок важности: парящие стены → светильники и элементы потолка → мебель.
+    const ceilingAnchors: Array<[number, number]> = [
+      ...freeRoomElements.map((e) => [e.pos[0], e.pos[2]] as [number, number]),
+      ...lightFixtures.map((l) => [l.pos[0], l.pos[2]] as [number, number]),
+    ];
+    const anchors: Array<[number, number]> =
+      floatingMids.length > 0
+        ? floatingMids
+        : ceilingAnchors.length > 0
+        ? ceilingAnchors
+        : furnitureItems.map((f) => [f.pos[0], f.pos[2]]);
+    const poly = vertices.map((v) => ({ x: cm2m(v.x) - centerOffset.x, z: cm2m(v.y) - centerOffset.z }));
+    const TALL = new Set<FurnitureType>(["wardrobe", "kitchen", "shelf", "wall_panel"]);
+    const obstacles = [
+      ...furnitureItems.map((f) => ({ x: f.pos[0], z: f.pos[2], r: Math.max(f.widthM, f.depthM) / 2, tall: TALL.has(f.type) })),
+      // Под люстрой не стоять: она закрывает весь кадр.
+      ...lightFixtures.filter((l) => l.kind === "chandelier").map((l) => ({ x: l.pos[0], z: l.pos[2], r: 0.8, tall: false })),
+      // Шторы поперёк комнаты — до пола и непрозрачные: камера не стоит в них и не смотрит сквозь.
+      ...freeRoomElements
+        .filter((e) => e.type === "curtain" || e.type === "builtin_gardina" || e.type === "subcurtain")
+        .flatMap((e) => {
+          const n = Math.max(1, Math.round(e.lengthM / 0.4));
+          const dx = Math.cos(-e.rotationY);
+          const dz = Math.sin(-e.rotationY);
+          return Array.from({ length: n + 1 }, (_, i) => {
+            const u = -e.lengthM / 2 + (e.lengthM * i) / n;
+            return { x: e.pos[0] + dx * u, z: e.pos[2] + dz * u, r: 0.25, tall: true };
+          });
+        }),
+    ];
+    // Точки на стене (дверь, окно) сдвигаем на 0,35 м внутрь комнаты — цель ровно на
+    // стене считалась «за стеной» и не получала ракурса.
+    const pt = (e: { pos: [number, number, number] }) => {
+      const l = Math.hypot(e.pos[0], e.pos[2]) || 1;
+      const k = Math.max(0, 1 - 0.35 / l);
+      return { x: e.pos[0] * k, z: e.pos[2] * k };
+    };
+    const wallsAll = [...wallElements, ...freeRoomElements];
+    const grp = (types: ElementType[]) => wallsAll.filter((e) => types.includes(e.type)).map(pt);
+    const groups: Array<Array<{ x: number; z: number }>> = [
+      anchors.map(([x, z]) => ({ x, z })),
+      grp(["window", "curtain", "builtin_gardina", "subcurtain", "shower_curtain"]),
+      grp(["door"]),
+      grp(["lightline", "track", "floating"]),
+    ].filter((g) => g.length > 0);
+    return pickViewsByGroups({ poly, eyeY: 1.58, ceilingM, obstacles }, groups.length > 0 ? groups : [[]], 4);
+  }, [vertices, centerOffset.x, centerOffset.z, ceilingM, wallProfileList, lightFixtures, freeRoomElements, wallElements, furnitureItems]);
+  const spots = useMemo<SpotInfo[]>(
+    () => views.map((v) => ({ position: new THREE.Vector3(v.pos[0], v.pos[1], v.pos[2]), lookAt: new THREE.Vector3(v.lookAt[0], v.lookAt[1], v.lookAt[2]) })),
+    [views],
+  );
+
+  useEffect(() => {
+    // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
+    // useEffect lookRef ещё null. Поэтому ретраим через requestAnimationFrame пока
+    // ref не появится, чтобы камера встала в ракурс, а не висела в initial-позиции.
+    let raf = 0;
+    const tryInit = () => {
+      const target = spots[spot] ?? spots[0];
+      if (lookRef.current && target) {
+        lookRef.current.setView(target.position, target.lookAt);
+      } else {
+        raf = requestAnimationFrame(tryInit);
+      }
+    };
+    raf = requestAnimationFrame(tryInit);
+    return () => cancelAnimationFrame(raf);
+  }, [spot, spots]);
+
+  // Прогоняем до трёх ракурсов и снимаем каждый → набор красивых картинок
   // для клиента (WhatsApp). Ждём пока камера «долетит» (lerp в LookAroundControls)
   // и кадр отрисуется, потом читаем скомпонованный буфер.
   const handleClientImages = useCallback(async () => {
     setClientShots({ open: true, loading: true, images: [] });
     const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
-    const seq: ViewSpot[] = ["center"];
-    if (spots.door) seq.push("door");
-    if (spots.window) seq.push("window");
     const imgs: string[] = [];
-    for (const v of seq.slice(0, 3)) {
+    for (let v = 0; v < Math.min(3, spots.length); v++) {
       setSpot(v);
       await sleep(750);
       const d = grabberRef.current?.grab();

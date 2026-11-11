@@ -83,4 +83,3 @@ export function interiorSign(vertices: Vertex2D[]): 1 | -1 {
   return a >= 0 ? 1 : -1;
 }
 
-export type ViewSpot = "center" | "door" | "window";

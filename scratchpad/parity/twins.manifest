@@ -43,3 +43,5 @@ src/components/room-3d/Chandelier3D.tsx       src/components/room-3d/Chandelier3
 # createContext без RN; на сайте контекста нет → всё выключено. optional — пропускать,
 # пока файла нет в ревизии (0e, 11.11.2026). SpotHalos.tsx не нужен — его зовёт только Scene3DNative.
 src/components/room-3d/designPassLook.ts      src/components/room-3d/designPassLook.ts  optional
+# 3D: стартовая камера и ракурсы (P7, 11.11.2026) — чистый модуль без импортов
+src/components/room-3d/cameraPlacement.ts     src/components/room-3d/cameraPlacement.ts
