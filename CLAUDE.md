@@ -33,6 +33,7 @@ npx prisma db push   # Push schema to Neon
 - **prisma.config.ts**: загружает `.env.local`
 - **pdfkit**: в `next.config.ts` как serverExternalPackages
 - **AI model**: менять только в `src/lib/openrouter.ts`
+- **3D-близнецы** (11.11.2026): файлы из `scratchpad/parity/twins.manifest` (Room3D, Level2Ceiling3D, level2Look, furnitureModels, ceilingBake, cameraPlacement, `src/lib/shared/level2-geometry.ts` и др.) — побайтные копии приложения potolok-ai-app. Править их ТОЛЬКО в приложении, затем `scratchpad/parity/sync-from-app.sh` + `twins.sh`; см. README в `src/components/room-3d/`. Платформенные файлы сайта: Scene3D.tsx, constants.ts, textures.ts.
 - **Env vars**: DATABASE_URL, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, BLOB_READ_WRITE_TOKEN, CRON_SECRET, TIPTOP_PUBLIC_ID/TIPTOP_API_SECRET (оплата картой), PAYMENTS_OPEN, BILLING_ENABLED, ADMIN_TG_CHAT_ID, KASPI_PHONE/KASPI_RECEIVER_NAME, GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET (OAuth-клиент «potolok-bot», проект Potolok AI), GOOGLE_TOKEN_KEY (32 байта base64 — AES-GCM для refresh_token календаря)
 
 ## Features
