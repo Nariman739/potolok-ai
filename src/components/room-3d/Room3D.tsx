@@ -207,6 +207,8 @@ function getProfileAlphaTexture(key: string, spanM: number, fn: (d: number) => n
 // белое при любой температуре (пересвет сенсора/глаза), а цвет температуры
 // виден в ореоле на стене. Между опорными точками — линейная интерполяция.
 const KELVIN_CORE: Array<[number, string]> = [[2700, "#FFE4C4"], [3000, "#FFEBD2"], [4000, "#FFF6EA"], [6500, "#F2F6FF"]];
+// DEV-бенч запекания (см. ниже): число повторов, в проде 0.
+const BAKE_BENCH_N = 0;
 const KELVIN_GLOW: Array<[number, string]> = [[2700, "#FFB46B"], [3000, "#FFC285"], [4000, "#FFD9B0"], [6500, "#F0F4FF"]];
 function kelvinColor(table: Array<[number, string]>, k: number): string {
   if (k <= table[0][0]) return table[0][1];
@@ -733,7 +735,8 @@ export function Room3D({
         ledEdges.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1] });
       }
     }
-    return bakeCeilingMap({
+    const t0 = __DEV__ ? Date.now() : 0;
+    const res = bakeCeilingMap({
       poly,
       spots: bake?.spots ?? [],
       chandeliers: bake?.chandeliers ?? [],
@@ -747,6 +750,20 @@ export function Room3D({
       lineRgb: hexToLinearRgb("#FBF7F0"),
       floatRgb: hexToLinearRgb(kelvinColor(KELVIN_GLOW, ceilingGlowKelvin)),
     });
+    // DEV: время запекания (11.11.2026, ускорение «2 уровня») — на JS-потоке, пока висит «Загружаю 3D…».
+    if (__DEV__) console.log("[3D] bake", JSON.stringify({ ms: Date.now() - t0, w: res?.w, h: res?.h, ledEdges: ledEdges.length, level2: !!level2 }));
+    // DEV-бенч запекания: BAKE_BENCH_N > 0 — ещё N запеканий подряд (одиночный холодный замер шумит ×3 от нагрузки Мака).
+    if (__DEV__ && BAKE_BENCH_N > 0) {
+      const ms: number[] = [];
+      for (let k = 0; k < BAKE_BENCH_N; k++) {
+        const t1 = Date.now();
+        const r2 = bakeCeilingMap({ poly, spots: bake?.spots ?? [], chandeliers: bake?.chandeliers ?? [], lines: bake?.lines ?? [], floating, ledEdges, ledInside: level2?.led ? level2.upperPolygon.map((p) => ({ x: p[0], z: p[1] })) : undefined, ledOutsideM: level2?.led ? Math.max(0, level2.shelfM - 0.015) : 0, spotRgb: hexToLinearRgb(bake?.spotHex ?? "#FBF7F0"), chandRgb: hexToLinearRgb("#FFE3BF"), lineRgb: hexToLinearRgb("#FBF7F0"), floatRgb: hexToLinearRgb(kelvinColor(KELVIN_GLOW, ceilingGlowKelvin)) });
+        ms.push(Date.now() - t1);
+        r2?.ao.dispose(); r2?.glow.dispose();
+      }
+      console.log("[3D] bake-bench", JSON.stringify({ w: res?.w, h: res?.h, ledEdges: ledEdges.length, spots: bake?.spots.length ?? 0, lines: bake?.lines.length ?? 0, ms }));
+    }
+    return res;
   }, [vertices, centerOffset.x, centerOffset.z, wallProfileList, ceilingProfile, bake, ceilingGlowKelvin, level2]);
   // Высота потолка у каждой стены: у стен, вдоль которых лежит нижний уровень «2 уровня», — ниже на drop.
   const wallTopM = useMemo(() => {

@@ -90,14 +90,8 @@ function to8(v: number): number {
   return Math.round(255 * e);
 }
 
-function insidePoly(px: number, pz: number, poly: Array<{ x: number; z: number }>): boolean {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i], b = poly[j];
-    if (a.z > pz !== b.z > pz && px < ((b.x - a.x) * (pz - a.z)) / (b.z - a.z || 1e-9) + a.x) inside = !inside;
-  }
-  return inside;
-}
+// «Точка в полигоне» для засвета LED теперь считается построчно внутри bakeCeilingMap (rowCrossings/insideRow,
+// та же чётность пересечений, что была в insidePoly).
 
 function segDist(px: number, pz: number, s: BakeSeg): number {
   const dx = s.bx - s.ax;
@@ -153,8 +147,54 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
   const ledInside = inp.ledInside && inp.ledInside.length >= 3 ? inp.ledInside : null;
   const ledOutside = Math.max(0, inp.ledOutsideM ?? 0);
   const L2 = LEVEL2_LOOK;
+  // Ускорение запекания «2 уровня» (11.11.2026): у острова со скруглением R20 кромка — 76 отрезков,
+  // и расстояние до каждого считалось на всех ~50 тыс. текселей (остров: 3,2 с на эмуляторе,
+  // «Загружаю 3D…»). Засвет нужен только ближе REACH от кромки, поэтому:
+  //   • сетка ячеек REACH × REACH по bbox карты; в ячейке — отрезки, чей bbox, расширенный на
+  //     REACH, её задевает; тексель смотрит только отрезки своей ячейки. Если ближайший отрезок
+  //     ближе REACH — он в ячейке, и минимум тот же самый; если нет — засвета нет в обоих
+  //     вариантах. Результат карты байт в байт (проверено офлайн по 14 комнатам);
+  //   • «внутри полигона верха» — пересечения рёбер со строкой считаются один раз на строку,
+  //     та же арифметика, что в insidePoly (чётность пересечений правее px).
+  const REACH = L2.glowLenM * 4;
+  let ledGrid: BakeSeg[][] | null = null;
+  let gnx = 1, gnz = 1, gcw = w, gch = h;
+  if (ledEdges.length > 0) {
+    gnx = Math.max(1, Math.ceil(w / REACH));
+    gnz = Math.max(1, Math.ceil(h / REACH));
+    gcw = w / gnx;
+    gch = h / gnz;
+    ledGrid = new Array(gnx * gnz);
+    for (let k = 0; k < ledGrid.length; k++) ledGrid[k] = [];
+    const clampI = (v: number, n: number) => (v < 0 ? 0 : v >= n ? n - 1 : v);
+    for (const s of ledEdges) {
+      const ix0 = clampI(Math.floor((Math.min(s.ax, s.bx) - REACH - minX) / gcw), gnx);
+      const ix1 = clampI(Math.floor((Math.max(s.ax, s.bx) + REACH - minX) / gcw), gnx);
+      const iz0 = clampI(Math.floor((Math.min(s.az, s.bz) - REACH - minZ) / gch), gnz);
+      const iz1 = clampI(Math.floor((Math.max(s.az, s.bz) + REACH - minZ) / gch), gnz);
+      for (let iz = iz0; iz <= iz1; iz++) for (let ix = ix0; ix <= ix1; ix++) ledGrid[iz * gnx + ix].push(s);
+    }
+  }
+  // Пересечения рёбер полигона верха с текущей строкой (x-координаты), для «внутри» по чётности.
+  const rowXs: number[] = [];
+  const rowCrossings = (pz: number): void => {
+    rowXs.length = 0;
+    if (!ledInside) return;
+    const poly = ledInside;
+    for (let i2 = 0, j2 = poly.length - 1; i2 < poly.length; j2 = i2++) {
+      const a = poly[i2], b2 = poly[j2];
+      if (a.z > pz !== b2.z > pz) rowXs.push(((b2.x - a.x) * (pz - a.z)) / (b2.z - a.z || 1e-9) + a.x);
+    }
+  };
+  const insideRow = (px: number): boolean => {
+    let inside = false;
+    for (let k = 0; k < rowXs.length; k++) if (px < rowXs[k]) inside = !inside;
+    return inside;
+  };
   for (let y = 0; y < H; y++) {
     const pz = minZ + ((y + 0.5) * h) / H;
+    rowCrossings(pz);
+    const gz = ledGrid ? Math.min(gnz - 1, Math.max(0, Math.floor((pz - minZ) / gch))) : 0;
     for (let x = 0; x < W; x++) {
       const px = minX + ((x + 0.5) * w) / W;
       // AO: к стене полотно темнеет (на фото центр L* 84, дальние углы ~70).
@@ -218,15 +258,16 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
       }
       // «2 уровня» с LED: лента на полке светит вверх на верхнее полотно — засвет
       // по расстоянию от кромки, только внутри полигона верха.
-      if (ledEdges.length > 0 && ledInside) {
+      if (ledGrid && ledInside) {
         let t = Infinity;
-        for (const s of ledEdges) {
-          const d1 = segDist(px, pz, s);
+        const cell = ledGrid[gz * gnx + Math.min(gnx - 1, Math.max(0, Math.floor((px - minX) / gcw)))];
+        for (let k = 0; k < cell.length; k++) {
+          const d1 = segDist(px, pz, cell[k]);
           if (d1 < t) t = d1;
         }
         // Внутри полигона верха — всегда; снаружи — только под полкой (ledOutsideM):
         // жёсткая граница засвета по кромке на текселях 2 см читалась зубцами на дуге.
-        if (t < L2.glowLenM * 4 && (t < ledOutside || insidePoly(px, pz, ledInside))) {
+        if (t < REACH && (t < ledOutside || insideRow(px))) {
           // Лента нейтрально-белая (эталон asr-1: холодно-нейтральный свет), как софиты.
           const k = L2.glowK * Math.exp(-t / L2.glowLenM);
           r += k * inp.lineRgb[0];
