@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope, type Scope } from "@/lib/company";
@@ -99,7 +99,9 @@ async function createWorkshopOrder(request: Request, masterId: string, id: strin
       }).catch(() => {});
     }
 
-    syncClientStatusForObject(id).catch(() => {});
+    // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+
+    after(() => syncClientStatusForObject(id).catch(() => {}));
     return NextResponse.json(order);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

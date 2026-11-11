@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -45,7 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }).catch(() => {});
       }
       // Деньги получены — клиент в воронке точно не «Новый».
-      syncClientStatusForObject(obj.id).catch(() => {});
+      // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+      after(() => syncClientStatusForObject(obj.id).catch(() => {}));
       return NextResponse.json(payment);
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { syncClientStatusForObject } from "@/lib/clients";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -342,7 +342,8 @@ export async function PATCH(
       installerPaidAt: updated.installerPaidAt,
       partnerAmount: primary?.partner?.amount ?? 0,
     });
-    syncClientStatusForObject(id).catch(() => {});
+    // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+    after(() => syncClientStatusForObject(id).catch(() => {}));
     const { stage, isManual } = resolveStage({ ...updated, settled: money.settled });
     return NextResponse.json({
       stage, stageLabel: STAGE_LABELS[stage], stageIsManual: isManual,

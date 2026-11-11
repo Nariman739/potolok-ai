@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { syncClientStatusForObject, addClientEvent, changeClientStatus } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
 import { currencyFor } from "@/lib/company";
@@ -167,7 +167,9 @@ export async function PUT(
           },
           data: { status: "REVISED" },
         });
-        syncClientStatusForObject(existing.measurementObjectId).catch(() => {});
+        // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+        const objectId = existing.measurementObjectId;
+        after(() => syncClientStatusForObject(objectId).catch(() => {}));
       }
       if (existing.clientId) {
         const currency = await currencyFor(existing.masterId);
@@ -252,7 +254,9 @@ export async function PUT(
     if (adjust) await persistPartner(id, adjust.partner);
     // Отправил КП → клиент в воронке «в работе», а не «новый».
     if (statusToSet !== undefined && existing.measurementObjectId) {
-      syncClientStatusForObject(existing.measurementObjectId).catch(() => {});
+      // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+      const objectId = existing.measurementObjectId;
+      after(() => syncClientStatusForObject(objectId).catch(() => {}));
     }
 
     return NextResponse.json({

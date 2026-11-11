@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -39,7 +39,8 @@ export async function DELETE(
         })
         .catch(() => {});
     }
-    syncClientStatusForObject(id).catch(() => {});
+    // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
+    after(() => syncClientStatusForObject(id).catch(() => {}));
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
