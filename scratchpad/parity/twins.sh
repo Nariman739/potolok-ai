@@ -1,34 +1,24 @@
 #!/bin/zsh
 # Файлы-близнецы 3D (сайт ↔ приложение) — сверка побайтно, по образцу canvas-pricing.
-# twins.sh [путь к potolok-integration] [ревизия приложения, по умолчанию main] → 0 если все совпали.
-# Для файлов с шапкой «ФАЙЛ-БЛИЗНЕЦ: …» (ссылаются друг на друга) сравнение без этой строки.
+#   twins.sh [путь к potolok-integration] [ревизия приложения, по умолчанию main] → 0 если все совпали.
+# Список пар — scratchpad/parity/twins.manifest (его же читает sync-from-app.sh).
+# Правила: nohdr — без строки «ФАЙЛ-БЛИЗНЕЦ» (шапки ссылаются друг на друга);
+#          fiber-web — у приложения "@react-three/fiber/native", на сайте "@react-three/fiber".
 SITE=$(cd "$(dirname "$0")/../.." && pwd)
 APP=${1:-$HOME/projects/potolok-integration}
 REV=${2:-main}
+MAN="$SITE/scratchpad/parity/twins.manifest"
 rc=0
 appcat() { git -C "$APP" show "$REV:$1" 2>/dev/null; }
-check() {
-  if cmp -s "$SITE/$1" <(appcat "$2"); then echo "= $1"; else echo "≠ $1  ↔  $2"; rc=1; fi
-}
-check_nohdr() {
-  if cmp -s <(grep -v "ФАЙЛ-БЛИЗНЕЦ" "$SITE/$1") <(appcat "$2" | grep -v "ФАЙЛ-БЛИЗНЕЦ"); then echo "= $1 (без шапки)"; else echo "≠ $1  ↔  $2"; rc=1; fi
-}
-# данные (сайт src/lib ↔ приложение src/lib/shared)
-check_nohdr src/lib/canvas-pricing.ts      src/lib/shared/canvas-pricing.ts
-check src/lib/wall-furniture.ts            src/lib/shared/wall-furniture.ts
-check src/lib/furniture-ceiling.ts         src/lib/shared/furniture-ceiling.ts
-check src/lib/spot-types.ts                src/lib/shared/spot-types.ts
-check src/lib/shared/level2-geometry.ts    src/lib/shared/level2-geometry.ts
-# 3D (сайт src/lib/shared ↔ приложение src/components/room-3d)
-check src/lib/shared/lightBalance.ts       src/components/room-3d/lightBalance.ts
-# 3D-модули без RN-импортов (сайт src/components/room-3d ↔ приложение src/components/room-3d)
-for f in level2Geometry3D.ts Level2Ceiling3D.tsx level2Look.ts floatingLight.ts lightTextures.ts windowLight.ts \
-         furnitureModels.ts Furniture3D.tsx furnitureBuilder.ts furniturePalette.ts furnitureOrientation.ts floorLook.ts sceneInvalidate.ts \
-         Room3D.tsx WallElement3D.tsx WallFacade3D.tsx ceilingBake.ts wallBake.ts chandelierLook.ts trimLook.ts realism2.ts \
-         fixtureKinds.ts Spot3D.tsx Gx53Spot3D.tsx FramelessSpot3D.tsx; do
-  check src/components/room-3d/$f src/components/room-3d/$f
-done
-# Почти-близнец: Chandelier3D — единственная разница «@react-three/fiber/native» → «@react-three/fiber».
-if cmp -s <(sed 's#@react-three/fiber/native#@react-three/fiber#' <(appcat src/components/room-3d/Chandelier3D.tsx)) "$SITE/src/components/room-3d/Chandelier3D.tsx"; then echo "= src/components/room-3d/Chandelier3D.tsx (кроме импорта fiber/native)"; else echo "≠ src/components/room-3d/Chandelier3D.tsx"; rc=1; fi
-# Платформенные шимы (не близнецы): textures.ts, lightBalance.ts (→ src/lib/shared), src/lib/shared/room-types.ts, rn-globals.d.ts.
+while read -r site app rule; do
+  [[ -z "$site" || "$site" == \#* ]] && continue
+  case "$rule" in
+    nohdr) ok=$(cmp -s <(grep -v "ФАЙЛ-БЛИЗНЕЦ" "$SITE/$site") <(appcat "$app" | grep -v "ФАЙЛ-БЛИЗНЕЦ") && echo 1 || echo 0) ;;
+    fiber-web) ok=$(cmp -s "$SITE/$site" <(appcat "$app" | sed 's#@react-three/fiber/native#@react-three/fiber#') && echo 1 || echo 0) ;;
+    *) ok=$(cmp -s "$SITE/$site" <(appcat "$app") && echo 1 || echo 0) ;;
+  esac
+  if [[ "$ok" == 1 ]]; then echo "= $site${rule:+ ($rule)}"; else echo "≠ $site  ↔  $app"; rc=1; fi
+done < "$MAN"
+# Платформенные шимы (не близнецы): textures.ts, room-3d/lightBalance.ts (→ src/lib/shared),
+# src/lib/shared/room-types.ts, rn-globals.d.ts; src/lib/level2-geometry.ts — переадресация.
 exit $rc
