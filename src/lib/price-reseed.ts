@@ -100,11 +100,12 @@ export async function reseedPricesOnCurrencyChange(ownerId: string, fromRaw: str
 }
 
 /** Одна строка мастеру по итогу: на его языке, со знаком валюты. */
-export function reseedHint(outcome: ReseedOutcome, from: string | null | undefined, to: string | null | undefined, language: string | null | undefined): string | null {
+export function reseedHint(outcome: ReseedOutcome, _from: string | null | undefined, to: string | null | undefined, language: string | null | undefined): string | null {
   const kk = language === "kk";
-  const oldSym = currencySymbol(from);
   const newSym = currencySymbol(to);
-  if (outcome === "kept") return kk ? `Бағалар ${oldSym} күйінде қалды — прайсты тексеріңіз` : `Цены остались в ${oldSym} — проверьте прайс`;
+  // kept: не утверждаем, в какой валюте цены (при переключении туда-обратно прежняя
+  // валюта профиля ≠ фактическая валюта прайса) — только что валюта сменилась.
+  if (outcome === "kept") return kk ? `Валюта ${newSym} болып өзгертілді — прайстағы бағаларды тексеріңіз` : `Валюта изменена на ${newSym} — проверьте цены в прайсе`;
   if (outcome === "reseeded") return kk ? `Бастапқы бағалар ${newSym} валютасына ауыстырылды — прайсты тексеріңіз` : `Стартовые цены переведены в ${newSym} — проверьте прайс`;
   return null;
 }
