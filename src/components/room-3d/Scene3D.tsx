@@ -117,7 +117,8 @@ function markRoomMaskLayers(root: THREE.Object3D | null): void {
     if (!m.isMesh) return;
     const g = m.geometry;
     const mat = m.material as THREE.Material;
-    if (g.type === "ShapeGeometry" && m.rotation.x > 0) m.layers.enable(CEILING_MASK_LAYER);
+    // Группа "level2" (Level2Ceiling3D): низ, верх, борт, полка, лента — всё это потолок.
+    if ((g.type === "ShapeGeometry" && m.rotation.x > 0) || m.parent?.name === "level2") m.layers.enable(CEILING_MASK_LAYER);
     else if (g.type === "ExtrudeGeometry") m.layers.enable(OCCLUDER_MASK_LAYER);
     else if (mat && mat.blending === THREE.AdditiveBlending && m.renderOrder === 2) m.layers.enable(FLOATING_MASK_LAYER);
   });
