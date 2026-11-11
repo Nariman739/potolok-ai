@@ -46,6 +46,10 @@ interface Room {
   previewUrl3d?: string;
   /** Выбор варианта из прайса на комнату, как в приложении: { gardina: id, track: id, ... } */
   variantOverrides?: Record<string, string>;
+  /** Для 3D (паритет с приложением, 11.11.2026): профили стен, вставка — приходят с комнатой замера. */
+  wallProfiles?: Record<string, string> | null;
+  withInsert?: boolean | null;
+  insertColor?: string | null;
 }
 
 /** Элементы, у которых вариант выбирается один на комнату. */
@@ -3174,6 +3178,10 @@ export default function RoomDesigner({ room, onDone, onCancel, onPreviewSaved, r
               ceilingHeight={room.ceilingHeight ?? DEFAULT_CEILING_HEIGHT_CM}
               elements={elements}
               onScreenshot={onPreviewSaved}
+              wallProfiles={room.wallProfiles ? Object.fromEntries(Object.entries(room.wallProfiles).map(([k, v]) => [Number(k), v])) : undefined}
+              withInsert={typeof room.withInsert === "boolean" ? room.withInsert : undefined}
+              insertColor={room.insertColor === "black" ? "black" : room.insertColor === "white" ? "white" : undefined}
+              betaLabel="3D · в разработке"
             />
           </Scene3DBoundary>
         )}

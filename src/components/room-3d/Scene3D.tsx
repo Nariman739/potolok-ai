@@ -31,10 +31,11 @@ import { AiSceneCapture, type HeroCam } from "./AiSceneCapture";
 import { Spot3D } from "./Spot3D";
 import { Chandelier3D } from "./Chandelier3D";
 import { Furniture3D } from "./Furniture3D";
-import { Plant3D, Rug, PLANT_MODELS } from "./Decor3D";
+import { furnitureRotationDeg, furnitureRotationY, furnitureWallGaps } from "./furnitureOrientation";
+import { buildLevel2, level2CeilingAt, splitSegmentByLevel } from "./level2Geometry3D";
 import { WallElement3D } from "./WallElement3D";
-import { cm2m, type Scene3DProps, type ViewSpot } from "./types";
-import type { FurnitureType, ElementType } from "@/lib/room-types";
+import { cm2m, type FurnitureType, type Scene3DProps, type ViewSpot } from "./types";
+import type { ElementType, RoomElement } from "@/lib/room-types";
 
 interface SpotInfo {
   position: THREE.Vector3;
@@ -226,6 +227,20 @@ export function Scene3D({
   const ceilingM = cm2m(ceilingHeight);
   void walls;
 
+  // Двухуровневый потолок (как в Scene3DNative, 09.11.2026): первый элемент «2 уровня»
+  // комнаты → геометрия для Room3D (нижний уровень, верх, борт, полка с LED).
+  // Несколько бортов — пока первый. Геометрия — файл-близнец level2Geometry3D.ts.
+  const level2Build = useMemo(() => {
+    const els = elements.filter((e) => e.type === "level2");
+    if (els.length === 0) return null;
+    try {
+      return buildLevel2(els[0], vertices, centerOffset, ceilingM);
+    } catch (e) {
+      console.warn("[Scene3D] level2 build error", e);
+      return null;
+    }
+  }, [elements, vertices, centerOffset, ceilingM]);
+
   const lightFixtures = useMemo(() => {
     const items: Array<{
       kind: "spot" | "chandelier";
@@ -239,16 +254,18 @@ export function Scene3D({
       if (el.type !== "spot" && el.type !== "chandelier") continue;
       const x = cm2m(el.x) - centerOffset.x;
       const z = cm2m(el.y) - centerOffset.z;
+      // В комнате с «2 уровня» софит/люстра стоят на своём уровне (нижний — на H − drop).
+      const y = level2Build ? level2CeilingAt(level2Build, x, z, ceilingM) : ceilingM;
       items.push({
         kind: el.type,
         id: el.id,
-        pos: [x, ceilingM, z],
+        pos: [x, y, z],
         variant: el.variant,
         priceVariantId: el.priceVariantId,
       });
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z, ceilingM]);
+  }, [elements, centerOffset.x, centerOffset.z, ceilingM, level2Build]);
 
   interface LinkedPriceVariant {
     id: string;
@@ -553,6 +570,8 @@ export function Scene3D({
       lengthM: number;
       type: ElementType;
       variant?: "ours" | "client";
+      /** Высота полотна у элемента, м: линия/трек у стены в комнате с «2 уровня» — уровень у этой стены. */
+      yM?: number;
     }> = [];
     for (const el of elements) {
       if (el.wallIndex === undefined) continue;
@@ -581,6 +600,13 @@ export function Scene3D({
       const inX = cx + (dz / wallLengthM) * 0.2;
       const inZ = cz + (-dx / wallLengthM) * 0.2;
       const flip = roomPoly.length >= 3 && !pointInPolygon(inX, inZ, roomPoly);
+      // Линия/трек у стены в комнате с «2 уровня» — на высоте уровня у этой стены
+      // (точка на 5 см внутрь комнаты от середины элемента).
+      let yM: number | undefined;
+      if (level2Build && (el.type === "lightline" || el.type === "track")) {
+        const s = flip ? -1 : 1;
+        yM = level2CeilingAt(level2Build, cx + (dz / wallLengthM) * 0.05 * s, cz + (-dx / wallLengthM) * 0.05 * s, ceilingM);
+      }
       items.push({
         id: el.id,
         pos: [cx, 0, cz],
@@ -588,10 +614,11 @@ export function Scene3D({
         lengthM: Math.min(cm2m(lengthCm), wallLengthM),
         type: el.type,
         variant: el.variant,
+        yM,
       });
     }
     return items;
-  }, [elements, vertices, centerOffset.x, centerOffset.z, roomPoly]);
+  }, [elements, vertices, centerOffset.x, centerOffset.z, roomPoly, level2Build, ceilingM]);
 
   // Свободные элементы внутри комнаты (не привязаны к стене):
   // магнитный трек / световая линия / парящий — могут лежать поперёк потолка
@@ -606,8 +633,33 @@ export function Scene3D({
       rotationY: number;
       lengthM: number;
       variant?: "ours" | "client";
+      /** Высота полотна под элементом, м (в комнате с «2 уровня» — нижний или верхний уровень). Нет — ceilingM. */
+      yM?: number;
     };
     const items: FreeItem[] = [];
+    // Линии В полотне (светолиния, трек) в комнате с «2 уровня» идут по той плоскости, над
+    // которой нарисованы; отрезок через границу уровней режется на части (как в
+    // Scene3DNative, ERSO 10.11.2026: линии вокруг острова рисовались на H и прятались
+    // за нижним уровнем). Остальные свободные элементы — как раньше, на ceilingM.
+    const inCanvas = (t: ElementType) => t === "lightline" || t === "track";
+    const pushSeg = (el: RoomElement, idBase: string, ax: number, az: number, bx: number, bz: number, rotationY?: number) => {
+      const parts = inCanvas(el.type) && level2Build ? splitSegmentByLevel(level2Build, ax, az, bx, bz, ceilingM) : [{ ax, az, bx, bz, y: ceilingM }];
+      parts.forEach((p, k) => {
+        const dx = p.bx - p.ax;
+        const dz = p.bz - p.az;
+        const lengthM = Math.hypot(dx, dz);
+        if (lengthM < 0.05) return;
+        items.push({
+          id: k === 0 ? idBase : `${idBase}-lv${k}`,
+          type: el.type,
+          pos: [(p.ax + p.bx) / 2, 0, (p.az + p.bz) / 2],
+          rotationY: rotationY ?? -Math.atan2(dz, dx),
+          lengthM,
+          variant: el.variant,
+          yM: inCanvas(el.type) && level2Build ? p.y : undefined,
+        });
+      });
+    };
     for (const el of elements) {
       if (el.wallIndex !== undefined) continue; // wall-element обрабатывается отдельно
       const supportedFreeTypes: ElementType[] = [
@@ -633,18 +685,8 @@ export function Scene3D({
           const az = cm2m(a.y) - centerOffset.z;
           const bx = cm2m(b.x) - centerOffset.x;
           const bz = cm2m(b.y) - centerOffset.z;
-          const dx = bx - ax;
-          const dz = bz - az;
-          const lengthM = Math.hypot(dx, dz);
-          if (lengthM < 0.05) continue;
-          items.push({
-            id: i === 0 ? el.id : `${el.id}-seg${i}`,
-            type: el.type,
-            pos: [(ax + bx) / 2, 0, (az + bz) / 2],
-            rotationY: -Math.atan2(dz, dx),
-            lengthM,
-            variant: el.variant,
-          });
+          if (Math.hypot(bx - ax, bz - az) < 0.05) continue;
+          pushSeg(el, i === 0 ? el.id : `${el.id}-seg${i}`, ax, az, bx, bz);
         }
         continue;
       }
@@ -653,18 +695,14 @@ export function Scene3D({
       if (el.x !== undefined && el.y !== undefined && el.length) {
         const cx = cm2m(el.x) - centerOffset.x;
         const cz = cm2m(el.y) - centerOffset.z;
-        items.push({
-          id: el.id,
-          type: el.type,
-          pos: [cx, 0, cz],
-          rotationY: -((el.rotation ?? 0) * Math.PI) / 180,
-          lengthM: cm2m(el.length),
-          variant: el.variant,
-        });
+        const rot = -((el.rotation ?? 0) * Math.PI) / 180;
+        const half = cm2m(el.length) / 2;
+        // Концы отрезка по направлению поворота (как в Scene3DNative): x вдоль cos, z по −sin.
+        pushSeg(el, el.id, cx - Math.cos(rot) * half, cz + Math.sin(rot) * half, cx + Math.cos(rot) * half, cz - Math.sin(rot) * half, rot);
       }
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z]);
+  }, [elements, centerOffset.x, centerOffset.z, level2Build, ceilingM]);
 
   // Теневой профиль (из wallProfiles мобилки): тёмный зазор ~1 см по периметру
   // у примыкания потолка к стене. Рисуем тонкой чёрной полосой чуть ниже потолка.
@@ -690,47 +728,59 @@ export function Scene3D({
     return out;
   }, [shadowGapWalls, wallProfiles, vertices, centerOffset.x, centerOffset.z]);
 
+  // Мебель — как в Scene3DNative (процедурные модели furnitureModels.ts, файл-близнец):
+  // поворот как на чертеже + «зад к стене», зазоры до стен (ТВ висит, тень на стену),
+  // Г-образная кухня из двух блоков. Ковёр и растение-декор убраны (11.11.2026, Нариман:
+  // один вид с приложением).
   const furnitureItems = useMemo(() => {
     const items: Array<{
       id: string;
+      type: FurnitureType;
       pos: [number, number, number];
       rotationY: number;
-      furnitureType: FurnitureType;
       widthM: number;
       depthM: number;
+      backGapM: number;
+      frontGapM: number;
+      leftGapM: number;
+      rightGapM: number;
+      /** Кухня: этот блок — короткий в Г-образной сборке, торец end упирается в блок глубиной mainDepthM. */
+      kitchenJoin?: { end: "left" | "right"; mainDepthM: number };
     }> = [];
+    const kitchens: Array<{ i: number; x: number; y: number; w: number; d: number; deg: number }> = [];
     for (const el of elements) {
       if (el.type !== "furniture") continue;
-      if (el.x === undefined || el.y === undefined || !el.furnitureType) continue;
+      if (el.x === undefined || el.y === undefined) continue;
+      if (!el.furnitureType) continue;
       const x = cm2m(el.x) - centerOffset.x;
       const z = cm2m(el.y) - centerOffset.z;
-      items.push({
-        id: el.id,
-        pos: [x, 0, z],
-        rotationY: -((el.rotation ?? 0) * Math.PI) / 180,
-        furnitureType: el.furnitureType,
-        widthM: cm2m(el.width ?? 100),
-        depthM: cm2m(el.height ?? 100),
-      });
+      const widthM = el.width ? cm2m(el.width) : 1.0;
+      const depthM = el.height ? cm2m(el.height) : 0.6;
+      const deg = furnitureRotationDeg(el, vertices);
+      const rotationY = furnitureRotationY(deg);
+      const gaps = furnitureWallGaps(el, vertices, deg);
+      items.push({ id: el.id, type: el.furnitureType, pos: [x, 0, z], rotationY, widthM, depthM, backGapM: cm2m(gaps.back), frontGapM: cm2m(gaps.front), leftGapM: cm2m(gaps.left), rightGapM: cm2m(gaps.right) });
+      if (el.furnitureType === "kitchen" && el.width && el.height) kitchens.push({ i: items.length - 1, x: el.x, y: el.y, w: el.width, d: el.height, deg });
+    }
+    // Г-образная кухня из двух блоков: технику рисует только более длинный блок, короткий
+    // торцом стыкуется с ним — без своей техники, верхние шкафы доводятся до шкафов длинного.
+    for (const b of kitchens) {
+      for (const a of kitchens) {
+        if (a === b || a.w < b.w || (a.w === b.w && a.i > b.i)) continue;
+        const rad = (b.deg * Math.PI) / 180;
+        for (const end of ["left", "right"] as const) {
+          const s = end === "left" ? -1 : 1;
+          const px = b.x + (s * Math.cos(rad) * b.w) / 2;
+          const py = b.y + (s * Math.sin(rad) * b.w) / 2;
+          const ar = (a.deg * Math.PI) / 180;
+          const lx = (px - a.x) * Math.cos(ar) + (py - a.y) * Math.sin(ar);
+          const ly = -(px - a.x) * Math.sin(ar) + (py - a.y) * Math.cos(ar);
+          if (Math.abs(lx) <= a.w / 2 + 12 && Math.abs(ly) <= a.d / 2 + 12) items[b.i].kitchenJoin = { end, mainDepthM: cm2m(a.d) };
+        }
+      }
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z]);
-
-  // Место для растения — в углу комнаты (у vertex[0]), смещённое внутрь, чтобы
-  // не втыкалось в стену. Углы обычно свободны от мебели.
-  const plantSpot = useMemo<[number, number, number] | null>(() => {
-    if (vertices.length < 3) return null;
-    const v = vertices[0];
-    const vx = cm2m(v.x) - centerOffset.x;
-    const vz = cm2m(v.y) - centerOffset.z;
-    const len = Math.hypot(vx, vz) || 1;
-    return [vx - (vx / len) * 0.5, 0, vz - (vz / len) * 0.5];
-  }, [vertices, centerOffset.x, centerOffset.z]);
-
-  const rugSize = useMemo<[number, number]>(
-    () => [Math.min(roomSize * 0.55, 2.6), Math.min(roomSize * 0.42, 1.8)],
-    [roomSize],
-  );
+  }, [elements, vertices, centerOffset.x, centerOffset.z]);
 
   // Прогоняем 2-3 пресет-ракурса и снимаем каждый → набор красивых картинок
   // для клиента (WhatsApp). Ждём пока камера «долетит» (lerp в LookAroundControls)
@@ -874,6 +924,7 @@ export function Scene3D({
           wallTextureUrl={wallPreset.textureUrl}
           wallNormalUrl={wallPreset.normalUrl}
           wallRoughUrl={wallPreset.roughUrl}
+          level2={level2Build}
         />
 
         {/* Контактные тени — теперь как мягкий AO поверх настоящих shadow-maps
@@ -916,30 +967,11 @@ export function Scene3D({
           );
         })}
 
-        {furnitureItems.map((f) => (
-          <Furniture3D
-            key={f.id}
-            position={f.pos}
-            rotationY={f.rotationY}
-            furnitureType={f.furnitureType}
-            widthM={f.widthM}
-            depthM={f.depthM}
-          />
-        ))}
-
-        {/* Стайлинг-декор — «дизайнерская обжитость»: ковёр под центром +
-            растение в углу. Только на high-quality (не тащим на слабых).
-            В renderMode («Фото клиенту») — НЕ рисуем: камера стоит в углу, и растение
-            у vertex[0] лезет листьями в кадр; AI превращал их в 3-4 растения + ковёр
-            (фидбек владельца 09.10 «чересчур много растений и лишнего»). */}
-        {quality === "high" && !renderMode && (
-          <>
-            <Rug position={[0, 0.012, 0]} width={rugSize[0]} depth={rugSize[1]} />
-            {plantSpot && (
-              <Plant3D position={plantSpot} url={PLANT_MODELS[0]} targetHeightM={0.95} />
-            )}
-          </>
-        )}
+        <group name="furniture">
+          {furnitureItems.map((f) => (
+            <Furniture3D key={f.id} position={f.pos} rotationY={f.rotationY} furnitureType={f.type} widthM={f.widthM} depthM={f.depthM} ceilingM={ceilingM} backGapM={f.backGapM} frontGapM={f.frontGapM} leftGapM={f.leftGapM} rightGapM={f.rightGapM} kitchenJoin={f.kitchenJoin} />
+          ))}
+        </group>
 
         {wallElements.map((w) => (
           <WallElement3D
@@ -947,7 +979,7 @@ export function Scene3D({
             position={w.pos}
             rotationY={w.rotationY}
             lengthM={w.lengthM}
-            ceilingM={ceilingM}
+            ceilingM={w.yM ?? ceilingM}
             type={w.type}
             variant={w.variant}
             lightColor={lightTemp.hex}
@@ -962,7 +994,7 @@ export function Scene3D({
             position={w.pos}
             rotationY={w.rotationY}
             lengthM={w.lengthM}
-            ceilingM={ceilingM}
+            ceilingM={w.yM ?? ceilingM}
             type={w.type}
             variant={w.variant}
             lightColor={lightTemp.hex}

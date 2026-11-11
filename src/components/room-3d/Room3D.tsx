@@ -6,6 +6,8 @@ import * as THREE from "three";
 import { cm2m, type Vertex2D } from "./types";
 import { CEILING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
 import { R3FErrorBoundary } from "./R3FErrorBoundary";
+import { Level2Ceiling3D } from "./Level2Ceiling3D";
+import { level2CeilingAt, type Level2Build } from "./level2Geometry3D";
 
 // Обёртка над текстурой: Suspense показывает plain-цвет ПОКА грузится, а
 // R3FErrorBoundary — plain-цвет НАВСЕГДА если fetch сорвался (offline/404).
@@ -164,6 +166,9 @@ interface Room3DProps {
   /** PBR-карты стен. */
   wallNormalUrl?: string | null;
   wallRoughUrl?: string | null;
+  /** Двухуровневый потолок (паритет с приложением, 11.11.2026): готовая геометрия из
+   *  level2Geometry3D (файл-близнец); есть — обычное полотно не рисуется. */
+  level2?: Level2Build | null;
 }
 
 const WALL_THICKNESS = 0.06;
@@ -209,9 +214,24 @@ export function Room3D({
   wallTextureUrl = null,
   wallNormalUrl = null,
   wallRoughUrl = null,
+  level2 = null,
 }: Room3DProps) {
   const ceilingM = cm2m(ceilingHeight);
   const finish = FINISH_PARAMS[ceilingFinish];
+
+  // Высота потолка у каждой стены: у стен, вдоль которых лежит нижний уровень «2 уровня», —
+  // ниже на drop (карниз и заглушка — на этой высоте). Как в Room3D приложения.
+  const wallTopM = useMemo(() => {
+    const n = Math.max(0, vertices.length - 1);
+    const out = new Array<number>(n).fill(ceilingM);
+    if (!level2) return out;
+    for (let i = 0; i < n; i++) {
+      const a = vertices[i], b = vertices[i + 1];
+      const mx = cm2m((a.x + b.x) / 2) - centerOffset.x, mz = cm2m((a.y + b.y) / 2) - centerOffset.z;
+      out[i] = level2CeilingAt(level2, mx, mz, ceilingM);
+    }
+    return out;
+  }, [vertices, centerOffset.x, centerOffset.z, ceilingM, level2]);
 
   const floorShape = useMemo(() => {
     const shape = new THREE.Shape();
@@ -229,6 +249,7 @@ export function Room3D({
   const wallMeshes = useMemo(() => {
     const meshes: Array<{
       key: string;
+      index: number;
       geometry: THREE.ExtrudeGeometry;
       position: [number, number, number];
       rotationY: number;
@@ -279,6 +300,7 @@ export function Room3D({
 
       meshes.push({
         key: `wall-${i}`,
+        index: i,
         geometry,
         position: [ax, 0, az],
         rotationY: -Math.atan2(dz, dx),
@@ -319,7 +341,21 @@ export function Room3D({
         )}
       </mesh>
 
-      {!hideCeiling && (
+      {/* «2 уровня»: нижний уровень, верх, борт, полка с лентой — Level2Ceiling3D (близнец
+          приложения). Все меши группы помечаем слоем CEILING_MASK_LAYER, как плоское полотно,
+          чтобы AI-захват и «Фото клиенту» получали маску потолка с обоих уровней. */}
+      {!hideCeiling && level2 && (
+        <group
+          ref={(g) => {
+            g?.traverse((o) => {
+              if ((o as THREE.Mesh).isMesh) o.layers.enable(CEILING_MASK_LAYER);
+            });
+          }}
+        >
+          <Level2Ceiling3D build={level2} ceilingM={ceilingM} ceilingColor={ceilingColor} ao={null} glow={null} roughness={finish.roughness} metalness={finish.metalness} envIntensity={finish.envIntensity} />
+        </group>
+      )}
+      {!hideCeiling && !level2 && (
         <mesh
           rotation={[Math.PI / 2, 0, 0]}
           position={[0, ceilingM, 0]}
@@ -394,7 +430,7 @@ export function Room3D({
           </mesh>
 
           {!hideCeiling && (
-            <mesh position={[w.length / 2, ceilingM - CORNICE_HEIGHT / 2, -WALL_THICKNESS / 2 - CORNICE_DEPTH / 2]}>
+            <mesh position={[w.length / 2, (wallTopM[w.index] ?? ceilingM) - CORNICE_HEIGHT / 2, -WALL_THICKNESS / 2 - CORNICE_DEPTH / 2]}>
               <boxGeometry args={[w.length, CORNICE_HEIGHT, CORNICE_DEPTH]} />
               <meshStandardMaterial color="#FFFFFF" roughness={0.5} metalness={0.05} />
             </mesh>
