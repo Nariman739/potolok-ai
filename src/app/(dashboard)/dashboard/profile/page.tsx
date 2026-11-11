@@ -217,6 +217,10 @@ export default function ProfilePage() {
         throw new Error(typeof data?.error === "string" ? data.error : "");
       }
       toast.success("Профиль сохранён");
+      // Смена валюты (11.11.2026): сервер либо пересеял стартовый прайс, либо оставил
+      // правленный — в обоих случаях одна строка, чтобы мастер заглянул в прайс.
+      const saved = (await res.json().catch(() => null)) as { priceHint?: string } | null;
+      if (saved?.priceHint) toast.warning(saved.priceHint, { duration: 8000 });
       // Валюта идёт в CurrencyProvider из серверного layout — перечитываем, чтобы знак обновился сразу (07.10.2026).
       router.refresh();
     } catch (e) {

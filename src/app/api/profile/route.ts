@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CURRENCY_CODES } from "@/lib/currency";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import { DEFAULT_KP_CONFIG } from "@/lib/kp/templates";
+import { reseedPricesOnCurrencyChange, reseedHint, type ReseedOutcome } from "@/lib/price-reseed";
 
 export async function GET() {
   try {
@@ -119,6 +120,13 @@ export async function PUT(request: Request) {
       if (taken) return phoneTaken(master.language);
     }
 
+    // Смена валюты (11.11.2026): стартовый прайс пересеваем в новую валюту, правленный
+    // не трогаем — мастеру уходит одна строка-подсказка. Своя валюта из базы, а не
+    // из requireAuth: там у участника бригады уже подставлена валюта владельца.
+    const prevCurrency = "currency" in body
+      ? (await prisma.master.findUnique({ where: { id: master.id }, select: { currency: true } }))?.currency ?? null
+      : null;
+
     try {
       await prisma.master.update({
         where: { id: master.id },
@@ -129,7 +137,16 @@ export async function PUT(request: Request) {
       throw e;
     }
 
-    return NextResponse.json({ success: true });
+    let prices: ReseedOutcome = "none";
+    if ("currency" in body && prevCurrency !== body.currency) {
+      // Валюта уже сохранена; сбой пересева не должен ронять сохранение профиля.
+      prices = await reseedPricesOnCurrencyChange(master.id, prevCurrency, body.currency).catch((e) => {
+        console.error("reseed prices on currency change:", e);
+        return "kept" as const;
+      });
+    }
+    const priceHint = reseedHint(prices, prevCurrency, body.currency, master.language);
+    return NextResponse.json({ success: true, prices, ...(priceHint ? { priceHint } : {}) });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
