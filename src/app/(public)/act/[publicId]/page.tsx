@@ -8,6 +8,7 @@ import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
+import { brandedDocMetadata } from "@/lib/doc-og";
 import { ActSignSection } from "./sign-section";
 import { CheckCircle2 } from "lucide-react";
 
@@ -17,9 +18,26 @@ import { CheckCircle2 } from "lucide-react";
 // (аудит 24.09.2026).
 export const robots = { index: false, follow: false };
 
-export const metadata: Metadata = {
-  title: "Акт выполненных работ",
-};
+// Превью ссылки в WhatsApp — с логотипом и названием мастера (11.11.2026)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ publicId: string }>;
+}): Promise<Metadata> {
+  const { publicId } = await params;
+  const estimate = await prisma.estimate.findFirst({
+    where: { actPublicId: publicId, deletedAt: null },
+    select: { masterId: true, companyId: true, master: { select: { companyName: true, firstName: true, logoUrl: true } } },
+  });
+  if (!estimate) return { title: "Акт выполненных работ", robots: { index: false, follow: false } };
+  const m = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
+  const company = m.companyName || m.firstName;
+  return brandedDocMetadata({
+    title: `Акт от ${company}`,
+    description: `Акт выполненных работ по натяжным потолкам от ${company}. Откройте, чтобы проверить и подписать.`,
+    logoUrl: m.logoUrl,
+  });
+}
 
 export default async function ActPublicPage({
   params,

@@ -7,6 +7,7 @@ import { asLang, localeOf, type Lang } from "@/lib/i18n";
 import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { brandedDocMetadata } from "@/lib/doc-og";
 import { SignSection } from "./sign-section";
 import { PrintButton } from "./print-button";
 import { CheckCircle2 } from "lucide-react";
@@ -17,9 +18,26 @@ import { CheckCircle2 } from "lucide-react";
 // (аудит 24.09.2026).
 export const robots = { index: false, follow: false };
 
-export const metadata: Metadata = {
-  title: "Договор",
-};
+// Превью ссылки в WhatsApp — с логотипом и названием мастера (11.11.2026)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ publicId: string }>;
+}): Promise<Metadata> {
+  const { publicId } = await params;
+  const estimate = await prisma.estimate.findFirst({
+    where: { contractPublicId: publicId, deletedAt: null },
+    select: { masterId: true, companyId: true, master: { select: { companyName: true, firstName: true, logoUrl: true } } },
+  });
+  if (!estimate) return { title: "Договор", robots: { index: false, follow: false } };
+  const m = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
+  const company = m.companyName || m.firstName;
+  return brandedDocMetadata({
+    title: `Договор от ${company}`,
+    description: `Договор на натяжные потолки от ${company}. Откройте, чтобы прочитать и подписать.`,
+    logoUrl: m.logoUrl,
+  });
+}
 
 export default async function ContractPublicPage({
   params,

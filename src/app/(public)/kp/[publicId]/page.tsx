@@ -10,6 +10,7 @@ import { asCurrency } from "@/lib/currency";
 import { CurrencyProvider } from "@/components/currency-provider";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
+import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { ConfirmSection } from "./confirm-section";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { after } from "next/server";
@@ -31,10 +32,10 @@ export async function generateMetadata({
   const { publicId } = await params;
   const estimate = await prisma.estimate.findFirst({
     where: { publicId, deletedAt: null },
-    include: { master: { select: { companyName: true, firstName: true } } },
+    include: { master: { select: { companyName: true, firstName: true, logoUrl: true } } },
   });
 
-  if (!estimate) return { title: "КП не найдено" };
+  if (!estimate) return { title: "КП не найдено", robots: DOC_ROBOTS };
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
@@ -48,12 +49,14 @@ export async function generateMetadata({
     return {
       title,
       description,
+      robots: DOC_ROBOTS,
       openGraph: { title, description, images: [{ url: cacheBust }] },
       twitter: { card: "summary_large_image", title, description, images: [cacheBust] },
     };
   }
 
-  return { title, description };
+  // Без 3D-превью — логотип мастера вместо иконки potolok.ai (11.11.2026)
+  return brandedDocMetadata({ title, description, logoUrl: estimate.master.logoUrl });
 }
 
 /**
