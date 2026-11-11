@@ -82,12 +82,17 @@ export default async function Public3DPage({
     redirect(`/kp/${publicId}`);
   }
 
-  // Комната замера для этой комнаты КП: та же позиция в списке, иначе по имени.
+  // Комната замера для этой комнаты КП: сначала по имени, затем по позиции в списке —
+  // и только если списков комнат одинаковой длины (0e, 11.11.2026: у 26 из 688 КП число
+  // комнат в roomsData ≠ числу комнат объекта — по индексу взялись бы профили чужой
+  // комнаты). Не нашли — сцена без профилей/вставки/фасада, как раньше.
   const roomsData = Array.isArray(estimate.roomsData) ? (estimate.roomsData as unknown[]) : [];
   const idx = roomsData.indexOf(room);
   const mRooms = estimate.measurementObject?.rooms ?? [];
-  const roomName = typeof room.name === "string" ? room.name : undefined;
-  const mRoom = mRooms[idx] ?? (roomName ? mRooms.find((r) => r.name === roomName) : undefined);
+  const roomName = typeof room.name === "string" ? room.name.trim() : "";
+  const byName = roomName ? mRooms.filter((r) => (r.name ?? "").trim() === roomName) : [];
+  const mRoom =
+    byName.length === 1 ? byName[0] : mRooms.length === roomsData.length && idx >= 0 ? mRooms[idx] : undefined;
 
   const sceneProps = mapRoomToScene3DProps({
     ...room,
