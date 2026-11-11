@@ -39,3 +39,7 @@ src/components/room-3d/Spot3D.tsx             src/components/room-3d/Spot3D.tsx
 src/components/room-3d/Gx53Spot3D.tsx         src/components/room-3d/Gx53Spot3D.tsx
 src/components/room-3d/FramelessSpot3D.tsx    src/components/room-3d/FramelessSpot3D.tsx
 src/components/room-3d/Chandelier3D.tsx       src/components/room-3d/Chandelier3D.tsx   fiber-web
+# Ещё не в main приложения (ветка 3d-design-pass, окно -17, OTA №4): флаги дизайн-разбора,
+# createContext без RN; на сайте контекста нет → всё выключено. optional — пропускать,
+# пока файла нет в ревизии (0e, 11.11.2026). SpotHalos.tsx не нужен — его зовёт только Scene3DNative.
+src/components/room-3d/designPassLook.ts      src/components/room-3d/designPassLook.ts  optional

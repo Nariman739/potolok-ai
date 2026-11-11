@@ -15,6 +15,9 @@ while read -r site app rule; do
   case "$rule" in
     nohdr) ok=$(cmp -s <(grep -v "ФАЙЛ-БЛИЗНЕЦ" "$SITE/$site") <(appcat "$app" | grep -v "ФАЙЛ-БЛИЗНЕЦ") && echo 1 || echo 0) ;;
     fiber-web) ok=$(cmp -s "$SITE/$site" <(appcat "$app" | sed 's#@react-three/fiber/native#@react-three/fiber#') && echo 1 || echo 0) ;;
+    optional)
+      if ! git -C "$APP" cat-file -e "$REV:$app" 2>/dev/null; then echo "· $site — нет в $REV (optional)"; continue; fi
+      ok=$(cmp -s "$SITE/$site" <(appcat "$app") && echo 1 || echo 0) ;;
     *) ok=$(cmp -s "$SITE/$site" <(appcat "$app") && echo 1 || echo 0) ;;
   esac
   if [[ "$ok" == 1 ]]; then echo "= $site${rule:+ ($rule)}"; else echo "≠ $site  ↔  $app"; rc=1; fi

@@ -500,6 +500,22 @@ interface Room3DProps {
   wallFacadeHex?: Array<string | undefined>;
 }
 
+/** Углы выреза под гардину/нишу (центр, направление, размер) → четырёхугольник в мировых XZ. */
+function slotCorners(sl: { x: number; z: number; angle: number; lengthM: number; widthM: number }): Array<[number, number]> {
+  const dx = Math.cos(sl.angle);
+  const dz = Math.sin(sl.angle);
+  const nx = -dz;
+  const nz = dx;
+  const L = sl.lengthM / 2;
+  const W = sl.widthM / 2;
+  return [
+    [sl.x - dx * L - nx * W, sl.z - dz * L - nz * W],
+    [sl.x + dx * L - nx * W, sl.z + dz * L - nz * W],
+    [sl.x + dx * L + nx * W, sl.z + dz * L + nz * W],
+    [sl.x - dx * L + nx * W, sl.z - dz * L + nz * W],
+  ];
+}
+
 /** Пересечение двух выпуклых четырёхугольников (SAT по рёбрам обоих), с зазором 5 мм. */
 function quadsOverlap(a: Array<[number, number]>, b: Array<[number, number]>): boolean {
   const axes: Array<[number, number]> = [];
@@ -633,18 +649,7 @@ export function Room3D({
     // без потолка.
     const placed: Array<Array<[number, number]>> = [];
     for (const sl of ceilingSlots) {
-      const dx = Math.cos(sl.angle);
-      const dz = Math.sin(sl.angle);
-      const nx = -dz;
-      const nz = dx;
-      const L = sl.lengthM / 2;
-      const W = sl.widthM / 2;
-      const c: Array<[number, number]> = [
-        [sl.x - dx * L - nx * W, sl.z - dz * L - nz * W],
-        [sl.x + dx * L - nx * W, sl.z + dz * L - nz * W],
-        [sl.x + dx * L + nx * W, sl.z + dz * L + nz * W],
-        [sl.x - dx * L + nx * W, sl.z - dz * L + nz * W],
-      ];
+      const c = slotCorners(sl);
       if (placed.some((q) => quadsOverlap(q, c))) {
         if (__DEV__) console.log("[3D] ceiling slot skipped: overlaps another", sl);
         continue;
@@ -672,6 +677,39 @@ export function Room3D({
     }
     return shape;
   }, [vertices, centerOffset.x, centerOffset.z, ceilingSlots, ceilingHoles]);
+
+  // «2 уровня» + утопленная гардина / ниша подшторника (11.11.2026): вырез идёт в полотно
+  // того уровня, на котором стоит элемент (Scene3DNative ставит канал на высоту уровня под
+  // его серединой). Вырез, задевающий границу уровней (углы на разных высотах) или другой
+  // вырез, пропускаем — лучше без выреза, чем сломанная триангуляция полотна. Круглые
+  // вырезы под безрамочные софиты в level2-полотна не режутся (как и раньше).
+  const level2Cut = useMemo((): Level2Build | null => {
+    if (!level2 || ceilingSlots.length === 0) return level2;
+    const lower = level2.lowerShape.clone();
+    const upper = level2.upperShape.clone();
+    const placed: Array<Array<[number, number]>> = [];
+    let any = false;
+    for (const sl of ceilingSlots) {
+      const c = slotCorners(sl);
+      const ys = c.map(([x, z]) => level2CeilingAt(level2, x, z, ceilingM));
+      if (ys.some((y) => Math.abs(y - ys[0]) > 1e-6)) {
+        if (__DEV__) console.log("[3D] level2 slot skipped: crosses level edge", sl);
+        continue;
+      }
+      if (placed.some((q) => quadsOverlap(q, c))) {
+        if (__DEV__) console.log("[3D] level2 slot skipped: overlaps another", sl);
+        continue;
+      }
+      placed.push(c);
+      const hole = new THREE.Path();
+      hole.moveTo(c[0][0], c[0][1]);
+      for (let i = 1; i < 4; i++) hole.lineTo(c[i][0], c[i][1]);
+      hole.closePath();
+      (ys[0] < ceilingM - 1e-6 ? lower : upper).holes.push(hole);
+      any = true;
+    }
+    return any ? { ...level2, lowerShape: lower, upperShape: upper } : level2;
+  }, [level2, ceilingSlots, ceilingM]);
 
   // Запечённая карта полотна: AO по контуру + ореолы + засвет парящего/линий.
   const baked = useMemo(() => {
@@ -920,8 +958,8 @@ export function Room3D({
         />
       </mesh>
 
-      {!hideCeiling && level2 && (
-        <Level2Ceiling3D build={level2} ceilingM={ceilingM} ceilingColor={ceilingColor} ao={baked?.ao ?? null} glow={baked?.glow ?? null} roughness={finish.roughness} metalness={finish.metalness} envIntensity={finish.envIntensity} />
+      {!hideCeiling && level2Cut && (
+        <Level2Ceiling3D build={level2Cut} ceilingM={ceilingM} ceilingColor={ceilingColor} ao={baked?.ao ?? null} glow={baked?.glow ?? null} roughness={finish.roughness} metalness={finish.metalness} envIntensity={finish.envIntensity} />
       )}
       {!hideCeiling && !level2 && (
         <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ceilingM, 0]}>

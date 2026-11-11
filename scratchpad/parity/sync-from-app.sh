@@ -16,6 +16,9 @@ while read -r site app rule; do
   case "$rule" in
     nohdr) echo "· $site — расчётный близнец, не копируем (шапка «ФАЙЛ-БЛИЗНЕЦ» своя)"; continue ;;
     fiber-web) git -C "$APP" show "$REV:$app" | sed 's#@react-three/fiber/native#@react-three/fiber#' > "$SITE/$site" ;;
+    optional)
+      if git -C "$APP" cat-file -e "$REV:$app" 2>/dev/null; then git -C "$APP" show "$REV:$app" > "$SITE/$site"
+      else echo "· $site — нет в $REV, пропуск (optional)"; continue; fi ;;
     *) git -C "$APP" show "$REV:$app" > "$SITE/$site" ;;
   esac
   n=$((n + 1))

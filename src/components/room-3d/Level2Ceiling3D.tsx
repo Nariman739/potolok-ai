@@ -49,10 +49,13 @@ export function Level2Ceiling3D({ build, ceilingM, ceilingColor, ao, glow, rough
   }, [build, yShelf, T.ledWidthM, bortSide]);
   // Засвет верхнего полотна от ленты поверх тон-маппинга: полоса от кромки внутрь верха
   // (level2Look.ts wash*, профиль floatingWash — тот же, что у парящего на стене).
+  // washOpacity 0 — полосу не строим вовсе: на скруглении (R 20 см < ширина полосы 50 см) внутренний
+  // край stripGeometry складывается сам на себя, аддитивные квады перекрываются и дают «веер» тонких
+  // лучей от угла (независимый разбор -17, 11.11.2026).
   const washGeo = useMemo(() => {
-    if (!build.led || build.upperEdge.length < 2) return null;
+    if (!build.led || build.upperEdge.length < 2 || T.washOpacity <= 0) return null;
     return stripGeometry(build.upperEdge, build.upperClosed, T.washWidthM, (-bortSide) as 1 | -1, ceilingM - 0.001);
-  }, [build, ceilingM, T.washWidthM, bortSide]);
+  }, [build, ceilingM, T.washWidthM, T.washOpacity, bortSide]);
   const washTex = getProfileAlphaTextureU("level2-wash", T.washWidthM, floatingWash);
   const bortColor = useMemo(() => "#" + new THREE.Color(ceilingColor).multiplyScalar(T.bortShade).getHexString(), [ceilingColor, T.bortShade]);
   // Нижний уровень чуть темнее верха (level2Look.ts lowerShade): цвет и самосвечение от карт в одной

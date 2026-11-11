@@ -747,13 +747,19 @@ export function Scene3D({
       const lengthCm = el.length ?? defaultLen;
       // Сторона интерьера — одна на все стены (inwardZ, как в приложении): WallElement3D
       // (файл-близнец) сам кладёт нишу/дверь/окно на сторону интерьера по этому знаку.
+      // Подшторник — чёрная щель 12 см у стены. Гардина без координат (старые
+      // замеры) — запасной отступ центра 11 см от стены.
+      const isNiche = isGardinaType(el.type) || el.type === "subcurtain";
+      const nicheOffset = el.type === "subcurtain" ? NICHE_OFFSET : GARDINA_OFFSET;
       // Линия/трек у стены в комнате с «2 уровня» — на высоте уровня у этой стены
-      // (точка на 5 см внутрь комнаты от середины элемента).
+      // (точка на 5 см внутрь комнаты от середины элемента). Гардина/подшторник
+      // (как в Scene3DNative 9586650, 11.11.2026) — уровень под центром канала/ниши.
       let yM: number | undefined;
-      if (level2Build && (el.type === "lightline" || el.type === "track")) {
+      if (level2Build && (el.type === "lightline" || el.type === "track" || isNiche)) {
         const nx = (-dz / wallLengthM) * inwardZ;
         const nz = (dx / wallLengthM) * inwardZ;
-        yM = level2CeilingAt(level2Build, cx + nx * 0.05, cz + nz * 0.05, ceilingM);
+        const off = isNiche ? nicheOffset : 0.05;
+        yM = level2CeilingAt(level2Build, cx + nx * off, cz + nz * off, ceilingM);
       }
       items.push({
         id: el.id,
@@ -763,9 +769,7 @@ export function Scene3D({
         type: el.type,
         variant: el.variant,
         yM,
-        // Подшторник — чёрная щель 12 см у стены. Гардина без координат (старые
-        // замеры) — запасной отступ центра 11 см от стены.
-        nicheOffsetZ: inwardZ * (el.type === "subcurtain" ? NICHE_OFFSET : GARDINA_OFFSET),
+        nicheOffsetZ: inwardZ * nicheOffset,
         inwardZ,
         rows: el.rows,
         color: el.color,
@@ -798,8 +802,11 @@ export function Scene3D({
     // Линии В полотне (светолиния, трек) в комнате с «2 уровня» идут по той плоскости, над
     // которой нарисованы; отрезок через границу уровней режется на части (как в
     // Scene3DNative, ERSO 10.11.2026: линии вокруг острова рисовались на H и прятались
-    // за нижним уровнем). Остальные свободные элементы — как раньше, на ceilingM.
+    // за нижним уровнем). Гардина и подшторник (11.11.2026, как в Scene3DNative 9586650) —
+    // целиком на уровне под своей серединой: канал/ниша одно изделие, резать его по уровням
+    // нельзя; вырез в полотне того же уровня делает Room3D. Остальные — на ceilingM.
     const inCanvas = (t: ElementType) => t === "lightline" || t === "track";
+    const isNiche = (t: ElementType) => isGardinaType(t) || t === "subcurtain";
     const pushSeg = (el: RoomElement, idBase: string, ax: number, az: number, bx: number, bz: number, rotationY?: number) => {
       const parts = inCanvas(el.type) && level2Build ? splitSegmentByLevel(level2Build, ax, az, bx, bz, ceilingM) : [{ ax, az, bx, bz, y: ceilingM }];
       parts.forEach((p, k) => {
@@ -807,6 +814,10 @@ export function Scene3D({
         const dz = p.bz - p.az;
         const lengthM = Math.hypot(dx, dz);
         if (lengthM < 0.05) return;
+        const yM = !level2Build ? undefined
+          : inCanvas(el.type) ? p.y
+          : isNiche(el.type) ? level2CeilingAt(level2Build, (p.ax + p.bx) / 2, (p.az + p.bz) / 2, ceilingM)
+          : undefined;
         items.push({
           id: k === 0 ? idBase : `${idBase}-lv${k}`,
           type: el.type,
@@ -814,7 +825,7 @@ export function Scene3D({
           rotationY: rotationY ?? -Math.atan2(dz, dx),
           lengthM,
           variant: el.variant,
-          yM: inCanvas(el.type) && level2Build ? p.y : undefined,
+          yM,
           rows: el.rows,
           color: el.color,
           trackKind: el.type === "track" ? resolveTrackKind(el, priceVariantNames) : undefined,
