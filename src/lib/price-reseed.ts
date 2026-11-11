@@ -45,13 +45,14 @@ export function defaultsDiffer(code: string): boolean {
   return DEFAULT_PRICES[code] !== DEFAULT_PRICES_RUB[code];
 }
 
-type Row = { id: string; templateCode: string | null; filmKey: string | null; price: number };
+type Row = { id: string; templateCode: string | null; filmKey: string | null; price: number; installerPrice: number | null };
 
 /** Чистая проверка «прайс ещё стартовый в валюте from» — без базы, для тестов и dry-run. */
 export function isDefaultPriceBook(rows: Row[], from: CurrencyCode, to: CurrencyCode): boolean {
   if (rows.length === 0) return false;
   for (const r of rows) {
     if (!r.templateCode || r.filmKey) return false; // своя позиция или плёнка — мастер работал с прайсом
+    if (r.installerPrice != null) return false; // ставка монтажнику задана рукой — наряд уже в старой валюте, прайс правленный
     const price = Number(r.price);
     if (defaultPriceSet(r.templateCode, from).has(price)) continue;
     if (defaultPriceSet(r.templateCode, to).has(price)) continue;
@@ -73,7 +74,7 @@ export async function reseedPricesOnCurrencyChange(ownerId: string, fromRaw: str
   if (!company) return "none";
   const rows = await prisma.priceItem.findMany({
     where: { companyId: company.id, deletedAt: null },
-    select: { id: true, templateCode: true, filmKey: true, price: true },
+    select: { id: true, templateCode: true, filmKey: true, price: true, installerPrice: true },
   });
   if (rows.length === 0) return "none"; // засеется при первом открытии прайса уже в новой валюте
   if (!isDefaultPriceBook(rows, from, to)) return "kept";
@@ -93,7 +94,7 @@ export async function reseedPricesOnCurrencyChange(ownerId: string, fromRaw: str
   const updated = await prisma.$executeRaw`
     UPDATE "PriceItem" p SET price = v.next, "updatedAt" = now()
     FROM unnest(${ids}::text[], ${prevs}::float8[], ${nexts}::float8[]) AS v(id, prev, next)
-    WHERE p.id = v.id AND p.price = v.prev AND p."deletedAt" IS NULL`;
+    WHERE p.id = v.id AND p."companyId" = ${company.id} AND p.price = v.prev AND p."deletedAt" IS NULL`;
   if (updated !== updates.length) console.warn(`reseed prices: обновлено ${updated} из ${updates.length} строк (часть изменилась между чтением и записью)`);
   return "reseeded";
 }
