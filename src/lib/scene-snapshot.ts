@@ -7,11 +7,13 @@
 //      - контур замыкается (последняя вершина = первая), как в getVertices веба;
 //      - элементы: только известные типы и поля, круглые (shape:"circle") трек/
 //        светолиния → замкнутая ломаная из 24 отрезков;
-//      - wallProfiles: «парящий» → элемент floating на стене, «подшторник» →
-//        subcurtain, «теневой» → shadowGapWalls (Scene3D рисует тёмный зазор).
+//      - wallProfiles идут в сцену как есть (Room3D — файл-близнец приложения — рисует
+//        парящий/теневой/подшторник сам, 11.11.2026); «теневой» дублируется в
+//        shadowGapWalls для промпта; вставка и фасад шкафа — тоже до сцены.
 // Модуль без React/Three — импортится и сервером (API), и клиентом (/render-scene).
 
-import type { ElementType, FurnitureType, RoomElement, Vertex2D } from "./room-types";
+import type { ElementType, FurnitureType, RoomElement, Vertex2D, Level2Params } from "./room-types";
+import { normalizeWallFurniture, type WallFurnitureEntry } from "./wall-furniture";
 
 export type CeilingFinishId = "matte" | "satin" | "glossy";
 export type LightTempKeyId = "warm" | "neutral" | "cool";
@@ -23,6 +25,10 @@ export interface SceneSnapshot {
   ceilingFinish?: CeilingFinishId;
   ceilingColorId?: string;
   wallProfiles?: Record<string, string>;
+  /** Вставка и фасад шкафа — те же поля, что RoomSnapshot приложения (11.11.2026). */
+  withInsert?: boolean;
+  insertColor?: "black" | "white";
+  wallFurniture?: WallFurnitureEntry[];
 }
 
 export interface NormalizedScene {
@@ -34,6 +40,11 @@ export interface NormalizedScene {
   shadowGapWalls: number[];
   /** Сводка профилей для промпта/отчёта: { floating: 2, shadow: 1, ... }. */
   profileSummary: Record<string, number>;
+  /** Профили по стенам (индекс стены → тип) — Scene3D рисует их через Room3D. */
+  wallProfiles: Record<number, string>;
+  withInsert?: boolean;
+  insertColor?: "black" | "white";
+  wallFurniture?: WallFurnitureEntry[];
 }
 
 /** Настройки «вида», которые уходят и в 3D (initialLook), и в AI-промпт. */
@@ -48,6 +59,7 @@ export interface ScenePresets {
 const ELEMENT_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([
   "spot", "pendant", "chandelier", "curtain", "subcurtain", "track", "lightline",
   "floating", "door", "window", "furniture", "builtin_gardina", "shower_curtain",
+  "level2", "vent",
 ]);
 const FURNITURE_TYPES: ReadonlySet<FurnitureType> = new Set<FurnitureType>([
   "bed", "sofa", "table", "wardrobe", "tv", "nightstand", "chair", "desk", "radiator",
@@ -97,6 +109,7 @@ export function validateSnapshot(raw: unknown): SceneSnapshot {
       if (/^\d{1,3}$/.test(k) && typeof v === "string" && v.length <= 40) wallProfiles[k] = v;
     }
   }
+  const wallFurniture = normalizeWallFurniture(s.wallFurniture, vertices.length) ?? undefined;
   return {
     vertices,
     ceilingHeight: s.ceilingHeight,
@@ -104,7 +117,22 @@ export function validateSnapshot(raw: unknown): SceneSnapshot {
     ceilingFinish: finish,
     ceilingColorId: typeof s.ceilingColorId === "string" ? s.ceilingColorId.slice(0, 40) : undefined,
     wallProfiles,
+    ...(typeof s.withInsert === "boolean" && { withInsert: s.withInsert }),
+    ...((s.insertColor === "black" || s.insertColor === "white") && { insertColor: s.insertColor }),
+    ...(wallFurniture && { wallFurniture }),
   };
+}
+
+/** Параметры «2 уровня» — только числа/булевы/известные ключи, как в Level2Params. */
+function cleanLevel2(raw: unknown): Level2Params | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const p = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of ["shelfCm", "dropCm", "radiusCm"]) if (isNum(p[k]) && (p[k] as number) >= 0 && (p[k] as number) <= 500) out[k] = p[k];
+  for (const k of ["led", "closed"]) if (typeof p[k] === "boolean") out[k] = p[k];
+  if (p.lowSide === "left" || p.lowSide === "right") out.lowSide = p.lowSide;
+  if (Array.isArray(p.bulges)) out.bulges = (p.bulges as unknown[]).slice(0, MAX_POINTS).map((b) => (isNum(b) ? b : 0));
+  return out as unknown as Level2Params;
 }
 
 function cleanElement(raw: unknown, idx: number): RoomElement | null {
@@ -138,6 +166,19 @@ function cleanElement(raw: unknown, idx: number): RoomElement | null {
     const pts = (e.points as unknown[]).slice(0, MAX_POINTS).map(cleanPoint).filter((p): p is Vertex2D => !!p);
     if (pts.length >= 2) out.points = pts;
   }
+  // Поля, которые рисует 3D-близнец приложения (11.11.2026): форма линии, «2 уровня»,
+  // ряды/цвет гардины, типы софита и трека, подсветка гардины.
+  if (e.shape === "straight" || e.shape === "u-niche" || e.shape === "l-bend" || e.shape === "freeform") out.shape = e.shape;
+  if (type === "level2") {
+    const l2 = cleanLevel2(e.level2);
+    if (l2) out.level2 = l2;
+  }
+  if (e.rows === 1 || e.rows === 2 || e.rows === 3) out.rows = e.rows;
+  if (e.color === "black" || e.color === "white") out.color = e.color;
+  if (typeof e.trackType === "string" && e.trackType.length <= 40) out.trackType = e.trackType;
+  if (typeof e.spotType === "string" && e.spotType.length <= 40) out.spotType = e.spotType;
+  if (typeof e.priceVariantId === "string" && e.priceVariantId.length <= 80) out.priceVariantId = e.priceVariantId;
+  if (typeof e.withLight === "boolean") out.withLight = e.withLight;
   // Мобилка: круглая светолиния/трек — центр cx/cy + radius. Веб-3D круги не умеет →
   // аппроксимируем замкнутой ломаной (Scene3D рисует все отрезки ломаной).
   if (e.shape === "circle" && okCoord(e.cx) && okCoord(e.cy) && isNum(e.radius) && e.radius > 1 && e.radius < 5000) {
@@ -177,28 +218,32 @@ export function normalizeSnapshot(snap: SceneSnapshot): NormalizedScene {
     elements.push(el);
   });
 
-  // Профили периметра (мобильный wallProfiles: { "0": "floating", "2": "shadow" }).
+  // Профили периметра (мобильный wallProfiles: { "0": "floating", "2": "shadow" }) идут в
+  // сцену как есть — Room3D (близнец приложения) рисует парящий/теневой/подшторник сам;
+  // раньше здесь синтезировались элементы floating/subcurtain, теперь это дало бы дубль.
   const shadowGapWalls: number[] = [];
   const profileSummary: Record<string, number> = {};
+  const wallProfiles: Record<number, string> = {};
   for (const [k, profile] of Object.entries(snap.wallProfiles ?? {})) {
     const wi = Number(k);
     if (!Number.isInteger(wi) || wi < 0 || wi >= wallCount) continue;
     profileSummary[profile] = (profileSummary[profile] ?? 0) + 1;
-    const has = (t: ElementType) => elements.some((e) => e.type === t && e.wallIndex === wi);
-    if (profile === "floating") {
-      if (!has("floating")) {
-        elements.push({ id: `profile-floating-${wi}`, type: "floating", wallIndex: wi, wallPosition: 0.5 });
-      }
-    } else if (profile === "subcurtain" || profile === "subcurtain_light") {
-      if (!has("subcurtain")) {
-        elements.push({ id: `profile-subcurtain-${wi}`, type: "subcurtain", wallIndex: wi, wallPosition: 0.5 });
-      }
-    } else if (profile === "shadow") {
-      shadowGapWalls.push(wi);
-    }
+    wallProfiles[wi] = profile;
+    if (profile === "shadow") shadowGapWalls.push(wi);
   }
 
-  return { vertices, walls, ceilingHeight: snap.ceilingHeight, elements, shadowGapWalls, profileSummary };
+  return {
+    vertices,
+    walls,
+    ceilingHeight: snap.ceilingHeight,
+    elements,
+    shadowGapWalls,
+    profileSummary,
+    wallProfiles,
+    ...(snap.withInsert !== undefined && { withInsert: snap.withInsert }),
+    ...(snap.insertColor && { insertColor: snap.insertColor }),
+    ...(snap.wallFurniture && { wallFurniture: snap.wallFurniture }),
+  };
 }
 
 const KELVIN_TO_KEY: Record<number, LightTempKeyId> = { 2700: "warm", 4000: "neutral", 6500: "cool" };

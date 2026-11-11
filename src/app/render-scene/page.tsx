@@ -148,6 +148,10 @@ export default function RenderScenePage() {
           ceilingHeight={input.scene.ceilingHeight}
           elements={input.scene.elements}
           shadowGapWalls={input.scene.shadowGapWalls}
+          wallProfiles={input.scene.wallProfiles}
+          withInsert={input.scene.withInsert}
+          insertColor={input.scene.insertColor}
+          wallFurniture={input.scene.wallFurniture}
           renderMode
           initialLook={initialLook}
           onSceneReady={onSceneReady}

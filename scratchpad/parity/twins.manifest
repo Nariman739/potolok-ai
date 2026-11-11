@@ -1,0 +1,45 @@
+# Файлы-близнецы 3D: приложение (potolok-integration) → сайт (potolok-ai). Одна строка — одна пара:
+#   <путь на сайте>  <путь в приложении>  [правило]
+# правила: byte — побайтно (по умолчанию); nohdr — без строки «ФАЙЛ-БЛИЗНЕЦ» в шапке;
+#          fiber-web — заменить "@react-three/fiber/native" на "@react-three/fiber".
+# Читают scratchpad/parity/sync-from-app.sh (копия приложение → сайт) и twins.sh (сверка).
+#
+# данные (сайт src/lib ↔ приложение src/lib/shared)
+src/lib/canvas-pricing.ts                     src/lib/shared/canvas-pricing.ts        nohdr
+src/lib/wall-furniture.ts                     src/lib/shared/wall-furniture.ts
+src/lib/furniture-ceiling.ts                  src/lib/shared/furniture-ceiling.ts
+src/lib/spot-types.ts                         src/lib/shared/spot-types.ts
+src/lib/shared/level2-geometry.ts             src/lib/shared/level2-geometry.ts
+# 3D: баланс света (сайт src/lib/shared ↔ приложение room-3d)
+src/lib/shared/lightBalance.ts                src/components/room-3d/lightBalance.ts
+# 3D-модули (сайт src/components/room-3d ↔ приложение src/components/room-3d)
+src/components/room-3d/level2Geometry3D.ts    src/components/room-3d/level2Geometry3D.ts
+src/components/room-3d/Level2Ceiling3D.tsx    src/components/room-3d/Level2Ceiling3D.tsx
+src/components/room-3d/level2Look.ts          src/components/room-3d/level2Look.ts
+src/components/room-3d/floatingLight.ts       src/components/room-3d/floatingLight.ts
+src/components/room-3d/lightTextures.ts       src/components/room-3d/lightTextures.ts
+src/components/room-3d/windowLight.ts         src/components/room-3d/windowLight.ts
+src/components/room-3d/furnitureModels.ts     src/components/room-3d/furnitureModels.ts
+src/components/room-3d/Furniture3D.tsx        src/components/room-3d/Furniture3D.tsx
+src/components/room-3d/furnitureBuilder.ts    src/components/room-3d/furnitureBuilder.ts
+src/components/room-3d/furniturePalette.ts    src/components/room-3d/furniturePalette.ts
+src/components/room-3d/furnitureOrientation.ts src/components/room-3d/furnitureOrientation.ts
+src/components/room-3d/floorLook.ts           src/components/room-3d/floorLook.ts
+src/components/room-3d/sceneInvalidate.ts     src/components/room-3d/sceneInvalidate.ts
+src/components/room-3d/Room3D.tsx             src/components/room-3d/Room3D.tsx
+src/components/room-3d/WallElement3D.tsx      src/components/room-3d/WallElement3D.tsx
+src/components/room-3d/WallFacade3D.tsx       src/components/room-3d/WallFacade3D.tsx
+src/components/room-3d/ceilingBake.ts         src/components/room-3d/ceilingBake.ts
+src/components/room-3d/wallBake.ts            src/components/room-3d/wallBake.ts
+src/components/room-3d/chandelierLook.ts      src/components/room-3d/chandelierLook.ts
+src/components/room-3d/trimLook.ts            src/components/room-3d/trimLook.ts
+src/components/room-3d/realism2.ts            src/components/room-3d/realism2.ts
+src/components/room-3d/fixtureKinds.ts        src/components/room-3d/fixtureKinds.ts
+src/components/room-3d/Spot3D.tsx             src/components/room-3d/Spot3D.tsx
+src/components/room-3d/Gx53Spot3D.tsx         src/components/room-3d/Gx53Spot3D.tsx
+src/components/room-3d/FramelessSpot3D.tsx    src/components/room-3d/FramelessSpot3D.tsx
+src/components/room-3d/Chandelier3D.tsx       src/components/room-3d/Chandelier3D.tsx   fiber-web
+# Ещё не в main приложения (ветка 3d-design-pass, окно -17, OTA №4): флаги дизайн-разбора,
+# createContext без RN; на сайте контекста нет → всё выключено. optional — пропускать,
+# пока файла нет в ревизии (0e, 11.11.2026). SpotHalos.tsx не нужен — его зовёт только Scene3DNative.
+src/components/room-3d/designPassLook.ts      src/components/room-3d/designPassLook.ts  optional

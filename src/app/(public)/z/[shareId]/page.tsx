@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/lib/room-3d";
+import { asLang, tFor } from "@/lib/i18n";
+import "@/lib/i18n/kp-public";
 import { Public3DViewer } from "../../kp/[publicId]/3d/Public3DViewer";
 
 // Публичная 3D-ссылка ПРЯМО с замера (/z/[shareId]) — до создания КП.
@@ -19,9 +21,14 @@ async function loadShared(shareId: string) {
           angles: true,
           elements: true,
           previewUrl3d: true,
+          // Паритет с 3D приложения (11.11.2026): профили стен, вставка, фасад шкафа.
+          wallProfiles: true,
+          withInsert: true,
+          insertColor: true,
+          wallFurniture: true,
         },
       },
-      master: { select: { brandColor: true, companyName: true, firstName: true } },
+      master: { select: { brandColor: true, companyName: true, firstName: true, language: true } },
     },
   });
   return obj;
@@ -73,6 +80,10 @@ export default async function PublicMeasurement3DPage({
     normalCorners: (r.normalCorners as unknown as boolean[]) ?? [],
     angles: (r.angles as unknown as number[] | null) ?? undefined,
     elements: (r.elements as unknown as SavedRoom3D["elements"]) ?? [],
+    wallProfiles: (r.wallProfiles as unknown as Record<string, string> | null) ?? undefined,
+    withInsert: r.withInsert,
+    insertColor: r.insertColor,
+    wallFurniture: r.wallFurniture ?? undefined,
   }));
 
   const room = pickRoomForScene3D(roomShapes);
@@ -81,6 +92,7 @@ export default async function PublicMeasurement3DPage({
 
   const brandColor = obj.master.brandColor || "#1e3a5f";
   const fallbackImageUrl = obj.rooms.find((r) => r.previewUrl3d)?.previewUrl3d ?? null;
+  const t = tFor(asLang(obj.master.language));
 
   return (
     <Public3DViewer
@@ -89,6 +101,11 @@ export default async function PublicMeasurement3DPage({
       walls={sceneProps.walls}
       ceilingHeight={sceneProps.ceilingHeight}
       elements={sceneProps.elements}
+      wallProfiles={sceneProps.wallProfiles}
+      withInsert={sceneProps.withInsert}
+      insertColor={sceneProps.insertColor}
+      wallFurniture={sceneProps.wallFurniture}
+      betaLabel={t("kp.beta3d")}
       fallbackImageUrl={fallbackImageUrl}
     />
   );

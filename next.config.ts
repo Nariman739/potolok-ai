@@ -61,6 +61,12 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
+      {
+        // Текстуры пола/стен близнеца Room3D (копии из приложения, меняются только
+        // вместе с именем файла) — тот же длинный кэш, что у hdri/models.
+        source: "/textures/app/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
     ];
   },
 };

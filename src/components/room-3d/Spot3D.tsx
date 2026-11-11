@@ -1,5 +1,3 @@
-"use client";
-
 import * as THREE from "three";
 
 const SPOT_DIAMETER_M = 0.082;
@@ -10,11 +8,8 @@ interface Spot3DProps {
   variant?: "ours" | "client";
   withLight: boolean;
   lightColor?: string;
-  /** Реальный диаметр софита из PriceVariant.physicalWidthMm (override default 82 мм). */
   diameterMm?: number;
-  /** Реальная глубина встраивания (PriceVariant.physicalHeightMm). */
   depthMm?: number;
-  /** Цвет корпуса спота (PriceVariant.colorHex) — например белый, чёрный, графит. */
   bodyColor?: string;
 }
 
@@ -27,46 +22,38 @@ export function Spot3D({
   depthMm,
   bodyColor,
 }: Spot3DProps) {
-  const defaultColor = variant === "client" ? "#FFE9CD" : "#FFB46B";
-  const lightColor = lightColorOverride ?? defaultColor;
+  // Лампа стаканчика — нейтрально-белая (~4000K), НЕ по тёплой температуре сцены
+  // (Нариман 02.07: «а то оранжевая»). Как светильники трека/светолинии.
+  void variant;
+  void lightColorOverride;
+  const lightColor = "#FFF6EC";
   const diameterM = typeof diameterMm === "number" && diameterMm > 0 ? diameterMm / 1000 : SPOT_DIAMETER_M;
   const depthM = typeof depthMm === "number" && depthMm > 0 ? depthMm / 1000 : SPOT_DEPTH_M;
   const r = diameterM / 2;
 
   return (
     <group position={position}>
-      {/* Корпус — врезанный в потолок цилиндр */}
+      {/* Чёрная вставка-ободок (теневой): тёмное кольцо вокруг врезки —
+          spot читается «утопленным» в потолок, как реальный downlight. */}
+      <mesh position={[0, -0.004, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[r * 0.72, r * 1.18, 40]} />
+        <meshStandardMaterial color="#0A0A0C" roughness={0.7} metalness={0.2} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Корпус-стакан — врезанный в потолок цилиндр, чёрный (Нариман 02.07) */}
       <mesh position={[0, -depthM / 2, 0]}>
         <cylinderGeometry args={[r, r, depthM, 24]} />
-        <meshStandardMaterial color={bodyColor ?? "#1f1f1f"} metalness={0.55} roughness={0.45} />
+        <meshStandardMaterial color={bodyColor ?? "#0A0A0C"} metalness={0.5} roughness={0.45} />
       </mesh>
-      {/* Декоративное кольцо-ободок */}
-      <mesh position={[0, -depthM + 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[r * 0.94, r * 1.04, 32]} />
-        <meshStandardMaterial color="#E5E7EB" metalness={0.7} roughness={0.3} side={THREE.DoubleSide} />
+      {/* Яркая линза — meshBasic (не зависит от освещения) → всегда «горит».
+          Только она показывает, что светильник включён. */}
+      <mesh position={[0, -depthM - 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[r * 0.74, 28]} />
+        <meshBasicMaterial color={lightColor} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* Свечение — диск из стекла. emissiveIntensity снижен с 3.5 до 1.4 —
-          без раздутого halo вокруг спота при Bloom. Достаточно яркий чтобы
-          было видно «спот горит», но не размывается на всю стену. */}
-      <mesh position={[0, -depthM - 0.0005, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[r * 0.92, 24]} />
-        <meshStandardMaterial
-          color={lightColor}
-          emissive={lightColor}
-          emissiveIntensity={1.4}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
-      {withLight && (
-        <pointLight
-          position={[0, -depthM - 0.05, 0]}
-          color={lightColor}
-          intensity={1.8}
-          distance={4.2}
-          decay={2}
-        />
-      )}
+      {/* Halo-диск и pointLight УБРАНЫ (Нариман 30.06: «убери блески вокруг,
+          пусть только показывает что светит, свет вокруг не нужен»). Спот не
+          разливает пятно по потолку — общий свет комнаты даёт центральная лампа. */}
+      {void withLight}
     </group>
   );
 }

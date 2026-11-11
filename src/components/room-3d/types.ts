@@ -1,6 +1,26 @@
-import type { RoomElement, FurnitureType, Vertex2D } from "@/lib/room-types";
+import type { ElementType, RoomElement, Vertex2D } from "@/lib/room-types";
+import type { WallFurnitureEntry } from "@/lib/wall-furniture";
 
-export type { Vertex2D };
+// Файлы-близнецы приложения (Room3D, WallElement3D, …) берут типы чертежа из "./types".
+export type { ElementType, RoomElement, Vertex2D };
+
+/** Типы мебели, которые умеет рисовать 3D (furnitureModels.ts — файл-близнец приложения).
+ *  Шире, чем FurnitureType чертежа сайта (tv_stand/shelf/armchair приходят из приложения). */
+export type FurnitureType =
+  | "sofa"
+  | "bed"
+  | "wardrobe"
+  | "kitchen"
+  | "table"
+  | "tv"
+  | "tv_stand"
+  | "nightstand"
+  | "chair"
+  | "desk"
+  | "radiator"
+  | "wall_panel"
+  | "shelf"
+  | "armchair";
 
 export interface Scene3DProps {
   vertices: Vertex2D[];
@@ -32,26 +52,35 @@ export interface Scene3DProps {
   onSceneReady?: () => void;
   /** Внешний триггер AI-захвата (каждое изменение >0 = один снимок beauty+маски). */
   captureTrigger?: number;
-  /** Индексы стен с теневым профилем (тёмный зазор по периметру). Из wallProfiles мобилки. */
+  /** Индексы стен с теневым профилем (тёмный зазор по периметру). Из wallProfiles мобилки.
+   *  Если не задано — берётся из wallProfiles ("shadow"). */
   shadowGapWalls?: number[];
+  /** Паритет с 3D приложения (11.11.2026, те же поля, что RoomSnapshot в open-room-3d.ts):
+   *  профили по стенам (индекс = стена vertices[i]→[i+1]), вставка и её цвет, фасад шкафа. */
+  wallProfiles?: Record<number, string>;
+  withInsert?: boolean;
+  insertColor?: "black" | "white";
+  wallFurniture?: WallFurnitureEntry[];
+  /** Подпись «3D · в разработке» мелко в углу (не снимать без слова Наримана). */
+  betaLabel?: string;
 }
 
 export const cm2m = (cm: number) => cm / 100;
 
-// Натуральные цвета мебели. Используем как fallback / accent color
-// для процедурной 3D-композиции (Furniture3D.tsx).
-export const FURNITURE_3D_DIMENSIONS: Record<FurnitureType, { heightCm: number; color: string; label: string }> = {
-  bed:        { heightCm: 50,  color: "#E8E4DC", label: "Кровать" },   // светло-серый матрас
-  sofa:       { heightCm: 80,  color: "#9CA3AF", label: "Диван" },     // серая ткань
-  table:      { heightCm: 75,  color: "#A47148", label: "Стол" },      // дуб
-  wardrobe:   { heightCm: 220, color: "#D9CDB4", label: "Шкаф" },      // светлый ЛДСП дуб
-  tv:         { heightCm: 70,  color: "#0B0B0B", label: "ТВ" },        // чёрный матовый
-  nightstand: { heightCm: 50,  color: "#C9A876", label: "Тумба" },     // дуб ясень
-  chair:      { heightCm: 90,  color: "#3F3F46", label: "Стул" },      // чёрный
-  desk:       { heightCm: 75,  color: "#A47148", label: "Стол" },      // дуб
-  radiator:   { heightCm: 50,  color: "#E5E7EB", label: "Батарея" },   // белая
-  kitchen:    { heightCm: 220, color: "#EAE5DA", label: "Кухня" },     // светлая ЛДСП
-  wall_panel: { heightCm: 270, color: "#B89B7A", label: "Стенка" },    // массив
-};
+/**
+ * Сторона интерьера (+1/−1 по локальному z стены) — по знаку площади контура
+ * (как в types.ts приложения): у замкнутого обхода против часовой интерьер
+ * слева от каждой стены, по часовой — справа.
+ */
+export function interiorSign(vertices: Vertex2D[]): 1 | -1 {
+  let a = 0;
+  const n = vertices.length;
+  for (let i = 0; i < n; i++) {
+    const p = vertices[i];
+    const q = vertices[(i + 1) % n];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a >= 0 ? 1 : -1;
+}
 
 export type ViewSpot = "center" | "door" | "window";

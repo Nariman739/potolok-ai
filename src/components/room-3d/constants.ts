@@ -21,19 +21,25 @@ export const FLOATING_MASK_LAYER = 4;
 // перед потолком должны оставаться внутри маски заморозки.
 export const OCCLUDER_MASK_LAYER = 5;
 
+// Цвета полотна, температуры света и пресеты пола/стен — как в приложении
+// (potolok-integration/src/components/room-3d/constants.ts, 11.11.2026, паритет 3D);
+// сверх приложения здесь только promptDesc/promptHint для AI-промпта «Фото клиенту».
 export const CEILING_COLORS: Array<{ id: string; label: string; hex: string }> = [
-  { id: "white",  label: "Белый",   hex: "#F8FAFC" },
-  { id: "ivory",  label: "Слоновая кость", hex: "#F4ECD8" },
-  { id: "beige",  label: "Бежевый", hex: "#E5DCC4" },
+  // Белый мат на фото ≈ #EDEDEA–#F2F2EF (нейтральный, без синевы); прежний
+  // #F8FAFC имел голубой оттенок и под тёплым светом уходил в серый.
+  { id: "white", label: "Белый", hex: "#F3F3F1" },
+  { id: "ivory", label: "Слоновая кость", hex: "#F4ECD8" },
+  { id: "beige", label: "Бежевый", hex: "#E5DCC4" },
   { id: "graphite", label: "Графит", hex: "#1F2937" },
   { id: "champagne", label: "Шампань", hex: "#D4B886" },
   { id: "blue", label: "Синий", hex: "#3B5BA9" },
 ];
 
 export const LIGHT_TEMPERATURES = [
-  { key: "warm",    kelvin: 2700, hex: "#FFB37A", label: "Тёплый",      promptHint: "warm 2700K LED lighting, cozy evening atmosphere" },
-  { key: "neutral", kelvin: 4000, hex: "#FFE1B3", label: "Нейтральный", promptHint: "neutral 4000K white lighting, balanced atmosphere" },
-  { key: "cool",    kelvin: 6500, hex: "#FFFFFF", label: "Холодный",    promptHint: "cool 6500K daylight, modern fresh atmosphere" },
+  // Цвета по фото (аудит 02.11): 3000K #FFE3BF, 4000K #FBF7F0 (не кремовый), 6000K #ECF2FF.
+  { key: "warm", kelvin: 3000, hex: "#FFE3BF", label: "Тёплый", promptHint: "warm 3000K LED lighting, cozy evening atmosphere" },
+  { key: "neutral", kelvin: 4000, hex: "#FBF7F0", label: "Нейтральный", promptHint: "neutral 4000K white lighting, balanced atmosphere" },
+  { key: "cool", kelvin: 6000, hex: "#ECF2FF", label: "Холодный", promptHint: "cool 6000K daylight, modern fresh atmosphere" },
 ] as const;
 
 export type LightTempKey = typeof LIGHT_TEMPERATURES[number]["key"];
@@ -43,36 +49,23 @@ export function getLightTempByKey(key: string): typeof LIGHT_TEMPERATURES[number
   return LIGHT_TEMPERATURES.find((t) => t.key === key) ?? LIGHT_TEMPERATURES[1];
 }
 
-// Пресеты пола/стен для realtime 3D + AI-промпта.
-// textureUrl null → используется plain color. Реальные PBR-текстуры
-// (Poly Haven CC0) кладутся в public/textures/floor/{id}.jpg
-// и public/textures/wall/{id}.jpg — компонент Room3D подхватит при наличии.
-// normalUrl/roughUrl — настоящие PBR-карты (рельеф + шероховатость) с ambientCG
-// (CC0). Где заданы — материал перестаёт быть «наклейкой»: дерево ловит свет по
-// фактуре доски, штукатурка — по зерну. null = обычная текстура + дешёвый bump.
-const WOOD_PBR = {
-  color: "/textures/pbr/floor_wood_color.jpg",
-  normal: "/textures/pbr/floor_wood_normal.jpg",
-  rough: "/textures/pbr/floor_wood_rough.jpg",
-};
+// Текстуры пола/стен — те же картинки, что в приложении (public/textures/app/, см.
+// textures.ts: веб-версия платформенного модуля). tileM — сколько метров покрывает 1 тайл.
 export const FLOOR_PRESETS = [
-  { id: "wood_premium",  label: "Дерево (реализм)", color: "#B08856", roughness: 0.55, textureUrl: WOOD_PBR.color, normalUrl: WOOD_PBR.normal as string | null, roughUrl: WOOD_PBR.rough as string | null, promptDesc: "realistic wood plank flooring" },
-  { id: "oak_parquet",   label: "Дуб (паркет)",    color: "#A47148", roughness: 0.45, textureUrl: "/textures/floor/oak_parquet.jpg",   normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "warm oak parquet flooring" },
-  { id: "light_laminate", label: "Светлый ламинат", color: "#C9A876", roughness: 0.50, textureUrl: "/textures/floor/light_laminate.jpg", normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "light beige laminate flooring" },
-  { id: "gray_tile",     label: "Серая плитка",   color: "#8E8E93", roughness: 0.20, textureUrl: "/textures/floor/gray_tile.jpg",    normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "matte gray ceramic tile flooring" },
-  { id: "dark_parquet",  label: "Тёмный паркет",   color: "#3E2723", roughness: 0.35, textureUrl: "/textures/floor/dark_parquet.jpg",  normalUrl: null as string | null, roughUrl: null as string | null, promptDesc: "dark walnut parquet flooring" },
+  { id: "oak_parquet",   label: "Дуб (паркет)",     color: "#A47148", roughness: 0.45, pattern: "wood" as const, tileM: 1.6, promptDesc: "warm oak parquet flooring" },
+  { id: "light_laminate",label: "Светлый ламинат",   color: "#C9A876", roughness: 0.45, pattern: "wood" as const, tileM: 1.8, promptDesc: "light beige laminate flooring" },
+  { id: "gray_tile",     label: "Серая плитка",      color: "#9A9A9F", roughness: 0.28, pattern: "tile" as const, tileM: 1.2, promptDesc: "matte gray ceramic tile flooring" },
+  { id: "dark_parquet",  label: "Тёмный паркет",     color: "#5A4233", roughness: 0.45, pattern: "wood" as const, tileM: 1.6, promptDesc: "dark walnut parquet flooring" },
 ] as const;
 export type FloorPresetId = typeof FLOOR_PRESETS[number]["id"];
-export const DEFAULT_FLOOR: FloorPresetId = "wood_premium";
+export const DEFAULT_FLOOR: FloorPresetId = "light_laminate";
 
-// Общий рельеф штукатурки для всех стен — микрофактура вместо плоской заливки.
-const WALL_NORMAL = "/textures/pbr/wall_plaster_normal.jpg";
-const WALL_ROUGH = "/textures/pbr/wall_plaster_rough.jpg";
 export const WALL_PRESETS = [
-  { id: "white_paint",   label: "Белая краска",   color: "#F5F5F5", roughness: 0.90, textureUrl: "/textures/wall/white_paint.jpg",   normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "smooth white matte painted walls" },
-  { id: "light_gray",    label: "Светло-серый",   color: "#D7D7D7", roughness: 0.90, textureUrl: "/textures/wall/light_gray.jpg",    normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "light gray matte painted walls" },
-  { id: "beige_wallpaper", label: "Бежевые обои", color: "#E8DCC4", roughness: 0.95, textureUrl: "/textures/wall/beige_wallpaper.jpg", normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "beige neutral wallpaper" },
-  { id: "decorative_plaster", label: "Декор. штукатурка", color: "#E0D9CC", roughness: 0.85, textureUrl: "/textures/wall/decorative_plaster.jpg", normalUrl: WALL_NORMAL as string | null, roughUrl: WALL_ROUGH as string | null, promptDesc: "subtle decorative plaster walls" },
+  // Дефолт — тёплый off-white (аудит по фото 02.11): серые стены как дефолт — CG-признак.
+  { id: "white_paint",        label: "Светлые",            color: "#E4DFD7", roughness: 0.90, pattern: "plaster" as const,  tileM: 2.4, promptDesc: "smooth white matte painted walls" },
+  { id: "light_gray",         label: "Светло-серый",        color: "#BBB9B4", roughness: 0.90, pattern: "plaster" as const,  tileM: 2.4, promptDesc: "light gray matte painted walls" },
+  { id: "beige_wallpaper",    label: "Бежевые обои",        color: "#E6DAC2", roughness: 0.95, pattern: "wallpaper" as const, tileM: 1.0, promptDesc: "beige neutral wallpaper" },
+  { id: "decorative_plaster", label: "Декор. штукатурка",   color: "#DED7CA", roughness: 0.85, pattern: "plaster" as const,  tileM: 1.6, promptDesc: "subtle decorative plaster walls" },
 ] as const;
 export type WallPresetId = typeof WALL_PRESETS[number]["id"];
 export const DEFAULT_WALL: WallPresetId = "white_paint";
@@ -83,3 +76,5 @@ export function getFloorPreset(id: string): typeof FLOOR_PRESETS[number] {
 export function getWallPreset(id: string): typeof WALL_PRESETS[number] {
   return WALL_PRESETS.find((w) => w.id === id) ?? WALL_PRESETS[0];
 }
+
+export const MAX_POINT_LIGHTS = 14;

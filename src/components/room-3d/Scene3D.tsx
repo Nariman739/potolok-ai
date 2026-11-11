@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, PerformanceMonitor, Sky, useProgress } from "@react-three/drei";
-import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO, BrightnessContrast, HueSaturation } from "@react-three/postprocessing";
-import { ToneMappingMode } from "postprocessing";
+import { ContactShadows, PerformanceMonitor, useProgress } from "@react-three/drei";
 import * as THREE from "three";
-import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { LIGHT_BALANCE } from "@/lib/shared/lightBalance";
+import { Room3D, type WallCutout, type CeilingFinish, type PerimeterProfile } from "./Room3D";
 import {
   DOOR_HEIGHT_M,
   WINDOW_HEIGHT_M,
@@ -26,16 +26,25 @@ import {
   type WallPresetId,
 } from "./constants";
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
-import { R3FErrorBoundary } from "./R3FErrorBoundary";
 import { ScreenshotCapture } from "./ScreenshotCapture";
 import { AiSceneCapture, type HeroCam } from "./AiSceneCapture";
 import { Spot3D } from "./Spot3D";
+import { Gx53Spot3D } from "./Gx53Spot3D";
+import { FramelessSpot3D, Vent3D, CONE } from "./FramelessSpot3D";
+import { resolveSpotKind, resolveTrackKind, type VariantNames } from "./fixtureKinds";
 import { Chandelier3D } from "./Chandelier3D";
 import { Furniture3D } from "./Furniture3D";
-import { Plant3D, Rug, PLANT_MODELS } from "./Decor3D";
-import { WallElement3D } from "./WallElement3D";
-import { cm2m, type Scene3DProps, type ViewSpot } from "./types";
-import type { FurnitureType, ElementType } from "@/lib/room-types";
+import { furnitureRotationDeg, furnitureRotationY, furnitureWallGaps } from "./furnitureOrientation";
+import { buildLevel2, level2CeilingAt, splitSegmentByLevel } from "./level2Geometry3D";
+import { WallElement3D, gardinaWidth, GARDINA_OFFSET, NICHE_W, NICHE_OFFSET } from "./WallElement3D";
+import { cm2m, interiorSign, type ElementType, type FurnitureType, type RoomElement, type Scene3DProps, type ViewSpot } from "./types";
+import { WALL_FURNITURE_HEX, wallFurnitureColor } from "@/lib/wall-furniture";
+import { CEILING_MASK_LAYER, FLOATING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
+
+// Файлы-близнецы приложения (Room3D.tsx и др.) используют глобал React Native __DEV__.
+if (typeof globalThis !== "undefined" && typeof (globalThis as { __DEV__?: boolean }).__DEV__ === "undefined") {
+  (globalThis as { __DEV__?: boolean }).__DEV__ = process.env.NODE_ENV !== "production";
+}
 
 interface SpotInfo {
   position: THREE.Vector3;
@@ -63,6 +72,84 @@ const DEFAULT_LENGTH_CM: Partial<Record<ElementType, number>> = {
 
 const MAX_POINT_LIGHTS = 14;
 
+const isGardinaType = (t: ElementType): boolean => t === "curtain" || t === "builtin_gardina";
+/** Есть ли у элемента собственные координаты на чертеже (points или x/y+length). */
+const hasOwnCoords = (el: RoomElement): boolean => {
+  const pts = el.points;
+  if (pts && pts.length >= 2) return true;
+  return el.x !== undefined && el.y !== undefined && !!el.length;
+};
+
+// Профиль стены из 2D (WallProfileType, wallProfiles комнаты замера) → вид в 3D,
+// как в Scene3DNative приложения:
+//   pvc/aluminum (и legacy) — багет: вставка — решение комнаты, не тип стены; в 3D
+//     «Обычный» (none) — белая вставка-маскировка;
+//   shadow → shadow, floating → floating;
+//   subcurtain/ldsp/eurobrus — подшторник (ниша у стены) → niche,
+//   subcurtain_light — подшторник с подсветкой → niche_light;
+//   id своей позиции прайса (uuid) или неизвестное — none.
+function mapWallProfile(p: string | undefined): PerimeterProfile | "niche_light" {
+  switch (p) {
+    case "floating":
+      return "floating";
+    case "shadow":
+      return "shadow";
+    case "subcurtain":
+    case "ldsp":
+    case "eurobrus":
+      return "niche";
+    case "subcurtain_light":
+      return "niche_light";
+    default:
+      return "none";
+  }
+}
+
+/**
+ * Слои масок для AI-захвата («Фото клиенту», AiSceneCapture) на мешах файла-близнеца
+ * Room3D (он слоёв не знает): плоскости потолка (ShapeGeometry, повёрнутые на +90° —
+ * полотно и оба уровня «2 уровня») → CEILING_MASK_LAYER; коробки стен (ExtrudeGeometry)
+ * → OCCLUDER_MASK_LAYER. Маска парящего — отдельные невидимые полосы FloatingMaskBand.
+ */
+function markRoomMaskLayers(root: THREE.Object3D | null): void {
+  root?.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const g = m.geometry;
+    // Группа "level2" (Level2Ceiling3D): низ, верх, борт, полка, лента — всё это потолок.
+    if ((g.type === "ShapeGeometry" && m.rotation.x > 0) || m.parent?.name === "level2") m.layers.enable(CEILING_MASK_LAYER);
+    else if (g.type === "ExtrudeGeometry") m.layers.enable(OCCLUDER_MASK_LAYER);
+  });
+}
+
+/**
+ * Невидимая в beauty полоса-помощник ТОЛЬКО на слое маски парящего (как раньше в
+ * WallElement3D сайта): верх стены 4…20 см под потолком, 16 см — ровно та высота, из
+ * которой addPerimeterGlow (visualization-mask.ts, maskBandCm 16) строит физичный профиль
+ * свечения на AI-фото. Засвет самого 3D (WallTopProfile близнеца) в маску не идёт — он
+ * 60 см и обманул бы масштаб профиля.
+ */
+function FloatingMaskBand({ position, rotationY, lengthM, ceilingM, inwardZ }: { position: [number, number, number]; rotationY: number; lengthM: number; ceilingM: number; inwardZ: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {/* 1,5 см перед гранью стены (грань на 3 см от оси): на самой грани полоса
+          z-файтилась с заслонкой-стеной в проходе маски и выходила пунктиром. */}
+      <mesh
+        position={[0, ceilingM - 0.12, inwardZ * 0.045]}
+        ref={(m) => {
+          if (m) {
+            m.layers.disableAll();
+            m.layers.set(FLOATING_MASK_LAYER);
+          }
+        }}
+      >
+        <planeGeometry args={[lengthM, 0.16]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 export function Scene3D({
   vertices,
   walls,
@@ -77,12 +164,16 @@ export function Scene3D({
   onSceneReady,
   captureTrigger,
   shadowGapWalls,
+  wallProfiles,
+  withInsert,
+  insertColor,
+  wallFurniture,
+  betaLabel,
 }: Scene3DProps) {
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
   const [sceneSettled, setSceneSettled] = useState(false);
   const [spot, setSpot] = useState<ViewSpot>("center");
-  const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
@@ -122,19 +213,12 @@ export function Scene3D({
   // Адаптивное качество: high — с ContactShadows; low — без (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
 
-  // Мобильный Safari: агрессивнее по памяти WebGL. На телефоне режем dpr и
-  // включаем тяжёлый постпроцессинг (N8AO/Bloom) НЕ на первом кадре, а через
-  // ~0.7с — сначала даём WebGL-контексту встать и текстурам подгрузиться, иначе
-  // на слабых iPhone контекст может упасть сразу (пустой экран).
+  // Мобильный Safari: агрессивнее по памяти WebGL. На телефоне режем dpr.
+  // Постпроцессинга (N8AO/Bloom/Vignette) больше нет — тон как в приложении (11.11.2026).
   const isMobile = useMemo(
     () => typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
     [],
   );
-  const [heavyFxReady, setHeavyFxReady] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setHeavyFxReady(true), 700);
-    return () => window.clearTimeout(t);
-  }, []);
 
   // Подсказка «проведите пальцем» сама гаснет через 4с — чтобы не мешала картинке.
   const [showHint, setShowHint] = useState(true);
@@ -184,6 +268,16 @@ export function Scene3D({
   );
 
   const lightTemp = useMemo(() => getLightTempByKey(lightTempKey), [lightTempKey]);
+  // Температура света красит и общий свет сцены — та же доля, что в приложении
+  // (Scene3DNative: ключевой 18 %, небо/пол 5 %; больше — белое полотно уходит в персик).
+  const sceneTint = useMemo(
+    () => ({
+      key: mixHex("#FFFFFF", lightTemp.hex, 0.18),
+      sky: mixHex("#F3F3F1", lightTemp.hex, 0.05),
+      ground: mixHex("#F2F2F0", lightTemp.hex, 0.05),
+    }),
+    [lightTemp.hex],
+  );
   const floorPreset = useMemo(() => getFloorPreset(floorId), [floorId]);
   const wallPreset = useMemo(() => getWallPreset(wallId), [wallId]);
 
@@ -217,10 +311,43 @@ export function Scene3D({
   const ceilingM = cm2m(ceilingHeight);
   void walls;
 
+  // Двухуровневый потолок (как в Scene3DNative, 09.11.2026): первый элемент «2 уровня»
+  // комнаты → геометрия для Room3D (нижний уровень, верх, борт, полка с LED).
+  // Несколько бортов — пока первый. Геометрия — файл-близнец level2Geometry3D.ts.
+  const level2Build = useMemo(() => {
+    const els = elements.filter((e) => e.type === "level2");
+    if (els.length === 0) return null;
+    try {
+      return buildLevel2(els[0], vertices, centerOffset, ceilingM);
+    } catch (e) {
+      console.warn("[Scene3D] level2 build error", e);
+      return null;
+    }
+  }, [elements, vertices, centerOffset, ceilingM]);
+
+  // Профиль по каждой стене (индекс = отрезок vertices[i]→[i+1]) — из wallProfiles замера;
+  // прежний явный список shadowGapWalls (серверный рендер) — тоже теневой.
+  const wallProfileList = useMemo(() => {
+    if (!wallProfiles && !shadowGapWalls?.length) return undefined;
+    const n = Math.max(0, vertices.length - 1);
+    return Array.from({ length: n }, (_, i) => (shadowGapWalls?.includes(i) ? "shadow" : mapWallProfile(wallProfiles?.[i])));
+  }, [wallProfiles, shadowGapWalls, vertices.length]);
+
+  // «Фасад шкафа»: цвет по индексу стены, как профили.
+  const wallFacadeHex = useMemo(() => {
+    if (!wallFurniture?.length) return undefined;
+    const n = Math.max(0, vertices.length - 1);
+    return Array.from({ length: n }, (_, i) => {
+      const c = wallFurnitureColor(wallFurniture, i);
+      return c ? WALL_FURNITURE_HEX[c] : undefined;
+    });
+  }, [wallFurniture, vertices.length]);
+
   const lightFixtures = useMemo(() => {
     const items: Array<{
       kind: "spot" | "chandelier";
       id: string;
+      el: RoomElement;
       pos: [number, number, number];
       variant?: "ours" | "client";
       priceVariantId?: string;
@@ -230,16 +357,19 @@ export function Scene3D({
       if (el.type !== "spot" && el.type !== "chandelier") continue;
       const x = cm2m(el.x) - centerOffset.x;
       const z = cm2m(el.y) - centerOffset.z;
+      // В комнате с «2 уровня» софит/люстра стоят на своём уровне (нижний — на H − drop).
+      const y = level2Build ? level2CeilingAt(level2Build, x, z, ceilingM) : ceilingM;
       items.push({
         kind: el.type,
         id: el.id,
-        pos: [x, ceilingM, z],
+        el,
+        pos: [x, y, z],
         variant: el.variant,
         priceVariantId: el.priceVariantId,
       });
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z, ceilingM]);
+  }, [elements, centerOffset.x, centerOffset.z, ceilingM, level2Build]);
 
   interface LinkedPriceVariant {
     id: string;
@@ -275,6 +405,39 @@ export function Scene3D({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements]);
+  // Имена своих позиций прайса → тип софита/трека по названию (fixtureKinds, как в приложении).
+  // На публичной странице запрос без логина не проходит — тогда типы по spotType/trackType элемента.
+  const priceVariantNames = useMemo<VariantNames>(() => {
+    if (priceVariants.size === 0) return undefined;
+    const out: Record<string, { name: string }> = {};
+    for (const [id, v] of priceVariants) out[id] = { name: v.name };
+    return out;
+  }, [priceVariants]);
+  const fixtures = useMemo(
+    () => lightFixtures.map((f) => ({ ...f, spotKind: f.kind === "spot" ? resolveSpotKind(f.el, priceVariantNames) : undefined })),
+    [lightFixtures, priceVariantNames],
+  );
+  // Круглые вырезы в полотне под безрамочные софиты (воронка выше полотна).
+  const ceilingHoles = useMemo(
+    () =>
+      fixtures
+        .filter((f) => f.kind === "spot" && (f.spotKind === "bh53" || f.spotKind === "bh10"))
+        .map((f) => ({ x: f.pos[0], z: f.pos[2], r: CONE[f.spotKind as "bh53" | "bh10"].rOuter - 0.002 })),
+    [fixtures],
+  );
+  // Вентиляция — теневой диффузор: чёрное кольцо на полотне своего уровня.
+  const ventItems = useMemo(
+    () =>
+      elements
+        .filter((el) => el.type === "vent" && el.x !== undefined && el.y !== undefined)
+        .map((el) => {
+          const x = cm2m(el.x!) - centerOffset.x;
+          const z = cm2m(el.y!) - centerOffset.z;
+          const y = level2Build ? level2CeilingAt(level2Build, x, z, ceilingM) : ceilingM;
+          return { id: el.id, pos: [x, y, z] as [number, number, number] };
+        }),
+    [elements, centerOffset.x, centerOffset.z, ceilingM, level2Build],
+  );
 
   const totalLightSources = lightFixtures.length;
   const lightBudget = totalLightSources <= MAX_POINT_LIGHTS;
@@ -475,8 +638,19 @@ export function Scene3D({
     const eye = HUMAN_EYE_HEIGHT - 0.05;
     // Камера: прежний угол (minX,minY)·frac; в renderMode — лучший из выпуклых углов
     // комнаты (см. pickHeroCorner). Взгляд — чуть за центр, в сторону дальнего угла.
+    // Парящий/подшторник теперь приходят профилем стены (wallProfiles), а не элементом —
+    // для выбора угла съёмки добавляем их как «продающие» точки на стене, иначе камера
+    // вставала спиной к парящему и маска засвета для AI-фото выходила пустой (11.11.2026).
+    const heroElements = renderMode
+      ? [
+          ...elements,
+          ...Object.entries(wallProfiles ?? {})
+            .filter(([, p]) => p === "floating" || p === "subcurtain" || p === "subcurtain_light")
+            .map(([i, p]) => ({ id: `profile-${i}`, type: (p === "floating" ? "floating" : "subcurtain") as ElementType, wallIndex: Number(i), wallPosition: 0.5 })),
+        ]
+      : elements;
     const [cx, cz] = renderMode
-      ? pickHeroCorner(vertices, elements, centerOffset, halfX, halfZ, frac, fov)
+      ? pickHeroCorner(vertices, heroElements, centerOffset, halfX, halfZ, frac, fov)
       : [-halfX * frac, -halfZ * frac];
     const lookK = 0.15 / frac;
     return {
@@ -486,7 +660,7 @@ export function Scene3D({
       look: [-cx * lookK, ceilingM * lookYf, -cz * lookK],
       fov,
     };
-  }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, centerOffset]);
+  }, [halfX, halfZ, ceilingM, renderMode, vertices, elements, wallProfiles, centerOffset]);
 
   useEffect(() => {
     // LookAroundControls монтируется внутри Canvas асинхронно — на момент первого
@@ -530,12 +704,6 @@ export function Scene3D({
     return result;
   }, [elements, vertices]);
 
-  // Контур комнаты в координатах сцены (м, от центра bbox) — для проверки «внутрь».
-  const roomPoly = useMemo<Array<[number, number]>>(
-    () => vertices.map((v) => [cm2m(v.x) - centerOffset.x, cm2m(v.y) - centerOffset.z]),
-    [vertices, centerOffset.x, centerOffset.z],
-  );
-
   const wallElements = useMemo(() => {
     const items: Array<{
       id: string;
@@ -544,10 +712,23 @@ export function Scene3D({
       lengthM: number;
       type: ElementType;
       variant?: "ours" | "client";
+      /** Высота полотна у элемента, м: линия/трек у стены в комнате с «2 уровня» — уровень у этой стены. */
+      yM?: number;
+      /** Для гардины у стены: сдвиг ниши внутрь комнаты (местный z). */
+      nicheOffsetZ: number;
+      /** Сторона интерьера (±1) — одна на все стены, по знаку площади. */
+      inwardZ: 1 | -1;
+      rows?: 1 | 2 | 3;
+      color?: "black" | "white";
+      trackKind?: "magnetic" | "surface";
     }> = [];
+    const inwardZ = interiorSign(vertices);
     for (const el of elements) {
       if (el.wallIndex === undefined) continue;
       if (!WALL_ELEMENT_TYPES.has(el.type)) continue;
+      // Гардина с координатами рисуется по ним (freeRoomElements); здесь остаются
+      // только старые замеры без координат — для них запасной отступ от стены.
+      if (isGardinaType(el.type) && hasOwnCoords(el)) continue;
       const a = vertices[el.wallIndex];
       const b = vertices[el.wallIndex + 1];
       if (!a || !b) continue;
@@ -564,25 +745,39 @@ export function Scene3D({
       const cz = az + dz * t;
       const defaultLen = DEFAULT_LENGTH_CM[el.type] ?? wallLengthM * 100;
       const lengthCm = el.length ?? defaultLen;
-      // WallElement3D кладёт шторы/парящий/подшторник в сторону ЛОКАЛЬНОГО −z. При
-      // rotationY = −atan2(dz,dx) это (dz,−dx)/L в мире — внутрь комнаты только при
-      // одном направлении обхода контура. У контура (0,0)→(W,0)→… (так строят и веб
-      // getVertices, и мобилка) это НАРУЖУ: шторы/свечение парящего оказывались за
-      // стеной. Проверяем точкой и при необходимости разворачиваем элемент на 180°.
-      const inX = cx + (dz / wallLengthM) * 0.2;
-      const inZ = cz + (-dx / wallLengthM) * 0.2;
-      const flip = roomPoly.length >= 3 && !pointInPolygon(inX, inZ, roomPoly);
+      // Сторона интерьера — одна на все стены (inwardZ, как в приложении): WallElement3D
+      // (файл-близнец) сам кладёт нишу/дверь/окно на сторону интерьера по этому знаку.
+      // Подшторник — чёрная щель 12 см у стены. Гардина без координат (старые
+      // замеры) — запасной отступ центра 11 см от стены.
+      const isNiche = isGardinaType(el.type) || el.type === "subcurtain";
+      const nicheOffset = el.type === "subcurtain" ? NICHE_OFFSET : GARDINA_OFFSET;
+      // Линия/трек у стены в комнате с «2 уровня» — на высоте уровня у этой стены
+      // (точка на 5 см внутрь комнаты от середины элемента). Гардина/подшторник
+      // (как в Scene3DNative 9586650, 11.11.2026) — уровень под центром канала/ниши.
+      let yM: number | undefined;
+      if (level2Build && (el.type === "lightline" || el.type === "track" || isNiche)) {
+        const nx = (-dz / wallLengthM) * inwardZ;
+        const nz = (dx / wallLengthM) * inwardZ;
+        const off = isNiche ? nicheOffset : 0.05;
+        yM = level2CeilingAt(level2Build, cx + nx * off, cz + nz * off, ceilingM);
+      }
       items.push({
         id: el.id,
         pos: [cx, 0, cz],
-        rotationY: -Math.atan2(dz, dx) + (flip ? Math.PI : 0),
+        rotationY: -Math.atan2(dz, dx),
         lengthM: Math.min(cm2m(lengthCm), wallLengthM),
         type: el.type,
         variant: el.variant,
+        yM,
+        nicheOffsetZ: inwardZ * nicheOffset,
+        inwardZ,
+        rows: el.rows,
+        color: el.color,
+        trackKind: el.type === "track" ? resolveTrackKind(el, priceVariantNames) : undefined,
       });
     }
     return items;
-  }, [elements, vertices, centerOffset.x, centerOffset.z, roomPoly]);
+  }, [elements, vertices, centerOffset.x, centerOffset.z, level2Build, ceilingM, priceVariantNames]);
 
   // Свободные элементы внутри комнаты (не привязаны к стене):
   // магнитный трек / световая линия / парящий — могут лежать поперёк потолка
@@ -597,10 +792,50 @@ export function Scene3D({
       rotationY: number;
       lengthM: number;
       variant?: "ours" | "client";
+      /** Высота полотна под элементом, м (в комнате с «2 уровня» — нижний или верхний уровень). Нет — ceilingM. */
+      yM?: number;
+      rows?: 1 | 2 | 3;
+      color?: "black" | "white";
+      trackKind?: "magnetic" | "surface";
     };
     const items: FreeItem[] = [];
+    // Линии В полотне (светолиния, трек) в комнате с «2 уровня» идут по той плоскости, над
+    // которой нарисованы; отрезок через границу уровней режется на части (как в
+    // Scene3DNative, ERSO 10.11.2026: линии вокруг острова рисовались на H и прятались
+    // за нижним уровнем). Гардина и подшторник (11.11.2026, как в Scene3DNative 9586650) —
+    // целиком на уровне под своей серединой: канал/ниша одно изделие, резать его по уровням
+    // нельзя; вырез в полотне того же уровня делает Room3D. Остальные — на ceilingM.
+    const inCanvas = (t: ElementType) => t === "lightline" || t === "track";
+    const isNiche = (t: ElementType) => isGardinaType(t) || t === "subcurtain";
+    const pushSeg = (el: RoomElement, idBase: string, ax: number, az: number, bx: number, bz: number, rotationY?: number) => {
+      const parts = inCanvas(el.type) && level2Build ? splitSegmentByLevel(level2Build, ax, az, bx, bz, ceilingM) : [{ ax, az, bx, bz, y: ceilingM }];
+      parts.forEach((p, k) => {
+        const dx = p.bx - p.ax;
+        const dz = p.bz - p.az;
+        const lengthM = Math.hypot(dx, dz);
+        if (lengthM < 0.05) return;
+        const yM = !level2Build ? undefined
+          : inCanvas(el.type) ? p.y
+          : isNiche(el.type) ? level2CeilingAt(level2Build, (p.ax + p.bx) / 2, (p.az + p.bz) / 2, ceilingM)
+          : undefined;
+        items.push({
+          id: k === 0 ? idBase : `${idBase}-lv${k}`,
+          type: el.type,
+          pos: [(p.ax + p.bx) / 2, 0, (p.az + p.bz) / 2],
+          rotationY: rotationY ?? -Math.atan2(dz, dx),
+          lengthM,
+          variant: el.variant,
+          yM,
+          rows: el.rows,
+          color: el.color,
+          trackKind: el.type === "track" ? resolveTrackKind(el, priceVariantNames) : undefined,
+        });
+      });
+    };
     for (const el of elements) {
-      if (el.wallIndex !== undefined) continue; // wall-element обрабатывается отдельно
+      // Гардина с координатами (points или x/y) — всегда по чертежу, даже если у неё есть
+      // wallIndex (Нариман 04.11: «где мастер поставил, там и канал»).
+      if (el.wallIndex !== undefined && !(isGardinaType(el.type) && hasOwnCoords(el))) continue;
       const supportedFreeTypes: ElementType[] = [
         "track",
         "lightline",
@@ -624,18 +859,8 @@ export function Scene3D({
           const az = cm2m(a.y) - centerOffset.z;
           const bx = cm2m(b.x) - centerOffset.x;
           const bz = cm2m(b.y) - centerOffset.z;
-          const dx = bx - ax;
-          const dz = bz - az;
-          const lengthM = Math.hypot(dx, dz);
-          if (lengthM < 0.05) continue;
-          items.push({
-            id: i === 0 ? el.id : `${el.id}-seg${i}`,
-            type: el.type,
-            pos: [(ax + bx) / 2, 0, (az + bz) / 2],
-            rotationY: -Math.atan2(dz, dx),
-            lengthM,
-            variant: el.variant,
-          });
+          if (Math.hypot(bx - ax, bz - az) < 0.05) continue;
+          pushSeg(el, i === 0 ? el.id : `${el.id}-seg${i}`, ax, az, bx, bz);
         }
         continue;
       }
@@ -644,81 +869,131 @@ export function Scene3D({
       if (el.x !== undefined && el.y !== undefined && el.length) {
         const cx = cm2m(el.x) - centerOffset.x;
         const cz = cm2m(el.y) - centerOffset.z;
-        items.push({
-          id: el.id,
-          type: el.type,
-          pos: [cx, 0, cz],
-          rotationY: -((el.rotation ?? 0) * Math.PI) / 180,
-          lengthM: cm2m(el.length),
-          variant: el.variant,
-        });
+        const rot = -((el.rotation ?? 0) * Math.PI) / 180;
+        const half = cm2m(el.length) / 2;
+        // Концы отрезка по направлению поворота (как в Scene3DNative): x вдоль cos, z по −sin.
+        pushSeg(el, el.id, cx - Math.cos(rot) * half, cz + Math.sin(rot) * half, cx + Math.cos(rot) * half, cz - Math.sin(rot) * half, rot);
       }
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z]);
+  }, [elements, centerOffset.x, centerOffset.z, level2Build, ceilingM, priceVariantNames]);
 
-  // Теневой профиль (из wallProfiles мобилки): тёмный зазор ~1 см по периметру
-  // у примыкания потолка к стене. Рисуем тонкой чёрной полосой чуть ниже потолка.
-  const shadowGaps = useMemo(() => {
-    const out: Array<{ key: string; pos: [number, number, number]; rotationY: number; lengthM: number }> = [];
-    for (const wi of shadowGapWalls ?? []) {
-      const a = vertices[wi];
-      const b = vertices[wi + 1];
-      if (!a || !b) continue;
+  // Вырезы в полотне: утопленный канал гардины (8/10/12 см по рядам) и ниша-подшторник
+  // (12 см) — у стены и поперёк комнаты (как в Scene3DNative).
+  const ceilingSlots = useMemo(() => {
+    const out: Array<{ x: number; z: number; angle: number; lengthM: number; widthM: number }> = [];
+    const widthOf = (t: ElementType, rows?: 1 | 2 | 3): number | null =>
+      t === "subcurtain" ? NICHE_W : t === "curtain" || t === "builtin_gardina" ? gardinaWidth(rows) : null;
+    for (const w of wallElements) {
+      const widthM = widthOf(w.type, w.rows);
+      if (widthM == null) continue;
+      const a = -w.rotationY;
+      // локальный +z в мировых координатах: (−sin a, cos a)
+      const ox = -Math.sin(a) * w.nicheOffsetZ;
+      const oz = Math.cos(a) * w.nicheOffsetZ;
+      out.push({ x: w.pos[0] + ox, z: w.pos[2] + oz, angle: a, lengthM: w.lengthM, widthM });
+    }
+    for (const e of freeRoomElements) {
+      const widthM = widthOf(e.type, e.rows);
+      if (widthM == null) continue;
+      out.push({ x: e.pos[0], z: e.pos[2], angle: -e.rotationY, lengthM: e.lengthM, widthM });
+    }
+    return out;
+  }, [wallElements, freeRoomElements]);
+
+  // Полосы маски парящего для AI-фото: стены с профилем «парящий» + элементы floating.
+  const floatingMaskBands = useMemo(() => {
+    const out: Array<{ key: string; pos: [number, number, number]; rotationY: number; lengthM: number; inwardZ: number }> = [];
+    const inwardZ = interiorSign(vertices);
+    (wallProfileList ?? []).forEach((p, i) => {
+      if (p !== "floating") return;
+      const a = vertices[i];
+      const b = vertices[i + 1];
+      if (!a || !b) return;
       const ax = cm2m(a.x) - centerOffset.x;
       const az = cm2m(a.y) - centerOffset.z;
       const bx = cm2m(b.x) - centerOffset.x;
       const bz = cm2m(b.y) - centerOffset.z;
-      const dx = bx - ax;
-      const dz = bz - az;
-      const len = Math.hypot(dx, dz);
-      if (len < 0.05) continue;
-      out.push({ key: `sg-${wi}`, pos: [(ax + bx) / 2, 0, (az + bz) / 2], rotationY: -Math.atan2(dz, dx), lengthM: len });
-    }
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 0.05) return;
+      out.push({ key: `fm-wall-${i}`, pos: [(ax + bx) / 2, 0, (az + bz) / 2], rotationY: -Math.atan2(bz - az, bx - ax), lengthM: len, inwardZ });
+    });
+    for (const w of wallElements) if (w.type === "floating") out.push({ key: `fm-${w.id}`, pos: w.pos, rotationY: w.rotationY, lengthM: w.lengthM, inwardZ: w.inwardZ });
+    for (const e of freeRoomElements) if (e.type === "floating") out.push({ key: `fm-${e.id}`, pos: e.pos, rotationY: e.rotationY, lengthM: e.lengthM, inwardZ });
     return out;
-  }, [shadowGapWalls, vertices, centerOffset.x, centerOffset.z]);
+  }, [wallProfileList, vertices, centerOffset.x, centerOffset.z, wallElements, freeRoomElements]);
 
+  // Данные для запечённой карты полотна и стен (Room3D.bake): софиты, люстры, линии.
+  const bakeData = useMemo(() => {
+    const lines: Array<{ ax: number; az: number; bx: number; bz: number }> = [];
+    const seg = (e: { pos: [number, number, number]; rotationY: number; lengthM: number }) => {
+      const dx = Math.cos(-e.rotationY) * e.lengthM / 2;
+      const dz = Math.sin(-e.rotationY) * e.lengthM / 2;
+      return { ax: e.pos[0] - dx, az: e.pos[2] - dz, bx: e.pos[0] + dx, bz: e.pos[2] + dz };
+    };
+    for (const e of freeRoomElements) if (e.type === "track" || e.type === "lightline") lines.push(seg(e));
+    for (const e of wallElements) if (e.type === "track" || e.type === "lightline") lines.push(seg(e));
+    return {
+      spots: lightFixtures.filter((f) => f.kind === "spot").map((f) => ({ x: f.pos[0], z: f.pos[2], d: 0.09 })),
+      chandeliers: lightFixtures.filter((f) => f.kind === "chandelier").map((f) => ({ x: f.pos[0], z: f.pos[2] })),
+      lines,
+      spotHex: "#FBF7F0",
+    };
+  }, [lightFixtures, freeRoomElements, wallElements]);
+
+  // Мебель — как в Scene3DNative (процедурные модели furnitureModels.ts, файл-близнец):
+  // поворот как на чертеже + «зад к стене», зазоры до стен (ТВ висит, тень на стену),
+  // Г-образная кухня из двух блоков. Ковёр и растение-декор убраны (11.11.2026, Нариман:
+  // один вид с приложением).
   const furnitureItems = useMemo(() => {
     const items: Array<{
       id: string;
+      type: FurnitureType;
       pos: [number, number, number];
       rotationY: number;
-      furnitureType: FurnitureType;
       widthM: number;
       depthM: number;
+      backGapM: number;
+      frontGapM: number;
+      leftGapM: number;
+      rightGapM: number;
+      /** Кухня: этот блок — короткий в Г-образной сборке, торец end упирается в блок глубиной mainDepthM. */
+      kitchenJoin?: { end: "left" | "right"; mainDepthM: number };
     }> = [];
+    const kitchens: Array<{ i: number; x: number; y: number; w: number; d: number; deg: number }> = [];
     for (const el of elements) {
       if (el.type !== "furniture") continue;
-      if (el.x === undefined || el.y === undefined || !el.furnitureType) continue;
+      if (el.x === undefined || el.y === undefined) continue;
+      if (!el.furnitureType) continue;
       const x = cm2m(el.x) - centerOffset.x;
       const z = cm2m(el.y) - centerOffset.z;
-      items.push({
-        id: el.id,
-        pos: [x, 0, z],
-        rotationY: -((el.rotation ?? 0) * Math.PI) / 180,
-        furnitureType: el.furnitureType,
-        widthM: cm2m(el.width ?? 100),
-        depthM: cm2m(el.height ?? 100),
-      });
+      const widthM = el.width ? cm2m(el.width) : 1.0;
+      const depthM = el.height ? cm2m(el.height) : 0.6;
+      const deg = furnitureRotationDeg(el, vertices);
+      const rotationY = furnitureRotationY(deg);
+      const gaps = furnitureWallGaps(el, vertices, deg);
+      items.push({ id: el.id, type: el.furnitureType, pos: [x, 0, z], rotationY, widthM, depthM, backGapM: cm2m(gaps.back), frontGapM: cm2m(gaps.front), leftGapM: cm2m(gaps.left), rightGapM: cm2m(gaps.right) });
+      if (el.furnitureType === "kitchen" && el.width && el.height) kitchens.push({ i: items.length - 1, x: el.x, y: el.y, w: el.width, d: el.height, deg });
+    }
+    // Г-образная кухня из двух блоков: технику рисует только более длинный блок, короткий
+    // торцом стыкуется с ним — без своей техники, верхние шкафы доводятся до шкафов длинного.
+    for (const b of kitchens) {
+      for (const a of kitchens) {
+        if (a === b || a.w < b.w || (a.w === b.w && a.i > b.i)) continue;
+        const rad = (b.deg * Math.PI) / 180;
+        for (const end of ["left", "right"] as const) {
+          const s = end === "left" ? -1 : 1;
+          const px = b.x + (s * Math.cos(rad) * b.w) / 2;
+          const py = b.y + (s * Math.sin(rad) * b.w) / 2;
+          const ar = (a.deg * Math.PI) / 180;
+          const lx = (px - a.x) * Math.cos(ar) + (py - a.y) * Math.sin(ar);
+          const ly = -(px - a.x) * Math.sin(ar) + (py - a.y) * Math.cos(ar);
+          if (Math.abs(lx) <= a.w / 2 + 12 && Math.abs(ly) <= a.d / 2 + 12) items[b.i].kitchenJoin = { end, mainDepthM: cm2m(a.d) };
+        }
+      }
     }
     return items;
-  }, [elements, centerOffset.x, centerOffset.z]);
-
-  // Место для растения — в углу комнаты (у vertex[0]), смещённое внутрь, чтобы
-  // не втыкалось в стену. Углы обычно свободны от мебели.
-  const plantSpot = useMemo<[number, number, number] | null>(() => {
-    if (vertices.length < 3) return null;
-    const v = vertices[0];
-    const vx = cm2m(v.x) - centerOffset.x;
-    const vz = cm2m(v.y) - centerOffset.z;
-    const len = Math.hypot(vx, vz) || 1;
-    return [vx - (vx / len) * 0.5, 0, vz - (vz / len) * 0.5];
-  }, [vertices, centerOffset.x, centerOffset.z]);
-
-  const rugSize = useMemo<[number, number]>(
-    () => [Math.min(roomSize * 0.55, 2.6), Math.min(roomSize * 0.42, 1.8)],
-    [roomSize],
-  );
+  }, [elements, vertices, centerOffset.x, centerOffset.z]);
 
   // Прогоняем 2-3 пресет-ракурса и снимаем каждый → набор красивых картинок
   // для клиента (WhatsApp). Ждём пока камера «долетит» (lerp в LookAroundControls)
@@ -771,7 +1046,7 @@ export function Scene3D({
   }, [clientShots.images]);
 
   return (
-    <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
+    <div className="absolute inset-0" style={{ backgroundColor: LIGHT_BALANCE.background }}>
       <Canvas
         // Серверный рендер: после готовности сцены цикл кадров останавливаем — AI-захват
         // рисует сам (gl.render), а swiftshader на слабом CPU иначе тратит всё время на
@@ -782,29 +1057,19 @@ export function Scene3D({
         gl={{
           preserveDrawingBuffer: true,
           antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 0.88 : 0.85,
+          // Neutral вместо ACES, как в приложении (10.10.2026): ACES «сажал» белое
+          // полотно в тёплый серый и давал полосы на градиентах.
+          toneMapping: THREE.NeutralToneMapping,
+          toneMappingExposure: LIGHT_BALANCE.exposure,
         }}
-        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 68, near: 0.05, far: 100 }}
+        // Телефон: вертикальный 104° как в приложении («как 0,5× на iPhone»); десктоп —
+        // прежние 68°, широкий кадр там не искажается только в портрете.
+        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: isMobile ? 104 : 68, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
       >
-        <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
-
-        {/* Sky procedural — голубое небо вокруг сцены. Через окна и двери
-            клиент видит «улицу», а не чернотy. Не грузит файлов с CDN,
-            на Safari/iPad работает стабильно (только шейдер). */}
-        {daylight && (
-          <Sky
-            distance={450000}
-            sunPosition={[roomSize * 2, roomSize * 4, roomSize * 1.5]}
-            inclination={0.49}
-            azimuth={0.25}
-            mieCoefficient={0.005}
-            mieDirectionalG={0.8}
-            rayleigh={2}
-            turbidity={6}
-          />
-        )}
+        {/* Нейтральный «день за окном» без синевы и без Sky — правило: матовое, без
+            времени суток и виньетки; фон тот же, что в приложении (lightBalance.ts). */}
+        <color attach="background" args={[LIGHT_BALANCE.background]} />
 
         {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
         {/* В renderMode (swiftshader, 2-5 fps) монитор FPS снял бы тени/декор → не включаем. */}
@@ -824,75 +1089,69 @@ export function Scene3D({
         {/* Ambient снижен (было 0.95 — «молочно» и плоско, съедало объём).
             Теперь основной объём даёт directional + HDRI, ambient только
             подсвечивает тени чтобы не проваливались в чёрное. */}
-        <ambientLight intensity={daylight ? 0.32 : 0.16} color="#EEF2F7" />
-        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.42 : 0.08]} />
-        {/* Ключевой свет — «солнце из окна» с настоящими мягкими тенями.
-            Тени от мебели/стен на полу — главный скачок реализма против
-            плоского «детсадовского» рендера. Тень-камера охватывает комнату. */}
+        {/* СВЕТ как в приложении (Scene3DNative + lightBalance.ts, этап 5 лист 05):
+              • IBL без файлов (RoomEnvironment → PMREM) — мягкий свет со всех сторон;
+              • hemisphere: groundColor = «отражённый от пола свет» снизу — он делает
+                белое полотно белым (нормаль потолка вниз);
+              • ключевой directional с тенью только от мебели, тон по температуре света;
+              • bounce снизу вверх — освещает только то, что смотрит вниз (полотно);
+              • ambient — минимальный, чтобы углы не проваливались.
+            HDRI-файлов по Кельвинам и Sky больше нет (правило: без времени суток). */}
+        <ambientLight intensity={LIGHT_BALANCE.ambient} color="#F6F5F2" />
+        <hemisphereLight args={[sceneTint.sky, sceneTint.ground, LIGHT_BALANCE.hemi]} />
         <directionalLight
-          position={[roomSize * 1.4, roomSize * 2.4, roomSize * 1.1]}
-          intensity={daylight ? 1.65 : 0}
-          color="#FFF3DC"
+          position={[roomSize * 1.4, roomSize * 1.3, roomSize * 1.1]}
+          intensity={LIGHT_BALANCE.key}
+          color={sceneTint.key}
           castShadow={quality === "high"}
           shadow-mapSize-width={isMobile ? 1024 : 2048}
           shadow-mapSize-height={isMobile ? 1024 : 2048}
           shadow-camera-near={0.5}
-          shadow-camera-far={roomSize * 10}
-          shadow-camera-left={-roomSize * 1.2}
-          shadow-camera-right={roomSize * 1.2}
-          shadow-camera-top={roomSize * 1.2}
-          shadow-camera-bottom={-roomSize * 1.2}
-          shadow-bias={-0.0004}
-          shadow-normalBias={0.025}
+          shadow-camera-far={roomSize * 6}
+          shadow-camera-left={-(Math.max(halfX, halfZ) + 1.2)}
+          shadow-camera-right={Math.max(halfX, halfZ) + 1.2}
+          shadow-camera-top={Math.max(halfX, halfZ) + 1.2}
+          shadow-camera-bottom={-(Math.max(halfX, halfZ) + 1.2)}
+          shadow-bias={-0.0005}
+          shadow-normalBias={0.02}
+          shadow-radius={7}
         />
-        {/* Мягкий fill с противоположной стороны — без теней, только
-            подсветить тёмные углы чтобы тени были «мягкие», а не чёрные. */}
-        <directionalLight
-          position={[-roomSize, roomSize * 1.5, -roomSize]}
-          intensity={daylight ? 0.45 : 0}
-          color="#DCE9F4"
-        />
+        <directionalLight position={[-roomSize, roomSize * 1.5, -roomSize]} intensity={LIGHT_BALANCE.fill} color="#F0EEEA" />
+        <directionalLight position={[0.3, -10, 0.2]} intensity={LIGHT_BALANCE.bounce} color={sceneTint.ground} />
+        <SceneEnvironment intensity={LIGHT_BALANCE.env} />
 
-        {/* HDR Environment — главный рычаг реализма (Нариман 2026-06-27).
-            Без него глянцевый/сатиновый потолок выглядит пластиком, металл
-            мебели — серой пластмассой. Файлы лежат локально в /public/hdri/
-            (Poly Haven CC0, 1K HDR ~1.5MB каждый) — Safari больше не падает
-            на jsdelivr CDN. Подбираем под Kelvin температуру света:
-              warm (2700K) → studio_warm  — тёплая атмосфера вечер
-              neutral (4000K) → studio_neutral — сбалансированный день
-              cool (6500K) → studio_cool — холодный модерн
-            background={false} — НЕ заливаем небо, только envMap для рефлексов. */}
-        {/* R3FErrorBoundary: если HDRI не дотянулся (флаки-мобильный интернет),
-            деградируем на обычное освещение выше вместо падения всей сцены
-            («Load failed» на Safari). */}
-        <R3FErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
-            <Environment
-              files={`/hdri/studio_${lightTempKey === "warm" ? "warm" : lightTempKey === "cool" ? "cool" : "neutral"}_1k.hdr`}
-              background={false}
-              environmentIntensity={1.05}
-            />
-          </Suspense>
-        </R3FErrorBoundary>
-
-        <Room3D
-          vertices={vertices}
-          ceilingHeight={ceilingHeight}
-          centerOffset={centerOffset}
-          wallCutouts={wallCutouts}
-          ceilingColor={ceilingColor}
-          ceilingFinish={ceilingFinish}
-          floorColor={floorPreset.color}
-          floorRoughness={floorPreset.roughness}
-          floorTextureUrl={floorPreset.textureUrl}
-          floorNormalUrl={floorPreset.normalUrl}
-          floorRoughUrl={floorPreset.roughUrl}
-          wallColor={wallPreset.color}
-          wallRoughness={wallPreset.roughness}
-          wallTextureUrl={wallPreset.textureUrl}
-          wallNormalUrl={wallPreset.normalUrl}
-          wallRoughUrl={wallPreset.roughUrl}
-        />
+        {/* Room3D — файл-близнец приложения (стены, пол, полотно, профили периметра,
+            вставка, фасад шкафа, вырезы, запечённые карты, «2 уровня»). Слои масок для
+            AI-захвата вешаем снаружи (markRoomMaskLayers). */}
+        <group ref={markRoomMaskLayers}>
+          <Room3D
+            vertices={vertices}
+            ceilingHeight={ceilingHeight}
+            centerOffset={centerOffset}
+            wallCutouts={wallCutouts}
+            ceilingColor={ceilingColor}
+            ceilingFinish={ceilingFinish}
+            floorPresetId={floorPreset.id}
+            floorColor={floorPreset.color}
+            floorRoughness={floorPreset.roughness}
+            floorTileM={floorPreset.tileM}
+            wallPresetId={wallPreset.id}
+            wallColor={wallPreset.color}
+            wallRoughness={wallPreset.roughness}
+            wallTileM={wallPreset.tileM}
+            ceilingProfile="none"
+            wallProfileList={wallProfileList}
+            ceilingGlowColor={lightTemp.hex}
+            ceilingGlowKelvin={lightTemp.kelvin}
+            ceilingSlots={ceilingSlots}
+            insertEnabled={withInsert ?? true}
+            insertColor={insertColor ?? "white"}
+            wallFacadeHex={wallFacadeHex}
+            ceilingHoles={ceilingHoles}
+            bake={bakeData}
+            level2={level2Build}
+          />
+        </group>
 
         {/* Контактные тени — теперь как мягкий AO поверх настоящих shadow-maps
             (укрепляют контакт мебели с полом в самой точке касания). */}
@@ -908,92 +1167,42 @@ export function Scene3D({
           />
         )}
 
-        {lightFixtures.map((f) => {
-          const pv = f.priceVariantId ? priceVariants.get(f.priceVariantId) : undefined;
-          if (f.kind === "spot") {
-            return (
-              <Spot3D
-                key={f.id}
-                position={f.pos}
-                variant={f.variant}
-                withLight={lightBudget}
-                lightColor={lightTemp.hex}
-                diameterMm={pv?.physicalWidthMm ?? undefined}
-                depthMm={pv?.physicalHeightMm ?? undefined}
-                bodyColor={pv?.colorHex ?? undefined}
-              />
-            );
-          }
-          return (
-            <Chandelier3D
-              key={f.id}
-              position={f.pos}
-              withLight={lightBudget}
-              lightColor={lightTemp.hex}
-            />
-          );
-        })}
-
-        {furnitureItems.map((f) => (
-          <Furniture3D
-            key={f.id}
-            position={f.pos}
-            rotationY={f.rotationY}
-            furnitureType={f.furnitureType}
-            widthM={f.widthM}
-            depthM={f.depthM}
-          />
-        ))}
-
-        {/* Стайлинг-декор — «дизайнерская обжитость»: ковёр под центром +
-            растение в углу. Только на high-quality (не тащим на слабых).
-            В renderMode («Фото клиенту») — НЕ рисуем: камера стоит в углу, и растение
-            у vertex[0] лезет листьями в кадр; AI превращал их в 3-4 растения + ковёр
-            (фидбек владельца 09.10 «чересчур много растений и лишнего»). */}
-        {quality === "high" && !renderMode && (
-          <>
-            <Rug position={[0, 0.012, 0]} width={rugSize[0]} depth={rugSize[1]} />
-            {plantSpot && (
-              <Plant3D position={plantSpot} url={PLANT_MODELS[0]} targetHeightM={0.95} />
-            )}
-          </>
+        {/* Светильники по типу из КП (fixtureKinds, как в приложении): GX53 «таблетка»,
+            безрамочные BH53/BH10 с вырезом в полотне, «стакан» GU10, люстра с плафонами. */}
+        {fixtures.map((f) =>
+          f.kind === "spot" ? (
+            f.spotKind === "cup" ? (
+              <Spot3D key={f.id} position={f.pos} variant={f.variant} withLight={lightBudget} lightColor={lightTemp.hex} />
+            ) : f.spotKind === "bh53" || f.spotKind === "bh10" ? (
+              <FramelessSpot3D key={f.id} position={f.pos} kind={f.spotKind} />
+            ) : (
+              <Gx53Spot3D key={f.id} position={f.pos} withLight={lightBudget} lightColor={lightTemp.hex} />
+            )
+          ) : (
+            <Chandelier3D key={f.id} position={f.pos} withLight={lightBudget} lightColor={lightTemp.hex} />
+          ),
         )}
+        {ventItems.map((v) => <Vent3D key={v.id} position={v.pos} />)}
+
+        <group name="furniture">
+          {furnitureItems.map((f) => (
+            <Furniture3D key={f.id} position={f.pos} rotationY={f.rotationY} furnitureType={f.type} widthM={f.widthM} depthM={f.depthM} ceilingM={ceilingM} backGapM={f.backGapM} frontGapM={f.frontGapM} leftGapM={f.leftGapM} rightGapM={f.rightGapM} kitchenJoin={f.kitchenJoin} />
+          ))}
+        </group>
 
         {wallElements.map((w) => (
-          <WallElement3D
-            key={w.id}
-            position={w.pos}
-            rotationY={w.rotationY}
-            lengthM={w.lengthM}
-            ceilingM={ceilingM}
-            type={w.type}
-            variant={w.variant}
-            lightColor={lightTemp.hex}
-          />
+          <WallElement3D key={w.id} position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} nicheOffsetZ={w.type === "curtain" || w.type === "builtin_gardina" || w.type === "subcurtain" ? w.nicheOffsetZ : 0} inwardZ={w.inwardZ} rows={w.rows} color={w.color} trackKind={w.trackKind} />
         ))}
 
         {/* Свободные элементы потолка: магнитный трек / световая линия /
-            парящий, которые мастер рисует поперёк комнаты (не на стене). */}
+            парящий / гардина, которые мастер рисует поперёк комнаты (не на стене). */}
         {freeRoomElements.map((w) => (
-          <WallElement3D
-            key={w.id}
-            position={w.pos}
-            rotationY={w.rotationY}
-            lengthM={w.lengthM}
-            ceilingM={ceilingM}
-            type={w.type}
-            variant={w.variant}
-            lightColor={lightTemp.hex}
-          />
+          <WallElement3D key={w.id} position={w.pos} rotationY={w.rotationY} lengthM={w.lengthM} ceilingM={w.yM ?? ceilingM} type={w.type} variant={w.variant} lightColor={lightTemp.hex} withLight={lightBudget} rows={w.rows} color={w.color} trackKind={w.trackKind} />
         ))}
 
-        {shadowGaps.map((g) => (
-          <group key={g.key} position={g.pos} rotation={[0, g.rotationY, 0]}>
-            <mesh position={[0, ceilingM - 0.012, 0]}>
-              <boxGeometry args={[g.lengthM, 0.024, 0.03]} />
-              <meshStandardMaterial color="#0b0b0c" roughness={0.9} />
-            </mesh>
-          </group>
+        {/* Маска парящего для AI-фото: полосы на стенах с профилем «парящий» и у элементов floating. */}
+        {floatingMaskBands.map((b) => (
+          <FloatingMaskBand key={b.key} position={b.pos} rotationY={b.rotationY} lengthM={b.lengthM} ceilingM={ceilingM} inwardZ={b.inwardZ} />
         ))}
 
         {/* В renderMode живая камера сразу стоит в геройском ракурсе: прогревочные кадры
@@ -1013,27 +1222,17 @@ export function Scene3D({
         <AiSceneCapture trigger={aiTrigger} hero={heroCam} onCapture={handleAiCapture} />
         <CanvasGrabber ref={grabberRef} />
 
-        {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
-        {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader,
-            и не включается на первом кадре (heavyFxReady) — даём сцене встать. */}
-        {quality === "high" && heavyFxReady && !renderMode && (
-          <EffectComposer>
-            {/* N8AO = ambient occlusion. Добавляет тени в углах где сходятся
-                стены/пол/потолок, под мебелью, в нишах. Даёт ощущение
-                «глубины» — комната выглядит на порядок реалистичнее без
-                добавления геометрии. Параметры умеренные чтобы не было
-                грязных пятен. */}
-            <N8AO aoRadius={0.7} intensity={3.4} distanceFalloff={0.4} screenSpaceRadius={false} />
-            <Bloom mipmapBlur intensity={0.22} luminanceThreshold={0.9} luminanceSmoothing={0.4} />
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            {/* Лёгкая цветокоррекция — «журнальный» тон: чуть контраста и
-                насыщенности, чтобы картинка была сочной, а не блёклой. */}
-            <BrightnessContrast brightness={0.0} contrast={0.09} />
-            <HueSaturation saturation={0.12} />
-            <Vignette eskil={false} offset={0.25} darkness={0.28} />
-          </EffectComposer>
-        )}
+        {/* Постпроцессинг (N8AO, Bloom, ACES, контраст/насыщенность, Vignette) снят
+            11.11.2026 — тон как в приложении, без виньетки и «журнальной» цветокоррекции.
+            Затемнение углов вернётся запечёнными картами (ceilingBake/wallBake, пакет Б/В). */}
       </Canvas>
+
+      {/* Подпись «3D · в разработке» мелко в углу — не снимать без слова Наримана. */}
+      {betaLabel && !renderMode && (
+        <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/35 text-white/90 text-[10px] font-medium pointer-events-none select-none backdrop-blur-sm">
+          {betaLabel}
+        </div>
+      )}
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
         {/* AI-фото ВЕРНУЛИ (06.08): точность 1:1 теперь держим заморозкой потолка
@@ -1300,6 +1499,47 @@ export function Scene3D({
       )}
     </div>
   );
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  return "#" + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+}
+
+// IBL без файлов, как в приложении (Scene3DNative.SceneEnvironment, 09.10.2026):
+// RoomEnvironment (процедурная «комната со светящимися панелями») → PMREM →
+// scene.environment. Мягкий рассеянный свет со всех сторон и отражения; HDRI-файлы
+// по температуре света и загрузчик с его «Load failed» на Safari больше не нужны.
+function SceneEnvironment({ intensity }: { intensity: number }) {
+  const gl = useThree((st) => st.gl);
+  const scene = useThree((st) => st.scene);
+  useEffect(() => {
+    let rt: THREE.WebGLRenderTarget | null = null;
+    try {
+      const pmrem = new THREE.PMREMGenerator(gl);
+      const env = new RoomEnvironment();
+      rt = pmrem.fromScene(env, 0.04);
+      env.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          m.geometry?.dispose();
+          (m.material as THREE.Material)?.dispose?.();
+        }
+      });
+      pmrem.dispose();
+      // Императивная настройка three-сцены (мутабельна по природе), как камера в HeroCameraSync.
+      Object.assign(scene, { environment: rt.texture });
+    } catch (e) {
+      console.warn("[Scene3D] PMREM error", e);
+    }
+    return () => {
+      Object.assign(scene, { environment: null });
+      rt?.dispose();
+    };
+  }, [gl, scene]);
+  useEffect(() => {
+    Object.assign(scene, { environmentIntensity: intensity });
+  }, [scene, intensity]);
+  return null;
 }
 
 export interface CanvasGrabberHandle {
