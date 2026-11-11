@@ -58,6 +58,16 @@ export interface BakeInput {
   chandRgb: [number, number, number];
   lineRgb: [number, number, number];
   floatRgb: [number, number, number];
+  /** Ровная подсветка полотна; по умолчанию CEILING_BASE (режим показа — designPassLook). */
+  base?: number;
+  /** Режим показа (designPassLook): широкое мягкое пятно света на полотне вокруг софита,
+   *  пик (линейная доля) и радиус-сигма, м. 0 / undefined — как в проде. */
+  spotWideK?: number;
+  spotWideSigM?: number;
+  /** Режим показа, итерация 2 (designPassLook.ceilingGradient): градиент полотна —
+   *  глубже и шире тень у стен (и ровная заливка гаснет вместе с ней), сильнее пятно люстры.
+   *  undefined — как в проде. */
+  grad?: { aoDepth: number; aoD: number; aoMin: number; chandK: number };
 }
 
 export interface BakedMap {
@@ -109,6 +119,10 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
   if (poly.length > 1 && poly[0].x === poly[poly.length - 1].x && poly[0].z === poly[poly.length - 1].z) poly = poly.slice(0, -1);
   const n = poly.length;
   if (n < 3) return null;
+  const base = inp.base ?? CEILING_BASE;
+  const wideK = inp.spotWideK ?? 0;
+  const wideS2 = (inp.spotWideSigM ?? 0.35) ** 2;
+  const wideR = Math.sqrt(wideS2) * 2.6;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const p of poly) {
     if (p.x < minX) minX = p.x;
@@ -142,7 +156,10 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
 
   const aoData = new Uint8Array(W * H * 4);
   const glowData = new Uint8Array(W * H * 4);
-  const AO_D = 0.6;
+  const AO_D = inp.grad?.aoD ?? 0.6;
+  const aoDepth = inp.grad?.aoDepth ?? AO_DEPTH;
+  const aoMin = inp.grad?.aoMin ?? 0.66;
+  const chandK = inp.grad?.chandK ?? CHAND_CEILING_K;
   const ledEdges = inp.ledEdges ?? [];
   const ledInside = inp.ledInside && inp.ledInside.length >= 3 ? inp.ledInside : null;
   const ledOutside = Math.max(0, inp.ledOutsideM ?? 0);
@@ -203,21 +220,29 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
         const t = segDist(px, pz, e);
         if (t < d) d = t;
       }
-      let ao = 1 - AO_DEPTH * Math.pow(1 - Math.min(1, d / AO_D), 1.6);
+      let ao = 1 - aoDepth * Math.pow(1 - Math.min(1, d / AO_D), 1.6);
       for (const c of corners) {
         const dv = Math.hypot(px - c.x, pz - c.z);
         if (dv < 1.2) ao -= 0.08 * Math.exp(-dv / 0.3);
       }
-      if (ao < 0.66) ao = 0.66;
+      if (ao < aoMin) ao = aoMin;
       // Ровная подсветка полотна (см. шапку) + ореолы софитов: компактные, край на 2,5 Ø.
-      let r = CEILING_BASE;
-      let g = CEILING_BASE;
-      let b = CEILING_BASE;
+      // В градиенте показа ровная заливка гаснет к стенам вместе с AO (иначе emissive её выравнивает).
+      const base0 = inp.grad ? base * ao : base;
+      let r = base0;
+      let g = base0;
+      let b = base0;
       for (const s of inp.spots) {
         const rr = Math.hypot(px - s.x, pz - s.z);
         const sig = s.d * SPOT_HALO_SIG; // Ø ≈ sigma: при 1,5 Ø ещё 10 %, при 2 Ø — 2 %
         if (rr < sig * 2.5) {
           const k = SPOT_HALO_K * Math.exp(-(rr * rr) / (sig * sig));
+          r += k * inp.spotRgb[0];
+          g += k * inp.spotRgb[1];
+          b += k * inp.spotRgb[2];
+        }
+        if (wideK > 0 && rr < wideR) {
+          const k = wideK * Math.exp(-(rr * rr) / wideS2);
           r += k * inp.spotRgb[0];
           g += k * inp.spotRgb[1];
           b += k * inp.spotRgb[2];
@@ -228,7 +253,7 @@ export function bakeCeilingMap(inp: BakeInput): BakedMap | null {
       for (const c of inp.chandeliers) {
         const rr = Math.hypot(px - c.x, pz - c.z);
         if (rr < 1.3) {
-          const k = CHAND_CEILING_K * Math.exp(-(rr * rr) / 0.36);
+          const k = chandK * Math.exp(-(rr * rr) / 0.36);
           r += k * inp.chandRgb[0];
           g += k * inp.chandRgb[1];
           b += k * inp.chandRgb[2];

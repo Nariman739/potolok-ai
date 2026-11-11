@@ -39,6 +39,8 @@ import { buildLevel2, level2CeilingAt, splitSegmentByLevel } from "./level2Geome
 import { WallElement3D, gardinaWidth, GARDINA_OFFSET, NICHE_W, NICHE_OFFSET } from "./WallElement3D";
 import { cm2m, interiorSign, type ElementType, type FurnitureType, type RoomElement, type Scene3DProps } from "./types";
 import { pickViewsByGroups, type StartCamera } from "./cameraPlacement";
+import { DESIGN_PASS, DesignPassShowCtx } from "./designPassLook";
+import { SpotHalos } from "./SpotHalos";
 import { WALL_FURNITURE_HEX, wallFurnitureColor } from "@/lib/wall-furniture";
 import { CEILING_MASK_LAYER, FLOATING_MASK_LAYER, OCCLUDER_MASK_LAYER } from "./constants";
 
@@ -163,9 +165,14 @@ export function Scene3D({
   insertColor,
   wallFurniture,
   betaLabel,
+  showTone = false,
 }: Scene3DProps) {
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
+  // Тон показа клиенту (решение Наримана 12.11): у клиента на сайте (/z, /kp/3d) — всегда,
+  // как «▶ Показать клиенту» в приложении (Scene3DNative designShow). Дашборд и /render-scene — обычный вид.
+  const showLookOn = showTone && DESIGN_PASS.showLook;
+  const spotGlowOn = DESIGN_PASS.spotGlow && (showTone || !DESIGN_PASS.showOnly);
   const [sceneSettled, setSceneSettled] = useState(false);
   // Индекс ракурса (0 — стартовый общий вид; дальше окно/гардина, дверь, линии — см. views).
   const [spot, setSpot] = useState(0);
@@ -412,6 +419,15 @@ export function Scene3D({
     () => lightFixtures.map((f) => ({ ...f, spotKind: f.kind === "spot" ? resolveSpotKind(f.el, priceVariantNames) : undefined })),
     [lightFixtures, priceVariantNames],
   );
+  // «Софит светится» (designPassLook.ts, SpotHalos.tsx) — диаметры как в Scene3DNative.
+  const spotHalos = useMemo(() => {
+    if (!spotGlowOn) return null;
+    const D: Record<string, number> = { cup: 0.082, bh53: 0.08, bh10: 0.046 };
+    const spots = fixtures
+      .filter((f) => f.kind === "spot")
+      .map((f) => ({ id: f.id, pos: f.pos, dM: D[f.spotKind ?? ""] ?? 0.09 }));
+    return spots.length ? <SpotHalos spots={spots} /> : null;
+  }, [spotGlowOn, fixtures]);
   // Круглые вырезы в полотне под безрамочные софиты (воронка выше полотна).
   const ceilingHoles = useMemo(
     () =>
@@ -1061,7 +1077,8 @@ export function Scene3D({
           // Neutral вместо ACES, как в приложении (10.10.2026): ACES «сажал» белое
           // полотно в тёплый серый и давал полосы на градиентах.
           toneMapping: THREE.NeutralToneMapping,
-          toneMappingExposure: LIGHT_BALANCE.exposure,
+          // Экспозиция задаётся один раз при создании Canvas — showTone на странице не меняется.
+          toneMappingExposure: showLookOn ? DESIGN_PASS.showExposure : LIGHT_BALANCE.exposure,
         }}
         // Телефон: вертикальный 104° как в приложении («как 0,5× на iPhone»); десктоп —
         // прежние 68°, широкий кадр там не искажается только в портрете.
@@ -1071,6 +1088,7 @@ export function Scene3D({
         {/* Нейтральный «день за окном» без синевы и без Sky — правило: матовое, без
             времени суток и виньетки; фон тот же, что в приложении (lightBalance.ts). */}
         <color attach="background" args={[LIGHT_BALANCE.background]} />
+        <DesignPassShowCtx.Provider value={showTone}>
 
         {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
         {/* В renderMode (swiftshader, 2-5 fps) монитор FPS снял бы тени/декор → не включаем. */}
@@ -1144,6 +1162,7 @@ export function Scene3D({
             wallProfileList={wallProfileList}
             ceilingGlowColor={lightTemp.hex}
             ceilingGlowKelvin={lightTemp.kelvin}
+            ceilingBase={showLookOn ? DESIGN_PASS.showCeilingBase : undefined}
             ceilingSlots={ceilingSlots}
             insertEnabled={withInsert ?? true}
             insertColor={insertColor ?? "white"}
@@ -1183,6 +1202,7 @@ export function Scene3D({
             <Chandelier3D key={f.id} position={f.pos} withLight={lightBudget} lightColor={lightTemp.hex} />
           ),
         )}
+        {spotHalos}
         {ventItems.map((v) => <Vent3D key={v.id} position={v.pos} />)}
 
         <group name="furniture">
@@ -1226,6 +1246,7 @@ export function Scene3D({
         {/* Постпроцессинг (N8AO, Bloom, ACES, контраст/насыщенность, Vignette) снят
             11.11.2026 — тон как в приложении, без виньетки и «журнальной» цветокоррекции.
             Затемнение углов вернётся запечёнными картами (ceilingBake/wallBake, пакет Б/В). */}
+        </DesignPassShowCtx.Provider>
       </Canvas>
 
       {/* Подпись «3D · в разработке» мелко в углу — не снимать без слова Наримана. */}

@@ -3,6 +3,7 @@ import { requestShadowRebake } from "./sceneInvalidate";
 import * as THREE from "three";
 import type { FurnitureType } from "./types";
 import { getSoftRectTexture } from "./lightTextures";
+import { DESIGN_PASS, useDesignPass } from "./designPassLook";
 import { softShadowGeometry } from "./furnitureBuilder";
 import { FURNITURE_SHADOW_K, FURNITURE_SHADOW_BAND_K } from "./floorLook";
 import { buildFurnitureModel, type FurnitureModel } from "./furnitureModels";
@@ -76,6 +77,7 @@ function getShadowMaterial(opacity: number): THREE.MeshBasicMaterial {
 }
 
 function ModelFurniture({ position, rotationY, model }: { position: [number, number, number]; rotationY: number; model: FurnitureModel }) {
+  const wallAoOn = useDesignPass("wallAo");
   const floorGeo = useMemo(() => {
     const s = model.floorShadow;
     return s ? softShadowGeometry(s.w, s.h, s.band * FURNITURE_SHADOW_BAND_K) : null;
@@ -99,7 +101,7 @@ function ModelFurniture({ position, rotationY, model }: { position: [number, num
         <mesh geometry={floorGeo} material={getShadowMaterial(Math.min(0.9, model.floorShadow.opacity * FURNITURE_SHADOW_K))} dispose={null} position={[model.floorShadow.cx, 0.004, model.floorShadow.cy]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1} />
       )}
       {wallGeo && model.wallShadow && (
-        <mesh geometry={wallGeo} material={getShadowMaterial(model.wallShadow.opacity)} dispose={null} position={[model.wallShadow.cx, model.wallShadow.cy, model.wallShadow.z + 0.004]} renderOrder={1} />
+        <mesh geometry={wallGeo} material={getShadowMaterial(wallAoOn ? Math.min(0.6, model.wallShadow.opacity * DESIGN_PASS.furnWallShadowK) : model.wallShadow.opacity)} dispose={null} position={[model.wallShadow.cx, model.wallShadow.cy, model.wallShadow.z + 0.004]} renderOrder={1} />
       )}
       <mesh geometry={model.geometry} material={getBodyMaterial()} dispose={null} castShadow />
     </group>

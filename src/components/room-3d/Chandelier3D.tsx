@@ -6,6 +6,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { getRadialTexture } from "./lightTextures";
+import { DESIGN_PASS, useDesignPass } from "./designPassLook";
 import { SHADE_HEX, SHADE_EMISSIVE, SHADE_ROUGH, SHADE_GLOW_A, SHADE_GLOW_SIZE_R } from "./chandelierLook";
 
 // Ореол-биллборд (02.11.2026): THREE.Sprite на expo-gl не отрисовался, а
@@ -43,7 +44,8 @@ export function Chandelier3D({ position, withLight, lightColor: lightColorOverri
   // Тёплые плафоны ~3000K против нейтральных софитов (фаза 2): разница
   // температур в одном кадре — верный признак «фото», а не рендера.
   // Этап 5, лист 08 (09.11): плафон с объёмом, компактный ореол — chandelierLook.ts.
-  const SHADE = SHADE_HEX; // тёплый, против нейтральных софитов 4000K
+  const opal = useDesignPass("shadeOpal"); // дизайн-разбор 11.11: опал вместо персика
+  const SHADE = opal ? DESIGN_PASS.shadeOpalHex : SHADE_HEX; // тёплый, против нейтральных софитов 4000K
   const angles = useMemo(() => Array.from({ length: ARMS }, (_, i) => (i / ARMS) * Math.PI * 2), []);
   // Свечение вокруг плафонов (02.11.2026): ореол-биллборд на каждом шаре —
   // без него белые шары читались пластиковыми бусинами, а не лампами.
@@ -100,7 +102,7 @@ export function Chandelier3D({ position, withLight, lightColor: lightColorOverri
             <mesh position={[x1, -ROD_M - ARM_DROP - SHADE_R - 0.02, z1]}>
               <sphereGeometry args={[SHADE_R, 20, 14]} />
               {/* Standard + emissive (аудит): шар с лёгким объёмом, а не плоская заливка */}
-              <meshStandardMaterial color={SHADE} emissive={SHADE} emissiveIntensity={SHADE_EMISSIVE} roughness={SHADE_ROUGH} metalness={0} />
+              <meshStandardMaterial color={SHADE} emissive={SHADE} emissiveIntensity={opal ? DESIGN_PASS.shadeOpalEmissive : SHADE_EMISSIVE} roughness={SHADE_ROUGH} metalness={0} />
             </mesh>
             <GlowBillboard position={[x1, -ROD_M - ARM_DROP - SHADE_R - 0.02, z1]} size={SHADE_R * SHADE_GLOW_SIZE_R} map={glow} color={SHADE} />
           </group>

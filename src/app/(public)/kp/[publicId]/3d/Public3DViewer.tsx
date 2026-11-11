@@ -66,6 +66,8 @@ export function Public3DViewer({
           wallFurniture={wallFurniture}
           betaLabel={betaLabel}
           readOnly
+          // Клиент всегда видит 3D тоном «Показать клиенту» (решение Наримана 12.11).
+          showTone
         />
       </Scene3DBoundary>
 

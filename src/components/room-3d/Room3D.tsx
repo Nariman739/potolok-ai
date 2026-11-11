@@ -7,6 +7,7 @@ import { bakeWallLight } from "./wallBake";
 import { bakeCeilingMap, hexToLinearRgb, type BakeSeg } from "./ceilingBake";
 import { FLOOR_EDGE_AO } from "./lightBalance";
 import { Level2Ceiling3D } from "./Level2Ceiling3D";
+import { DESIGN_PASS, useDesignPass } from "./designPassLook";
 import { level2CeilingAt, type Level2Build } from "./level2Geometry3D";
 import { WallFacade3D } from "./WallFacade3D";
 import { SKIRT_H, SKIRT_D, SKIRT_HEX, SKIRT_TO_WALL, INSERT_SHADOW_W, INSERT_SHADOW_GRAY, INSERT_SHADOW_A } from "./trimLook";
@@ -17,7 +18,7 @@ import { floatingWash, FLOATING_WASH_H, FLOATING_WASH_OPACITY, FLOATING_CORE_H, 
 const WALL_GRAD_BOTTOM = 0.75; // вертексный градиент: яркость у пола (верх 1)
 const WALL_WARM_HEX = "#F4EDE2";
 const WALL_WARM_T = 0.5;
-const WALL_CORNER_AO = 0.06; // было 0.1
+const WALL_CORNER_AO = 0.06; // было 0.1; в показе — designPassLook.wallCornerAo
 
 // Текстуры на expo-gl РАБОТАЮТ (проверено 09.10.2026, см. textures.ts): пол и
 // стены — картинки с повтором по метрам, потолок — однотонное полотно
@@ -439,6 +440,7 @@ function FloorEdgeAO({ length, inwardZ, k0, k1 }: { length: number; inwardZ: num
  *  выглядят одной плоскостью. Одна плоскость на каждый конец стены, от пола
  *  до потолка, ширина W; альфа тает от стыка внутрь. */
 function WallCornerAO({ ceilingM, inwardZ, atEnd, length }: { ceilingM: number; inwardZ: number; atEnd: boolean; length: number }) {
+  const aoOn = useDesignPass("wallAo");
   const fade = getFadeTexture();
   const W = 0.4;
   // fade: альфа 1 вверху UV → у стыка. Плоскость в XY стены, повёрнута на ±90°
@@ -447,7 +449,7 @@ function WallCornerAO({ ceilingM, inwardZ, atEnd, length }: { ceilingM: number; 
   return (
     <mesh position={[x, ceilingM / 2, inwardZ * (WALL_THICKNESS / 2 + 0.002)]} rotation={[0, 0, atEnd ? -Math.PI / 2 : Math.PI / 2]} renderOrder={1}>
       <planeGeometry args={[ceilingM, W]} />
-      <meshBasicMaterial color="#000000" map={fade} transparent opacity={WALL_CORNER_AO} depthWrite={false} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
+      <meshBasicMaterial color="#000000" map={fade} transparent opacity={aoOn ? DESIGN_PASS.wallCornerAo : WALL_CORNER_AO} depthWrite={false} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
     </mesh>
   );
 }
@@ -486,6 +488,8 @@ interface Room3DProps {
   ceilingGlowColor?: string;
   /** Температура света, K — цвета ядра/ореола парящего по таблицам с фото */
   ceilingGlowKelvin?: number;
+  /** Ровная подсветка полотна в запечке (режим показа, designPassLook); undefined — как в проде. */
+  ceilingBase?: number;
   /** Вырезы в полотне под утопленные гардины (центр, направление, размер), мировые XZ. */
   ceilingSlots?: Array<{ x: number; z: number; angle: number; lengthM: number; widthM: number }>;
   /** Вставка в комнате (этап 3): false — «без вставки», серая линия вместо белой полосы. */
@@ -596,6 +600,7 @@ export function Room3D({
   wallProfileList,
   ceilingGlowColor = "#FFE1B3",
   ceilingGlowKelvin = 4000,
+  ceilingBase,
   ceilingSlots = [],
   bake,
   insertEnabled = true,
@@ -749,6 +754,10 @@ export function Room3D({
       chandRgb: hexToLinearRgb("#FFE3BF"),
       lineRgb: hexToLinearRgb("#FBF7F0"),
       floatRgb: hexToLinearRgb(kelvinColor(KELVIN_GLOW, ceilingGlowKelvin)),
+      base: ceilingBase,
+      spotWideK: ceilingBase === undefined ? 0 : DESIGN_PASS.ceilingGradient ? DESIGN_PASS.gradSpotK : DESIGN_PASS.showSpotWideK,
+      spotWideSigM: DESIGN_PASS.ceilingGradient ? DESIGN_PASS.gradSpotSigM : DESIGN_PASS.showSpotWideSigM,
+      grad: ceilingBase !== undefined && DESIGN_PASS.ceilingGradient ? DESIGN_PASS.grad : undefined,
     });
     // DEV: время запекания (11.11.2026, ускорение «2 уровня») — на JS-потоке, пока висит «Загружаю 3D…».
     if (__DEV__) console.log("[3D] bake", JSON.stringify({ ms: Date.now() - t0, w: res?.w, h: res?.h, ledEdges: ledEdges.length, level2: !!level2 }));
@@ -764,7 +773,7 @@ export function Room3D({
       console.log("[3D] bake-bench", JSON.stringify({ w: res?.w, h: res?.h, ledEdges: ledEdges.length, spots: bake?.spots.length ?? 0, lines: bake?.lines.length ?? 0, ms }));
     }
     return res;
-  }, [vertices, centerOffset.x, centerOffset.z, wallProfileList, ceilingProfile, bake, ceilingGlowKelvin, level2]);
+  }, [vertices, centerOffset.x, centerOffset.z, wallProfileList, ceilingProfile, bake, ceilingGlowKelvin, level2, ceilingBase]);
   // Высота потолка у каждой стены: у стен, вдоль которых лежит нижний уровень «2 уровня», — ниже на drop.
   const wallTopM = useMemo(() => {
     const n = Math.max(0, vertices.length - 1);
@@ -951,6 +960,7 @@ export function Room3D({
   // на 50 % к #F4EDE2 (на фото окно-1 стены тёплые светлые, но темнее полотна).
   const wallColorTuned = useMemo(() => "#" + new THREE.Color(wallColor).lerp(new THREE.Color(WALL_WARM_HEX), WALL_WARM_T).getHexString(), [wallColor]);
   // Этап 5, лист 07: плинтус на 60 % в цвет стены — на фото мастеров его почти не видно.
+  const plinthClean = useDesignPass("cleanLines") || DESIGN_PASS.plinthCleanAlways; // дизайн-разбор 11.11: плинтус без торца
   const skirtColor = useMemo(() => "#" + new THREE.Color(SKIRT_HEX).lerp(new THREE.Color(wallColorTuned), SKIRT_TO_WALL).getHexString(), [wallColorTuned]);
 
   // Тени (09.10.2026): стены и потолок тень НЕ отбрасывают. Раньше бросали, а
@@ -1031,10 +1041,19 @@ export function Room3D({
             {/* Плинтус 6 см × 10 мм, почти в цвет стены (этап 5, лист 07; trimLook.ts) — был 8 см #FAFAF8. */}
             {/* У фасада шкафа плинтуса нет — свой цоколь в WallFacade3D. */}
             {!facadeHex && (
+            plinthClean ? (
+              // Дизайн-разбор 11.11: только лицевая грань. Верхний торец 1 см ловил ключевой
+              // свет и давал яркую линию в 1 px, которая без MSAA рвалась в пунктир.
+              <mesh position={[w.length / 2, SKIRT_H / 2, w.inwardZ * (WALL_THICKNESS / 2 + SKIRT_D)]} rotation={[0, w.inwardZ > 0 ? 0 : Math.PI, 0]}>
+                <planeGeometry args={[w.length, SKIRT_H]} />
+                <meshStandardMaterial color={skirtColor} roughness={0.6} metalness={0.05} side={THREE.DoubleSide} />
+              </mesh>
+            ) : (
             <mesh position={[w.length / 2, SKIRT_H / 2, w.inwardZ * (WALL_THICKNESS / 2 + SKIRT_D / 2)]}>
               <boxGeometry args={[w.length, SKIRT_H, SKIRT_D]} />
               <meshStandardMaterial color={skirtColor} roughness={0.6} metalness={0.05} />
             </mesh>
+            )
             )}
             {facadeHex && (
               <WallFacade3D length={w.length} heightM={wallTopM[w.index] ?? ceilingM} inwardZ={w.inwardZ} hex={facadeHex} />

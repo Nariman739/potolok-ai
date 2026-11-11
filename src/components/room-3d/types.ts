@@ -63,6 +63,9 @@ export interface Scene3DProps {
   wallFurniture?: WallFurnitureEntry[];
   /** Подпись «3D · в разработке» мелко в углу (не снимать без слова Наримана). */
   betaLabel?: string;
+  /** Тон «▶ Показать клиенту» как в приложении (designPassLook.ts): тёмнее экспозиция,
+   *  градиент полотна, софиты светятся. true — только у клиента (/z, /kp/3d), 12.11.2026. */
+  showTone?: boolean;
 }
 
 export const cm2m = (cm: number) => cm / 100;
