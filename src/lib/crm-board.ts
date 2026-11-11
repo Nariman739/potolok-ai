@@ -7,6 +7,7 @@ import {
   autoCrmColumn,
   CRM_COLUMNS,
   CRM_COLUMN_LABELS,
+  isCrmColumn,
   mainObject,
   resolveCrmColumn,
   type CrmColumn,
@@ -229,6 +230,31 @@ export async function applyCrmColumn(
   }
   const reason = current === "LOST" ? "Канбан: вернули из отказа" : `Канбан: ${CRM_COLUMN_LABELS[column]}`;
   await changeClientStatus(client.id, want, reason);
+}
+
+/**
+ * Объект смонтирован/закрыт (из приложения или датой монтажа в /plan) и статус поднялся до «Сделка»
+ * по этапу объекта: ручная колонка ниже «Завершён» снимается, «Завершён» считается сам из объекта.
+ * Иначе сделка висела бы в «Замере» (наблюдение контролёра 10.11: «Отказ» после монтажа → «В работе»
+ * из приложения → /plan → WON, а колонка «Замер» осталась). Снимаем только если без ручной колонки
+ * этап и правда «Завершён» — смонтирован именно главный (новейший) объект клиента, а не старый.
+ */
+export async function settleColumnForFinishedObject(clientId: string): Promise<void> {
+  const now = new Date();
+  const c = await loadCrmClient(clientId, now);
+  if (!c || c.crmColumn === null || c.crmColumn === "done") return;
+  const auto = autoCrmColumn({ ...crmInputOf(c), crmColumn: null }, now);
+  if (auto !== "done") return;
+  const from = isCrmColumn(c.crmColumn) ? CRM_COLUMN_LABELS[c.crmColumn] : c.crmColumn;
+  await prisma.client.update({ where: { id: c.id }, data: { crmColumn: null } });
+  await prisma.clientEvent.create({
+    data: {
+      clientId: c.id,
+      type: "STATUS_CHANGE",
+      content: `Этап: «${from}» → «${CRM_COLUMN_LABELS.done}» (объект смонтирован)`,
+      metadata: { column: { from: c.crmColumn, to: null }, by: "object-stage" } as unknown as object,
+    },
+  });
 }
 
 /**

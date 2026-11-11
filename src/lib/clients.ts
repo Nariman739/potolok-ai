@@ -261,4 +261,11 @@ export async function syncClientStatusForObject(objectId: string): Promise<void>
   const current = canonicalizeStatus(obj.client.status);
   if ((rank[current] ?? 0) >= (rank[target] ?? 0)) return;
   await changeClientStatus(obj.clientId, target, target === "WON" ? "Объект согласован (по этапу)" : "КП посчитано и отправлено (по этапу)");
+  // Смонтировали/закрыли → «Завершён» считается сам: ручная колонка канбана ниже «Завершён»
+  // снимается, иначе сделка висела бы в «Замере». Для «согласован»/«цех»/оплата колонку не трогаем —
+  // карточка на доске не должна сама прыгать между промежуточными этапами.
+  if (target === "WON" && (stage === "installed" || stage === "closed")) {
+    const { settleColumnForFinishedObject } = await import("./crm-board");
+    await settleColumnForFinishedObject(obj.clientId);
+  }
 }
