@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { canonicalizeStatus, changeClientStatus, normalizeClientPhone } from "@/lib/clients";
-import { applyCrmColumn } from "@/lib/crm-board";
+import { applyCrmColumn, syncColumnForStatus } from "@/lib/crm-board";
 import { isCrmColumn } from "@/lib/crm-columns";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
@@ -173,6 +173,9 @@ export async function PUT(
       const canonical = canonicalizeStatus(status);
       if (canonical !== existing.status) {
         await changeClientStatus(id, canonical);
+        // Этап канбана следует за статусом (карточка на сайте, «Сменить статус» в приложении),
+        // если колонку не прислали явно
+        if (crmColumn === undefined) await syncColumnForStatus(id, canonical);
       }
     }
 

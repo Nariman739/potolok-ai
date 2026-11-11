@@ -32,7 +32,6 @@ import {
   SOURCE_LABELS,
   EVENT_LABELS,
   MANUAL_EVENT_TYPES,
-  PICKABLE_STATUSES,
   type DealStatusKey,
   type ClientSourceKey,
   type EventTypeKey,
@@ -44,6 +43,10 @@ import { dayShort, dayTitle, type CalendarKind } from "@/lib/crm-calendar";
 import type { CalendarClient } from "@/lib/crm-calendar-data";
 import { useClock } from "@/components/use-clock";
 import { formatPhone, whatsappUrl } from "@/lib/phone-format";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CRM_COLUMNS, CRM_COLUMN_LABELS } from "@/lib/crm-columns";
+import type { ClientStage } from "@/lib/crm-board";
+import { useStageMove, type MoveItem } from "@/components/clients/use-stage-move";
 
 type Client = {
   id: string;
@@ -106,6 +109,7 @@ const ESTIMATE_STATUS_LABELS: Record<string, string> = {
 export function ClientCard({
   client: initialClient,
   planClient,
+  stage,
   planned,
   nearest,
   events: initialEvents,
@@ -116,6 +120,8 @@ export function ClientCard({
 }: {
   client: Client;
   planClient: CalendarClient;
+  /** Этап канбана и главный объект — для «Сменить этап» с диалогом даты монтажа */
+  stage: ClientStage;
   /** Будущие даты, которые заменит назначение: и подпись кнопки, и диалог */
   planned: { measure: string | null; install: string | null };
   nearest: { measure: string | null; install: string | null };
@@ -155,6 +161,8 @@ export function ClientCard({
 
   // Запись из диалога приходит с сервера через router.refresh
   useEffect(() => setEvents(initialEvents), [initialEvents]);
+  // После переноса этапа сервер подтягивает статус — бейдж обновляется с router.refresh()
+  useEffect(() => setClient(initialClient), [initialClient]);
 
   const [draftName, setDraftName] = useState(client.name);
   const [draftPhone, setDraftPhone] = useState(client.phone ?? "");
@@ -169,22 +177,24 @@ export function ClientCard({
     .length;
   const lastEvent = events[0];
 
-  async function changeStatus(status: DealStatusKey) {
-    // Старые статусы показываются как «В работе» — повторный тап их не перезаписывает
-    if (STATUS_LABELS[status] === STATUS_LABELS[client.status]) return;
-    setClient((c) => ({ ...c, status }));
-    try {
-      const res = await fetch(`/api/clients/${client.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Ошибка");
-      router.refresh();
-    } catch {
-      setClient(initialClient);
-    }
-  }
+  // Статус — производная от этапа канбана: в карточке меняют этап, статус подтягивает сервер
+  const [stageColumn, setStageColumn] = useState(stage.column);
+  const [stageInstallAt, setStageInstallAt] = useState(stage.installAt);
+  const [stagePick, setStagePick] = useState(false);
+  const { requestMove, installDialog } = useStageMove({
+    onColumn: (_id, column) => setStageColumn(column),
+    onInstallAt: (_id, at) => setStageInstallAt(at),
+    onMoved: () => router.refresh(),
+  });
+  const moveItem: MoveItem = {
+    id: client.id,
+    name: client.name,
+    phone: client.phone,
+    address: stage.address,
+    column: stageColumn,
+    objectId: stage.objectId,
+    installAt: stageInstallAt,
+  };
 
   async function saveEdit() {
     setSaving(true);
@@ -396,26 +406,43 @@ export function ClientCard({
               </div>
 
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Сменить статус</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PICKABLE_STATUSES.map((s) => {
-                    const active = STATUS_LABELS[client.status] === STATUS_LABELS[s];
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => changeStatus(s)}
-                        className={
-                          "rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
-                          (active
-                            ? "border-[#1e3a5f] bg-[#1e3a5f] text-white"
-                            : "border-border bg-white text-muted-foreground hover:border-[#1e3a5f]/40")
-                        }
-                      >
-                        {STATUS_LABELS[s]}
-                      </button>
-                    );
-                  })}
+                <p className="text-xs text-muted-foreground mb-2">Этап</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    data-stage={stageColumn}
+                    className="rounded-full border border-[#1e3a5f] bg-[#1e3a5f] px-3 py-1 text-xs font-medium text-white"
+                  >
+                    {CRM_COLUMN_LABELS[stageColumn]}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setStagePick(true)}>
+                    Сменить этап
+                  </Button>
                 </div>
+                {/* Тот же список и тот же перенос, что «Перенести в …» на доске */}
+                <Dialog open={stagePick} onOpenChange={setStagePick}>
+                  <DialogContent aria-describedby={undefined} className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Перенести в …</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-1">
+                      {CRM_COLUMNS.filter((c) => c !== stageColumn).map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          data-move={c}
+                          onClick={() => {
+                            setStagePick(false);
+                            requestMove(moveItem, c);
+                          }}
+                          className="rounded-md border px-3 py-2 text-left text-sm hover:bg-muted"
+                        >
+                          {CRM_COLUMN_LABELS[c]}
+                        </button>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                {installDialog}
               </div>
             </>
           ) : (

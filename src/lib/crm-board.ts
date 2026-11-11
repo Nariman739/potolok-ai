@@ -1,8 +1,17 @@
+import type { DealStatus } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
-import { changeClientStatus } from "./clients";
+import { canonicalizeStatus, changeClientStatus } from "./clients";
 import { inScope, type Scope } from "./company";
 import { pickPrimaryEstimate } from "./object-stage";
-import { mainObject, resolveCrmColumn, type CrmColumn } from "./crm-columns";
+import {
+  autoCrmColumn,
+  CRM_COLUMNS,
+  CRM_COLUMN_LABELS,
+  mainObject,
+  resolveCrmColumn,
+  type CrmColumn,
+  type CrmInput,
+} from "./crm-columns";
 
 export type BoardItem = {
   id: string;
@@ -24,6 +33,23 @@ export type BoardItem = {
 
 const DONE_REASON = "Канбан: Завершён";
 
+/**
+ * Один источник правды — этап канбана (10.11.2026, «Небо в подарок»: менеджер перенёс
+ * в «Замер», а в карточке остался «Новый»). Четыре статуса приложения — производная:
+ * Новая заявка → NEW, все промежуточные этапы → IN_PROGRESS, Завершён → WON, Отказ → LOST.
+ */
+export function statusForColumn(column: CrmColumn): DealStatus {
+  if (column === "new") return "NEW";
+  if (column === "done") return "WON";
+  if (column === "lost") return "LOST";
+  return "IN_PROGRESS";
+}
+
+/** Промежуточный этап — клиент «В работе». */
+export function isMiddleColumn(column: CrmColumn): boolean {
+  return column !== "new" && column !== "done" && column !== "lost";
+}
+
 const ESTIMATE_SELECT = {
   status: true,
   total: true,
@@ -32,41 +58,83 @@ const ESTIMATE_SELECT = {
   contractPublicId: true,
 } as const;
 
+// Всё, по чему считается колонка клиента, — одним select для доски, карточки и API
+function crmSelect(now: Date) {
+  return {
+    id: true,
+    masterId: true,
+    name: true,
+    phone: true,
+    address: true,
+    status: true,
+    crmColumn: true,
+    updatedAt: true,
+    estimates: { where: { deletedAt: null }, select: ESTIMATE_SELECT },
+    measurements: {
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        address: true,
+        createdAt: true,
+        measuredAt: true,
+        installAt: true,
+        manualStage: true,
+        estimates: { where: { deletedAt: null }, select: ESTIMATE_SELECT },
+        workshopOrders: { select: { id: true } },
+      },
+    },
+    events: {
+      where: { type: "MEASUREMENT" as const, scheduledAt: { gte: now } },
+      orderBy: { scheduledAt: "asc" as const },
+      take: 1,
+      select: { scheduledAt: true },
+    },
+  };
+}
+
+type CrmClientRow = Awaited<ReturnType<typeof loadCrmClient>> extends infer T ? NonNullable<T> : never;
+
+async function loadCrmClient(clientId: string, now: Date) {
+  return prisma.client.findFirst({ where: { id: clientId, deletedAt: null }, select: crmSelect(now) });
+}
+
+function crmInputOf(c: CrmClientRow): CrmInput {
+  return {
+    status: c.status,
+    crmColumn: c.crmColumn,
+    objects: c.measurements,
+    estimates: c.estimates,
+    hasScheduledMeasurement: !!c.events[0],
+  };
+}
+
+export type ClientStage = {
+  column: CrmColumn;
+  objectId: string | null;
+  installAt: string | null;
+  address: string | null;
+};
+
+/** Текущий этап клиента для карточки: колонка и главный объект для диалога даты монтажа. */
+export async function getClientStage(clientId: string): Promise<ClientStage | null> {
+  const now = new Date();
+  const c = await loadCrmClient(clientId, now);
+  if (!c) return null;
+  const main = mainObject(c.measurements);
+  return {
+    column: resolveCrmColumn(crmInputOf(c), now),
+    objectId: main?.id ?? null,
+    installAt: main?.installAt?.toISOString() ?? null,
+    address: main?.address || c.address,
+  };
+}
+
 export async function getBoardItems(scope: Scope, masterId: string): Promise<BoardItem[]> {
   const now = new Date();
   const clients = await prisma.client.findMany({
     where: { ...inScope(scope), deletedAt: null },
     orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      masterId: true,
-      name: true,
-      phone: true,
-      address: true,
-      status: true,
-      crmColumn: true,
-      updatedAt: true,
-      estimates: { where: { deletedAt: null }, select: ESTIMATE_SELECT },
-      measurements: {
-        where: { deletedAt: null },
-        select: {
-          id: true,
-          address: true,
-          createdAt: true,
-          measuredAt: true,
-          installAt: true,
-          manualStage: true,
-          estimates: { where: { deletedAt: null }, select: ESTIMATE_SELECT },
-          workshopOrders: { select: { id: true } },
-        },
-      },
-      events: {
-        where: { type: "MEASUREMENT", scheduledAt: { gte: now } },
-        orderBy: { scheduledAt: "asc" },
-        take: 1,
-        select: { scheduledAt: true },
-      },
-    },
+    select: crmSelect(now),
   });
 
   return clients.map((c) => {
@@ -86,16 +154,7 @@ export async function getBoardItems(scope: Scope, masterId: string): Promise<Boa
       name: c.name,
       phone: c.phone,
       address: main?.address || c.address,
-      column: resolveCrmColumn(
-        {
-          status: c.status,
-          crmColumn: c.crmColumn,
-          objects: c.measurements,
-          estimates: c.estimates,
-          hasScheduledMeasurement: !!nextMeasure,
-        },
-        now,
-      ),
+      column: resolveCrmColumn(crmInputOf(c), now),
       total: primary?.total ?? null,
       date,
       ownerName: scope.members.find((m) => m.masterId === c.masterId)?.name ?? null,
@@ -121,14 +180,19 @@ export async function applyCrmColumn(
     orderBy: { createdAt: "desc" },
     select: { id: true, manualStage: true },
   });
-  // Этап «смонтировали» уже поставлен в приложении: «Завершён» и так считается сам.
-  // Колонку не пишем — по ней ниже видно, что этап поставил канбан и его можно снять.
-  const stageFromApp = column === "done" && main?.manualStage === "installed";
+  // Этап «смонтировали»/«закрыл» уже поставлен в приложении: «Завершён» и так считается сам.
+  // Колонку не пишем — иначе ручная колонка перекрыла бы этап из приложения.
+  const finished = main?.manualStage === "installed" || main?.manualStage === "closed";
+  const stageFromApp = column === "done" && finished;
   await prisma.client.update({ where: { id: client.id }, data: { crmColumn: stageFromApp ? null : column } });
 
-  // Карточку уводят из «Завершён», куда её поставили на доске, в том числе через «Отказ»:
-  // «смонтировали» больше не верно, иначе доска и приложение разойдутся.
-  if (client.crmColumn === "done" && column !== "done" && main?.manualStage === "installed") {
+  // Карточку уводят из «Завершён»: «смонтировали»/«закрыл» больше не верно, иначе доска и
+  // приложение разойдутся, а дата монтажа на таком объекте снова поднимала бы статус до «Сделка»
+  // (syncClientStatusForObject). «Из Завершён» — это ручная колонка done или пустая колонка при
+  // завершённом объекте (после «Завершён» колонку не пишем), и не «Отказ». Монтаж — физический
+  // факт: канбан его не отменяет ни переносом в «Отказ», ни возвратом из «Отказа».
+  const fromDone = client.status !== "LOST" && (client.crmColumn === "done" || (client.crmColumn === null && finished));
+  if (column !== "done" && column !== "lost" && finished && fromDone) {
     await prisma.measurementObject.update({ where: { id: main.id }, data: { manualStage: null } });
   }
 
@@ -144,18 +208,78 @@ export async function applyCrmColumn(
     }
     return;
   }
-  if (client.status === "LOST") {
-    await changeClientStatus(client.id, "IN_PROGRESS", "Канбан: вернули из отказа");
+  // Колонку сняли (null) — статус не трогаем: этап снова считается из объекта
+  if (column === null) return;
+
+  // «Новая заявка» или промежуточный этап: статус следует за этапом
+  const want = statusForColumn(column);
+  const current = canonicalizeStatus(client.status);
+  if (current === want) return;
+  if (current === "WON") {
+    // WON откатываем, только если его поставил сам канбан: сделка, закрытая раньше
+    // (клиент принял КП), остаётся сделкой. Иначе клиент выпадал из напоминаний.
+    const lastChange = await prisma.clientEvent.findFirst({
+      where: { clientId: client.id, type: "STATUS_CHANGE" },
+      orderBy: { createdAt: "desc" },
+      select: { content: true },
+    });
+    if (lastChange?.content !== DONE_REASON) return;
+    await changeClientStatus(client.id, want, "Канбан: вернули из «Завершён»");
+    return;
   }
-  if (client.crmColumn !== "done") return;
-  // WON откатываем, только если его поставил сам канбан: сделка, закрытая раньше
-  // (клиент принял КП), остаётся сделкой. Иначе клиент выпадал из напоминаний.
-  const lastChange = await prisma.clientEvent.findFirst({
-    where: { clientId: client.id, type: "STATUS_CHANGE" },
-    orderBy: { createdAt: "desc" },
-    select: { content: true },
-  });
-  if (client.status === "WON" && lastChange?.content === DONE_REASON) {
-    await changeClientStatus(client.id, "IN_PROGRESS", "Канбан: вернули из «Завершён»");
+  const reason = current === "LOST" ? "Канбан: вернули из отказа" : `Канбан: ${CRM_COLUMN_LABELS[column]}`;
+  await changeClientStatus(client.id, want, reason);
+}
+
+/**
+ * Статус сменили напрямую — из карточки на сайте или из приложения («Сменить статус»):
+ * подтягиваем этап канбана. Новый → этап снова считается из объекта/КП (это единственное
+ * допускаемое расхождение: у клиента с объектом может остаться «Новый» до следующего
+ * переноса); В работе → если этап и так промежуточный, не трогаем, иначе «Замер»;
+ * Сделка → Завершён; Отказ → Отказ.
+ */
+export async function syncColumnForStatus(clientId: string, status: DealStatus): Promise<void> {
+  const now = new Date();
+  const c = await loadCrmClient(clientId, now);
+  if (!c) return;
+  const client = { id: c.id, status: c.status, crmColumn: c.crmColumn };
+  const input = crmInputOf(c);
+  const current = resolveCrmColumn(input, now);
+  switch (canonicalizeStatus(status)) {
+    case "NEW":
+      if (c.crmColumn !== null) await prisma.client.update({ where: { id: c.id }, data: { crmColumn: null } });
+      return;
+    case "IN_PROGRESS": {
+      if (isMiddleColumn(current)) return;
+      // Без ручной колонки этап считается сам: промежуточный — хватит снять ручную
+      const auto = autoCrmColumn({ ...input, crmColumn: null }, now);
+      if (isMiddleColumn(auto)) {
+        if (c.crmColumn !== null) await prisma.client.update({ where: { id: c.id }, data: { crmColumn: null } });
+      } else {
+        await applyCrmColumn(client, "measure");
+      }
+      return;
+    }
+    case "WON": {
+      // WON — «сделка заключена», не «смонтировано»: за 30 дней автоматический WON «Объект
+      // согласован» ставился 79 раз у 47 мастеров без монтажа. Поэтому manualStage здесь не
+      // трогаем никогда (в «Завершён» на доске мастер говорит это явно — там installed ставится).
+      // Колонка: объект уже смонтирован → «Завершён» (считается сам), иначе не ниже «Договора».
+      const main = mainObject(c.measurements);
+      if (main?.manualStage === "installed" || main?.manualStage === "closed") {
+        if (current !== "done" && c.crmColumn !== null) {
+          await prisma.client.update({ where: { id: c.id }, data: { crmColumn: null } });
+        }
+        return;
+      }
+      if (isMiddleColumn(current) && CRM_COLUMNS.indexOf(current) >= CRM_COLUMNS.indexOf("contract")) return;
+      if (c.crmColumn !== "contract") {
+        await prisma.client.update({ where: { id: c.id }, data: { crmColumn: "contract" } });
+      }
+      return;
+    }
+    case "LOST":
+      if (c.crmColumn !== "lost") await applyCrmColumn(client, "lost");
+      return;
   }
 }

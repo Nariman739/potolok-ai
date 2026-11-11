@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import {
   DndContext,
@@ -18,27 +17,13 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCurrency } from "@/components/currency-provider";
 import { useClock } from "@/components/use-clock";
-import { dayShort, type Clock } from "@/lib/crm-calendar";
-import {
-  CRM_COLUMNS,
-  CRM_COLUMN_LABELS,
-  installColumnFor,
-  isCrmColumn,
-  type CrmColumn,
-} from "@/lib/crm-columns";
+import { dayShort } from "@/lib/crm-calendar";
+import { CRM_COLUMNS, CRM_COLUMN_LABELS, isCrmColumn, type CrmColumn } from "@/lib/crm-columns";
 import type { BoardItem } from "@/lib/crm-board";
-import { formatPhone } from "@/lib/phone-format";
+import { clientLines, useStageMove } from "@/components/clients/use-stage-move";
 import { CLIENTS_VIEW_KEY, ClientsHeader } from "./clients-header";
 import { NewClientDialog } from "./new-client-dialog";
 
@@ -62,32 +47,10 @@ function initials(name: string) {
     .join("");
 }
 
-// Клиента часто заводят одним номером: тогда номер и есть заголовок
-function cardLines(item: BoardItem) {
-  const name = item.name.trim();
-  const nameDigits = name.replace(/\D/g, "");
-  const nameIsPhone = /^[\d\s+()-]+$/.test(name) && nameDigits.length >= 7;
-  const phoneDigits = item.phone?.replace(/\D/g, "") ?? "";
-  const title = nameIsPhone ? formatPhone(name) : name || (item.phone ? formatPhone(item.phone) : "Без имени");
-  const phone = item.phone && name && !(nameIsPhone && nameDigits === phoneDigits) ? formatPhone(item.phone) : null;
-  const address = item.address && item.address.trim().toLowerCase() !== name.toLowerCase() ? item.address : null;
-  return { title, phone, address };
-}
-
-// Значение для <input type="datetime-local"> в часах мастера
-function inputValue(clock: Clock, iso: string) {
-  const d = new Date(iso);
-  return `${clock.day(d)}T${clock.time(d)}`;
-}
-
-function presetValue(clock: Clock, days: number) {
-  return `${clock.day(new Date(Date.now() + days * 86_400_000))}T10:00`;
-}
-
 function CardBody({ item, showOwner }: { item: BoardItem; showOwner: boolean }) {
   const { format: formatMoney } = useCurrency();
   const clock = useClock();
-  const { title, phone, address } = cardLines(item);
+  const { title, phone, address } = clientLines(item);
   const owner = showOwner && item.ownerName ? item.ownerName : null;
   return (
     <>
@@ -282,7 +245,7 @@ function MobileBoard({
 
   const all = byColumn.get(column)!;
   const shown = TAIL_COLUMNS.includes(column) ? all.slice(0, TAIL_LIMIT) : all;
-  const movingLines = moving ? cardLines(moving) : null;
+  const movingLines = moving ? clientLines(moving) : null;
 
   return (
     <div className="space-y-2 md:hidden">
@@ -374,19 +337,11 @@ export function ClientsBoard({
   initialItems: BoardItem[];
   isTeam: boolean;
 }) {
-  const clock = useClock();
   const [items, setItems] = useState(initialItems);
   const [search, setSearch] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [pendingInstall, setPendingInstall] = useState<{
-    item: BoardItem;
-    from: CrmColumn;
-    target: "install_planned" | "install";
-  } | null>(null);
-  const [installValue, setInstallValue] = useState("");
-  const [savingDate, setSavingDate] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   // Отпускание карточки не должно считаться кликом и открывать клиента
@@ -478,40 +433,18 @@ export function ClientsBoard({
     }, 300);
   }
 
-  // installAt: строка — новая дата, null — убрать дату, undefined — не трогать
-  async function commitMove(item: BoardItem, from: CrmColumn, target: CrmColumn, installAt?: string | null) {
-    setColumn(item.id, target);
-    try {
-      const res = await fetch(`/api/clients/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ crmColumn: target }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      setColumn(item.id, from);
-      toast.error("Не удалось перенести карточку");
-      return;
-    }
-    if (installAt === undefined || !item.objectId) return;
-    try {
-      const res = await fetch(`/api/objects/${item.objectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ installAt }),
-      });
-      if (!res.ok) throw new Error();
+  // Один путь переноса для drag-and-drop, меню «⋯» на телефоне и карточки клиента
+  const { requestMove, installDialog } = useStageMove({
+    onColumn: setColumn,
+    onInstallAt: (id, installAt) =>
       setItems((list) =>
         list.map((i) => {
-          if (i.id !== item.id) return i;
+          if (i.id !== id) return i;
           if (installAt) return { ...i, installAt, date: { kind: "install", at: installAt } };
           return { ...i, installAt: null, date: i.date?.kind === "install" ? null : i.date };
         }),
-      );
-    } catch {
-      toast.error("Карточка перенесена, но дату сохранить не удалось");
-    }
-  }
+      ),
+  });
 
   function onDragEnd(e: DragEndEvent) {
     releaseClick();
@@ -519,46 +452,6 @@ export function ClientsBoard({
     const item = items.find((i) => i.id === e.active.id);
     if (!item || !isCrmColumn(target)) return;
     requestMove(item, target);
-  }
-
-  // Один путь переноса для drag-and-drop и меню «⋯» на телефоне
-  function requestMove(item: BoardItem, target: CrmColumn) {
-    if (target === item.column) return;
-
-    // Монтаж следует за датой: перенос, расходящийся с датой, без её правки откатился бы при перезагрузке
-    const dateDisagrees = item.installAt && installColumnFor(new Date(item.installAt)) !== target;
-    const needsDate = target === "install_planned" || (target === "install" && dateDisagrees);
-    // Перенос с датой записываем только после ответа в диалоге: крестик и Esc его отменяют
-    if (needsDate && item.objectId) {
-      setColumn(item.id, target);
-      setInstallValue(
-        item.installAt && !dateDisagrees ? inputValue(clock, item.installAt) : presetValue(clock, target === "install" ? 0 : 1),
-      );
-      setPendingInstall({ item, from: item.column, target });
-      return;
-    }
-    commitMove(item, item.column, target);
-  }
-
-  function cancelInstall() {
-    if (pendingInstall) setColumn(pendingInstall.item.id, pendingInstall.from);
-    setPendingInstall(null);
-  }
-
-  async function confirmInstall(withDate: boolean) {
-    if (!pendingInstall) return;
-    setSavingDate(true);
-    const { item, from, target } = pendingInstall;
-    if (withDate) {
-      const [day, time] = installValue.split("T");
-      const at = clock.instant(day, time);
-      // Колонка по выбранной дате: «запланирован» на сегодня — это уже «Монтаж»
-      await commitMove(item, from, installColumnFor(at), at.toISOString());
-    } else {
-      await commitMove(item, from, target, item.installAt ? null : undefined);
-    }
-    setSavingDate(false);
-    setPendingInstall(null);
   }
 
   function handleClientCreated(c: { id: string; name: string; phone: string | null }) {
@@ -580,8 +473,6 @@ export function ClientsBoard({
     setItems((list) => [item, ...list]);
     setShowNewDialog(false);
   }
-
-  const pendingLines = pendingInstall ? cardLines(pendingInstall.item) : null;
 
   return (
     <div className="space-y-3">
@@ -662,37 +553,7 @@ export function ClientsBoard({
         </DndContext>
       </div>
 
-      <Dialog open={!!pendingInstall} onOpenChange={(open) => !open && cancelInstall()}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>Когда монтаж?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {pendingLines?.title}
-            {pendingLines?.address ? ` · ${pendingLines.address}` : ""}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 0))}>
-              Сегодня
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 1))}>
-              Завтра
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setInstallValue(presetValue(clock, 2))}>
-              Послезавтра
-            </Button>
-          </div>
-          <Input type="datetime-local" value={installValue} onChange={(e) => setInstallValue(e.target.value)} />
-          <DialogFooter>
-            <Button variant="ghost" disabled={savingDate} onClick={() => confirmInstall(false)}>
-              Без даты
-            </Button>
-            <Button disabled={savingDate || !installValue} onClick={() => confirmInstall(true)}>
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {installDialog}
 
       <NewClientDialog open={showNewDialog} onOpenChange={setShowNewDialog} onCreated={handleClientCreated} />
     </div>

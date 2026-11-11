@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { nearestPlan, plannedAt, plannedEvents } from "@/lib/crm-calendar";
 import { mainObject } from "@/lib/crm-columns";
+import { getClientStage } from "@/lib/crm-board";
 import { ClientCard } from "./client-card";
 import type { Metadata } from "next";
 
@@ -76,6 +77,13 @@ export default async function ClientPage({
   if (!client) notFound();
 
   const main = mainObject(client.measurements);
+  // Этап канбана — тот же расчёт, что на доске; статус в карточке только читается
+  const stage = (await getClientStage(client.id)) ?? {
+    column: "new" as const,
+    objectId: main?.id ?? null,
+    installAt: main?.installAt?.toISOString() ?? null,
+    address: main?.address || client.address,
+  };
 
   const planClient = {
     id: client.id,
@@ -121,6 +129,7 @@ export default async function ClientPage({
         updatedAt: client.updatedAt.toISOString(),
       }}
       planClient={planClient}
+      stage={stage}
       planned={{ measure: plannedAt(planClient, "measure"), install: plannedAt(planClient, "install") }}
       nearest={nearestPlan(client.events, client.measurements)}
       events={client.events.map((e) => ({
