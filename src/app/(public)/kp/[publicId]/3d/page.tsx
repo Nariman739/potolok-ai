@@ -2,7 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { ownerBrandFor } from "@/lib/company";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { pickRoomForScene3D, mapRoomToScene3DProps } from "@/lib/room-3d";
+import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/lib/room-3d";
+import { asLang, tFor } from "@/lib/i18n";
+import "@/lib/i18n/kp-public";
 import { Public3DViewer } from "./Public3DViewer";
 
 export async function generateMetadata({
@@ -53,7 +55,17 @@ export default async function Public3DPage({
       room3dPreviewUrl: true,
       priceView: true,
       companyId: true,
-      master: { select: { brandColor: true, companyName: true, firstName: true } },
+      master: { select: { brandColor: true, companyName: true, firstName: true, language: true } },
+      // «Фасад шкафа» живёт только в комнате замера (MeasurementRoom.wallFurniture), в
+      // RoomInput его нет — берём из объекта, по которому сделано КП (паритет с 3D, 11.11.2026).
+      measurementObject: {
+        select: {
+          rooms: {
+            orderBy: { sortOrder: "asc" },
+            select: { name: true, wallProfiles: true, withInsert: true, insertColor: true, wallFurniture: true },
+          },
+        },
+      },
     },
   });
 
@@ -70,10 +82,24 @@ export default async function Public3DPage({
     redirect(`/kp/${publicId}`);
   }
 
-  const sceneProps = mapRoomToScene3DProps(room);
+  // Комната замера для этой комнаты КП: та же позиция в списке, иначе по имени.
+  const roomsData = Array.isArray(estimate.roomsData) ? (estimate.roomsData as unknown[]) : [];
+  const idx = roomsData.indexOf(room);
+  const mRooms = estimate.measurementObject?.rooms ?? [];
+  const roomName = typeof room.name === "string" ? room.name : undefined;
+  const mRoom = mRooms[idx] ?? (roomName ? mRooms.find((r) => r.name === roomName) : undefined);
+
+  const sceneProps = mapRoomToScene3DProps({
+    ...room,
+    wallProfiles: room.wallProfileData?.wallProfiles ?? (mRoom?.wallProfiles as Record<string, string> | null | undefined) ?? undefined,
+    withInsert: typeof room.withInsert === "boolean" ? room.withInsert : mRoom?.withInsert,
+    insertColor: room.insertColor ?? mRoom?.insertColor,
+    wallFurniture: mRoom?.wallFurniture ?? undefined,
+  } as SavedRoom3D);
   if (!sceneProps) redirect(`/kp/${publicId}`);
 
   const brandColor = estimate.master.brandColor || "#1e3a5f";
+  const t = tFor(asLang(estimate.master.language));
 
   return (
     <Public3DViewer
@@ -82,6 +108,11 @@ export default async function Public3DPage({
       walls={sceneProps.walls}
       ceilingHeight={sceneProps.ceilingHeight}
       elements={sceneProps.elements}
+      wallProfiles={sceneProps.wallProfiles}
+      withInsert={sceneProps.withInsert}
+      insertColor={sceneProps.insertColor}
+      wallFurniture={sceneProps.wallFurniture}
+      betaLabel={t("kp.beta3d")}
       fallbackImageUrl={estimate.room3dPreviewUrl}
       backHref={`/kp/${publicId}`}
       backLabel="К КП"

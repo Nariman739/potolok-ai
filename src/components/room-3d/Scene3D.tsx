@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, PerformanceMonitor, Sky, useProgress } from "@react-three/drei";
-import { EffectComposer, Bloom, ToneMapping, Vignette, N8AO, BrightnessContrast, HueSaturation } from "@react-three/postprocessing";
-import { ToneMappingMode } from "postprocessing";
+import { ContactShadows, PerformanceMonitor, useProgress } from "@react-three/drei";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { LIGHT_BALANCE } from "@/lib/shared/lightBalance";
 import { Room3D, type WallCutout, type CeilingFinish } from "./Room3D";
 import {
   DOOR_HEIGHT_M,
@@ -26,7 +26,6 @@ import {
   type WallPresetId,
 } from "./constants";
 import { LookAroundControls, type LookAroundHandle } from "./LookAroundControls";
-import { R3FErrorBoundary } from "./R3FErrorBoundary";
 import { ScreenshotCapture } from "./ScreenshotCapture";
 import { AiSceneCapture, type HeroCam } from "./AiSceneCapture";
 import { Spot3D } from "./Spot3D";
@@ -77,12 +76,19 @@ export function Scene3D({
   onSceneReady,
   captureTrigger,
   shadowGapWalls,
+  wallProfiles,
+  withInsert,
+  insertColor,
+  wallFurniture,
+  betaLabel,
 }: Scene3DProps) {
+  // Паритет с 3D приложения, пакет А (11.11.2026): поля доезжают до сцены, рисуются
+  // в следующих пакетах (профили/вставка — WallTopProfile, фасад — WallFacade3D).
+  void withInsert; void insertColor; void wallFurniture;
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
   const [sceneSettled, setSceneSettled] = useState(false);
   const [spot, setSpot] = useState<ViewSpot>("center");
-  const daylight = true;
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [savingShot, setSavingShot] = useState(false);
   const [shotMessage, setShotMessage] = useState<string | null>(null);
@@ -122,19 +128,12 @@ export function Scene3D({
   // Адаптивное качество: high — с ContactShadows; low — без (если FPS падает)
   const [quality, setQuality] = useState<"high" | "low">("high");
 
-  // Мобильный Safari: агрессивнее по памяти WebGL. На телефоне режем dpr и
-  // включаем тяжёлый постпроцессинг (N8AO/Bloom) НЕ на первом кадре, а через
-  // ~0.7с — сначала даём WebGL-контексту встать и текстурам подгрузиться, иначе
-  // на слабых iPhone контекст может упасть сразу (пустой экран).
+  // Мобильный Safari: агрессивнее по памяти WebGL. На телефоне режем dpr.
+  // Постпроцессинга (N8AO/Bloom/Vignette) больше нет — тон как в приложении (11.11.2026).
   const isMobile = useMemo(
     () => typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
     [],
   );
-  const [heavyFxReady, setHeavyFxReady] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setHeavyFxReady(true), 700);
-    return () => window.clearTimeout(t);
-  }, []);
 
   // Подсказка «проведите пальцем» сама гаснет через 4с — чтобы не мешала картинке.
   const [showHint, setShowHint] = useState(true);
@@ -184,6 +183,16 @@ export function Scene3D({
   );
 
   const lightTemp = useMemo(() => getLightTempByKey(lightTempKey), [lightTempKey]);
+  // Температура света красит и общий свет сцены — та же доля, что в приложении
+  // (Scene3DNative: ключевой 18 %, небо/пол 5 %; больше — белое полотно уходит в персик).
+  const sceneTint = useMemo(
+    () => ({
+      key: mixHex("#FFFFFF", lightTemp.hex, 0.18),
+      sky: mixHex("#F3F3F1", lightTemp.hex, 0.05),
+      ground: mixHex("#F2F2F0", lightTemp.hex, 0.05),
+    }),
+    [lightTemp.hex],
+  );
   const floorPreset = useMemo(() => getFloorPreset(floorId), [floorId]);
   const wallPreset = useMemo(() => getWallPreset(wallId), [wallId]);
 
@@ -661,7 +670,10 @@ export function Scene3D({
   // у примыкания потолка к стене. Рисуем тонкой чёрной полосой чуть ниже потолка.
   const shadowGaps = useMemo(() => {
     const out: Array<{ key: string; pos: [number, number, number]; rotationY: number; lengthM: number }> = [];
-    for (const wi of shadowGapWalls ?? []) {
+    // Явный список стен или теневой профиль из wallProfiles ("shadow"), как в приложении.
+    const walls = shadowGapWalls
+      ?? Object.entries(wallProfiles ?? {}).filter(([, p]) => p === "shadow").map(([i]) => Number(i));
+    for (const wi of walls) {
       const a = vertices[wi];
       const b = vertices[wi + 1];
       if (!a || !b) continue;
@@ -676,7 +688,7 @@ export function Scene3D({
       out.push({ key: `sg-${wi}`, pos: [(ax + bx) / 2, 0, (az + bz) / 2], rotationY: -Math.atan2(dz, dx), lengthM: len });
     }
     return out;
-  }, [shadowGapWalls, vertices, centerOffset.x, centerOffset.z]);
+  }, [shadowGapWalls, wallProfiles, vertices, centerOffset.x, centerOffset.z]);
 
   const furnitureItems = useMemo(() => {
     const items: Array<{
@@ -771,7 +783,7 @@ export function Scene3D({
   }, [clientShots.images]);
 
   return (
-    <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-slate-100">
+    <div className="absolute inset-0" style={{ backgroundColor: LIGHT_BALANCE.background }}>
       <Canvas
         // Серверный рендер: после готовности сцены цикл кадров останавливаем — AI-захват
         // рисует сам (gl.render), а swiftshader на слабом CPU иначе тратит всё время на
@@ -782,29 +794,19 @@ export function Scene3D({
         gl={{
           preserveDrawingBuffer: true,
           antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: daylight ? 0.88 : 0.85,
+          // Neutral вместо ACES, как в приложении (10.10.2026): ACES «сажал» белое
+          // полотно в тёплый серый и давал полосы на градиентах.
+          toneMapping: THREE.NeutralToneMapping,
+          toneMappingExposure: LIGHT_BALANCE.exposure,
         }}
-        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: 68, near: 0.05, far: 100 }}
+        // Телефон: вертикальный 104° как в приложении («как 0,5× на iPhone»); десктоп —
+        // прежние 68°, широкий кадр там не искажается только в портрете.
+        camera={{ position: [0, HUMAN_EYE_HEIGHT, 0], fov: isMobile ? 104 : 68, near: 0.05, far: 100 }}
         style={{ touchAction: "none", cursor: "grab" }}
       >
-        <color attach="background" args={[daylight ? "#9ec5e8" : "#05070D"]} />
-
-        {/* Sky procedural — голубое небо вокруг сцены. Через окна и двери
-            клиент видит «улицу», а не чернотy. Не грузит файлов с CDN,
-            на Safari/iPad работает стабильно (только шейдер). */}
-        {daylight && (
-          <Sky
-            distance={450000}
-            sunPosition={[roomSize * 2, roomSize * 4, roomSize * 1.5]}
-            inclination={0.49}
-            azimuth={0.25}
-            mieCoefficient={0.005}
-            mieDirectionalG={0.8}
-            rayleigh={2}
-            turbidity={6}
-          />
-        )}
+        {/* Нейтральный «день за окном» без синевы и без Sky — правило: матовое, без
+            времени суток и виньетки; фон тот же, что в приложении (lightBalance.ts). */}
+        <color attach="background" args={[LIGHT_BALANCE.background]} />
 
         {/* Адаптивное качество: если FPS среднем падает <30 — переключаемся в low (без env/shadows) */}
         {/* В renderMode (swiftshader, 2-5 fps) монитор FPS снял бы тени/декор → не включаем. */}
@@ -824,56 +826,36 @@ export function Scene3D({
         {/* Ambient снижен (было 0.95 — «молочно» и плоско, съедало объём).
             Теперь основной объём даёт directional + HDRI, ambient только
             подсвечивает тени чтобы не проваливались в чёрное. */}
-        <ambientLight intensity={daylight ? 0.32 : 0.16} color="#EEF2F7" />
-        <hemisphereLight args={["#DCEBFB", "#9C8A70", daylight ? 0.42 : 0.08]} />
-        {/* Ключевой свет — «солнце из окна» с настоящими мягкими тенями.
-            Тени от мебели/стен на полу — главный скачок реализма против
-            плоского «детсадовского» рендера. Тень-камера охватывает комнату. */}
+        {/* СВЕТ как в приложении (Scene3DNative + lightBalance.ts, этап 5 лист 05):
+              • IBL без файлов (RoomEnvironment → PMREM) — мягкий свет со всех сторон;
+              • hemisphere: groundColor = «отражённый от пола свет» снизу — он делает
+                белое полотно белым (нормаль потолка вниз);
+              • ключевой directional с тенью только от мебели, тон по температуре света;
+              • bounce снизу вверх — освещает только то, что смотрит вниз (полотно);
+              • ambient — минимальный, чтобы углы не проваливались.
+            HDRI-файлов по Кельвинам и Sky больше нет (правило: без времени суток). */}
+        <ambientLight intensity={LIGHT_BALANCE.ambient} color="#F6F5F2" />
+        <hemisphereLight args={[sceneTint.sky, sceneTint.ground, LIGHT_BALANCE.hemi]} />
         <directionalLight
-          position={[roomSize * 1.4, roomSize * 2.4, roomSize * 1.1]}
-          intensity={daylight ? 1.65 : 0}
-          color="#FFF3DC"
+          position={[roomSize * 1.4, roomSize * 1.3, roomSize * 1.1]}
+          intensity={LIGHT_BALANCE.key}
+          color={sceneTint.key}
           castShadow={quality === "high"}
           shadow-mapSize-width={isMobile ? 1024 : 2048}
           shadow-mapSize-height={isMobile ? 1024 : 2048}
           shadow-camera-near={0.5}
-          shadow-camera-far={roomSize * 10}
-          shadow-camera-left={-roomSize * 1.2}
-          shadow-camera-right={roomSize * 1.2}
-          shadow-camera-top={roomSize * 1.2}
-          shadow-camera-bottom={-roomSize * 1.2}
-          shadow-bias={-0.0004}
-          shadow-normalBias={0.025}
+          shadow-camera-far={roomSize * 6}
+          shadow-camera-left={-(Math.max(halfX, halfZ) + 1.2)}
+          shadow-camera-right={Math.max(halfX, halfZ) + 1.2}
+          shadow-camera-top={Math.max(halfX, halfZ) + 1.2}
+          shadow-camera-bottom={-(Math.max(halfX, halfZ) + 1.2)}
+          shadow-bias={-0.0005}
+          shadow-normalBias={0.02}
+          shadow-radius={7}
         />
-        {/* Мягкий fill с противоположной стороны — без теней, только
-            подсветить тёмные углы чтобы тени были «мягкие», а не чёрные. */}
-        <directionalLight
-          position={[-roomSize, roomSize * 1.5, -roomSize]}
-          intensity={daylight ? 0.45 : 0}
-          color="#DCE9F4"
-        />
-
-        {/* HDR Environment — главный рычаг реализма (Нариман 2026-06-27).
-            Без него глянцевый/сатиновый потолок выглядит пластиком, металл
-            мебели — серой пластмассой. Файлы лежат локально в /public/hdri/
-            (Poly Haven CC0, 1K HDR ~1.5MB каждый) — Safari больше не падает
-            на jsdelivr CDN. Подбираем под Kelvin температуру света:
-              warm (2700K) → studio_warm  — тёплая атмосфера вечер
-              neutral (4000K) → studio_neutral — сбалансированный день
-              cool (6500K) → studio_cool — холодный модерн
-            background={false} — НЕ заливаем небо, только envMap для рефлексов. */}
-        {/* R3FErrorBoundary: если HDRI не дотянулся (флаки-мобильный интернет),
-            деградируем на обычное освещение выше вместо падения всей сцены
-            («Load failed» на Safari). */}
-        <R3FErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
-            <Environment
-              files={`/hdri/studio_${lightTempKey === "warm" ? "warm" : lightTempKey === "cool" ? "cool" : "neutral"}_1k.hdr`}
-              background={false}
-              environmentIntensity={1.05}
-            />
-          </Suspense>
-        </R3FErrorBoundary>
+        <directionalLight position={[-roomSize, roomSize * 1.5, -roomSize]} intensity={LIGHT_BALANCE.fill} color="#F0EEEA" />
+        <directionalLight position={[0.3, -10, 0.2]} intensity={LIGHT_BALANCE.bounce} color={sceneTint.ground} />
+        <SceneEnvironment intensity={LIGHT_BALANCE.env} />
 
         <Room3D
           vertices={vertices}
@@ -1013,27 +995,17 @@ export function Scene3D({
         <AiSceneCapture trigger={aiTrigger} hero={heroCam} onCapture={handleAiCapture} />
         <CanvasGrabber ref={grabberRef} />
 
-        {/* Постпроцессинг: bloom от LED-фикстур + ACES киношный тон-маппинг. */}
-        {/* Отключается на low-quality (Safari fallback) чтобы не тащить shader,
-            и не включается на первом кадре (heavyFxReady) — даём сцене встать. */}
-        {quality === "high" && heavyFxReady && !renderMode && (
-          <EffectComposer>
-            {/* N8AO = ambient occlusion. Добавляет тени в углах где сходятся
-                стены/пол/потолок, под мебелью, в нишах. Даёт ощущение
-                «глубины» — комната выглядит на порядок реалистичнее без
-                добавления геометрии. Параметры умеренные чтобы не было
-                грязных пятен. */}
-            <N8AO aoRadius={0.7} intensity={3.4} distanceFalloff={0.4} screenSpaceRadius={false} />
-            <Bloom mipmapBlur intensity={0.22} luminanceThreshold={0.9} luminanceSmoothing={0.4} />
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            {/* Лёгкая цветокоррекция — «журнальный» тон: чуть контраста и
-                насыщенности, чтобы картинка была сочной, а не блёклой. */}
-            <BrightnessContrast brightness={0.0} contrast={0.09} />
-            <HueSaturation saturation={0.12} />
-            <Vignette eskil={false} offset={0.25} darkness={0.28} />
-          </EffectComposer>
-        )}
+        {/* Постпроцессинг (N8AO, Bloom, ACES, контраст/насыщенность, Vignette) снят
+            11.11.2026 — тон как в приложении, без виньетки и «журнальной» цветокоррекции.
+            Затемнение углов вернётся запечёнными картами (ceilingBake/wallBake, пакет Б/В). */}
       </Canvas>
+
+      {/* Подпись «3D · в разработке» мелко в углу — не снимать без слова Наримана. */}
+      {betaLabel && !renderMode && (
+        <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/35 text-white/90 text-[10px] font-medium pointer-events-none select-none backdrop-blur-sm">
+          {betaLabel}
+        </div>
+      )}
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 items-start">
         {/* AI-фото ВЕРНУЛИ (06.08): точность 1:1 теперь держим заморозкой потолка
@@ -1300,6 +1272,47 @@ export function Scene3D({
       )}
     </div>
   );
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  return "#" + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+}
+
+// IBL без файлов, как в приложении (Scene3DNative.SceneEnvironment, 09.10.2026):
+// RoomEnvironment (процедурная «комната со светящимися панелями») → PMREM →
+// scene.environment. Мягкий рассеянный свет со всех сторон и отражения; HDRI-файлы
+// по температуре света и загрузчик с его «Load failed» на Safari больше не нужны.
+function SceneEnvironment({ intensity }: { intensity: number }) {
+  const gl = useThree((st) => st.gl);
+  const scene = useThree((st) => st.scene);
+  useEffect(() => {
+    let rt: THREE.WebGLRenderTarget | null = null;
+    try {
+      const pmrem = new THREE.PMREMGenerator(gl);
+      const env = new RoomEnvironment();
+      rt = pmrem.fromScene(env, 0.04);
+      env.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          m.geometry?.dispose();
+          (m.material as THREE.Material)?.dispose?.();
+        }
+      });
+      pmrem.dispose();
+      // Императивная настройка three-сцены (мутабельна по природе), как камера в HeroCameraSync.
+      Object.assign(scene, { environment: rt.texture });
+    } catch (e) {
+      console.warn("[Scene3D] PMREM error", e);
+    }
+    return () => {
+      Object.assign(scene, { environment: null });
+      rt?.dispose();
+    };
+  }, [gl, scene]);
+  useEffect(() => {
+    Object.assign(scene, { environmentIntensity: intensity });
+  }, [scene, intensity]);
+  return null;
 }
 
 export interface CanvasGrabberHandle {

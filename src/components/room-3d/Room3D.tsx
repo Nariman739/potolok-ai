@@ -184,7 +184,9 @@ const FINISH_PARAMS: Record<CeilingFinish, {
   sheen: number; sheenColor: string;
   reflectivity: number;
 }> = {
-  matte:  { roughness: 0.9,  metalness: 0.0,  envIntensity: 0.4, clearcoat: 0,    clearcoatRoughness: 1.0, sheen: 0.3,  sheenColor: "#ffffff", reflectivity: 0.1 },
+  // Мат как в приложении (Room3D мобилки, 02.11.2026): roughness 0.82, env 0.45, без sheen —
+  // у матового ПВХ на фото лёгкий сатиновый отклик, «мел» нет. Паритет 11.11.2026.
+  matte:  { roughness: 0.82, metalness: 0.0,  envIntensity: 0.45, clearcoat: 0,   clearcoatRoughness: 1.0, sheen: 0.0,  sheenColor: "#ffffff", reflectivity: 0.1 },
   satin:  { roughness: 0.45, metalness: 0.05, envIntensity: 0.8, clearcoat: 0.3,  clearcoatRoughness: 0.4, sheen: 0.0,  sheenColor: "#ffffff", reflectivity: 0.3 },
   glossy: { roughness: 0.08, metalness: 0.0,  envIntensity: 1.4, clearcoat: 1.0,  clearcoatRoughness: 0.05, sheen: 0.0, sheenColor: "#ffffff", reflectivity: 0.6 },
 };
@@ -352,7 +354,8 @@ export function Room3D({
         <group key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <mesh
             geometry={w.geometry}
-            castShadow
+            // Тень только от мебели, как в приложении: стены и потолок не бросают
+            // (иначе ключевой свет снаружи оставлял интерьер целиком в тени).
             receiveShadow
             // Стены — «заслонки» для масок AI-кадра: потолок/свечение ЗА выступом стены
             // (Г-образная комната) не должны попадать в маску заморозки.

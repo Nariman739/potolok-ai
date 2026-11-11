@@ -1,4 +1,5 @@
 import type { RoomElement, FurnitureType, Vertex2D } from "@/lib/room-types";
+import type { WallFurnitureEntry } from "@/lib/wall-furniture";
 
 export type { Vertex2D };
 
@@ -32,8 +33,17 @@ export interface Scene3DProps {
   onSceneReady?: () => void;
   /** Внешний триггер AI-захвата (каждое изменение >0 = один снимок beauty+маски). */
   captureTrigger?: number;
-  /** Индексы стен с теневым профилем (тёмный зазор по периметру). Из wallProfiles мобилки. */
+  /** Индексы стен с теневым профилем (тёмный зазор по периметру). Из wallProfiles мобилки.
+   *  Если не задано — берётся из wallProfiles ("shadow"). */
   shadowGapWalls?: number[];
+  /** Паритет с 3D приложения (11.11.2026, те же поля, что RoomSnapshot в open-room-3d.ts):
+   *  профили по стенам (индекс = стена vertices[i]→[i+1]), вставка и её цвет, фасад шкафа. */
+  wallProfiles?: Record<number, string>;
+  withInsert?: boolean;
+  insertColor?: "black" | "white";
+  wallFurniture?: WallFurnitureEntry[];
+  /** Подпись «3D · в разработке» мелко в углу (не снимать без слова Наримана). */
+  betaLabel?: string;
 }
 
 export const cm2m = (cm: number) => cm / 100;
