@@ -92,6 +92,17 @@ export function middleware(request: NextRequest) {
     return igResponse;
   }
 
+  // Ссылка клиенту, склеенная в мессенджере дважды («/contract/<id> https://potolok.ai/contract/<id>»
+  // или «<id>https://…»), вела на 404 (Sentry POTOLOK-AI-WEB-A, 11.11.2026): вырезаем первый
+  // id и ведём на него. Сам id не проверяем — страница ответит 404, если его нет.
+  const glued = /^\/(contract|kp|act|z|n|visual)\/([A-Za-z0-9_-]+?)(?:%20|\s|https?:)/.exec(pathname);
+  if (glued) {
+    const cleanUrl = new URL(`/${glued[1]}/${glued[2]}`, request.url);
+    const cleanResponse = NextResponse.redirect(cleanUrl, 307);
+    for (const [key, value] of Object.entries(securityHeaders)) cleanResponse.headers.set(key, value);
+    return cleanResponse;
+  }
+
   // Apply security headers to all responses + expose pathname for server components
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
