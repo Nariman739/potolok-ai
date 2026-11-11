@@ -1,7 +1,8 @@
-import type { RoomElement, Vertex2D } from "@/lib/room-types";
+import type { ElementType, RoomElement, Vertex2D } from "@/lib/room-types";
 import type { WallFurnitureEntry } from "@/lib/wall-furniture";
 
-export type { Vertex2D };
+// Файлы-близнецы приложения (Room3D, WallElement3D, …) берут типы чертежа из "./types".
+export type { ElementType, RoomElement, Vertex2D };
 
 /** Типы мебели, которые умеет рисовать 3D (furnitureModels.ts — файл-близнец приложения).
  *  Шире, чем FurnitureType чертежа сайта (tv_stand/shelf/armchair приходят из приложения). */
@@ -65,5 +66,21 @@ export interface Scene3DProps {
 }
 
 export const cm2m = (cm: number) => cm / 100;
+
+/**
+ * Сторона интерьера (+1/−1 по локальному z стены) — по знаку площади контура
+ * (как в types.ts приложения): у замкнутого обхода против часовой интерьер
+ * слева от каждой стены, по часовой — справа.
+ */
+export function interiorSign(vertices: Vertex2D[]): 1 | -1 {
+  let a = 0;
+  const n = vertices.length;
+  for (let i = 0; i < n; i++) {
+    const p = vertices[i];
+    const q = vertices[(i + 1) % n];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a >= 0 ? 1 : -1;
+}
 
 export type ViewSpot = "center" | "door" | "window";

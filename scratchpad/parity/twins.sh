@@ -23,7 +23,12 @@ check src/lib/shared/level2-geometry.ts    src/lib/shared/level2-geometry.ts
 check src/lib/shared/lightBalance.ts       src/components/room-3d/lightBalance.ts
 # 3D-модули без RN-импортов (сайт src/components/room-3d ↔ приложение src/components/room-3d)
 for f in level2Geometry3D.ts Level2Ceiling3D.tsx level2Look.ts floatingLight.ts lightTextures.ts windowLight.ts \
-         furnitureModels.ts Furniture3D.tsx furnitureBuilder.ts furniturePalette.ts furnitureOrientation.ts floorLook.ts sceneInvalidate.ts; do
+         furnitureModels.ts Furniture3D.tsx furnitureBuilder.ts furniturePalette.ts furnitureOrientation.ts floorLook.ts sceneInvalidate.ts \
+         Room3D.tsx WallElement3D.tsx WallFacade3D.tsx ceilingBake.ts wallBake.ts chandelierLook.ts trimLook.ts realism2.ts \
+         fixtureKinds.ts Spot3D.tsx Gx53Spot3D.tsx FramelessSpot3D.tsx; do
   check src/components/room-3d/$f src/components/room-3d/$f
 done
+# Почти-близнец: Chandelier3D — единственная разница «@react-three/fiber/native» → «@react-three/fiber».
+if cmp -s <(sed 's#@react-three/fiber/native#@react-three/fiber#' <(appcat src/components/room-3d/Chandelier3D.tsx)) "$SITE/src/components/room-3d/Chandelier3D.tsx"; then echo "= src/components/room-3d/Chandelier3D.tsx (кроме импорта fiber/native)"; else echo "≠ src/components/room-3d/Chandelier3D.tsx"; rc=1; fi
+# Платформенные шимы (не близнецы): textures.ts, lightBalance.ts (→ src/lib/shared), src/lib/shared/room-types.ts, rn-globals.d.ts.
 exit $rc
