@@ -103,12 +103,29 @@ c = await get();
 ev = await events();
 ok("согласован → WON, колонка «Закуп» осталась (сделка ≠ монтаж)", c.status === "WON" && c.crmColumn === "purchase" && ev[0] === "Объект согласован (по этапу)", `${c.status}/${c.crmColumn} ${JSON.stringify(ev)}`);
 void before;
-// WON уже стоит, объект смонтировали — статус не растёт, колонка (по правилу «только при подъёме») не трогается
+// WON уже стоит (КП принято), менеджер довёл карточку до «Монтаж», мастер нажал «смонтировали» —
+// основной сценарий «Неба»: колонка снимается независимо от подъёма статуса (решение координатора 11.11)
+await patch({ crmColumn: "install" });
 await objPatch(m, { manualStage: "installed" });
 await page.waitForTimeout(SYNC_WAIT);
 c = await get();
-ev = await events();
-ok("WON уже был: смонтировали — без новых событий, колонка не тронута", c.status === "WON" && c.crmColumn === "purchase" && ev[0] === "Объект согласован (по этапу)", `${c.status}/${c.crmColumn} ${JSON.stringify(ev)}`);
+ev = await events(3);
+ok("WON уже был + смонтировали: колонка «Монтаж» снята, одно событие этапа", c.status === "WON" && c.crmColumn === null && ev[0] === "Этап: «Монтаж» → «Завершён» (объект смонтирован)" && ev[1] === "Объект согласован (по этапу)", `${c.status}/${c.crmColumn} ${JSON.stringify(ev)}`);
+ok("карточка: этап Завершён", (await stageOnCard()) === "done");
+// второй «смонтировали» подряд — идемпотентно: без второго события
+const n1 = (await sql`SELECT count(*)::int n FROM "ClientEvent" WHERE "clientId" = ${id} AND type = 'STATUS_CHANGE'`)[0].n;
+await objPatch(m, { manualStage: "installed" });
+await page.waitForTimeout(SYNC_WAIT);
+const n2 = (await sql`SELECT count(*)::int n FROM "ClientEvent" WHERE "clientId" = ${id} AND type = 'STATUS_CHANGE'`)[0].n;
+c = await get();
+ok("повторное «смонтировали»: событий не прибавилось, колонка null", n1 === n2 && c.crmColumn === null, `${n1} → ${n2} ${c.crmColumn}`);
+// «Отказ» + смонтировали — остаётся «Отказ»
+await patch({ crmColumn: "lost" });
+await objPatch(m, { manualStage: null });
+await objPatch(m, { manualStage: "installed" });
+await page.waitForTimeout(SYNC_WAIT);
+c = await get();
+ok("LOST/lost + смонтировали: остаётся LOST/lost", c.status === "LOST" && c.crmColumn === "lost", `${c.status}/${c.crmColumn}`);
 
 // ── 5. Смонтирован старый объект, а главный (новейший) — свежий замер: колонку не снимаем ──
 await objPatch(obj, { manualStage: null });

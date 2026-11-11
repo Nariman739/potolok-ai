@@ -259,12 +259,15 @@ export async function syncClientStatusForObject(objectId: string): Promise<void>
         : null;
   if (!target) return;
   const current = canonicalizeStatus(obj.client.status);
-  if ((rank[current] ?? 0) >= (rank[target] ?? 0)) return;
-  await changeClientStatus(obj.clientId, target, target === "WON" ? "Объект согласован (по этапу)" : "КП посчитано и отправлено (по этапу)");
+  if ((rank[current] ?? 0) < (rank[target] ?? 0)) {
+    await changeClientStatus(obj.clientId, target, target === "WON" ? "Объект согласован (по этапу)" : "КП посчитано и отправлено (по этапу)");
+  }
   // Смонтировали/закрыли → «Завершён» считается сам: ручная колонка канбана ниже «Завершён»
-  // снимается, иначе сделка висела бы в «Замере». Для «согласован»/«цех»/оплата колонку не трогаем —
-  // карточка на доске не должна сама прыгать между промежуточными этапами.
-  if (target === "WON" && (stage === "installed" || stage === "closed")) {
+  // снимается, иначе сделка висела бы в «Замере»/«Монтаже». Независимо от того, поднялся ли статус
+  // сейчас: у 18 из 23 монтажей за 60 дней WON стоял раньше (КП принято/цех/оплата), а менеджер
+  // тянет карточку по доске вручную. Для «согласован»/«цех»/оплаты колонку не трогаем — карточка
+  // не должна сама прыгать между промежуточными этапами. «Отказ» не проходит: там этап — «Отказ».
+  if (stage === "installed" || stage === "closed") {
     const { settleColumnForFinishedObject } = await import("./crm-board");
     await settleColumnForFinishedObject(obj.clientId);
   }
