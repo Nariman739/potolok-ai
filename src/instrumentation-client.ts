@@ -22,7 +22,10 @@ if (dsn) {
     // Мусор встроенного браузера Instagram на Android (с рекламы на /app заходят
     // именно оттуда): внутренний логгер app://navigation_performance_logger_android,
     // не наш код — иначе квота уйдёт на него (17.10.2026).
-    ignoreErrors: ["Java object is gone", /navigation_performance_logger/],
+    // «Connection closed.» — обрыв RSC-потока, когда человек ушёл со страницы
+    // раньше, чем она дотекла (Sentry POTOLOK-AI-WEB-A, 11.11.2026, страница 404
+    // по склеенной ссылке). Сервер при этом отработал — шум ухода со страницы.
+    ignoreErrors: ["Java object is gone", /navigation_performance_logger/, "Connection closed."],
   });
 }
 
