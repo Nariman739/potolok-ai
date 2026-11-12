@@ -10,6 +10,13 @@
  * С прозрачностью — PNG с палитрой (8 бит, 256 цветов: для знака с плоскими
  * цветами потерь не видно, вес падает в 3–5 раз). Без прозрачности — JPEG.
  * Если ужатое не меньше исходного (уже мелкий файл) — отдаём исходный.
+ *
+ * 12.11.2026: но только если его не надо поворачивать. Портрет с телефона
+ * хранит пиксели «лёжа» и EXIF-флаг поворота (orientation 5–8). Браузер флаг
+ * читает, а react-pdf — нет, и мелкий такой JPEG ложился в КП/договор боком:
+ * исходник уходил как есть, а .rotate() срабатывал только в пережатой копии.
+ * Теперь при любом флаге, кроме 1, отдаём повёрнутую копию, даже если она
+ * чуть тяжелее.
  */
 import sharp from "sharp";
 import { sniffImageFormat } from "@/lib/logo-image";
@@ -33,6 +40,7 @@ export async function compressLogo(input: Buffer): Promise<CompressedLogo> {
     ? { body: await resized.png({ palette: true, quality: 90, compressionLevel: 9 }).toBuffer(), contentType: "image/png", ext: "png" }
     : { body: await resized.jpeg({ quality: 85, mozjpeg: true }).toBuffer(), contentType: "image/jpeg", ext: "jpg" };
 
-  if (original && out.body.length >= original.body.length) return original;
+  const needsRotate = (meta.orientation ?? 1) !== 1;
+  if (original && !needsRotate && out.body.length >= original.body.length) return original;
   return out;
 }
