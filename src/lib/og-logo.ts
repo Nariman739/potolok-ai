@@ -16,6 +16,8 @@ import sharp from "sharp";
 
 export const OG_LOGO_SIDE = 600;
 const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
+/** Логотипы мастеров в Blob (все 122 logoUrl на 12.11.2026). */
+const LOGOS_PREFIX = "/logos/";
 
 /**
  * Хост НАШЕГО Blob-стора. Суффикса .public.blob.vercel-storage.com мало:
@@ -33,8 +35,8 @@ function ourBlobHost(): string | null {
 
 /**
  * Разрешён ли адрес для скачивания: только https, только хост нашего
- * Blob-стора, без логина/пароля и без нестандартного порта. Возвращает
- * нормализованный URL или null.
+ * Blob-стора, без логина/пароля и без нестандартного порта, только логотипы
+ * (/logos/…), без query и hash. Возвращает нормализованный URL или null.
  */
 export function allowedLogoSource(raw: string | null | undefined): URL | null {
   if (!raw || raw.length > 2048) return null;
@@ -50,7 +52,13 @@ export function allowedLogoSource(raw: string | null | undefined): URL | null {
   if (u.username || u.password) return null;
   if (u.port && u.port !== "443") return null;
   if (u.hostname.toLowerCase() !== ours) return null;
-  return u;
+  // Без query/hash (ревью 8d): ?x=1, ?x=2 — разные ключи CDN-кэша → каждый раз sharp.
+  // Пустые «?»/«#» URL тоже хранит (search/hash пустые, но toString с ними) — отбрасываем ниже.
+  if (u.search || u.hash) return null;
+  // Ресайзим только логотипы. pathname уже нормализован WHATWG: «/logos/../x» и
+  // «/logos/%2e%2e/x» → «/x»; «%2F» не декодируется, «/logos%2F…» сюда не пролезет.
+  if (!u.pathname.startsWith(LOGOS_PREFIX) || u.pathname.length <= LOGOS_PREFIX.length) return null;
+  return new URL(`${u.protocol}//${u.host}${u.pathname}`);
 }
 
 function siteUrl(): string {
