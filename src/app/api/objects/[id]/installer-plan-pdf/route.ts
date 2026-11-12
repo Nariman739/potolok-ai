@@ -4,6 +4,7 @@ import { getScope } from "@/lib/company";
 import { loadWorkOrderById, buildWorkOrderModel } from "@/lib/work-order-data";
 import { renderWorkOrderPdf } from "@/lib/work-order-pdf";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
+import { realObjectAddress } from "@/lib/object-address";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         "Content-Type": "application/pdf",
         "Content-Disposition": pdfDisposition(
           "inline",
-          prettyPdfName(["План монтажнику", obj.address || obj.client?.name, fileDate()]),
+          // Адрес как в наряде; нет адреса — без него (имя клиента в имя файла не идёт)
+          prettyPdfName(["План монтажнику", realObjectAddress(obj.address, obj.client), fileDate()]),
           `plan-montazhniku-${id.slice(0, 8)}`,
         ),
         "Cache-Control": "no-store",

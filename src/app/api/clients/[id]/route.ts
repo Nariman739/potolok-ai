@@ -5,6 +5,7 @@ import { getScope, inScope } from "@/lib/company";
 import { canonicalizeStatus, changeClientStatus, normalizeClientPhone } from "@/lib/clients";
 import { applyCrmColumn, syncColumnForStatus } from "@/lib/crm-board";
 import { isCrmColumn } from "@/lib/crm-columns";
+import { isPlaceholderAddress } from "@/lib/object-address";
 import type { ClientSource, DealStatus } from "@/generated/prisma/client";
 
 // Принимаем и старые, и новые значения статусов. Старые билды mobile продолжат
@@ -162,6 +163,37 @@ export async function PUT(
         ...(nextContactValue !== undefined && { nextContactAt: nextContactValue }),
       },
     });
+
+    // Мастер сам поменял адрес клиента → дописываем его в объекты этого клиента,
+    // где адреса по сути нет: пусто, «Без адреса» или вписано имя клиента
+    // (12.11.2026: в наряде монтажник видел «Валентина» вместо адреса).
+    // Настоящие адреса объектов не трогаем: у клиента бывает несколько объектов.
+    const newAddress = typeof address === "string" ? address.trim() : "";
+    if (
+      newAddress &&
+      newAddress !== (existing.address ?? "").trim() &&
+      !isPlaceholderAddress(newAddress, updated.name)
+    ) {
+      const objects = await prisma.measurementObject.findMany({
+        where: { clientId: id, deletedAt: null },
+        select: { id: true, address: true },
+      });
+      const ids = objects
+        .filter((o) => isPlaceholderAddress(o.address, existing.name) || isPlaceholderAddress(o.address, updated.name))
+        .map((o) => o.id);
+      if (ids.length) {
+        await prisma.measurementObject.updateMany({
+          where: { id: { in: ids } },
+          data: {
+            address: newAddress,
+            // Координаты объекта — те же, что прислали для клиента (подсказка 2ГИС);
+            // «Сохранить как есть» шлёт null — тогда и у объекта сбрасываем старые.
+            ...(lat !== undefined && { latitude: lat }),
+            ...(lng !== undefined && { longitude: lng }),
+          },
+        });
+      }
+    }
 
     if (
       status !== undefined &&
