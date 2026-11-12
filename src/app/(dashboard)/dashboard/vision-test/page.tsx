@@ -2469,7 +2469,7 @@ export default function ZameryPage() {
       const els = room.elements || [];
       // Группируем спoты: одиночные → штуки, пары/тройки (groupId) → отдельные позиции.
       const allSpotEls = els.filter(e => e.type === "spot");
-      const { spotPairsCount, singleSpots: singleSpotEls } = splitSpotGroups(allSpotEls);
+      const { spotPairsCount, spotPairsClientCount, singleSpots: singleSpotEls } = splitSpotGroups(allSpotEls);
       const spotTriplesCount = 0;
       const { spotsOurs, spotsClient, spotsCount, spotsByType } = spotBreakdown(singleSpotEls);
       const pendantCount = els.filter(e => e.type === "pendant").length;
@@ -2516,6 +2516,7 @@ export default function ZameryPage() {
         chandelierInstallCount: chandelierCount,
         pendantCount,
         spotPairsCount,
+        spotPairsClientCount,
         spotTriplesCount,
         floatingLength,
         ...lightAndTrack,
@@ -2611,7 +2612,7 @@ export default function ZameryPage() {
             if (isCalculatorMode) {
               const room = roomWithElements;
               const allSpotElsCalc = elements.filter(e => e.type === "spot");
-              const { spotPairsCount: spotPairsCalc, singleSpots: singleSpotElsCalc } = splitSpotGroups(allSpotElsCalc);
+              const { spotPairsCount: spotPairsCalc, spotPairsClientCount: spotPairsClientCalc, singleSpots: singleSpotElsCalc } = splitSpotGroups(allSpotElsCalc);
               const spotTriplesCalc = 0;
               const { spotsOurs, spotsClient, spotsCount: spotsCountCalc, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
               const chandelierCount = elements.filter(e => e.type === "chandelier").length;
@@ -2652,6 +2653,7 @@ export default function ZameryPage() {
                 ...level2Fields(room),
         ...measuredGeometry(room),
                 spotPairsCount: spotPairsCalc,
+                spotPairsClientCount: spotPairsClientCalc,
                 spotTriplesCount: spotTriplesCalc,
                 chandelierCount,
                 chandelierInstallCount: chandelierCount,

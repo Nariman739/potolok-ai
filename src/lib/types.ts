@@ -77,6 +77,8 @@ export interface RoomInput {
   floatingLength?: number;
   /** Кол-во пар софитов (двойных групп) — отдельной позицией в КП. */
   spotPairsCount?: number;
+  /** Клиентские пары (оба софита variant="client") — строка spot_pair_client (12.11.2026). */
+  spotPairsClientCount?: number;
   /** Кол-во троек софитов — отдельной позицией в КП. */
   spotTriplesCount?: number;
   /** «Наши» софиты с типом (28.10.2026): строка КП на каждый тип. code — стандартный

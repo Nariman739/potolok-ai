@@ -117,12 +117,21 @@ export function level2Fields(room: { walls: number[]; normalCorners?: boolean[];
  * Пара софитов (группа ровно из двух) идёт одной строкой. Всё остальное, в том числе
  * группа из трёх и остаток пары, — одиночные софиты, как считает приложение.
  */
-export function splitSpotGroups<T extends { groupId?: string }>(allSpots: T[]): { spotPairsCount: number; singleSpots: T[] } {
-  const sizes = new Map<string, number>();
-  for (const s of allSpots) if (s.groupId) sizes.set(s.groupId, (sizes.get(s.groupId) ?? 0) + 1);
-  const singleSpots = allSpots.filter((s) => !s.groupId || sizes.get(s.groupId) !== 2);
-  const spotPairsCount = [...sizes.values()].filter((n) => n === 2).length;
-  return { spotPairsCount, singleSpots };
+export function splitSpotGroups<T extends { groupId?: string; variant?: string }>(allSpots: T[]): { spotPairsCount: number; spotPairsClientCount: number; singleSpots: T[] } {
+  const groups = new Map<string, T[]>();
+  for (const s of allSpots) if (s.groupId) groups.set(s.groupId, [...(groups.get(s.groupId) ?? []), s]);
+  const singleSpots = allSpots.filter((s) => !s.groupId || groups.get(s.groupId)!.length !== 2);
+  // Клиентская пара (12.11.2026): оба софита с variant="client" → spot_pair_client.
+  // Пара без варианта (старая, кнопка ×2) — «наша», как раньше (spot_pair_ours).
+  // Приложение: estimate.tsx, тот же признак.
+  let spotPairsCount = 0;
+  let spotPairsClientCount = 0;
+  for (const g of groups.values()) {
+    if (g.length !== 2) continue;
+    if (g.every((s) => s.variant === "client")) spotPairsClientCount += 1;
+    else spotPairsCount += 1;
+  }
+  return { spotPairsCount, spotPairsClientCount, singleSpots };
 }
 
 /** Длины гардины по строкам КП: обычная, однорядная (rows = 1), с подсветкой. В метрах. */
@@ -211,7 +220,7 @@ export function buildRoomInputFromDesigner(
   // Группируем спoты: одиночные (без groupId) идут как обычные «штуки»,
   // двойные/тройные (с groupId) — как пары/тройки в КП.
   const allSpots = els.filter((e) => e.type === "spot");
-  const { spotPairsCount, singleSpots } = splitSpotGroups(allSpots);
+  const { spotPairsCount, spotPairsClientCount, singleSpots } = splitSpotGroups(allSpots);
   const { spotsOurs, spotsClient, spotsCount, legacySpotType, spotsByType } = spotBreakdown(singleSpots, existing?.spotType);
   const chandelierCount = els.filter((e) => e.type === "chandelier").length;
   const pendantCount = els.filter((e) => e.type === "pendant").length;
@@ -276,6 +285,7 @@ export function buildRoomInputFromDesigner(
     pendantCount,
     ventCount,
     spotPairsCount,
+    spotPairsClientCount,
     spotTriplesCount: 0,
     ...lightAndTrack,
     curtainRodLength: existing?.curtainRodLength ?? 0,

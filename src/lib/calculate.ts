@@ -369,6 +369,15 @@ function calculateRoom(
           total: Math.round(unitPrice * spotPairs),
         }), installerRate: getPrice(prices, "install_spot") * 2 });
   }
+  // Клиентские пары (12.11.2026): клиент даёт пару — своя строка spot_pair_client,
+  // как в приложении (estimate.tsx). Монтажнику — как за «нашу» пару.
+  const spotPairsClient = room.spotPairsClientCount ?? 0;
+  if (spotPairsClient > 0) {
+    const it = makeLineItem("spot_pair_client", spotPairsClient, prices);
+    // Название — как у мастера в прайсе (приложение берёт его же).
+    const masterName = ownItemsById?.["catalog:spot_pair_client"]?.name;
+    if (it) items.push({ ...it, ...(masterName && { itemName: masterName }), installerRate: getPrice(prices, "install_spot") * 2 });
+  }
   const spotTriples = room.spotTriplesCount ?? 0;
   if (spotTriples > 0) {
     const tripleItem = makeLineItem("spot_triple", spotTriples, prices);
