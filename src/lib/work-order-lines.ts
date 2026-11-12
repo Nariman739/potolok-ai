@@ -125,9 +125,48 @@ export type WorkOrderLine = {
   code?: string;
 };
 
+/**
+ * Оплата процентом от КП (12.11.2026, просьба «Ваш Потолок», решение Наримана): многие бригады
+ * платят монтажнику не по работам, а 10/20/30 % от суммы заказа. base — итог главного КП
+ * (Estimate.total, уже после скидки) на момент расчёта; сумма — строка PCT_KEY в lines,
+ * её считает сервер. Старые сборки приложения pay не знают и видят одну обычную строку.
+ */
+export type WorkOrderPay = { mode: "percent"; percent: number; base: number };
+
+export const PCT_KEY = "pct";
+
+/** % от 0,5 до 100 с шагом 0,5; иначе null. */
+export function sanitizePercent(raw: unknown): number | null {
+  const n = typeof raw === "string" ? Number(raw.replace(",", ".")) : raw;
+  if (typeof n !== "number" || !Number.isFinite(n)) return null;
+  const r = Math.round(n * 2) / 2;
+  return r >= 0.5 && r <= 100 ? r : null;
+}
+
+export function percentAmount(percent: number, base: number): number {
+  return Math.max(0, Math.round((base * percent) / 100));
+}
+
+/** «30 %», «12,5 %» — для строки наряда (мастер видит базу на своём экране, монтажник — нет). */
+export function percentLabel(percent: number): string {
+  return `${String(percent).replace(".", ",")} %`;
+}
+
+/** Строка оплаты процентом. Имя — для старых сборок; /n и PDF пишут свой текст по ключу. */
+export function percentLine(percent: number, base: number): WorkOrderLine {
+  return { key: PCT_KEY, room: "", name: `${percentLabel(percent)} от суммы заказа`, qty: 1, unit: "усл.", price: percentAmount(percent, base) };
+}
+
+/** Свои строки мастера («+ Добавить работу») — переживают смену режима оплаты. */
+export function isOwnLine(l: WorkOrderLine): boolean {
+  return l.key.startsWith("own:");
+}
+
 export type WorkOrderLinesDoc = {
   v: 1;
   lines: WorkOrderLine[];
+  /** Есть — оплата процентом от КП; нет — по работам. */
+  pay?: WorkOrderPay;
   updatedAt: string;
   /** От какого КП строки — чтобы заметить, что КП изменилось после наряда. */
   estimateId?: string;
@@ -273,7 +312,16 @@ export function parseWorkOrderDoc(raw: unknown): WorkOrderLinesDoc | null {
     updatedAt: typeof doc.updatedAt === "string" ? doc.updatedAt : "",
     estimateId: typeof doc.estimateId === "string" ? doc.estimateId : undefined,
     estimateUpdatedAt: typeof doc.estimateUpdatedAt === "string" ? doc.estimateUpdatedAt : undefined,
+    ...(parsePay(doc.pay) && { pay: parsePay(doc.pay)! }),
   };
+}
+
+function parsePay(raw: unknown): WorkOrderPay | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Partial<WorkOrderPay>;
+  const percent = sanitizePercent(p.percent);
+  if (p.mode !== "percent" || percent == null || typeof p.base !== "number" || !Number.isFinite(p.base) || p.base < 0) return null;
+  return { mode: "percent", percent, base: p.base };
 }
 
 /** Строки из тела PUT — проверяем границы, чтобы в наряд не уехал мусор. */

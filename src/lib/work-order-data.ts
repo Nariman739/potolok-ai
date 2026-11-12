@@ -12,7 +12,7 @@ import { summarizeMaterials, type MaterialLine } from "@/lib/object-materials";
 import { pickPrimaryEstimate } from "@/lib/object-stage";
 import type { CalculationResult } from "@/lib/types";
 import { summarizeRoom, mergeSummaries, summaryLines, legacyInsertFlag, type PlanRoom } from "@/lib/work-order-plan";
-import { parseWorkOrderDoc } from "@/lib/work-order-lines";
+import { parseWorkOrderDoc, PCT_KEY, percentLabel, type WorkOrderLine } from "@/lib/work-order-lines";
 
 const include = {
   rooms: { orderBy: { sortOrder: "asc" as const } },
@@ -44,7 +44,8 @@ export type WorkOrderRoom = {
 };
 
 /** Строка оплаты монтажнику, уже с отформатированными суммами. */
-export type PayLine = { room: string; name: string; qty: string; unit: string; price: string; total: string };
+/** flat — строка без «кол-во × цена» (оплата процентом от КП: монтажнику только % и сумма, 12.11.2026). */
+export type PayLine = { room: string; name: string; qty: string; unit: string; price: string; total: string; flat?: boolean };
 
 export type WorkOrderModel = {
   lang: Lang;
@@ -132,7 +133,12 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
   const qtyStr = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ""));
   const doc = parseWorkOrderDoc(obj.workOrderLines);
   const paid = (doc?.lines ?? []).filter((l) => l.qty > 0 && l.price > 0);
-  const payLines: PayLine[] = paid.map((l) => ({ room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) }));
+  // Процент от КП: базу (сумму КП) монтажнику не показываем — решение Наримана 12.11.
+  const toPay = (l: WorkOrderLine): PayLine =>
+    l.key === PCT_KEY && doc?.pay
+      ? { room: l.room, name: t("wo.payPercent", { p: percentLabel(doc.pay.percent) }), qty: "", unit: "", price: "", total: money(l.qty * l.price), flat: true }
+      : { room: l.room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) };
+  const payLines: PayLine[] = paid.map(toPay);
   const payTotal = Math.round(paid.reduce((s, l) => s + l.qty * l.price, 0));
   const fee = payLines.length > 0 ? money(payTotal) : obj.installerFee != null ? money(obj.installerFee) : null;
   const payGroups: WorkOrderModel["payGroups"] = [];
@@ -140,7 +146,7 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     const room = l.room || "";
     let g = payGroups.find((x) => x.room === room);
     if (!g) { g = { room, lines: [], total: "" }; payGroups.push(g); }
-    g.lines.push({ room, name: l.name, qty: qtyStr(l.qty), unit: l.unit, price: money(l.price), total: money(l.qty * l.price) });
+    g.lines.push({ ...toPay(l), room });
   }
   // Допы без комнаты — в конец
   payGroups.sort((a, b) => (a.room === "" ? 1 : 0) - (b.room === "" ? 1 : 0));

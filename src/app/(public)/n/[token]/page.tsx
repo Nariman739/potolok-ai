@@ -78,7 +78,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
                     <li key={i} className="py-1.5 flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p>{l.name}</p>
-                        <p className="text-xs text-slate-500">{l.qty} {l.unit} × {l.price}</p>
+                        {!l.flat && <p className="text-xs text-slate-500">{l.qty} {l.unit} × {l.price}</p>}
                       </div>
                       <p className="font-semibold whitespace-nowrap">{l.total}</p>
                     </li>

@@ -200,7 +200,7 @@ export function WorkOrderPdf({ model }: { model: WorkOrderModel }) {
                 {g.lines.map((l, i) => (
                   <View key={i} style={s.payRow} wrap={false}>
                     <Text style={{ flex: 1 }}>{l.name}</Text>
-                    <Text style={s.payQty}>{l.qty} {l.unit} × {l.price}</Text>
+                    {!l.flat && <Text style={s.payQty}>{l.qty} {l.unit} × {l.price}</Text>}
                     <Text style={s.paySum}>{l.total}</Text>
                   </View>
                 ))}

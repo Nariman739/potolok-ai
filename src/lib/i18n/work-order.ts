@@ -79,6 +79,7 @@ registerDict("ru", {
   // Оплата построчно (29.10.2026)
   "wo.payTitle": "Работы и оплата",
   "wo.payTotal": "Итого",
+  "wo.payPercent": "Оплата: {p} от суммы заказа",
   "wo.liveLink": "Актуальный наряд",
   "wo.payObject": "По объекту",
   "wo.payRoomTotal": "Итого по комнате",
@@ -151,6 +152,7 @@ registerDict("kk", {
   // Төлем жолма-жол (29.10.2026)
   "wo.payTitle": "Жұмыстар мен төлем",
   "wo.payTotal": "Барлығы",
+  "wo.payPercent": "Төлем: тапсырыс сомасының {p}",
   "wo.liveLink": "Өзекті наряд",
   "wo.payObject": "Нысан бойынша",
   "wo.payRoomTotal": "Бөлме бойынша барлығы",

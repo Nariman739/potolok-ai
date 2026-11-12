@@ -177,6 +177,10 @@ model Company {
   ownerId   String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Оплата монтажнику по умолчанию (12.11.2026): null/"lines" — по работам, "percent" —
+  // процент от итога КП. installerPayPercent — последний выбранный % (помним и при «по работам»).
+  installerPayMode    String?
+  installerPayPercent Float?
 
   owner   Master   @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members Member[]
