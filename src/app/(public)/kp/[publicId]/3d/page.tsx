@@ -121,6 +121,7 @@ export default async function Public3DPage({
       fallbackImageUrl={estimate.room3dPreviewUrl}
       backHref={`/kp/${publicId}`}
       backLabel="К КП"
+      noGl={{ title: t("kp.no3dTitle"), text: t("kp.no3dTextKp"), button: t("kp.no3dOpenKp") }}
     />
   );
 }

@@ -166,12 +166,35 @@ export function Scene3D({
   wallFurniture,
   betaLabel,
   showTone = false,
+  onGlFail,
 }: Scene3DProps) {
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
   // Тон показа клиенту (решение Наримана 12.11): у клиента на сайте (/z, /kp/3d) — всегда,
   // как «▶ Показать клиенту» в приложении (Scene3DNative designShow). Дашборд и /render-scene — обычный вид.
   const showLookOn = showTone && DESIGN_PASS.showLook;
+  // Сторож WebGL (12.11.2026): без контекста r3f не бросает в React — только пишет в консоль,
+  // и клиент видит серое поле. onCreated не пришёл за 10 с или контекст потерян и не вернулся
+  // за 3 с → onGlFail (страница покажет запасной экран).
+  const glFailRef = useRef(onGlFail);
+  glFailRef.current = onGlFail;
+  const glCreatedRef = useRef(false);
+  useEffect(() => {
+    if (!onGlFail) return;
+    const t = window.setTimeout(() => { if (!glCreatedRef.current) glFailRef.current?.(); }, 10000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- один раз на монтирование
+  }, []);
+  const handleGlCreated = useCallback(({ gl }: { gl: THREE.WebGLRenderer }) => {
+    glCreatedRef.current = true;
+    const el = gl.domElement;
+    let lostTimer = 0;
+    el.addEventListener("webglcontextlost", () => {
+      window.clearTimeout(lostTimer);
+      lostTimer = window.setTimeout(() => glFailRef.current?.(), 3000);
+    });
+    el.addEventListener("webglcontextrestored", () => window.clearTimeout(lostTimer));
+  }, []);
   const spotGlowOn = DESIGN_PASS.spotGlow && (showTone || !DESIGN_PASS.showOnly);
   const [sceneSettled, setSceneSettled] = useState(false);
   // Индекс ракурса (0 — стартовый общий вид; дальше окно/гардина, дверь, линии — см. views).
@@ -1065,6 +1088,7 @@ export function Scene3D({
   return (
     <div className="absolute inset-0" style={{ backgroundColor: LIGHT_BALANCE.background }}>
       <Canvas
+        onCreated={handleGlCreated}
         // Серверный рендер: после готовности сцены цикл кадров останавливаем — AI-захват
         // рисует сам (gl.render), а swiftshader на слабом CPU иначе тратит всё время на
         // непрерывные кадры и захват ждёт десятки секунд.
