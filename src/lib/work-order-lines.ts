@@ -162,11 +162,19 @@ export function isOwnLine(l: WorkOrderLine): boolean {
   return l.key.startsWith("own:");
 }
 
+export type WorkOrderLinesBackup = { lines: WorkOrderLine[]; estimateId?: string; estimateUpdatedAt?: string };
+
 export type WorkOrderLinesDoc = {
   v: 1;
   lines: WorkOrderLine[];
   /** Есть — оплата процентом от КП; нет — по работам. */
   pay?: WorkOrderPay;
+  /**
+   * Строки «по работам» до перехода на процент (аудит 12.11.2026): случайный тап «Процент» →
+   * «По работам» не должен стирать правки мастера и ручную сумму. Только для экрана мастера —
+   * /n и PDF читают lines, этого поля не показывают.
+   */
+  linesBackup?: WorkOrderLinesBackup;
   updatedAt: string;
   /** От какого КП строки — чтобы заметить, что КП изменилось после наряда. */
   estimateId?: string;
@@ -313,6 +321,18 @@ export function parseWorkOrderDoc(raw: unknown): WorkOrderLinesDoc | null {
     estimateId: typeof doc.estimateId === "string" ? doc.estimateId : undefined,
     estimateUpdatedAt: typeof doc.estimateUpdatedAt === "string" ? doc.estimateUpdatedAt : undefined,
     ...(parsePay(doc.pay) && { pay: parsePay(doc.pay)! }),
+    ...(parseBackup(doc.linesBackup) && { linesBackup: parseBackup(doc.linesBackup)! }),
+  };
+}
+
+function parseBackup(raw: unknown): WorkOrderLinesBackup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Partial<WorkOrderLinesBackup>;
+  if (!Array.isArray(b.lines)) return null;
+  return {
+    lines: b.lines.filter(isLine),
+    ...(typeof b.estimateId === "string" && { estimateId: b.estimateId }),
+    ...(typeof b.estimateUpdatedAt === "string" && { estimateUpdatedAt: b.estimateUpdatedAt }),
   };
 }
 

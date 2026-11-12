@@ -10,7 +10,7 @@ import type { CalculationResult } from "@/lib/types";
 import {
   autoWorkOrderLines, isOwnLine, parseWorkOrderDoc, percentAmount, percentLine, sanitizePercent,
   sanitizeWorkOrderLines, workOrderTotal,
-  type WorkOrderLine, type WorkOrderLinesDoc, type WorkOrderPay,
+  PCT_KEY, type WorkOrderLine, type WorkOrderLinesBackup, type WorkOrderLinesDoc, type WorkOrderPay,
 } from "@/lib/work-order-lines";
 
 /**
@@ -69,20 +69,24 @@ async function autoLinesFor(obj: Obj, scope: Scope, currency: string) {
   return { lines, primary };
 }
 
-/** Строки «процентом»: строка процента первой, затем свои строки мастера. */
-function percentLines(percent: number, primary: NonNullable<Primary>, own: WorkOrderLine[]): { lines: WorkOrderLine[]; pay: WorkOrderPay } {
-  const base = Math.max(0, Math.round(primary.total));
+/** Строки «процентом»: строка процента первой, затем свои строки мастера. base — итог КП
+ *  (по умолчанию текущий; при правке своих строк — прежний, чтобы сумма не менялась молча). */
+function percentLines(percent: number, primary: NonNullable<Primary>, own: WorkOrderLine[], baseKeep?: number): { lines: WorkOrderLine[]; pay: WorkOrderPay } {
+  const base = baseKeep ?? Math.max(0, Math.round(primary.total));
   return { lines: [percentLine(percent, base), ...own.filter(isOwnLine)], pay: { mode: "percent", percent, base } };
 }
 
-function docFrom(lines: WorkOrderLine[], primary: { id: string; updatedAt: Date } | null, pay?: WorkOrderPay): WorkOrderLinesDoc {
+type DocExtra = { backup?: WorkOrderLinesBackup; estimate?: { estimateId?: string; estimateUpdatedAt?: string } };
+
+function docFrom(lines: WorkOrderLine[], primary: { id: string; updatedAt: Date } | null, pay?: WorkOrderPay, extra: DocExtra = {}): WorkOrderLinesDoc {
   return {
     v: 1,
     lines,
     updatedAt: new Date().toISOString(),
-    estimateId: primary?.id,
-    estimateUpdatedAt: primary?.updatedAt.toISOString(),
+    estimateId: extra.estimate ? extra.estimate.estimateId : primary?.id,
+    estimateUpdatedAt: extra.estimate ? extra.estimate.estimateUpdatedAt : primary?.updatedAt.toISOString(),
     ...(pay && { pay }),
+    ...(pay && extra.backup && { linesBackup: extra.backup }),
   };
 }
 
@@ -160,6 +164,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       // Итог главного КП сейчас — для подписи при переключении на процент.
       estimateTotal: primary ? Math.round(primary.total) : null,
       payDefault: { mode: def.mode, percent: def.percent },
+      // Умолчание компании пишет только владелец — участнику «Запомним…» не показываем.
+      canSetDefault: scope.ownerId === master.id,
     });
   } catch (error) {
     const u = unauthorized(error); if (u) return u;
@@ -179,15 +185,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const primary = pickPrimaryEstimate(obj.estimates);
     const current = parseWorkOrderDoc(obj.workOrderLines);
 
-    const save = async (lines: WorkOrderLine[], pay?: WorkOrderPay) => {
+    const save = async (lines: WorkOrderLine[], pay?: WorkOrderPay, extra: DocExtra = {}) => {
       const total = workOrderTotal(lines);
+      const doc = docFrom(lines, primary, pay, extra);
       // installerFee = сумма строк: так «Деньги» на объекте и наряд не расходятся.
       await prisma.measurementObject.update({
         where: { id },
-        data: { workOrderLines: docFrom(lines, primary, pay), installerFee: total > 0 ? total : null },
+        data: { workOrderLines: doc, installerFee: total > 0 ? total : null },
       });
-      return NextResponse.json({ lines, edited: true, stale: false, total, pay: payView(pay) });
+      return NextResponse.json({ lines, edited: true, stale: isStale(doc, primary), total, pay: payView(pay) });
     };
+    // Бэкап строк «по работам» переживает все сохранения в режиме процента.
+    const keepBackup: DocExtra = current?.linesBackup ? { backup: current.linesBackup } : {};
 
     // «Пересчитать из КП»: строки снова считаются из КП. installerFee обнуляем —
     // сумма без строк читается как «вбито руками». Зафиксируется при отправке (POST).
@@ -197,7 +206,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       const percent = current?.pay?.percent ?? (def?.mode === "percent" ? def.percent : null);
       if (percent != null && primary) {
         const r = percentLines(percent, primary, current?.lines ?? []);
-        return save(r.lines, r.pay);
+        return save(r.lines, r.pay, keepBackup);
       }
       const { lines } = await autoLinesFor(obj, scope, await currencyFor(scope.ownerId));
       await prisma.measurementObject.update({
@@ -224,11 +233,30 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         if (!primary) return NextResponse.json({ error: "Сначала сделайте КП" }, { status: 400 });
         // Выбор владельца — умолчание компании (правило «не усложнять»: без вопроса).
         if (isOwner) await prisma.company.update({ where: { id: def.companyId }, data: { installerPayMode: "percent", installerPayPercent: percent } });
+        if (current?.pay) {
+          // Уже процентом: правка своих строк или смена %. Тот же % — прежняя база (сумма не
+          // меняется молча, если КП изменилось — плашка и «Пересчитать»). Бэкап сохраняем.
+          const r = percentLines(percent, primary, own, percent === current.pay.percent ? current.pay.base : undefined);
+          return save(r.lines, r.pay, keepBackup);
+        }
+        // Переход «по работам» → «процент»: прежние строки — в бэкап (аудит 12.11): правленые
+        // строки документа или ручная сумма. Чистый авто-расчёт не храним — он пересоберётся тем же.
+        const backup: WorkOrderLinesBackup | undefined = current
+          ? { lines: current.lines, estimateId: current.estimateId, estimateUpdatedAt: current.estimateUpdatedAt }
+          : obj.installerFee != null
+            ? { lines: [{ key: "fee", room: "", name: "Оплата за монтаж", qty: 1, unit: "усл.", price: obj.installerFee }] }
+            : undefined;
         const r = percentLines(percent, primary, own);
-        return save(r.lines, r.pay);
+        return save(r.lines, r.pay, { backup });
       }
       if (body.pay.mode === "lines") {
         if (isOwner && def.mode !== "lines") await prisma.company.update({ where: { id: def.companyId }, data: { installerPayMode: "lines" } });
+        const bk = current?.pay ? current.linesBackup : undefined;
+        if (bk) {
+          // Возвращаем строки как были до «процента» — всегда, даже если КП менялось: тогда
+          // сработает обычная плашка «КП изменилось», пересчёт только по кнопке мастера.
+          return save([...bk.lines.filter((l) => !isOwnLine(l)), ...own], undefined, { estimate: { estimateId: bk.estimateId, estimateUpdatedAt: bk.estimateUpdatedAt } });
+        }
         const { lines: auto } = await autoLinesFor(obj, scope, await currencyFor(scope.ownerId));
         return save([...auto, ...own]);
       }
@@ -237,6 +265,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const lines = sanitizeWorkOrderLines(body.lines);
     if ("error" in lines) return NextResponse.json({ error: lines.error }, { status: 400 });
+    // Старая сборка (PUT без pay) в наряде процентом: строка процента цела и сумма та же —
+    // мастер правил свои строки, режим не сбрасываем (аудит 12.11). Удалил строку или вбил
+    // сумму руками — осознанный выход из процента, построчно, как раньше.
+    if (current?.pay) {
+      const pct = lines.find((l) => l.key === PCT_KEY);
+      if (pct && pct.qty === 1 && pct.price === percentAmount(current.pay.percent, current.pay.base)) {
+        const rest = lines.filter((l) => l.key !== PCT_KEY);
+        return save([percentLine(current.pay.percent, current.pay.base), ...rest], current.pay, keepBackup);
+      }
+    }
     return save(lines);
   } catch (error) {
     const u = unauthorized(error); if (u) return u;
