@@ -219,10 +219,7 @@ function CoverMinimal({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image
-              src={master.logoUrl}
-              style={{ width: 28, height: 28, marginRight: 12 }}
-            />
+            <MasterLogo src={master.logoUrl} size={28} marginRight={12} />
           ) : null}
           <View>
             <Text

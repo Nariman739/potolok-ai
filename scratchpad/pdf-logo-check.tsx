@@ -25,7 +25,7 @@ async function logo(w: number, h: number): Promise<string> {
   const logos = { square: await logo(600, 600), tall: await logo(450, 600), wide: await logo(1200, 300) };
   const ONLY = process.env.ONLY?.split(","); const NAMES = process.env.NAMES?.split(",");
   const runs0: Array<[KpTemplateId, "full" | "quick"]> = [
-    ["premium-dark", "full"], ["warm-handmade", "full"], ["classic-architectural", "full"], ["bold-color", "full"],
+    ["minimal", "full"], ["premium-dark", "full"], ["warm-handmade", "full"], ["classic-architectural", "full"], ["bold-color", "full"],
     ["minimal", "quick"], ["premium-dark", "quick"], ["warm-handmade", "quick"], ["classic-architectural", "quick"], ["bold-color", "quick"],
   ];
   const runs = ONLY ? runs0.filter(([t, f]) => ONLY.includes(`${f}-${t}`)) : runs0;
