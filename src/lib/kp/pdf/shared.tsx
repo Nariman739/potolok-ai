@@ -2,12 +2,23 @@
 // Все размеры в pt (1pt = 1/72 inch). A4 = 595 × 842 pt.
 
 import React from "react";
-import { StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Image, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { KpTheme, FontPair } from "../types";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 
 export const PAGE_PADDING = 36; // pt вокруг страницы
 export const A4 = { width: 595, height: 842 };
+
+/**
+ * Логотип мастера в шапке PDF (12.11.2026). Был квадрат size×size без objectFit — неквадратные
+ * логотипы (у мастеров 277×600, 450×600) сплющивались, круг становился овалом. Теперь высота
+ * size, ширина по пропорции картинки (react-pdf считает её сам, если задана только высота), не
+ * шире maxRatio×size; contain — если упёрлись в ширину, картинка вписывается без искажения.
+ * Квадратный логотип — тот же size×size, вёрстка шапки не меняется.
+ */
+export function MasterLogo({ src, size, marginRight, maxRatio = 3 }: { src: string; size: number; marginRight: number; maxRatio?: number }) {
+  return <Image src={src} style={{ height: size, maxWidth: size * maxRatio, objectFit: "contain", marginRight }} />;
+}
 
 // Валюта — из data.master.currency (07.10.2026): у российских мастеров рубли.
 // Глобала нет намеренно: PDF рендерятся на сервере параллельно для разных мастеров.

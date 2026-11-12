@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtDate, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
+import { fmtDate, MasterLogo, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { hasPlans, KpPlanHero } from "./PlanStyles";
 
@@ -675,7 +675,7 @@ function CoverPremiumDark({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image src={master.logoUrl} style={{ width: 32, height: 32, marginRight: 12 }} />
+            <MasterLogo src={master.logoUrl} size={32} marginRight={12} />
           ) : null}
           <View>
             <Text
@@ -1093,7 +1093,7 @@ function CoverWarmHandmade({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image src={master.logoUrl} style={{ width: 32, height: 32, marginRight: 12 }} />
+            <MasterLogo src={master.logoUrl} size={32} marginRight={12} />
           ) : null}
           <View>
             <Text
@@ -1452,7 +1452,7 @@ function CoverClassicArchitectural({
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image src={master.logoUrl} style={{ width: 24, height: 24, marginRight: 10 }} />
+            <MasterLogo src={master.logoUrl} size={24} marginRight={10} />
           ) : null}
           <Text
             style={{
@@ -1873,7 +1873,7 @@ function CoverBoldColor({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image src={master.logoUrl} style={{ width: 28, height: 28, marginRight: 10 }} />
+            <MasterLogo src={master.logoUrl} size={28} marginRight={10} />
           ) : null}
           <Text
             style={{

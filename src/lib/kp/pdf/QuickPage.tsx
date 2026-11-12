@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData, PdfLineItem } from "../pdf-data";
-import { fmtDate, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
+import { fmtDate, MasterLogo, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
 import { currencySymbol } from "@/lib/currency";
 
 // «Быстрое» КП.
@@ -121,7 +121,9 @@ export function QuickPage({ data }: { data: PdfData }) {
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {master.logoUrl ? (
-            <Image src={master.logoUrl} style={{ width: 36, height: 36, marginRight: 12 }} />
+            // В шапке быстрого КП справа длинная метка «Предварительный расчёт · дата» — широкий логотип
+            // шире 2×36 выталкивал её за поле (кадры 12.11).
+            <MasterLogo src={master.logoUrl} size={36} marginRight={12} maxRatio={2} />
           ) : (
             <View
               style={{
