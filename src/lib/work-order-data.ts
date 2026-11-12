@@ -13,6 +13,7 @@ import { pickPrimaryEstimate } from "@/lib/object-stage";
 import type { CalculationResult } from "@/lib/types";
 import { summarizeRoom, mergeSummaries, summaryLines, legacyInsertFlag, type PlanRoom } from "@/lib/work-order-plan";
 import { parseWorkOrderDoc } from "@/lib/work-order-lines";
+import { realObjectAddress } from "@/lib/object-address";
 
 const include = {
   rooms: { orderBy: { sortOrder: "asc" as const } },
@@ -155,7 +156,8 @@ export async function buildWorkOrderModel(obj: WorkOrderObject): Promise<WorkOrd
     lang,
     currency,
     company,
-    title: obj.address || obj.client?.name || t("wo.object"),
+    // Имя клиента адресом не показываем: оно и так есть строкой clientName
+    title: realObjectAddress(obj.address, obj.client) ?? t("wo.object"),
     when,
     url: obj.workOrderToken ? `https://potolok.ai/n/${obj.workOrderToken}` : null,
     roomsCount: obj.rooms.length,
