@@ -5,7 +5,11 @@
  *
  * Адрес объекта берём, если это адрес: не пусто, не «Без адреса» и не имя клиента.
  * Иначе берём адрес клиента. Нет ни того ни другого → null (имя адресом не показываем).
- * Файл-близнец: в приложении src/lib/object-address.ts — тот же код.
+ * Исключение: адрес объекта совпал с именем, но в нём есть цифра («Улица 9») и
+ * другого адреса нет — мастер вписал адрес в имя клиента, показываем его.
+ *
+ * ФАЙЛ-БЛИЗНЕЦ, байт-в-байт в двух репо: potolok-ai/src/lib/object-address.ts (сайт)
+ * и potolok-integration/src/lib/object-address.ts (приложение). Сверка — twins.sh.
  */
 const NO_ADDRESS = "без адреса";
 
@@ -27,5 +31,8 @@ export function realObjectAddress(
 ): string | null {
   if (!isPlaceholderAddress(objectAddress, client?.name)) return objectAddress!.trim();
   if (!isPlaceholderAddress(client?.address, client?.name)) return client!.address!.trim();
+  // Имя клиента с цифрой — это адрес, вписанный не в то поле
+  const own = (objectAddress ?? "").trim();
+  if (!isPlaceholderAddress(own) && /\d/.test(own)) return own;
   return null;
 }

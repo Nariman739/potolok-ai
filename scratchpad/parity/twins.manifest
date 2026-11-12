@@ -47,3 +47,5 @@ src/components/room-3d/designPassLook.ts      src/components/room-3d/designPassL
 src/components/room-3d/SpotHalos.tsx          src/components/room-3d/SpotHalos.tsx
 # 3D: стартовая камера и ракурсы (P7, 11.11.2026) — чистый модуль без импортов
 src/components/room-3d/cameraPlacement.ts     src/components/room-3d/cameraPlacement.ts
+# Наряд: адрес объекта или клиента, имя адресом не показываем (12.11.2026). optional — пока ветка приложения не в main
+src/lib/object-address.ts                     src/lib/object-address.ts               optional
