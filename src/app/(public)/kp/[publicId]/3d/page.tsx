@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/lib/room-3d";
 import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/kp-public";
+import { DOC_ROBOTS } from "@/lib/doc-og";
 import { Public3DViewer } from "./Public3DViewer";
 
 export async function generateMetadata({
@@ -17,7 +18,7 @@ export async function generateMetadata({
     where: { publicId, deletedAt: null },
     include: { master: { select: { companyName: true, firstName: true } } },
   });
-  if (!estimate) return { title: "3D-просмотр не найден" };
+  if (!estimate) return { title: "3D-просмотр не найден", robots: DOC_ROBOTS };
   // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
   estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
 
@@ -30,12 +31,13 @@ export async function generateMetadata({
     return {
       title,
       description,
+      robots: DOC_ROBOTS,
       openGraph: { title, description, images: [{ url: cacheBust }] },
       twitter: { card: "summary_large_image", title, description, images: [cacheBust] },
     };
   }
 
-  return { title, description };
+  return { title, description, robots: DOC_ROBOTS };
 }
 
 export default async function Public3DPage({

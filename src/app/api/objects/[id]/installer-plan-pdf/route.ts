@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const master = await requireAuth();
     const scope = await getScope(master);
     const { id } = await params;
-    const obj = await loadWorkOrderById(id, scope.masterIds);
+    const obj = await loadWorkOrderById(id, scope);
     if (!obj) return NextResponse.json({ error: "Объект не найден" }, { status: 404 });
     const model = await buildWorkOrderModel(obj);
     const buffer = await renderWorkOrderPdf(model);

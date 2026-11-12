@@ -12,6 +12,7 @@ import { registerDict } from "./index";
 
 registerDict("ru", {
   "wo.title": "Наряд на монтаж",
+  "wo.ogDescription": "Наряд на монтаж натяжных потолков: что ставить, чертежи комнат, что взять с собой.",
   "wo.object": "Объект",
   "wo.rooms": "комн.",
   "wo.install": "монтаж",
@@ -87,6 +88,7 @@ registerDict("ru", {
 
 registerDict("kk", {
   "wo.title": "Монтажға наряд",
+  "wo.ogDescription": "Созылмалы төбелерді монтаждауға наряд: не орнату керек, бөлмелердің сызбалары, өзіңмен не алу керек.",
   "wo.object": "Нысан",
   "wo.rooms": "бөлме",
   "wo.install": "монтаж",
