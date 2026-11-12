@@ -1,4 +1,5 @@
 import { asCurrency, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
 import { normalizePhone as normalizeRaw } from "./phone";
 
@@ -72,21 +73,42 @@ export async function ensureOwnCompany(masterId: string) {
     select: { firstName: true, lastName: true, companyName: true, phone: true },
   });
   if (!master) throw new Error("Master not found");
-  return prisma.company.create({
-    data: {
-      name: master.companyName?.trim() || master.firstName,
-      ownerId: masterId,
-      members: {
-        create: {
-          masterId,
-          name: displayName(master),
-          phone: master.phone,
-          role: "owner",
-          joinedAt: new Date(),
+  try {
+    // Компания и строка владельца — один вложенный create = одна транзакция: проигравший
+    // гонку не оставляет ни компании, ни «висячего» участника.
+    return await prisma.company.create({
+      data: {
+        name: master.companyName?.trim() || master.firstName,
+        ownerId: masterId,
+        members: {
+          create: {
+            masterId,
+            name: displayName(master),
+            phone: master.phone,
+            role: "owner",
+            joinedAt: new Date(),
+          },
         },
       },
-    },
-  });
+    });
+  } catch (e) {
+    // Гонка (прод 12.11.2026, 500 на GET /api/measurements): приложение нового мастера грузит
+    // несколько экранов разом, оба запроса не нашли компанию, второй create падает на
+    // unique(ownerId) — P2002. Компания уже есть: отдаём её. Нет — исходная ошибка.
+    if (isUniqueOwnerIdError(e)) {
+      const winner = await prisma.company.findUnique({ where: { ownerId: masterId } });
+      if (winner) return winner;
+    }
+    throw e;
+  }
+}
+
+function isUniqueOwnerIdError(e: unknown): boolean {
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code !== "P2002") return false;
+  // target: ["ownerId"] (классический движок) или имя индекса; у адаптера драйвера поле
+  // бывает в meta.driverAdapterError — проверяем текстом всего meta.
+  const meta = JSON.stringify(e.meta ?? {});
+  return meta.includes("ownerId") || meta.includes("owner_id");
 }
 
 /** Границы видимости для текущего мастера: активная компания или своя. */
