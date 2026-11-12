@@ -107,7 +107,7 @@ export default async function PublicMeasurement3DPage({
       wallFurniture={sceneProps.wallFurniture}
       betaLabel={t("kp.beta3d")}
       fallbackImageUrl={fallbackImageUrl}
-      noGl={{ title: t("kp.no3dTitle"), text: t("kp.no3dText") }}
+      noGl={{ title: t("kp.no3dTitle"), text: t("kp.no3dText"), retry: t("kp.no3dRetry") }}
     />
   );
 }

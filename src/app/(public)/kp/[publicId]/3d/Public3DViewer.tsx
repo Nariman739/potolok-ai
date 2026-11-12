@@ -37,14 +37,15 @@ interface Props {
   backHref?: string | null;
   backLabel?: string;
   /** Тексты экрана «3D не открылось» (нет WebGL) на языке мастера; button — к КП (если backHref). */
-  noGl?: { title: string; text: string; button?: string };
+  noGl?: { title: string; text: string; button?: string; retry: string };
 }
 
 /** Есть ли WebGL у устройства. Без него Canvas r3f пишет ошибку в консоль и оставляет серое поле. */
 function hasWebGL(): boolean {
   try {
     const c = document.createElement("canvas");
-    const gl = (c.getContext("webgl2") ?? c.getContext("webgl")) as WebGLRenderingContext | null;
+    // Только WebGL2: three 0.184 без WebGL1 не работает — на «только webgl» устройстве экран сразу, без 10 с серого.
+    const gl = c.getContext("webgl2");
     if (!gl) return false;
     gl.getExtension("WEBGL_lose_context")?.loseContext(); // контекст-пробу сразу отдаём — их число ограничено
     return true;
@@ -54,7 +55,7 @@ function hasWebGL(): boolean {
 }
 
 /** Экран вместо 3D, когда WebGL нет (12.11.2026): превью, простые слова, кнопка к расчёту. */
-function NoGlFallback({ imageUrl, texts, href, brandColor }: { imageUrl?: string | null; texts: NonNullable<Props["noGl"]>; href: string | null; brandColor: string }) {
+function NoGlFallback({ imageUrl, texts, href, brandColor, onRetry }: { imageUrl?: string | null; texts: NonNullable<Props["noGl"]>; href: string | null; brandColor: string; onRetry: () => void }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-6 bg-[#e4e6e8]" data-testid="no-webgl">
       <div className="max-w-sm w-full text-center">
@@ -64,11 +65,16 @@ function NoGlFallback({ imageUrl, texts, href, brandColor }: { imageUrl?: string
         )}
         <div className="text-base font-bold text-gray-800 mb-1.5">{texts.title}</div>
         <div className="text-sm text-gray-600 mb-4">{texts.text}</div>
-        {href && texts.button && (
-          <Link href={href} prefetch={false} className="inline-flex items-center justify-center px-5 h-11 rounded-xl text-white text-sm font-semibold shadow-lg active:scale-95" style={{ backgroundColor: brandColor }}>
-            {texts.button}
-          </Link>
-        )}
+        <div className="flex flex-col items-center gap-2.5">
+          {href && texts.button && (
+            <Link href={href} prefetch={false} className="inline-flex items-center justify-center px-5 h-11 rounded-xl text-white text-sm font-semibold shadow-lg active:scale-95" style={{ backgroundColor: brandColor }}>
+              {texts.button}
+            </Link>
+          )}
+          <button type="button" onClick={onRetry} className="px-4 h-10 rounded-xl text-sm font-semibold text-gray-700 bg-white/80 shadow active:scale-95">
+            {texts.retry}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -93,14 +99,15 @@ export function Public3DViewer({
   // null — ещё не проверили (до гидратации): показываем ту же заглушку, что и загрузчик сцены.
   const [glOk, setGlOk] = useState<boolean | null>(null);
   useEffect(() => {
+    // null — первая проба или «Попробовать ещё раз»: проба снова, Scene3D монтируется заново.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- проверка возможна только в браузере
-    setGlOk(hasWebGL());
-  }, []);
+    if (glOk === null) setGlOk(hasWebGL());
+  }, [glOk]);
 
   if (glOk === false && noGl) {
     return (
       <div className="fixed inset-0 bg-[#e4e6e8]">
-        <NoGlFallback imageUrl={fallbackImageUrl} texts={noGl} href={backHref} brandColor={brandColor} />
+        <NoGlFallback imageUrl={fallbackImageUrl} texts={noGl} href={backHref} brandColor={brandColor} onRetry={() => setGlOk(null)} />
         {betaLabel && (
           <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/35 text-white/90 text-[10px] font-medium pointer-events-none select-none">
             {betaLabel}

@@ -146,6 +146,36 @@ function FloatingMaskBand({ position, rotationY, lengthM, ceilingM, inwardZ }: {
   );
 }
 
+/** Вызвать cb, когда вкладка пробудет видимой ms миллисекунд суммарно (в фоне счёт стоит). */
+function afterVisibleMs(ms: number, cb: () => void): () => void {
+  let left = ms;
+  let startedAt = 0;
+  let timer = 0;
+  const run = () => {
+    if (document.visibilityState !== "visible" || timer) return;
+    startedAt = performance.now();
+    timer = window.setTimeout(() => {
+      timer = 0;
+      document.removeEventListener("visibilitychange", onVis);
+      cb();
+    }, left);
+  };
+  const pause = () => {
+    if (!timer) return;
+    window.clearTimeout(timer);
+    timer = 0;
+    left = Math.max(0, left - (performance.now() - startedAt));
+  };
+  const onVis = () => (document.visibilityState === "visible" ? run() : pause());
+  document.addEventListener("visibilitychange", onVis);
+  run();
+  return () => {
+    window.clearTimeout(timer);
+    timer = 0;
+    document.removeEventListener("visibilitychange", onVis);
+  };
+}
+
 export function Scene3D({
   vertices,
   walls,
@@ -175,25 +205,44 @@ export function Scene3D({
   const showLookOn = showTone && DESIGN_PASS.showLook;
   // Сторож WebGL (12.11.2026): без контекста r3f не бросает в React — только пишет в консоль,
   // и клиент видит серое поле. onCreated не пришёл за 10 с или контекст потерян и не вернулся
-  // за 3 с → onGlFail (страница покажет запасной экран).
+  // за 3 с → onGlFail (страница покажет запасной экран). Секунды считаются только пока вкладка
+  // видна (ревью 8d): в фоне r3f не создаёт рендерер (нет ResizeObserver), а при сворачивании
+  // браузер сам отбирает контекст — это не «не открылся».
   const glFailRef = useRef(onGlFail);
   glFailRef.current = onGlFail;
   const glCreatedRef = useRef(false);
+  const glCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!onGlFail) return;
-    const t = window.setTimeout(() => { if (!glCreatedRef.current) glFailRef.current?.(); }, 10000);
-    return () => window.clearTimeout(t);
+    const cancel = afterVisibleMs(10000, () => { if (!glCreatedRef.current) glFailRef.current?.(); });
+    return () => {
+      cancel();
+      glCleanupRef.current?.();
+      glCleanupRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- один раз на монтирование
   }, []);
   const handleGlCreated = useCallback(({ gl }: { gl: THREE.WebGLRenderer }) => {
     glCreatedRef.current = true;
+    if (!glFailRef.current) return;
     const el = gl.domElement;
-    let lostTimer = 0;
-    el.addEventListener("webglcontextlost", () => {
-      window.clearTimeout(lostTimer);
-      lostTimer = window.setTimeout(() => glFailRef.current?.(), 3000);
-    });
-    el.addEventListener("webglcontextrestored", () => window.clearTimeout(lostTimer));
+    let cancelLost: (() => void) | null = null;
+    const onLost = () => {
+      cancelLost?.();
+      cancelLost = afterVisibleMs(3000, () => glFailRef.current?.());
+    };
+    const onRestored = () => {
+      cancelLost?.();
+      cancelLost = null;
+    };
+    el.addEventListener("webglcontextlost", onLost);
+    el.addEventListener("webglcontextrestored", onRestored);
+    glCleanupRef.current?.();
+    glCleanupRef.current = () => {
+      cancelLost?.();
+      el.removeEventListener("webglcontextlost", onLost);
+      el.removeEventListener("webglcontextrestored", onRestored);
+    };
   }, []);
   const spotGlowOn = DESIGN_PASS.spotGlow && (showTone || !DESIGN_PASS.showOnly);
   const [sceneSettled, setSceneSettled] = useState(false);
