@@ -17,6 +17,14 @@ export function roomOpId(localRoomId: string): string {
   return `wr-${localRoomId}`.slice(0, 80);
 }
 
+/**
+ * X-Op-Id для создания открытого объекта под первую недоехавшую комнату. Ключ общий для всех
+ * вкладок (комната одна — запасная копия общая), поэтому объект создаётся один раз.
+ */
+export function objectOpId(firstRoomLocalId: string): string {
+  return `wo-${firstRoomLocalId}`.slice(0, 80);
+}
+
 /** Копия без id объекта пристёгивается к открытому объекту, только если она свежая. */
 export const BACKUP_FRESH_MS = 10 * 60 * 1000;
 

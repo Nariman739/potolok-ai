@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ensureDraftOwner } from "@/lib/draft-owner";
-import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, shouldCreateObjectForBackup, roomLabelsForQuestion, type RemovedRoom } from "@/lib/zamer-unsynced";
+import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, shouldCreateObjectForBackup, roomLabelsForQuestion, objectOpId, type RemovedRoom } from "@/lib/zamer-unsynced";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
@@ -1889,8 +1889,13 @@ export default function ZameryPage() {
   }, []);
 
   // ── Helper: ensure active object exists on server ──
-  /** address — название объекта, когда оно ещё не дошло до состояния (подъём запасной копии при открытии). */
-  function ensureActiveObject(address?: string): Promise<string> {
+  /**
+   * address — название объекта, когда оно ещё не дошло до состояния (подъём запасной копии при
+   * открытии). firstRoomId — локальный id первой комнаты, под которую заводится объект: из него
+   * делается X-Op-Id, и две вкладки «Замера» с одной недоехавшей комнатой получают ОДИН объект
+   * (сервер на повтор с тем же X-Op-Id отдаёт уже созданный), а не по объекту на вкладку.
+   */
+  function ensureActiveObject(address?: string, firstRoomId?: string): Promise<string> {
     // Use ref to get latest value (avoids stale closure in rapid async calls)
     if (activeObjectIdRef.current) return Promise.resolve(activeObjectIdRef.current);
     // Объект уже создаётся другим вызовом (досылка при открытии и «Готово» почти одновременно) —
@@ -1898,7 +1903,7 @@ export default function ZameryPage() {
     return shareInFlight(creatingObjectRef.current, "object", async () => {
       const res = await fetch("/api/measurements", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(firstRoomId && { "X-Op-Id": objectOpId(firstRoomId) }) },
         body: JSON.stringify({
           address: address ?? objectName,
           status: "active",
@@ -1923,9 +1928,26 @@ export default function ZameryPage() {
    */
   async function createObjectForBackup(address: string, pending: Room[]) {
     try {
-      const objId = await ensureActiveObject(address);
-      await flushUnsynced(objId, pending);
+      await sendToActiveObject(pending, address);
     } catch { /* остаётся локальным черновиком */ }
+  }
+
+  /**
+   * Отправить комнаты в открытый объект, заводя его, если его нет (с X-Op-Id от первой комнаты).
+   * Если объект завели этим же вызовом, а сервер отвечает «объекта нет» — значит, повтор X-Op-Id
+   * вернул объект, который за это время удалили: заводим новый уже без ключа, один раз.
+   * Объект, который был открыт ДО вызова и пропал, новым не подменяем — об этом мастера
+   * спрашивает «Сохранить».
+   */
+  async function sendToActiveObject(list: Room[], address?: string): Promise<{ failed: Room[]; gone: boolean }> {
+    const hadObject = !!activeObjectIdRef.current;
+    const objId = await ensureActiveObject(address, list[0]?.id);
+    const sent = await flushUnsynced(objId, list);
+    if (!sent.gone || hadObject) return sent;
+    activeObjectIdRef.current = null;
+    setActiveObjectId(null);
+    const freshId = await ensureActiveObject(address);
+    return flushUnsynced(freshId, list);
   }
 
   /** Тело запроса комнаты — одно и то же для первой отправки, досылки и уборки удалённой. */
@@ -2060,10 +2082,10 @@ export default function ZameryPage() {
     const marked = newRooms.map(r => ({ ...r, unsynced: true }));
     setRooms(prev => [...prev, ...marked]);
     try {
-      const objId = await ensureActiveObject();
       // Заодно — комнаты, не доехавшие раньше (сбой сети, поднятые из запасной копии).
       const earlier = roomsRef.current.filter(r => r.unsynced && !marked.some(m => m.id === r.id));
-      const sent = await flushUnsynced(objId, [...earlier, ...marked]);
+      // Объект заводится под первую недоехавшую комнату — тот же ключ, что у досылки при открытии.
+      const sent = await sendToActiveObject([...earlier, ...marked]);
       if (sent.gone || sent.failed.length > 0) throw new Error("not sent");
     } catch {
       alert("Не удалось сохранить комнату на сервер. Данные сохранены локально.");
