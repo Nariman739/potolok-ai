@@ -6,7 +6,8 @@ import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
-import { mapByHeadings, remapRoomIndexed } from "@/lib/room-remap";
+import { mapByHeadings, remapRoomIndexed, type WallMap } from "@/lib/room-remap";
+import { isAppFormatRoom, APP_ESTIMATE_RECALC_MESSAGE } from "@/lib/room-edit";
 import type { CalculationResult, RoomInput, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData, discountInputFromState, persistPartner, partnerRoomBases } from "@/lib/kp-adjust-server";
 import { scaleCalc, sumCalc, computeDiscount, computePartner } from "@/lib/kp-adjust";
@@ -39,6 +40,52 @@ function canonical(value: unknown): unknown {
 const same = (a: unknown, b: unknown) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 
 type SavedDrawing = { walls?: number[]; angles?: number[]; normalCorners?: boolean[]; elements?: unknown[] };
+
+/** Повороты после каждой стены (90 / −90 / свой) из углов или типов углов; нет ни того ни другого → null. */
+function turnsOf(walls: number[], nc: boolean[] | undefined | null, angles: number[] | undefined | null): number[] | null {
+  if (angles?.length === walls.length) return angles;
+  if (nc?.length === walls.length) return nc.map((b) => (b ? 90 : -90));
+  return null;
+}
+
+/**
+ * Повороты СТАРОГО контура комнаты КП: designerData КП → комната объекта замера (та же
+ * комната: serverId, иначе имя, иначе те же стены — и стены совпадают с сохранёнными в КП,
+ * иначе объект перемерен и его углы не про этот контур) → 4 стены без углов = прямоугольник
+ * (иначе 4 стены не замкнуть) → null: направления неизвестны.
+ */
+async function oldWallTurns(
+  measurementObjectId: string | null,
+  room: RoomInput,
+  saved: SavedDrawing,
+  oldWalls: number[],
+): Promise<number[] | null> {
+  const fromKp = turnsOf(oldWalls, saved.normalCorners, saved.angles);
+  if (fromKp) return fromKp;
+  if (measurementObjectId) {
+    const rooms = await prisma.measurementRoom.findMany({
+      where: { objectId: measurementObjectId },
+      select: { id: true, name: true, walls: true, angles: true, normalCorners: true },
+    });
+    const sameWalls = (r: { walls: unknown }) =>
+      Array.isArray(r.walls) && r.walls.length === oldWalls.length && r.walls.every((w, i) => Math.abs(Number(w) - oldWalls[i]) <= 1);
+    const norm = (s: unknown) => (typeof s === "string" ? s : "").trim().toLowerCase();
+    const serverId = (room as { serverId?: unknown }).serverId;
+    const candidates = rooms.filter(sameWalls);
+    const byId = typeof serverId === "string" ? candidates.find((r) => r.id === serverId) : undefined;
+    const byName = candidates.filter((r) => norm(r.name) === norm(room.name));
+    const hit = byId ?? (byName.length === 1 ? byName[0] : candidates.length === 1 ? candidates[0] : undefined);
+    if (hit) {
+      const fromObject = turnsOf(
+        oldWalls,
+        Array.isArray(hit.normalCorners) ? (hit.normalCorners as boolean[]) : null,
+        Array.isArray(hit.angles) ? (hit.angles as number[]) : null,
+      );
+      if (fromObject) return fromObject;
+    }
+  }
+  return oldWalls.length === 4 ? [90, 90, 90, 90] : null;
+}
 
 /** Те же стены и углы, что сохранены в КП. Пустые углы и повороты сравнивать не с чем. */
 function sameGeometry(saved: SavedDrawing, next: DesignerPayload): boolean {
@@ -99,6 +146,12 @@ export async function POST(
 
     // Собираем обновлённый RoomInput, опираясь на старый (чтобы сохранить ручные настройки).
     const existingRoom = roomsData[idx];
+    // КП из приложения: комната в формате телефона (профили в room.wallProfiles, нет
+    // length/width и designerData). Интерфейс сюда не пускает (edit-room показывает
+    // плашку), но прямой запрос пересобирал комнату и стирал все профили (40, 13.11.2026).
+    if (isAppFormatRoom(existingRoom)) {
+      return NextResponse.json({ error: APP_ESTIMATE_RECALC_MESSAGE }, { status: 409 });
+    }
     const newName = body.designer.name?.trim() || existingRoom.name;
     const savedDrawing = (existingRoom.designerData ?? existingRoom) as unknown as SavedDrawing;
     const geometryUnchanged = sameGeometry(savedDrawing, body.designer);
@@ -133,21 +186,34 @@ export async function POST(
     // НЕ по координатам: правка одной длины сдвигает все вершины после неё, и
     // координатное сравнение снимало бы профили соседних стен (400×300 → 401×300).
     // Файл-близнец room-remap.ts (mapByHeadings). Снятое — в ответ клиенту.
+    // Направления старых стен нужны ТОЛЬКО при смене числа стен: углы берём из
+    // designerData КП → комнаты объекта замера (КП привязано; та же комната по serverId,
+    // имени или тем же стенам) → прямоугольник, если стен 4. Иначе (КП калькулятора без
+    // углов, не прямоугольник) не гадаем: все профили снимаются с тостом — честнее, чем
+    // переносить их на чужие стены (40 по f7c3d06: Г-образная получала теневой чужой стенки).
     let existingForBuild: RoomInput = { ...existingRoom, name: newName };
-    let remap: { kept: number; droppedWalls: number[] } | null = null;
+    let remap: { kept: number; droppedWalls: number[]; droppedAll: boolean } | null = null;
     const wpd = existingRoom.wallProfileData;
     if (wpd && Object.keys(wpd.wallProfiles ?? {}).length > 0 && !geometryUnchanged) {
       const oldWalls = savedDrawing.walls ?? wpd.walls;
       const newWalls = body.designer.walls;
-      const turnsOf = (walls: number[], nc: boolean[] | undefined, angles: number[] | undefined) =>
-        angles?.length === walls.length ? angles : walls.map((_, i) => (nc?.length === walls.length ? nc[i] : true) ? 90 : -90);
-      const map = oldWalls.length === newWalls.length
-        ? { walls: oldWalls.map((_, i) => i), corners: oldWalls.map((_, i) => i) }
-        : mapByHeadings(oldWalls, turnsOf(oldWalls, savedDrawing.normalCorners, savedDrawing.angles), newWalls, turnsOf(newWalls, body.designer.normalCorners, body.designer.angles));
+      let map: WallMap;
+      let droppedAll = false;
+      if (oldWalls.length === newWalls.length) {
+        map = { walls: oldWalls.map((_, i) => i), corners: oldWalls.map((_, i) => i) };
+      } else {
+        const oldTurns = await oldWallTurns(estimate.measurementObjectId, existingRoom, savedDrawing, oldWalls);
+        if (oldTurns) {
+          map = mapByHeadings(oldWalls, oldTurns, newWalls, turnsOf(newWalls, body.designer.normalCorners, body.designer.angles) ?? newWalls.map(() => 90));
+        } else {
+          map = { walls: newWalls.map(() => null), corners: newWalls.map(() => null) };
+          droppedAll = true;
+        }
+      }
       const { patch, dropped } = remapRoomIndexed({ wallProfiles: wpd.wallProfiles }, map, { dropMeasureDiagonals: false });
       const wallProfiles = Object.fromEntries(Object.entries(patch.wallProfiles ?? {}).map(([k, v]) => [String(k), v as string]));
       existingForBuild = { ...existingForBuild, wallProfileData: { ...wpd, walls: body.designer.walls, wallProfiles } };
-      remap = { kept: Object.keys(wallProfiles).length, droppedWalls: dropped.profiles };
+      remap = { kept: Object.keys(wallProfiles).length, droppedWalls: dropped.profiles, droppedAll };
     }
 
     const builtRoom = buildRoomInputFromDesigner(

@@ -79,12 +79,17 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
     );
     setSaving(false);
     if (!res.ok) {
-      toast.error("Не удалось сохранить чертёж");
+      // 409 — КП заблокировано или из приложения: сервер говорит словами, показываем их.
+      const err = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(err?.error || "Не удалось сохранить чертёж");
       return;
     }
-    const data = (await res.json().catch(() => null)) as { total?: number; previousTotal?: number; unchanged?: boolean; areaFromDrawing?: boolean; remap?: { kept: number; droppedWalls: number[] } | null } | null;
+    const data = (await res.json().catch(() => null)) as { total?: number; previousTotal?: number; unchanged?: boolean; areaFromDrawing?: boolean; remap?: { kept: number; droppedWalls: number[]; droppedAll?: boolean } | null } | null;
     // Профиль стоял на стене, которой после правки больше нет (сервер снял его) — сказать, а не молчать.
-    if (data?.remap?.droppedWalls?.length) {
+    if (data?.remap?.droppedAll) {
+      // Направления старых стен неизвестны (КП калькулятора без углов, не прямоугольник) — сервер не гадал.
+      toast.warning("Профили стен сняты — проверьте их в КП", { duration: 10000 });
+    } else if (data?.remap?.droppedWalls?.length) {
       const walls = data.remap.droppedWalls.map((i) => i + 1).join(", ");
       toast.warning(`Профиль стен ${walls} снят: этих стен больше нет. Проверьте профили в КП.`);
     }
