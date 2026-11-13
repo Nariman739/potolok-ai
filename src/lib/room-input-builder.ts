@@ -300,6 +300,12 @@ export function buildRoomInputFromDesigner(
     spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,
     spotsByType: spotsByType.length > 0 ? spotsByType : undefined,
     ...fixtures,
+    // «Уст. люстр» / подвесов мастер правит в форме руками (клиент вешает сам → 0).
+    // Пока число на чертеже то же — его решение держим, правка стены его не сбрасывает.
+    ...(existing?.chandelierInstallCount != null && existing.chandelierCount === fixtures.chandelierCount
+      && { chandelierInstallCount: existing.chandelierInstallCount }),
+    ...(existing?.pendantInstallCount != null && existing.pendantCount === fixtures.pendantCount
+      && { pendantInstallCount: existing.pendantInstallCount }),
     // Нет колонн-труб в сохранённой комнате — число обходов из КП (ручной ввод в форме).
     pipeBypasses: fixtures.pipeBypasses || (existing?.pipeBypasses ?? 0),
     spotPairsCount,
