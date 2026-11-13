@@ -80,8 +80,8 @@ function siteUrl(): string {
 
 /**
  * Каноническая строка запроса прокси для источника: ровно один параметр `u`, закодированный
- * encodeURIComponent. Её же строит ogLogoProxyUrl, и только её роут обслуживает (остальное —
- * редирект сюда): один логотип = один адрес = одна запись в кэше CDN.
+ * encodeURIComponent. Её строит ogLogoProxyUrl, и на неё роут перенаправляет запросы с лишними
+ * параметрами или ненормализованным источником: один логотип = один адрес в og:image.
  */
 export function ogLogoCanonicalSearch(src: URL): string {
   return `?u=${encodeURIComponent(src.toString())}`;
