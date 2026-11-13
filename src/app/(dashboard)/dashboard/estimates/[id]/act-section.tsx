@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MASTER_ACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,8 @@ type Props = {
   actCompletionDate: string | null;
   clientPhone: string | null;
   estimateStatus: string;
-  contractConfigured: boolean;
+  /** Незаполненные реквизиты мастера — в акт они подставляются так же, как в договор. */
+  missingRequisites: string[];
 };
 
 function todayStr() {
@@ -54,7 +56,7 @@ export function ActSection({
   actCompletionDate,
   clientPhone,
   estimateStatus,
-  contractConfigured,
+  missingRequisites,
 }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -118,8 +120,8 @@ export function ActSection({
     window.open(wa, "_blank");
   }
 
-  // Условие появления раздела — КП должен быть подтверждён + договор настроен
-  if (!contractConfigured) return null;
+  // Раздел появляется у подтверждённого КП; уже созданный акт показываем всегда. Реквизиты
+  // условием не являются (13.11.2026): акт, созданный в приложении, на сайте не был виден.
   if (estimateStatus !== "CONFIRMED" && !actPublicId) return null;
 
   if (!actPublicId) {
@@ -136,6 +138,17 @@ export function ActSection({
             <p className="text-sm text-muted-foreground">
               После завершения монтажа создайте акт и отправьте клиенту. Клиент откроет в браузере и подпишет электронно — без распечатки.
             </p>
+            {missingRequisites.length > 0 && (
+              <div role="alert" className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-semibold">В акте не будет заполнено: {missingRequisites.join(", ")}</p>
+                <p className="mt-1 text-xs text-amber-800">
+                  Акт создастся и так, но клиент увидит документ без этих данных.{" "}
+                  <Link href="/dashboard/profile" className="underline font-semibold">
+                    Заполнить в профиле
+                  </Link>
+                </p>
+              </div>
+            )}
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button
               onClick={() => setDateOpen(true)}

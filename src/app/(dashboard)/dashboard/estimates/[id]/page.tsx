@@ -175,7 +175,6 @@ export default async function EstimateDetailPage({
         contractReplaced={isContractReplaced(estimate) || otherChosen}
         otherChosen={otherChosen}
         clientPhone={estimate.clientPhone}
-        contractConfigured={isContractConfigured(requisites)}
         missingRequisites={missingContractFields(requisites, requisites.currency)}
         defaultPrepaymentPercent={requisites.prepaymentPercent ?? 50}
         workStartDate={estimate.workStartDate ? estimate.workStartDate.toISOString() : null}
@@ -197,7 +196,7 @@ export default async function EstimateDetailPage({
         actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
         clientPhone={estimate.clientPhone}
         estimateStatus={estimate.status}
-        contractConfigured={isContractConfigured(requisites)}
+        missingRequisites={missingContractFields(requisites, requisites.currency)}
       />
 
       {/* Total summary */}
