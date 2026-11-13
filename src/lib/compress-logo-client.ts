@@ -92,7 +92,7 @@ function fitSize(w: number, h: number) {
 /**
  * SVG → PNG (прозрачность сохраняется). Если у SVG нет своих width/height в
  * пикселях — проставляем их сами: по пропорциям viewBox 1200 px по большей
- * стороне, без viewBox — 800×800. Без размеров Firefox/Chrome не рисуют SVG
+ * стороне, без viewBox — 800×800. Px-размеры тоже приводим к 1200 px (вверх). Без размеров Firefox/Chrome не рисуют SVG
  * в canvas (naturalWidth = 0). Не открылся — понятная ошибка, исходник не шлём.
  */
 async function rasterizeSvg(file: File): Promise<File> {
@@ -111,12 +111,13 @@ async function rasterizeSvg(file: File): Promise<File> {
 
     let w: number;
     let h: number;
+    // Вектор: и маленькие px-размеры тянем ВВЕРХ до 1200 px (иначе 64×64 мылится в PDF КП).
     if (pxW && pxH) {
-      ({ width: w, height: h } = fitSize(pxW, pxH));
+      ({ width: w, height: h } = svgFit(pxW, pxH));
+      // Без viewBox смена width/height не масштабирует рисунок — задаём его по исходным px.
+      if (!vbW || !vbH) root.setAttribute("viewBox", `0 0 ${pxW} ${pxH}`);
     } else if (vbW && vbH) {
-      const scale = MAX_SIDE / Math.max(vbW, vbH);
-      w = Math.max(1, Math.round(vbW * scale));
-      h = Math.max(1, Math.round(vbH * scale));
+      ({ width: w, height: h } = svgFit(vbW, vbH));
     } else {
       w = SVG_DEFAULT_SIDE;
       h = SVG_DEFAULT_SIDE;
@@ -138,6 +139,12 @@ async function rasterizeSvg(file: File): Promise<File> {
   } catch {
     throw new Error(LOGO_UNREADABLE_MESSAGE);
   }
+}
+
+/** Только для SVG: масштаб до 1200 px по большей стороне — и вниз, и вверх. */
+function svgFit(w: number, h: number) {
+  const scale = MAX_SIDE / Math.max(w, h);
+  return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) };
 }
 
 /** Ширина/высота SVG в пикселях: «120» или «120px». Проценты и em — не размеры. */
