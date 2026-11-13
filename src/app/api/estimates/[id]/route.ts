@@ -11,6 +11,7 @@ import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
 import { reportError } from "@/lib/report-error";
+import { confirmReplacing, isContractReplaced, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 export async function GET(
   _request: Request,
@@ -50,6 +51,8 @@ export async function GET(
       // Плоские поля для мобилки: id живого объекта и его адрес, либо null.
       workshopMeasurementId: workshopReady ? mo.id : null,
       measurementAddress: workshopReady ? mo.address : null,
+      // Неподписанный договор этого КП заменён новым вариантом (13.11.2026)
+      contractReplaced: isContractReplaced(estimate),
     });
   } catch (error) {
     if (error instanceof KpAdjustError) {
@@ -149,27 +152,45 @@ export async function PUT(
     // объекта становятся «пересмотренными», чтобы деньги и этап объекта
     // считались по одной цене.
     if (status === "CONFIRMED") {
-      if (!["SENT", "VIEWED", "REVISED"].includes(existing.status)) {
+      // Уже принятое КП объекта — значит, это замена: клиент согласился на новый
+      // вариант (часто устно), и мастер отмечает черновик, не пересылая его (13.11.2026).
+      const hasConfirmed = !!existing.measurementObjectId && (await prisma.estimate.count({
+        where: { measurementObjectId: existing.measurementObjectId, id: { not: id }, deletedAt: null, status: "CONFIRMED" },
+      })) > 0;
+      const allowed = hasConfirmed ? ["SENT", "VIEWED", "REVISED", "DRAFT"] : ["SENT", "VIEWED", "REVISED"];
+      if (!allowed.includes(existing.status)) {
         return NextResponse.json({ error: "Это КП нельзя отметить выбранным" }, { status: 400 });
       }
-      const confirmed = await prisma.estimate.update({
+      let replacedTotals: number[] = [];
+      try {
+        // Прежние принятые → «пересмотрено» в одной транзакции с проверкой подписи
+        ({ replacedTotals } = await prisma.$transaction((tx) => confirmReplacing(tx, id, existing.measurementObjectId)));
+      } catch (e) {
+        if (e instanceof ReplaceBlockedError) {
+          return NextResponse.json({ error: e.message, code: "PREV_SIGNED", kind: e.kind }, { status: 409 });
+        }
+        throw e;
+      }
+      const confirmed = await prisma.estimate.findUniqueOrThrow({
         where: { id },
-        data: { status: "CONFIRMED" },
         include: { partner: { select: { amount: true, percent: true, coef: true } } },
       });
       if (existing.measurementObjectId) {
-        await prisma.estimate.updateMany({
-          where: {
-            measurementObjectId: existing.measurementObjectId,
-            id: { not: id },
-            deletedAt: null,
-            status: { in: ["SENT", "VIEWED"] },
-          },
-          data: { status: "REVISED" },
-        });
         // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
         const objectId = existing.measurementObjectId;
         after(() => syncClientStatusForObject(objectId).catch(() => {}));
+      }
+      // Замена — запись в ленту мастера (ClientEvent; клиенту наружу ничего не уходит)
+      if (existing.clientId && replacedTotals.length > 0) {
+        const currency = await currencyFor(existing.masterId);
+        addClientEvent({
+          clientId: existing.clientId,
+          type: "KP_CONFIRMED",
+          content: `Мастер выбрал новый вариант: ${formatPrice(existing.total ?? 0, currency)} (было ${replacedTotals.map((v) => formatPrice(v, currency)).join(", ")})`,
+          metadata: { estimateId: id, replaced: true },
+        }).catch(() => {});
+        changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        return NextResponse.json(confirmed);
       }
       if (existing.clientId) {
         const currency = await currencyFor(existing.masterId);

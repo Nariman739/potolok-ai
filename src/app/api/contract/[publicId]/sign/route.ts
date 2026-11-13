@@ -8,6 +8,7 @@ import { currencyFor, ownerBrandFor } from "@/lib/company";
 import { CONTRACT_MASTER_SELECT, contractHash, renderLiveContract } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
 import { reportError } from "@/lib/report-error";
+import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced } from "@/lib/estimate-replace";
 
 export async function POST(
   request: Request,
@@ -59,6 +60,13 @@ export async function POST(
       );
     }
 
+    // Мастер выбрал другой вариант КП — этот договор не действует (13.11.2026)
+    const replacedError = () => NextResponse.json(
+      { error: asLang(langParam) === "kk" ? CONTRACT_REPLACED_TEXT_KK : CONTRACT_REPLACED_TEXT, replaced: true },
+      { status: 409 },
+    );
+    if (isContractReplaced(estimate)) return replacedError();
+
     // Подпись замораживает текст, который клиент видел: неподписанный договор
     // рисуется из живого шаблона, и снимок дня создания мог от него отстать.
     const brand = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
@@ -88,8 +96,15 @@ export async function POST(
     const signedPassport = signerPassport?.trim() || null;
     const signedAt = new Date();
 
-    // Условие в самом запросе: из двух одновременных подписей пройдёт одна.
-    const { count } = await prisma.estimate.updateMany({
+    // Строку берём под замок (FOR UPDATE): из двух одновременных подписей пройдёт одна,
+    // а выбор мастером нового варианта (confirmReplacing, тоже FOR UPDATE) либо
+    // успел пометить договор «заменён» — тогда отказ, либо ждёт и увидит подпись.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const [row] = await tx.$queryRaw<{ contractSignedAt: Date | null; contractTextSnapshot: unknown }[]>`
+        SELECT "contractSignedAt", "contractTextSnapshot" FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
+      if (!row || row.contractSignedAt) return "signed" as const;
+      if (isContractReplaced(row)) return "replaced" as const;
+      const { count } = await tx.estimate.updateMany({
       where: { id: estimate.id, contractSignedAt: null },
       data: {
         contractSignedAt: signedAt,
@@ -105,7 +120,10 @@ export async function POST(
         },
       },
     });
-    if (count === 0) {
+      return count === 0 ? ("signed" as const) : ("ok" as const);
+    });
+    if (outcome === "replaced") return replacedError();
+    if (outcome === "signed") {
       return NextResponse.json({ error: "Договор уже подписан" }, { status: 400 });
     }
 

@@ -10,7 +10,8 @@ import type { Metadata } from "next";
 import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { SignSection } from "./sign-section";
 import { PrintButton } from "./print-button";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced } from "@/lib/estimate-replace";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -83,6 +84,8 @@ export default async function ContractPublicPage({
   const doc = contractView(html);
 
   const isSigned = !!estimate.contractSignedAt;
+  // Мастер выбрал другой вариант КП — этот договор не подписывают (13.11.2026)
+  const isReplaced = isContractReplaced(estimate);
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
@@ -96,6 +99,15 @@ export default async function ContractPublicPage({
               {estimate.contractSignerName} ·{" "}
               {estimate.contractSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {isReplaced && (
+        <div className="sticky top-0 z-10 bg-amber-500 text-white">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <div className="text-sm font-semibold">{lang === "kk" ? CONTRACT_REPLACED_TEXT_KK : CONTRACT_REPLACED_TEXT}</div>
           </div>
         </div>
       )}
@@ -131,6 +143,11 @@ export default async function ContractPublicPage({
               <br />
               {estimate.contractSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </p>
+          </div>
+        ) : isReplaced ? (
+          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+            <p className="text-sm font-semibold">{lang === "kk" ? CONTRACT_REPLACED_TEXT_KK : CONTRACT_REPLACED_TEXT}</p>
           </div>
         ) : (
           <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} seenHash={contractHash(html)} />

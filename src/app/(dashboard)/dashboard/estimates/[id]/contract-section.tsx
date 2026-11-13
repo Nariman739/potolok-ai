@@ -20,6 +20,7 @@ import {
   type PaymentStage,
 } from "./contract-terms-dialog";
 import { Pencil } from "lucide-react";
+import { MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 
 type Props = {
   estimateId: string;
@@ -27,6 +28,8 @@ type Props = {
   contractCreatedAt: string | null;
   contractSignedAt: string | null;
   contractSignerName: string | null;
+  /** Мастер выбрал другой вариант — этот неподписанный договор больше не действует (13.11.2026). */
+  contractReplaced?: boolean;
   clientPhone: string | null;
   contractConfigured: boolean;
   /** Незаполненные реквизиты — показываем мастеру, чего не хватает. */
@@ -43,6 +46,7 @@ export function ContractSection({
   contractCreatedAt,
   contractSignedAt,
   contractSignerName,
+  contractReplaced = false,
   clientPhone,
   contractConfigured,
   missingRequisites,
@@ -197,6 +201,10 @@ export function ContractSection({
             <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" variant="secondary">
               Подписан
             </Badge>
+          ) : contractReplaced ? (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100" variant="secondary">
+              Не действует
+            </Badge>
           ) : (
             <Badge variant="secondary">Ожидает подписи</Badge>
           )}
@@ -219,6 +227,10 @@ export function ContractSection({
               </div>
             </div>
           </div>
+        ) : contractReplaced ? (
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-800">
+            {MASTER_CONTRACT_REPLACED_TEXT}
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Создан{" "}

@@ -1,4 +1,5 @@
 import { getCurrentMaster } from "@/lib/auth";
+import { isContractReplaced } from "@/lib/estimate-replace";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -169,6 +170,7 @@ export default async function EstimateDetailPage({
         contractCreatedAt={estimate.contractCreatedAt ? estimate.contractCreatedAt.toISOString() : null}
         contractSignedAt={estimate.contractSignedAt ? estimate.contractSignedAt.toISOString() : null}
         contractSignerName={estimate.contractSignerName}
+        contractReplaced={isContractReplaced(estimate)}
         clientPhone={estimate.clientPhone}
         contractConfigured={isContractConfigured(requisites)}
         missingRequisites={missingContractFields(requisites, requisites.currency)}
