@@ -99,6 +99,13 @@ export function useStageMove({
 
   function requestMove(item: MoveItem, target: CrmColumn) {
     if (target === item.column) return;
+    // «Договор» уступает дате монтажа (crm-columns.ts): пока дата стоит, карточка вернулась бы в
+    // монтаж при следующем открытии доски. Говорим об этом сразу, а не делаем перенос, который
+    // «не держится».
+    if (target === "contract" && item.installAt) {
+      toast.info("У объекта стоит дата монтажа, поэтому карточка остаётся в монтаже. Чтобы вернуть её в «Договор», сначала уберите дату монтажа.");
+      return;
+    }
     // Монтаж следует за датой: перенос, расходящийся с датой, без её правки откатился бы при перезагрузке
     const dateDisagrees = !!item.installAt && installColumnFor(new Date(item.installAt)) !== target;
     const needsDate = target === "install_planned" || (target === "install" && dateDisagrees);
