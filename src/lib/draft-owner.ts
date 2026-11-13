@@ -84,6 +84,22 @@ function masterOf(stamp: string): string {
 let checkedFor: string | null = null;
 
 /**
+ * Кто держит черновики ещё и в памяти страницы (стор калькулятора), подписывается сюда:
+ * аккаунт может смениться без перезагрузки (сессия истекла → вход → переход внутри сайта),
+ * и тогда стёртое из браузера не должно остаться на экране из памяти.
+ */
+const clearedListeners = new Set<() => void>();
+export function onDraftsCleared(listener: () => void): () => void {
+  clearedListeners.add(listener);
+  return () => clearedListeners.delete(listener);
+}
+function notifyCleared() {
+  clearedListeners.forEach((fn) => {
+    try { fn(); } catch {}
+  });
+}
+
+/**
  * Сверить владельца черновиков с текущим аккаунтом. Звать перед чтением любого черновика.
  *  - штампа нет (черновик сделан до выката) — взять себе, ничего не стирая;
  *  - другой мастер — стереть всё;
@@ -101,6 +117,7 @@ export function ensureDraftOwner(): boolean {
     if (foreign) removeDrafts(ls, masterOf(stored) === masterOf(owner) ? COMPANY_DRAFT_KEYS : DRAFT_KEYS);
     if (stored !== owner) ls.setItem(OWNER_KEY, owner);
     checkedFor = owner;
+    if (foreign) notifyCleared();
     return foreign;
   } catch {
     return false;
@@ -115,6 +132,7 @@ export function clearDraftsOnLogout() {
     removeDrafts(ls);
     ls.removeItem(OWNER_KEY);
     checkedFor = null;
+    notifyCleared();
   } catch {}
 }
 

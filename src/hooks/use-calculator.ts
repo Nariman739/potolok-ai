@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useSyncExternalStore } from "react";
 import type { RoomInput, CalculationResult, ExtraItem } from "@/lib/types";
-import { ensureDraftOwner, touchCalculatorDraft, calculatorDraftIsFresh, DRAFT_CLIENT_TTL_MS } from "@/lib/draft-owner";
+import { ensureDraftOwner, onDraftsCleared, touchCalculatorDraft, calculatorDraftIsFresh, DRAFT_CLIENT_TTL_MS } from "@/lib/draft-owner";
 
 const AUTOSAVE_KEY = "calculator-rooms-draft";
 const EXTRA_ITEMS_KEY = "calculator-extra-items-draft";
@@ -78,10 +78,19 @@ let cachedExtras: ExtraItem[] | null = null;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((fn) => fn());
 
+// Аккаунт сменился без перезагрузки страницы (сессия истекла → вход → переход внутри сайта):
+// черновик прежнего мастера стёрт из браузера — забываем его и в памяти. Поэтому же каждое
+// чтение ниже начинается со сверки владельца, а не только первое.
+onDraftsCleared(() => {
+  cachedRooms = null;
+  cachedResult = undefined;
+  cachedExtras = null;
+});
+
 function getRooms(): RoomInput[] {
-  if (cachedRooms !== null) return cachedRooms;
-  // Черновик другого аккаунта на этом компьютере стирается до первого чтения.
+  // Черновик другого аккаунта на этом компьютере стирается до чтения (и из памяти тоже).
   ensureDraftOwner();
+  if (cachedRooms !== null) return cachedRooms;
   try {
     const raw = localStorage.getItem(AUTOSAVE_KEY);
     if (raw) {
@@ -116,8 +125,8 @@ function setRoomsStore(next: RoomInput[]) {
 }
 
 function getResult(): CalculationResult | null {
-  if (cachedResult !== undefined) return cachedResult;
   ensureDraftOwner();
+  if (cachedResult !== undefined) return cachedResult;
   cachedResult = null;
   try {
     const saved = localStorage.getItem(RESULT_KEY);
@@ -137,8 +146,8 @@ function setResultStore(r: CalculationResult | null) {
 }
 
 function getExtras(): ExtraItem[] {
-  if (cachedExtras !== null) return cachedExtras;
   ensureDraftOwner();
+  if (cachedExtras !== null) return cachedExtras;
   cachedExtras = NO_EXTRAS;
   try {
     const raw = localStorage.getItem(EXTRA_ITEMS_KEY);
