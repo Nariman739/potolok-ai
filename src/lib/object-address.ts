@@ -38,7 +38,10 @@ const LABEL_WITH_NUMBER = /^(кп|договор|дог|заказ|замер|с
 export function looksLikeAddress(text: string | null | undefined): boolean {
   const s = (text ?? "").trim();
   if (!/\d/.test(s)) return false;
-  if (/^\d+$/.test(s.replace(PHONE_NOISE, ""))) return false;
+  // Голое число («167») — по исходной строке; телефон — когда после чистки осталось 7+ цифр.
+  // Короткое с дефисом или пробелом («10-87», «45 12» — дом и квартира) остаётся адресом.
+  if (/^\d+$/.test(s)) return false;
+  if (/^\d{7,}$/.test(s.replace(PHONE_NOISE, ""))) return false;
   return !LABEL_WITH_NUMBER.test(s);
 }
 
