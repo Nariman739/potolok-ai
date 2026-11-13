@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MASTER_ACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,8 @@ type Props = {
   actCreatedAt: string | null;
   actSignedAt: string | null;
   actSignerName: string | null;
+  /** Выбран другой вариант КП — этот неподписанный акт больше не действует (13.11.2026). */
+  actReplaced?: boolean;
   actCompletionDate: string | null;
   clientPhone: string | null;
   estimateStatus: string;
@@ -48,6 +51,7 @@ export function ActSection({
   actCreatedAt,
   actSignedAt,
   actSignerName,
+  actReplaced = false,
   actCompletionDate,
   clientPhone,
   estimateStatus,
@@ -204,6 +208,10 @@ export function ActSection({
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Подписан
             </Badge>
+          ) : actReplaced ? (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100" variant="secondary">
+              Не действует
+            </Badge>
           ) : (
             <Badge variant="secondary">
               <Clock className="h-3 w-3 mr-1" />
@@ -229,6 +237,10 @@ export function ActSection({
               </div>
             </div>
           </div>
+        ) : actReplaced ? (
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-800">
+            {MASTER_ACT_REPLACED_TEXT}
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Создан{" "}
@@ -239,13 +251,18 @@ export function ActSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            {copied ? "Скопировано" : "Копировать ссылку"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={whatsappShare}>
-            WhatsApp
-          </Button>
+          {/* Недействующий акт клиенту не отправляем — только просмотр */}
+          {!actReplaced && (
+            <>
+              <Button variant="outline" size="sm" onClick={copyLink}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                {copied ? "Скопировано" : "Копировать ссылку"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={whatsappShare}>
+                WhatsApp
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" asChild>
             <a
               href={`/act/${actPublicId}`}
@@ -256,16 +273,19 @@ export function ActSection({
               Открыть
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a
-              href={`/api/estimates/${estimateId}/act`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              PDF
-            </a>
-          </Button>
+          {/* PDF акта отдаётся только для принятого КП (иначе 400) — у недействующего не показываем */}
+          {!actReplaced && (
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={`/api/estimates/${estimateId}/act`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                PDF
+              </a>
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

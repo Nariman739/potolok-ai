@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ACT_OTHER_CHOSEN_TEXT, otherVariantChosen } from "@/lib/estimate-replace";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -46,10 +47,14 @@ export async function POST(
 
     const estimate = await prisma.estimate.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
-      select: { id: true, clientId: true, actPublicId: true, actCreatedAt: true, actSignedAt: true, actSentAt: true },
+      select: { id: true, clientId: true, actPublicId: true, actCreatedAt: true, actSignedAt: true, actSentAt: true, status: true, measurementObjectId: true },
     });
     if (!estimate) {
       return NextResponse.json({ error: "КП не найдено" }, { status: 404 });
+    }
+    // В объекте клиент выбрал другой вариант — акт только по выбранному КП (13.11.2026)
+    if (await otherVariantChosen(prisma, estimate)) {
+      return NextResponse.json({ error: ACT_OTHER_CHOSEN_TEXT, code: "OTHER_CHOSEN" }, { status: 409 });
     }
     if (estimate.actSignedAt) {
       return NextResponse.json(

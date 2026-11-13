@@ -1,4 +1,5 @@
 import { getCurrentMaster } from "@/lib/auth";
+import { replacedDocIds } from "@/lib/estimate-replace";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -99,9 +100,12 @@ export default async function ClientPage({
   };
 
   // Договоры (среди КП этого клиента) — для таба «Договор»
-  const contracts = client.estimates
-    .filter((e) => e.contractPublicId)
+  const withContract = client.estimates.filter((e) => e.contractPublicId);
+  // Договоры, которые заменены новым вариантом КП (13.11.2026) — «Не действует»
+  const replacedContracts = await replacedDocIds(withContract.map((e) => e.id), "contract");
+  const contracts = withContract
     .map((e) => ({
+      contractReplaced: replacedContracts.has(e.id),
       estimateId: e.id,
       publicId: e.publicId,
       contractPublicId: e.contractPublicId!,

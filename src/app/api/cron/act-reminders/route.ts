@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendPushToMaster } from "@/lib/push";
+import { dueActReminders } from "@/lib/act-reminders";
 
 /**
  * Одно напоминание про неподписанный акт (30.09.2026).
@@ -10,6 +11,7 @@ import { sendPushToMaster } from "@/lib/push";
  * не подписан, замечаний от клиента нет, напоминания ещё не было — мастеру
  * пуш «Акт по … не подписан. Отправить ещё раз?». Одно на акт: дальше тихая
  * метка «без подписи» в карточке, приложение не пристаёт.
+ * Заменённые акты (выбран другой вариант КП, 13.11.2026) — без напоминания.
  */
 export const maxDuration = 60;
 
@@ -17,19 +19,7 @@ export async function GET(request: NextRequest) {
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const now = Date.now();
-  const due = await prisma.estimate.findMany({
-    where: {
-      deletedAt: null,
-      actPublicId: { not: null },
-      actSignedAt: null,
-      actClientRemarks: null,
-      actRemindedAt: null,
-      actSentAt: { lt: new Date(now - 20 * 60 * 60 * 1000), gt: new Date(now - 14 * 24 * 60 * 60 * 1000) },
-    },
-    select: { id: true, masterId: true, clientName: true, clientAddress: true, measurementObjectId: true },
-    take: 500,
-  });
+  const due = await dueActReminders();
   let sent = 0;
   for (const e of due) {
     const where = e.clientAddress || e.clientName || "объекту";

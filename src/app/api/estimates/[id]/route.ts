@@ -11,6 +11,7 @@ import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
 import { reportError } from "@/lib/report-error";
+import { confirmReplacing, ConfirmStatusError, isContractReplaced, otherVariantChosen, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 export async function GET(
   _request: Request,
@@ -42,6 +43,7 @@ export async function GET(
       );
     }
 
+    const otherChosen = await otherVariantChosen(prisma, estimate);
     const mo = estimate.measurementObject;
     const workshopReady = !!mo && !mo.deletedAt && mo.rooms.length > 0;
 
@@ -50,6 +52,11 @@ export async function GET(
       // Плоские поля для мобилки: id живого объекта и его адрес, либо null.
       workshopMeasurementId: workshopReady ? mo.id : null,
       measurementAddress: workshopReady ? mo.address : null,
+      // Неподписанный договор этого КП заменён новым вариантом (13.11.2026)
+      // …и договор/акт, созданные на непринятом КП после выбора другого варианта
+      contractReplaced: isContractReplaced(estimate) || otherChosen,
+      /** Не принятое КП, а в объекте выбран другой вариант: договор/акт здесь не создаются. */
+      otherVariantChosen: otherChosen,
     });
   } catch (error) {
     if (error instanceof KpAdjustError) {
@@ -149,27 +156,41 @@ export async function PUT(
     // объекта становятся «пересмотренными», чтобы деньги и этап объекта
     // считались по одной цене.
     if (status === "CONFIRMED") {
-      if (!["SENT", "VIEWED", "REVISED"].includes(existing.status)) {
-        return NextResponse.json({ error: "Это КП нельзя отметить выбранным" }, { status: 400 });
+      // Допустимые статусы, разжалование прежних принятых и проверка подписи — в одной
+      // транзакции под замком объекта (confirmReplacing). Из DRAFT — только если в объекте
+      // уже есть принятое КП: клиент согласился на новый вариант устно (13.11.2026).
+      let replacedTotals: number[] = [];
+      try {
+        ({ replacedTotals } = await prisma.$transaction((tx) => confirmReplacing(tx, id, existing.measurementObjectId, "master")));
+      } catch (e) {
+        if (e instanceof ReplaceBlockedError) {
+          return NextResponse.json({ error: e.message, code: "PREV_SIGNED", kind: e.kind }, { status: 409 });
+        }
+        if (e instanceof ConfirmStatusError) {
+          return NextResponse.json({ error: e.message }, { status: 400 });
+        }
+        throw e;
       }
-      const confirmed = await prisma.estimate.update({
+      const confirmed = await prisma.estimate.findUniqueOrThrow({
         where: { id },
-        data: { status: "CONFIRMED" },
         include: { partner: { select: { amount: true, percent: true, coef: true } } },
       });
       if (existing.measurementObjectId) {
-        await prisma.estimate.updateMany({
-          where: {
-            measurementObjectId: existing.measurementObjectId,
-            id: { not: id },
-            deletedAt: null,
-            status: { in: ["SENT", "VIEWED"] },
-          },
-          data: { status: "REVISED" },
-        });
         // after(): синк статуса/этапа идёт после ответа, но Vercel дожидается его — голый промис может быть убит
         const objectId = existing.measurementObjectId;
         after(() => syncClientStatusForObject(objectId).catch(() => {}));
+      }
+      // Замена — запись в ленту мастера (ClientEvent; клиенту наружу ничего не уходит)
+      if (existing.clientId && replacedTotals.length > 0) {
+        const currency = await currencyFor(existing.masterId);
+        addClientEvent({
+          clientId: existing.clientId,
+          type: "KP_CONFIRMED",
+          content: `Мастер выбрал новый вариант: ${formatPrice(existing.total ?? 0, currency)} (было ${replacedTotals.map((v) => formatPrice(v, currency)).join(", ")})`,
+          metadata: { estimateId: id, replaced: true },
+        }).catch(() => {});
+        changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        return NextResponse.json(confirmed);
       }
       if (existing.clientId) {
         const currency = await currencyFor(existing.masterId);

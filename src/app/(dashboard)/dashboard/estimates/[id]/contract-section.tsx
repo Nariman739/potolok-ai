@@ -21,6 +21,7 @@ import {
 } from "./contract-terms-dialog";
 import { Pencil } from "lucide-react";
 import { whatsappNumber } from "@/lib/phone-format";
+import { CONTRACT_OTHER_CHOSEN_TEXT, MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 
 type Props = {
   estimateId: string;
@@ -28,6 +29,10 @@ type Props = {
   contractCreatedAt: string | null;
   contractSignedAt: string | null;
   contractSignerName: string | null;
+  /** Мастер выбрал другой вариант — этот неподписанный договор больше не действует (13.11.2026). */
+  contractReplaced?: boolean;
+  /** Не принятое КП, а в объекте клиент выбрал другой вариант — договор здесь не создаём. */
+  otherChosen?: boolean;
   clientPhone: string | null;
   contractConfigured: boolean;
   /** Незаполненные реквизиты — показываем мастеру, чего не хватает. */
@@ -44,6 +49,8 @@ export function ContractSection({
   contractCreatedAt,
   contractSignedAt,
   contractSignerName,
+  contractReplaced = false,
+  otherChosen = false,
   clientPhone,
   contractConfigured,
   missingRequisites,
@@ -132,6 +139,24 @@ export function ContractSection({
     );
   }
 
+  if (!contractPublicId && otherChosen) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileSignature className="h-4 w-4" />
+            Электронный договор
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-800">
+            {CONTRACT_OTHER_CHOSEN_TEXT}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!contractPublicId) {
     return (
       <Card>
@@ -198,6 +223,10 @@ export function ContractSection({
             <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" variant="secondary">
               Подписан
             </Badge>
+          ) : contractReplaced ? (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100" variant="secondary">
+              Не действует
+            </Badge>
           ) : (
             <Badge variant="secondary">Ожидает подписи</Badge>
           )}
@@ -220,6 +249,10 @@ export function ContractSection({
               </div>
             </div>
           </div>
+        ) : contractReplaced ? (
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-800">
+            {MASTER_CONTRACT_REPLACED_TEXT}
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Создан{" "}
@@ -230,13 +263,18 @@ export function ContractSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            {copied ? "Скопировано" : "Копировать ссылку"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={whatsappShare}>
-            WhatsApp
-          </Button>
+          {/* Недействующий договор клиенту не отправляем — только просмотр */}
+          {!contractReplaced && (
+            <>
+              <Button variant="outline" size="sm" onClick={copyLink}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                {copied ? "Скопировано" : "Копировать ссылку"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={whatsappShare}>
+                WhatsApp
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" asChild>
             <a
               href={`/contract/${contractPublicId}`}
@@ -257,7 +295,7 @@ export function ContractSection({
               PDF
             </a>
           </Button>
-          {!isSigned && (
+          {!isSigned && !contractReplaced && (
             <Button
               variant="outline"
               size="sm"
