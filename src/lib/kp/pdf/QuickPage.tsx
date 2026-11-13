@@ -3,7 +3,7 @@ import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData, PdfLineItem } from "../pdf-data";
 import { fmtDate, MasterLogo, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
 import { currencySymbol } from "@/lib/currency";
-import { whatsappDigits } from "@/lib/phone-format";
+import { whatsappNumber } from "@/lib/phone-format";
 
 // «Быстрое» КП.
 // Когда клиент в WhatsApp спрашивает «а сколько примерно?» — мастер
@@ -40,7 +40,7 @@ export function QuickPage({ data }: { data: PdfData }) {
   // С позициями — точная сумма, иначе не сходится со списком.
   const price = hasItems ? estimate.total : Math.round(estimate.total / 10000) * 10000;
 
-  const waPhone = whatsappDigits(master.whatsappPhone) ?? master.whatsappPhone.replace(/\D/g, "");
+  const waPhone = whatsappNumber(master.whatsappPhone) ?? master.whatsappPhone.replace(/\D/g, "");
   const waUrl = `https://wa.me/${waPhone}`;
 
   // Тексты — берём из config.quick если мастер переопределил, иначе дефолты.

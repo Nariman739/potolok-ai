@@ -17,7 +17,7 @@ import { after } from "next/server";
 import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
 import { stripInternalPrices } from "@/lib/public-calc";
-import { whatsappDigits } from "@/lib/phone-format";
+import { whatsappNumber } from "@/lib/phone-format";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -452,9 +452,9 @@ export default async function PublicKpPage({
                   📞 Позвонить
                 </a>
               )}
-              {whatsappDigits(master.whatsappPhone) && (
+              {whatsappNumber(master.whatsappPhone) && (
                 <a
-                  href={`https://wa.me/${whatsappDigits(master.whatsappPhone)}`}
+                  href={`https://wa.me/${whatsappNumber(master.whatsappPhone)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm"
