@@ -44,7 +44,6 @@ interface EstimateActionsProps {
   publicId: string;
   clientPhone?: string | null;
   status?: string;
-  contractConfigured?: boolean;
   validUntil?: Date | null;
   /** Вид цен для клиента: detailed | summary (16.10.2026) */
   priceView?: string | null;
@@ -62,7 +61,6 @@ export function EstimateActions({
   publicId,
   clientPhone,
   status,
-  contractConfigured,
   validUntil,
   priceView,
   recalcHref,
@@ -212,7 +210,8 @@ export function EstimateActions({
   const validUntilLabel = validUntilValue ? validUntilValue.split("-").reverse().join(".") : "не задан";
 
   const canRevise = status === "CONFIRMED" || status === "SENT" || status === "VIEWED";
-  const showAct = contractConfigured && status === "CONFIRMED";
+  // PDF договора и акта собираются при любых реквизитах (без типа договора — как от физлица).
+  const showAct = status === "CONFIRMED";
   const publicUrl = `/kp/${publicId}`;
 
   return (
@@ -272,14 +271,12 @@ export function EstimateActions({
             КП монтажнику
           </a>
         </Button>
-        {contractConfigured && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/api/estimates/${estimateId}/contract?web=1`}>
-              <FileText className="h-4 w-4 mr-2" />
-              Договор
-            </a>
-          </Button>
-        )}
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/api/estimates/${estimateId}/contract?web=1`}>
+            <FileText className="h-4 w-4 mr-2" />
+            Договор
+          </a>
+        </Button>
         {showAct && (
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/estimates/${estimateId}/act`}>
@@ -394,14 +391,12 @@ export function EstimateActions({
                 КП монтажнику
               </a>
             </DropdownMenuItem>
-            {contractConfigured && (
-              <DropdownMenuItem asChild>
-                <a href={`/api/estimates/${estimateId}/contract?web=1`}>
-                  <FileText />
-                  Договор
-                </a>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem asChild>
+              <a href={`/api/estimates/${estimateId}/contract?web=1`}>
+                <FileText />
+                Договор
+              </a>
+            </DropdownMenuItem>
             {showAct && (
               <DropdownMenuItem asChild>
                 <a href={`/api/estimates/${estimateId}/act`}>

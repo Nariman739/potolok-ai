@@ -39,9 +39,9 @@ export async function GET(
 
     // Реквизиты в документе — компании (владельца), а не того, кто нажал «Акт».
     const master = await prisma.master.findUnique({ where: { id: scope.ownerId } });
-    if (!master || !master.contractType || master.contractType === "none") {
-      return NextResponse.json({ error: scope.isOwner ? "Настройте тип договора в разделе Профиль" : "Попросите владельца настроить тип договора" }, { status: 400 });
-    }
+    if (!master) return NextResponse.json({ error: "Мастер не найден" }, { status: 404 });
+    // Тип договора не выбран — акт оформляется «к Соглашению», как от физического лица: так же,
+    // как электронный акт и договор. До 13.11.2026 здесь был отказ 400 с JSON вместо PDF.
 
     const estimate = await prisma.estimate.findFirst({ where: { id, ...inScope(scope), deletedAt: null } });
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });

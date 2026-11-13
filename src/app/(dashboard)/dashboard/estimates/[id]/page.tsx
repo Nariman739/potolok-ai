@@ -4,7 +4,6 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import {
-  isContractConfigured,
   missingContractFields,
 } from "@/lib/contract-requirements";
 import Link from "next/link";
@@ -138,7 +137,6 @@ export default async function EstimateDetailPage({
         publicId={estimate.publicId}
         clientPhone={estimate.clientPhone}
         status={estimate.status}
-        contractConfigured={isContractConfigured(requisites)}
         validUntil={estimate.validUntil}
         priceView={estimate.priceView}
         recalcHref={isAppEstimate ? null : `/dashboard/calculator?from=${estimate.id}`}
