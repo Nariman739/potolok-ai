@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         data: { masterId: obj.masterId, companyId: scope.companyId, measurementObjectId: obj.id, amount, kind, note, paidAt },
       });
       if (obj.clientId) {
-        addClientEvent({
+        await addClientEvent({
           clientId: obj.clientId,
           type: "NOTE",
           // Валюта компании — у requireAuth она уже владельца (07.10.2026)
