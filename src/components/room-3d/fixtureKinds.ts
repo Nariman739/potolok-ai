@@ -29,15 +29,49 @@ function variantName(id: string | undefined, variants: VariantNames): string {
   return (variants[id]?.name ?? "").toLowerCase();
 }
 
+/** Вид софита по названию своей позиции; sure=false — признаков нет, взят GX53 по умолчанию. */
+export type SpotKindGuess = { kind: SpotKind; sure: boolean };
+
+/** Кириллические «коды» мастеров перед числом → латиница: вн53/бш-53 = BH53, жх 53 = GX53, гу10 = GU10. */
+function latinizeSpotCodes(s: string): string {
+  return s
+    .replace(/(^|[^a-zа-яё0-9])(вн|бн|вш|бш)(?=[\s\-_.]*(53|10))/g, "$1bh")
+    .replace(/(^|[^a-zа-яё0-9])(жх|гх|джх|жк)(?=[\s\-_.]*53)/g, "$1gx")
+    .replace(/(^|[^a-zа-яё0-9])гу(?=[\s\-_.]*10)/g, "$1gu");
+}
+
+/**
+ * Название своей позиции прайса → вид (13.11.2026). Правила от сильных к слабым:
+ *  1. код «буквы + отдельное число» с любыми разделителями: bh/gu 10 → bh10, bh 53 → bh53,
+ *     gx 53 → gx53. Число отдельное — «3650», «5300», артикул «sl5300», «gx91» не ловим;
+ *     перед буквами не буква/цифра — «sl53» не считаем за «53»;
+ *  2. слова: «безрамочный» — воронка без кольца, визуально BH → bh53; «таблетка/тарелка» → gx53;
+ *     «накладной» (и не «встраиваемый/утопленный») → cup;
+ *  3. одинокое «53» без букв («встр. 53», «софит-53») — лампа 53 без BH = GX53;
+ *     одинокое «10» не трогаем (штуки, ватты);
+ *  4. иначе GX53 (самый частый), sure=false.
+ * Раньше: только латинские bh10/gu10/bh53 в склеенной строке, всё прочее молча GX53 —
+ * «бш-53» и «безрамочный …» мастеров шли таблеткой.
+ */
+export function guessSpotKind(rawName: string): SpotKindGuess {
+  const s = latinizeSpotCodes(rawName.toLowerCase().trim());
+  const code = (letters: string, num: string) => new RegExp(`(^|[^a-z0-9])${letters}[\\s\\-_.]*${num}(?!\\d)`);
+  if (code("(bh|gu)", "10").test(s)) return { kind: "bh10", sure: true };
+  if (code("bh", "53").test(s)) return { kind: "bh53", sure: true };
+  if (code("gx", "53").test(s)) return { kind: "gx53", sure: true };
+  if (/безрам|без\s*рам/.test(s)) return { kind: "bh53", sure: true };
+  if (/таблет|тарелк/.test(s)) return { kind: "gx53", sure: true };
+  if (/(^|[^а-яё])накл/.test(s) && !/встр|утопл/.test(s)) return { kind: "cup", sure: true };
+  if (/(^|[^a-z0-9])53(?!\d)/.test(s)) return { kind: "gx53", sure: true };
+  return { kind: "gx53", sure: false };
+}
+
 export function resolveSpotKind(
   el: { spotType?: string; priceVariantId?: string; spotStyle?: "cup" | "gx53" },
   variants: VariantNames,
 ): SpotKind {
   if (el.priceVariantId) {
-    const n = variantName(el.priceVariantId, variants).replace(/[\s\-_]/g, "");
-    if (/bh10|gu10/.test(n)) return "bh10";
-    if (/bh53/.test(n)) return "bh53";
-    return "gx53";
+    return guessSpotKind(variantName(el.priceVariantId, variants)).kind;
   }
   switch (el.spotType) {
     case "spot_bh53":
