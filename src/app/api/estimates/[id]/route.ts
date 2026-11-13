@@ -124,9 +124,18 @@ export async function PUT(
     // calcIsBase (мобилка, 30.10.2026): пришёл свежий расчёт по прайсу после правки
     // чертежа из сохранённого КП — посредник в нём ещё не размазан, старый
     // коэффициент снимать нельзя.
+    // Ручные правки мастера (calculationData.manual, мобилка 13.11.2026: удалённые строки,
+    // ручные количество/цены, подшторник) — чтобы пересборка из дизайнера их не теряла.
+    // Пришёл расчёт без ключа manual (веб-редактор; мобилка, не дождавшаяся правок по сети)
+    // — оставляем прежние: calculationData заменяется целиком, иначе они пропали бы.
+    const prevManual = (existing.calculationData as { manual?: unknown } | null)?.manual;
+    const calcIn =
+      calculationData && typeof calculationData === "object" && !("manual" in calculationData) && prevManual
+        ? { ...calculationData, manual: prevManual }
+        : calculationData;
     const adjust = touchesMoney
       ? resolveAdjust(
-          (calculationData ?? existing.calculationData) as CalculationResult,
+          (calcIn ?? existing.calculationData) as CalculationResult,
           inputs,
           existing,
           { calcIsBase: body.calcIsBase === true },
