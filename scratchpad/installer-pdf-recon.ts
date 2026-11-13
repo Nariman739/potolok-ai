@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { autoWorkOrderLines, parseWorkOrderDoc, workOrderTotal } from "@/lib/work-order-lines";
 import { installerPdfModel } from "@/lib/installer-pdf-lines";
 import { priceMapFor } from "@/lib/price-items";
+import { pickPrimaryEstimate } from "@/lib/object-stage";
 // Только чтение: компанию прайса ищем, НЕ ensureOwnCompany (та создаёт компанию).
 const bookOf = async (companyId: string | null, masterId: string) => companyId ?? (await prisma.company.findUnique({ where: { ownerId: masterId }, select: { id: true } }))?.id ?? null;
 const keep = setInterval(() => {}, 1000);
@@ -15,10 +16,10 @@ const keep = setInterval(() => {}, 1000);
     const since = new Date(Date.now() - 30 * 864e5);
     const es = await prisma.estimate.findMany({
       where: { createdAt: { gte: since }, deletedAt: null },
-      select: { id: true, createdAt: true, masterId: true, companyId: true, calculationData: true, master: { select: { currency: true } }, measurementObject: { select: { workOrderLines: true } } },
+      select: { id: true, createdAt: true, masterId: true, companyId: true, calculationData: true, master: { select: { currency: true } }, measurementObject: { select: { workOrderLines: true, installerFee: true, estimates: { where: { deletedAt: null }, select: { id: true, status: true, createdAt: true, deletedAt: true } } } } },
     });
     const cache = new Map<string, Record<string, number>>();
-    let mobDiffNew = 0, unexplained = 0; const exU: string[] = []; const exNew: string[] = []; let diff = 0, fromDoc = 0, pct = 0, mob = 0, mobDiff = 0, spotsFixed = 0;
+    let feeCnt = 0, feeNotPrimary = 0, dupNames = 0, roomBad = 0; const exR: string[] = []; let mobDiffNew = 0, unexplained = 0; const exU: string[] = []; const exNew: string[] = []; let diff = 0, fromDoc = 0, pct = 0, mob = 0, mobDiff = 0, spotsFixed = 0;
     const ex: string[] = [];
     for (const e of es) {
       const calc = e.calculationData as any;
@@ -26,14 +27,29 @@ const keep = setInterval(() => {}, 1000);
       if (!cache.has(e.masterId)) cache.set(e.masterId, await (async () => { const b = await bookOf(e.companyId, e.masterId); return b ? priceMapFor(b, cur) : {}; })());
       const prices = cache.get(e.masterId)!;
       const saved = e.measurementObject?.workOrderLines ?? null;
-      const m = installerPdfModel(calc, prices, cur, e.id, saved);
+      const fee = e.measurementObject?.installerFee ?? null;
+      const primaryId = e.measurementObject ? pickPrimaryEstimate(e.measurementObject.estimates)?.id ?? null : null;
+      const m = installerPdfModel(calc, prices, cur, e.id, saved, e.measurementObject ? { installerFee: fee, primaryEstimateId: primaryId } : null);
+      // Комнаты: «Помещений» = различимые комнаты; одноимённые с разным roomId — разные группы с своей площадью
+      const rrsAll: any[] = calc?.roomResults ?? calc?.variants?.find((v: any) => v.type === "standard")?.rooms ?? [];
+      const keyArea = new Map<string, number>();
+      for (const r of rrsAll) { const k = r.roomId ?? r.roomName ?? ""; keyArea.set(k, (keyArea.get(k) ?? 0) + (r.area ?? 0)); }
+      const names = rrsAll.map((r) => r.roomName); if (new Set(names).size < names.length) dupNames++;
+      const roomGroups = m.rooms.filter((r) => r.area != null);
+      const areaOk = roomGroups.every((g) => [...keyArea.values()].some((a) => Math.abs(a - g.area!) < 1e-6));
+      if (m.roomCount !== keyArea.size || roomGroups.length > keyArea.size || !areaOk) { roomBad++; if (exR.length < 3) exR.push(`${e.id.slice(0, 8)} count ${m.roomCount}/${keyArea.size} groups ${roomGroups.length}`); }
       const doc = parseWorkOrderDoc(saved);
       const own = doc && doc.estimateId === e.id;
       if (own) { fromDoc++; if (doc!.pay) pct++; }
-      const wo = workOrderTotal((own ? doc!.lines : autoWorkOrderLines(calc, prices, cur)).filter((l) => l.qty > 0 && l.price > 0));
+      // Как GET наряда: сохранённый от этого КП → ручная сумма без наряда → авто-строки
+      // Ручная сумма — только главному КП и только > 0 (замечание 8d)
+      const byFee = !doc && (fee ?? 0) > 0 && primaryId === e.id;
+      if (!doc && (fee ?? 0) > 0 && primaryId !== e.id) feeNotPrimary++;
+      if (byFee) feeCnt++;
+      const wo = workOrderTotal((own ? doc!.lines : byFee ? [{ key: "fee", room: "", name: "", qty: 1, unit: "", price: fee! }] : autoWorkOrderLines(calc, prices, cur)).filter((l) => l.qty > 0 && l.price > 0));
       if (m.total !== wo) { diff++; if (ex.length < 5) ex.push(`${e.id.slice(0, 8)} pdf ${m.total} наряд ${wo}`); }
       const rrs = calc?.roomResults ?? [];
-      if (rrs.some((r: any) => r.installerItems?.length) && !own) {
+      if (rrs.some((r: any) => r.installerItems?.length) && !own && !byFee) {
         mob++;
         const tab = Math.round(rrs.reduce((s: number, r: any) => s + (r.installerItems ?? []).reduce((a: number, i: any) => a + (i.quantity > 0 ? i.quantity * Math.max(0, Math.round(i.unitPrice || 0)) : 0), 0), 0)
           + (calc.extraItems ?? []).reduce((s: number, x: any) => s + (x.itemCode !== "min_order" && x.installerPrice > 0 && x.quantity > 0 ? x.quantity * Math.round(x.installerPrice) : 0), 0));
@@ -46,9 +62,10 @@ const keep = setInterval(() => {}, 1000);
         if (!(calc.totalSpots > 0) && m.spots > 0) spotsFixed++;
       }
     }
-    console.log({ КП: es.length, PDF_не_равно_наряду: diff, из_сохранённого_наряда: fromDoc, из_них_процентом: pct, мобилка_авто: mob, мобилка_не_равно_вкладке: mobDiff, светильники_было0_стало_число: spotsFixed, мобилка_не_равно_вкладке_после_30_10: mobDiffNew, не_объяснено_починкой_x03: unexplained }); console.log(exU.join("\n")); console.log(exNew.join("\n"));
+    console.log({ КП: es.length, PDF_не_равно_наряду: diff, из_сохранённого_наряда: fromDoc, ручная_сумма_installerFee: feeCnt, ручная_сумма_у_неглавного_КП_не_печатаем: feeNotPrimary, КП_с_одноимёнными_комнатами: dupNames, комнаты_не_сошлись: roomBad, из_них_процентом: pct, мобилка_авто: mob, мобилка_не_равно_вкладке: mobDiff, светильники_было0_стало_число: spotsFixed, мобилка_не_равно_вкладке_после_30_10: mobDiffNew, не_объяснено_починкой_x03: unexplained }); console.log(exU.join("\n")); console.log(exNew.join("\n"));
     if (ex.length) console.log(ex.join("\n"));
-    console.log(diff ? "FAIL" : "PASS");
+    if (exR.length) console.log(exR.join("\n"));
+    console.log(diff || roomBad ? "FAIL" : "PASS");
   } catch (err) { console.log("ERR", err); }
   clearInterval(keep); process.exit(0);
 })();

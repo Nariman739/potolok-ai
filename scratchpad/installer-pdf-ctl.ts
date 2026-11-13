@@ -110,6 +110,37 @@ async function pdfText(cookie: string, est: string, name: string) {
     created.estimates.push(est2.id);
     p = await pdfText(A, est2.id, "04-site-auto");
     check("4 КП с сайта: допы на месте, не процент", p.text.includes("Доп с монтажом") && !p.text.includes("Оплата:") && p.text.includes("Светильников: 4"));
+
+    // 5) Наряда нет, сумма вбита руками (installerFee) — как GET наряда: одна строка «Оплата за монтаж»
+    const obj2 = await (await api(A, "/measurements", { method: "POST", body: JSON.stringify({ address: `CTL наряд-PDF fee ${stamp} — удалить`, status: "measured", rooms: [{ name: "Зал", walls: [400, 325, 400, 325], normalCorners: [true, true, true, true], angles: [90, 90, 90, 90], area: 13, perimeter: 14.5, elements: [] }] }) })).json();
+    created.objects.push(obj2.id);
+    await prisma.measurementObject.update({ where: { id: obj2.id }, data: { installerFee: 37000 } });
+    const est3 = await prisma.estimate.create({ data: { masterId, measurementObjectId: obj2.id, clientName: "CTL Ручная сумма", roomsData: [], calculationData: MOBILE_CALC, totalArea: 13, total: 150000, status: "CONFIRMED" } as never, select: { id: true } });
+    created.estimates.push(est3.id);
+    p = await pdfText(A, est3.id, "05-manual-fee");
+    const wo5 = await (await api(A, `/objects/${obj2.id}/work-order`)).json();
+    check("5 ручная сумма: «Оплата за монтаж» 37 000, без авто-строк, = GET наряда", p.text.includes("Оплата за монтаж") && p.text.replace(/\s/g, "").includes("37000₽") && !p.text.includes("Монтаж полотна") && wo5.total === 37000, wo5.total);
+
+    // 6) Неглавное КП того же объекта (черновик рядом с подтверждённым) — ручную сумму не печатаем;
+    //    две «Спальни» с разными roomId — две группы со своей площадью, «Помещений: 2»
+    const TWO_ROOMS = { totalArea: 25, totalSpots: 0, roomResults: [
+      { roomId: "s1", roomName: "Спальня", area: 12, items: [ii("canvas_mat", "Полотно", 12, "м²", 3500)], installerItems: [ii("canvas_mat", "Монтаж полотна", 12, "м²", 800)] },
+      { roomId: "s2", roomName: "Спальня", area: 13, items: [ii("canvas_mat", "Полотно", 13, "м²", 3500)], installerItems: [ii("canvas_mat", "Монтаж полотна", 13, "м²", 800)] },
+    ], extraItems: [] };
+    const est4 = await prisma.estimate.create({ data: { masterId, measurementObjectId: obj2.id, clientName: "CTL Неглавное", roomsData: [], calculationData: TWO_ROOMS, totalArea: 25, total: 80000, status: "DRAFT" } as never, select: { id: true } });
+    created.estimates.push(est4.id);
+    p = await pdfText(A, est4.id, "06-not-primary-two-bedrooms");
+    check("6 неглавное КП: без «Оплата за монтаж», авто 20 000", !p.text.includes("Оплата за монтаж") && p.text.replace(/\s/g, "").includes("20000₽"));
+    check("6 две «Спальни»: 12.0 и 13.0 м², «Помещений: 2»", p.text.includes("Спальня — 12.0 м²") && p.text.includes("Спальня — 13.0 м²") && p.text.includes("Помещений: 2"));
+
+    // 7) installerFee = 0 — не пустой PDF, а авто-строки
+    const obj3 = await (await api(A, "/measurements", { method: "POST", body: JSON.stringify({ address: `CTL наряд-PDF fee0 ${stamp} — удалить`, status: "measured", rooms: [{ name: "Зал", walls: [400, 325, 400, 325], normalCorners: [true, true, true, true], angles: [90, 90, 90, 90], area: 13, perimeter: 14.5, elements: [] }] }) })).json();
+    created.objects.push(obj3.id);
+    await prisma.measurementObject.update({ where: { id: obj3.id }, data: { installerFee: 0 } });
+    const est5 = await prisma.estimate.create({ data: { masterId, measurementObjectId: obj3.id, clientName: "CTL fee 0", roomsData: [], calculationData: MOBILE_CALC, totalArea: 13, total: 150000, status: "CONFIRMED" } as never, select: { id: true } });
+    created.estimates.push(est5.id);
+    p = await pdfText(A, est5.id, "07-fee-zero");
+    check(`7 installerFee 0 → авто ${fmt(MOBILE_TOTAL)}`, p.text.replace(/\s/g, "").includes(fmt(MOBILE_TOTAL).replace(/\s/g, "") + "₽") && !p.text.includes("Оплата за монтаж"));
   } catch (err) {
     fails++;
     console.log("ERROR", err);

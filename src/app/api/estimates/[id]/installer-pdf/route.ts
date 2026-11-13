@@ -11,6 +11,7 @@ import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
 // Строки — из того же источника, что наряд (13.11.2026)
 import { installerPdfModel } from "@/lib/installer-pdf-lines";
+import { pickPrimaryEstimate } from "@/lib/object-stage";
 
 const C = {
   primary: "#374151",
@@ -75,14 +76,24 @@ export async function GET(
     const company = estimate.master.companyName || estimate.master.firstName || "";
 
     // Сохранённый наряд объекта: если он от этого КП — печатаем его (правки мастера, процент).
-    const savedDoc = estimate.measurementObjectId
-      ? (await prisma.measurementObject.findUnique({ where: { id: estimate.measurementObjectId }, select: { workOrderLines: true } }))?.workOrderLines
+    // Нет наряда, а сумма вбита руками (installerFee) — она же, как в GET наряда, но только
+    // для главного КП объекта (по тому же правилу pickPrimaryEstimate).
+    const obj = estimate.measurementObjectId
+      ? await prisma.measurementObject.findUnique({
+          where: { id: estimate.measurementObjectId },
+          select: {
+            workOrderLines: true,
+            installerFee: true,
+            estimates: { where: { deletedAt: null }, select: { id: true, status: true, createdAt: true, deletedAt: true } },
+          },
+        })
       : null;
-    const model = installerPdfModel(calc, priceOverrides, cur, estimate.id, savedDoc);
+    const model = installerPdfModel(calc, priceOverrides, cur, estimate.id, obj?.workOrderLines ?? null, obj
+      ? { installerFee: obj.installerFee, primaryEstimateId: pickPrimaryEstimate(obj.estimates)?.id ?? null }
+      : null);
     const installRooms = model.rooms;
     const grandTotal = model.total;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const roomCount = (calc?.roomResults ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms ?? []).length;
+    const roomCount = model.roomCount;
 
     // ── Generate PDF ──
     const doc = new PDFDocument({ size: "A4", margin: 0 });
