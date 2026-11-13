@@ -269,6 +269,11 @@ export function QuickPage({ data }: { data: PdfData }) {
           <Text style={{ ...eyebrow, marginBottom: 8 }}>Из чего складывается цена</Text>
           {groups.map((g, gi) => (
             <View key={gi} style={{ marginBottom: showGroupTitles ? 10 : 0 }}>
+              {/* Заголовок группы + первая строка — один неразрывный блок: заголовок не остаётся
+                  один внизу страницы (ревью 8d, 13.11.2026). minPresenceAhead тут не работает:
+                  react-pdf учитывает его, только если перед элементом в родителе что-то есть,
+                  а заголовок — первый ребёнок группы. */}
+              <View wrap={false}>
               {showGroupTitles && (
                 <View
                   wrap={false}
@@ -297,8 +302,12 @@ export function QuickPage({ data }: { data: PdfData }) {
                   )}
                 </View>
               )}
-              {g.items.map((it, i) => (
+              {g.items.slice(0, 1).map((it, i) => (
                 <QuickItemRow key={i} item={it} data={data} textMain={textMain} textMuted={textMuted} hairline={hairline} isDark={isDarkCover} />
+              ))}
+              </View>
+              {g.items.slice(1).map((it, i) => (
+                <QuickItemRow key={i + 1} item={it} data={data} textMain={textMain} textMuted={textMuted} hairline={hairline} isDark={isDarkCover} />
               ))}
             </View>
           ))}
