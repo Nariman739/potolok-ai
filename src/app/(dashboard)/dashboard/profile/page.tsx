@@ -20,6 +20,11 @@ import Image from "next/image";
 import type { MasterProfile } from "@/lib/types";
 import { LogoGeneratorDialog } from "@/components/logo/logo-generator-dialog";
 import { CURRENCIES, CURRENCY_CODES, asCurrency, type CurrencyCode } from "@/lib/currency";
+import {
+  compressLogoForUpload,
+  LOGO_MAX_UPLOAD_BYTES,
+  LOGO_TOO_BIG_MESSAGE,
+} from "@/lib/compress-logo-client";
 
 const BOT_USERNAME = "potolokaiBot";
 
@@ -157,9 +162,13 @@ export default function ProfilePage() {
     if (!file) return;
     setUploadingLogo(true);
     try {
+      // Ужимаем в браузере: Vercel не пропускает тело больше ~4,5 МБ (413 без текста).
+      const toSend = await compressLogoForUpload(file);
+      if (toSend.size > LOGO_MAX_UPLOAD_BYTES) throw new Error(LOGO_TOO_BIG_MESSAGE);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", toSend);
       const res = await fetch("/api/logo/upload", { method: "POST", body: fd });
+      if (res.status === 413) throw new Error(LOGO_TOO_BIG_MESSAGE);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Не удалось загрузить логотип");
       setLogoUrl(data.url);
