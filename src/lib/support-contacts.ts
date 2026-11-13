@@ -30,20 +30,18 @@ export const SUPPORT_CONTACTS_PAGE_URL = "https://potolok.ai/contacts";
 
 /** Короткий готовый ответ «как связаться с поддержкой» — для быстрых ответов без модели. */
 export const SUPPORT_SHORT_ANSWER =
-  `Поддержка potolok.ai — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}). ` +
-  `Отвечает лично создатель приложения, в рабочие дни обычно в течение нескольких часов.\n\n` +
-  `Telegram-бот: ${SUPPORT_TELEGRAM_BOT}. Контакты на сайте: ${SUPPORT_CONTACTS_PAGE_URL}`;
+  `Поддержка potolok.ai — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}).` +
+  `\n\nTelegram-бот: ${SUPPORT_TELEGRAM_BOT}. Контакты на сайте: ${SUPPORT_CONTACTS_PAGE_URL}`;
 
 export const SUPPORT_SHORT_ANSWER_KK =
-  `potolok.ai қолдауы — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}). ` +
-  `Қолданбаны жасаған адамның өзі жауап береді, жұмыс күндері әдетте бірнеше сағат ішінде.\n\n` +
-  `Telegram-бот: ${SUPPORT_TELEGRAM_BOT}. Сайттағы байланыстар: ${SUPPORT_CONTACTS_PAGE_URL}`;
+  `potolok.ai қолдауы — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}).` +
+  `\n\nTelegram-бот: ${SUPPORT_TELEGRAM_BOT}. Сайттағы байланыстар: ${SUPPORT_CONTACTS_PAGE_URL}`;
 
 /** Справка для системной подсказки: контакты + запрет выдумывать. */
 export const SUPPORT_CONTACTS_PROMPT = `## ПОДДЕРЖКА И КОНТАКТЫ (единственный источник — копируй дословно)
 
 Как связаться с поддержкой / разработчиком potolok.ai:
-- WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY} — ${SUPPORT_WHATSAPP_URL} (отвечает лично создатель приложения, в рабочие дни обычно в течение нескольких часов)
+- WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY} — ${SUPPORT_WHATSAPP_URL} — поддержка potolok.ai
 - Telegram-бот: ${SUPPORT_TELEGRAM_BOT} — ${SUPPORT_TELEGRAM_BOT_URL} (уведомления, календарь, коды для сброса пароля)
 - В приложении ссылка на поддержку есть только на экране «Забыли пароль?» (со страницы входа) — кнопка «Не получается — написать нам», она открывает WhatsApp поддержки.
 - Контакты и реквизиты на сайте: ${SUPPORT_CONTACTS_PAGE_URL}
@@ -51,6 +49,7 @@ export const SUPPORT_CONTACTS_PROMPT = `## ПОДДЕРЖКА И КОНТАКТ�
 Правила про контакты:
 - Телефоны, WhatsApp, Telegram-ники, ботов, группы, почту и сайты называй ТОЛЬКО из списка выше, символ в символ. Никогда не придумывай и не «достраивай» контакт.
 - Почту поддержки не называй — её в списке нет.
+- Сроки ответа поддержки не обещай и не называй.
 - Кнопок «Поддержка», «Техподдержка», «Написать нам», «Связаться с нами» в профиле и в меню приложения НЕТ — не отправляй мастера туда.
 - Telegram @potolok_ai и группа мастеров в WhatsApp — общие чаты мастеров, а не поддержка. Как контакт поддержки их не давай.
 - Не знаешь ответа, не уверен, что кнопка или экран существуют, — так и скажи и дай WhatsApp поддержки из списка.`;
