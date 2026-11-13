@@ -94,6 +94,8 @@ type Contract = {
   contractCreatedAt: string | null;
   contractSignedAt: string | null;
   contractSignerName: string | null;
+  /** Заменён новым вариантом КП — не действует (13.11.2026). */
+  contractReplaced?: boolean;
   total: number;
 };
 
@@ -821,6 +823,10 @@ export function ClientCard({
                               <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" variant="secondary">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Подписан
+                              </Badge>
+                            ) : c.contractReplaced ? (
+                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100" variant="secondary">
+                                Не действует
                               </Badge>
                             ) : (
                               <Badge variant="secondary">

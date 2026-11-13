@@ -1,5 +1,5 @@
 import { confirmReplacing, ConfirmStatusError, ReplaceBlockedError } from "@/lib/estimate-replace";
-import { CLIENT_CONTACT_MASTER_TEXT } from "@/lib/estimate-replace-text";
+import { CLIENT_CONTACT_MASTER_TEXT, prevReplacedLine } from "@/lib/estimate-replace-text";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -89,8 +89,9 @@ export async function POST(
     // Клиент принял НОВЫЙ вариант, а прежний уже принят (13.11.2026): то же правило, что у
     // мастера — прежнее → «пересмотрено», его неподписанные договор/акт не действуют; по
     // прежнему подписан договор/акт — отказ без подробностей, КП остаётся как было.
+    let replaced: { total: number; contract: boolean; act: boolean }[] = [];
     try {
-      await prisma.$transaction((tx) => confirmReplacing(tx, estimate.id, estimate.measurementObjectId, "client"));
+      ({ replaced } = await prisma.$transaction((tx) => confirmReplacing(tx, estimate.id, estimate.measurementObjectId, "client")));
     } catch (e) {
       if (e instanceof ReplaceBlockedError) {
         return NextResponse.json({ error: CLIENT_CONTACT_MASTER_TEXT }, { status: 409 });
@@ -118,6 +119,12 @@ export async function POST(
     }
 
     const clientStr = estimate.clientName || "Клиент";
+    // Прежний принятый вариант с неподписанным договором/актом разжалован — одна строка
+    // в то же уведомление (не отдельное), чтобы мастер не отправил мёртвую ссылку (13.11.2026)
+    const prevLine = replaced
+      .filter((r) => r.contract || r.act)
+      .map((r) => prevReplacedLine(formatPrice(r.total, currency), r))
+      .join("\n");
 
     if (
       estimate.master?.telegramChatId &&
@@ -126,6 +133,7 @@ export async function POST(
       const text =
         `✅ <b>${clientStr} принял КП!</b>\n\n` +
         (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
+        (prevLine ? `\n${prevLine}\n` : "") +
         `\n<i>Откройте дашборд PotolokAI, чтобы посмотреть детали.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);
     }
@@ -140,7 +148,7 @@ export async function POST(
       after(async () => {
         await sendPushToMaster(estimate.masterId, {
           title: `${clientStr} принял КП!`,
-          body: price ? `Сумма ${formatPrice(price, currency)}. Пора в цех.` : "Пора в цех.",
+          body: (price ? `Сумма ${formatPrice(price, currency)}. Пора в цех.` : "Пора в цех.") + (prevLine ? ` ${prevLine.replace(/\n/g, " ")}` : ""),
           data: { screen: `/estimate/${estimate.id}` },
         });
       });

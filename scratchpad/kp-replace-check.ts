@@ -3,12 +3,15 @@
 //   npx tsx --env-file=.env.local scratchpad/kp-replace-check.ts http://localhost:3920
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
+import { dueActReminders } from "@/lib/act-reminders";
+import { prevReplacedLine } from "@/lib/estimate-replace-text";
 
 const [BASE] = process.argv.slice(2);
 const stamp = String(Date.now()).slice(-6);
 const created = { masters: [] as string[], objects: [] as string[], estimates: [] as string[], clients: [] as string[] };
 const keep = setInterval(() => {}, 1000);
 let fails = 0;
+const ctlPhone = `+7999005${stamp.slice(0, 4)}`;
 const check = (name: string, ok: boolean, info?: unknown) => {
   if (!ok) fails++;
   console.log(ok ? "ok  " : "FAIL", name, info === undefined ? "" : JSON.stringify(info).slice(0, 300));
@@ -24,7 +27,7 @@ const sign = (pid: string) => fetch(`${BASE}/api/contract/${pid}/sign`, { method
 
 (async () => {
   try {
-    const phone = `+7999005${stamp.slice(0, 4)}`;
+    const phone = ctlPhone;
     const reg = await fetch(`${BASE}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone, password: `ctl-${stamp}`, firstName: "CTL", companyName: `CTL замена ${stamp}` }) });
     const A = reg.headers.get("set-cookie")?.split(";")[0];
     if (!reg.ok || !A) throw new Error(`register ${reg.status}`);
@@ -80,7 +83,7 @@ const sign = (pid: string) => fetch(`${BASE}/api/contract/${pid}/sign`, { method
     const old2 = await est(o2, "CONFIRMED", 1_000_000, { ...contract(), contractSignedAt: new Date(), contractSignerName: "CTL" });
     const new2 = await est(o2, "SENT", 900_000);
     r = await api(A, `/estimates/${new2}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
-    check("4 подписан договор → 409 PREV_SIGNED, текст", r.status === 409 && r.j.code === "PREV_SIGNED" && String(r.j.error).startsWith("По прежнему КП клиент уже подписал договор") && String(r.j.error).includes("WhatsApp"), r.j);
+    check("4 подписан договор → 409 PREV_SIGNED, текст", r.status === 409 && r.j.code === "PREV_SIGNED" && String(r.j.error).startsWith("По прежнему КП клиент уже подписал договор") && String(r.j.error).endsWith("Изменения оформите с клиентом отдельно.") && !String(r.j.error).includes("WhatsApp"), r.j);
     check("4 статусы не тронуты", (await st(old2))?.status === "CONFIRMED" && (await st(new2))?.status === "SENT");
     // акт
     const o2a = await newObj();
@@ -169,18 +172,87 @@ const sign = (pid: string) => fetch(`${BASE}/api/contract/${pid}/sign`, { method
       else console.log("   гонка 2 нарушена:", all.map((x) => x.status));
     }
     check("10 гонка клиент-B против мастер-A: 6 раундов, ровно одно принятое", race2 === 6, race2);
+
+    // 11) КП без объекта: «Выбрал» мастером и «Принять» по ссылке — как раньше
+    const noObj1 = await est(null as unknown as string, "SENT", 300_000);
+    r = await api(A, `/estimates/${noObj1}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    check("11 без объекта: мастер «Выбрал» → 200 CONFIRMED", r.status === 200 && (await st(noObj1))?.status === "CONFIRMED", r.status);
+    const noObj2 = await est(null as unknown as string, "SENT", 310_000);
+    r = await pubConfirm(await pubOf(noObj2));
+    check("11 без объекта: «Принять» по ссылке → 200 CONFIRMED", r.status === 200 && (await st(noObj2))?.status === "CONFIRMED", r.status);
+    const noObj3 = await est(null as unknown as string, "DRAFT", 320_000);
+    r = await api(A, `/estimates/${noObj3}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    check("11 без объекта: черновик → 400 (как раньше)", r.status === 400, r.status);
+
+    // 12) Крон напоминаний по акту: заменённый акт — мимо, живой — в выборке (только чтение, без пушей)
+    const twoDaysAgo = new Date(Date.now() - 2 * 864e5);
+    const o12 = await newObj();
+    const old12 = await est(o12, "CONFIRMED", 500_000, { actPublicId: `ctlact${randomBytes(6).toString("hex")}`, actCreatedAt: twoDaysAgo, actSentAt: twoDaysAgo });
+    const new12 = await est(o12, "SENT", 480_000);
+    const o12b = await newObj();
+    const live12 = await est(o12b, "CONFIRMED", 470_000, { actPublicId: `ctlact${randomBytes(6).toString("hex")}`, actCreatedAt: twoDaysAgo, actSentAt: twoDaysAgo });
+    r = await api(A, `/estimates/${new12}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    const due = new Set((await dueActReminders()).map((x) => x.id));
+    check("12 крон: заменённый акт не напоминается, живой — напоминается", r.status === 200 && !due.has(old12) && due.has(live12), { replacedInDue: due.has(old12), liveInDue: due.has(live12) });
+
+    // 13) contract/create после замены (на прежнем) и после возврата
+    const o13 = await newObj();
+    const c13 = contract();
+    const old13 = await est(o13, "CONFIRMED", 600_000, c13);
+    const new13 = await est(o13, "SENT", 550_000);
+    await api(A, `/estimates/${new13}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    r = await api(A, `/estimates/${old13}/contract/create`, { method: "POST", body: JSON.stringify({}) });
+    const g13 = await api(A, `/estimates/${old13}`);
+    check("13 contract/create на заменённом: та же ссылка (идемпотентно), договор по-прежнему не действует", r.status === 200 && r.j.contractPublicId === c13.contractPublicId && g13.j.contractReplaced === true, { s: r.status, same: r.j?.contractPublicId === c13.contractPublicId, replaced: g13.j.contractReplaced });
+    r = await api(A, `/estimates/${new13}/contract/create`, { method: "POST", body: JSON.stringify({}) });
+    check("13 contract/create на новом варианте: новый договор (или 400 «настройте договор» у CTL без реквизитов)", (r.status === 200 && !!r.j.contractPublicId && r.j.contractPublicId !== c13.contractPublicId) || r.status === 400, { s: r.status, e: r.j?.error });
+    if (r.status === 200) {
+      const n13 = await prisma.estimate.findUnique({ where: { id: new13 }, select: { contractTextSnapshot: true } });
+      check("13 новый договор без пометки «заменён»", !(n13?.contractTextSnapshot as any)?.replacedByEstimateId);
+    }
+    await api(A, `/estimates/${old13}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    r = await api(A, `/estimates/${old13}/contract/create`, { method: "POST", body: JSON.stringify({}) });
+    const g13b = await api(A, `/estimates/${old13}`);
+    check("13 после возврата к прежнему: contract/create — та же ссылка, договор снова действует", r.status === 200 && r.j.contractPublicId === c13.contractPublicId && g13b.j.contractReplaced === false);
+
+    // 14) Наследие: в объекте уже ДВА принятых (с неподписанными договорами) → выбор третьего разжалует оба
+    const o14 = await newObj();
+    const a14 = await est(o14, "CONFIRMED", 700_000, contract());
+    const b14 = await est(o14, "CONFIRMED", 690_000, contract());
+    const n14 = await est(o14, "SENT", 650_000);
+    r = await api(A, `/estimates/${n14}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) });
+    const sa = await st(a14), sb = await st(b14);
+    check("14 два прежних принятых → оба REVISED с пометкой, новое CONFIRMED", r.status === 200 && sa?.status === "REVISED" && sb?.status === "REVISED" && (sa?.contractTextSnapshot as any)?.replacedByEstimateId === n14 && (sb?.contractTextSnapshot as any)?.replacedByEstimateId === n14 && (await st(n14))?.status === "CONFIRMED");
+    const ev14 = await prisma.clientEvent.findFirst({ where: { clientId: client.id, type: "KP_CONFIRMED", content: { contains: "690" } }, orderBy: { createdAt: "desc" }, select: { content: true } });
+    check("14 запись в ленте называет обе прежние суммы", !!ev14?.content?.includes("700") && ev14.content.includes("690"), ev14?.content);
+
+    // 15) Строка в уведомление мастеру (Telegram/пуш) при «Принять» по ссылке
+    check("15 строка уведомления: договор", prevReplacedLine("800 000 ₽", { contract: true, act: false }) === "Прежний вариант (800 000 ₽) помечен пересмотренным, его неподписанный договор больше не действует.");
+    check("15 строка уведомления: договор и акт", prevReplacedLine("1 ₽", { contract: true, act: true }).endsWith("его неподписанные договор и акт больше не действуют."));
   } catch (err) {
     fails++;
     console.log("ERROR", err);
   } finally {
-    await prisma.clientEvent.deleteMany({ where: { clientId: { in: created.clients } } });
-    await prisma.estimate.deleteMany({ where: { id: { in: created.estimates } } });
-    await prisma.measurementObject.deleteMany({ where: { id: { in: created.objects } } });
-    await prisma.client.deleteMany({ where: { id: { in: created.clients } } });
-    await prisma.member.deleteMany({ where: { masterId: { in: created.masters } } });
-    await prisma.company.deleteMany({ where: { ownerId: { in: created.masters } } });
-    await prisma.session.deleteMany({ where: { masterId: { in: created.masters } } }).catch(() => null);
-    await prisma.master.deleteMany({ where: { id: { in: created.masters } } });
+    // Мастер мог создаться, а до created.masters не дойти (падение сразу после регистрации)
+    try {
+      const m = await prisma.master.findUnique({ where: { phone: ctlPhone }, select: { id: true } });
+      if (m && !created.masters.includes(m.id)) created.masters.push(m.id);
+    } catch { /* ниже всё равно чистим по известным id */ }
+    // Уборка по id, каждый шаг сам по себе: упал один — остальные всё равно идут (пишем в прод).
+    // КП/объекты мастера дочищаем и по masterId — на случай падения между create и push в created.
+    const steps: [string, () => Promise<unknown>][] = [
+      ["events", () => prisma.clientEvent.deleteMany({ where: { clientId: { in: created.clients } } })],
+      ["estimates", () => prisma.estimate.deleteMany({ where: { OR: [{ id: { in: created.estimates } }, { masterId: { in: created.masters } }] } })],
+      ["objects", () => prisma.measurementObject.deleteMany({ where: { OR: [{ id: { in: created.objects } }, { masterId: { in: created.masters } }] } })],
+      ["clients", () => prisma.client.deleteMany({ where: { OR: [{ id: { in: created.clients } }, { masterId: { in: created.masters } }] } })],
+      ["members", () => prisma.member.deleteMany({ where: { masterId: { in: created.masters } } })],
+      ["companies", () => prisma.company.deleteMany({ where: { ownerId: { in: created.masters } } })],
+      ["sessions", () => prisma.session.deleteMany({ where: { masterId: { in: created.masters } } })],
+      ["masters", () => prisma.master.deleteMany({ where: { id: { in: created.masters } } })],
+    ];
+    for (const [name, run] of steps) {
+      try { await run(); } catch (e) { fails++; console.log("УБОРКА НЕ УДАЛАСЬ:", name, String(e).slice(0, 200)); }
+    }
     console.log("CTL удалены:", JSON.stringify({ masters: created.masters, objects: created.objects.length, estimates: created.estimates.length, clients: created.clients.length }), "осталось мастеров:", await prisma.master.count({ where: { id: { in: created.masters } } }));
     console.log(fails ? `FAIL ${fails}` : "PASS");
     clearInterval(keep);

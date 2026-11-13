@@ -100,7 +100,7 @@ export async function confirmReplacing(
   estimateId: string,
   objectId: string | null,
   by: "master" | "client",
-): Promise<{ replacedTotals: number[] }> {
+): Promise<{ replacedTotals: number[]; replaced: { total: number; contract: boolean; act: boolean }[] }> {
   // Замок объекта — очередь для всех выборов в этом объекте (подпись договора берёт
   // только строку КП и сюда не ходит — взаимной блокировки нет).
   if (objectId) await tx.$queryRaw`SELECT id FROM "MeasurementObject" WHERE id = ${objectId} FOR UPDATE`;
@@ -123,9 +123,12 @@ export async function confirmReplacing(
   if (signed) throw new ReplaceBlockedError(signed.contractSignedAt ? "contract" : "act");
 
   const replacedTotals: number[] = [];
+  const replaced: { total: number; contract: boolean; act: boolean }[] = [];
   const now = new Date().toISOString();
   for (const p of prev) {
     replacedTotals.push(Math.round(p.total ?? 0));
+    // Подписанных здесь нет (выше — отказ), так что «есть ссылка» = неподписанный документ
+    replaced.push({ total: Math.round(p.total ?? 0), contract: !!p.contractPublicId, act: !!p.actPublicId });
     await tx.estimate.update({
       where: { id: p.id },
       data: {
@@ -152,5 +155,18 @@ export async function confirmReplacing(
       ...(clearAct && { actTextSnapshot: (unmarked(self.actTextSnapshot) ?? Prisma.DbNull) as never }),
     },
   });
-  return { replacedTotals };
+  return { replacedTotals, replaced };
+}
+
+/**
+ * Какие из КП несут пометку «заменён» на неподписанном документе — для списков CRM,
+ * где снимок не выбирается (он тяжёлый у подписанных). jsonb_exists — без чтения JSON.
+ */
+export async function replacedDocIds(ids: string[], doc: "contract" | "act"): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const { prisma } = await import("@/lib/prisma");
+  const rows = doc === "contract"
+    ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Estimate" WHERE id = ANY(${ids}) AND "contractSignedAt" IS NULL AND jsonb_exists("contractTextSnapshot", 'replacedByEstimateId')`
+    : await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Estimate" WHERE id = ANY(${ids}) AND "actSignedAt" IS NULL AND jsonb_exists("actTextSnapshot", 'replacedByEstimateId')`;
+  return new Set(rows.map((r) => r.id));
 }

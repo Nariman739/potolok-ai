@@ -1,5 +1,5 @@
 import { getCurrentMaster } from "@/lib/auth";
-import { isContractReplaced } from "@/lib/estimate-replace";
+import { isActReplaced, isContractReplaced } from "@/lib/estimate-replace";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -190,6 +190,7 @@ export default async function EstimateDetailPage({
         actCreatedAt={estimate.actCreatedAt ? estimate.actCreatedAt.toISOString() : null}
         actSignedAt={estimate.actSignedAt ? estimate.actSignedAt.toISOString() : null}
         actSignerName={estimate.actSignerName}
+        actReplaced={isActReplaced(estimate)}
         actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
         clientPhone={estimate.clientPhone}
         estimateStatus={estimate.status}
