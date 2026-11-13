@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { clearDraftsOnLogout } from "@/lib/draft-owner";
 import {
   LayoutDashboard,
   Calculator,
@@ -84,7 +85,8 @@ export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
 
       <div className="border-t p-3 space-y-1">
         <FeedbackButton variant="sidebar" />
-        <form action="/api/auth/logout" method="POST">
+        {/* Черновики (расчёт, запасная копия замера) не должны достаться следующему вошедшему. */}
+        <form action="/api/auth/logout" method="POST" onSubmit={clearDraftsOnLogout}>
           <button
             type="submit"
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

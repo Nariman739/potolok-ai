@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ensureDraftOwner } from "@/lib/draft-owner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
@@ -1643,6 +1644,9 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 // ─────────────────────────────────────────────────────
 
 export default function ZameryPage() {
+  // Запасная копия замера в браузере принадлежит аккаунту: чужую стираем до первого чтения
+  // (сверка одна на загрузку страницы, повторные вызовы ничего не делают).
+  ensureDraftOwner();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isCalculatorMode = searchParams.get("mode") === "calculator" || searchParams.get("mode") === "calculator-edit";

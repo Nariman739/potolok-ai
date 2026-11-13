@@ -10,6 +10,7 @@ import { CalculationResults, type KpMoneyInputs } from "@/components/calculator/
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
 import { useCalculator, draftClientId } from "@/hooks/use-calculator";
+import { useCurrency } from "@/components/currency-provider";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,7 +49,19 @@ function CalculatorContent() {
     replaceWithMeasurement,
     extraItems,
     setExtraItems,
+    pricesChanged,
+    dismissPricesChanged,
+    applyFreshResult,
   } = useCalculator();
+  const { symbol } = useCurrency();
+  const money = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ${symbol}`;
+
+  // Итог сменился из-за прайса (пересчёт при открытии или отказ сервера при сохранении) —
+  // говорим сразу: кнопка «Сохранить» внизу, плашку наверху мастер может не увидеть.
+  useEffect(() => {
+    if (pricesChanged) toast.warning(`Цены в прайсе изменились — расчёт обновлён: было ${money(pricesChanged.was)}, стало ${money(pricesChanged.now)}. Проверьте и сохраните ещё раз.`, { duration: 10000 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pricesChanged]);
 
   // formOpen = user manually opened the "add room" form
   const [formOpen, setFormOpen] = useState(false);
@@ -215,6 +228,9 @@ function CalculatorContent() {
           calculationData: result,
           extraItems,
           totalArea: result.totalArea,
+          // Сервер считает сам по текущему прайсу и сверяет с итогом на экране (13.11.2026):
+          // расчёт в браузере мог устареть. Разошлось — 409 со свежим расчётом, КП не создаётся.
+          recalc: { rooms, extraItems, expectedTotal: result.total },
           // Итог, скидку и посредника считает сервер (kp-adjust-server)
           discount: kpInputs.discount,
           partner: kpInputs.partner,
@@ -226,6 +242,12 @@ function CalculatorContent() {
       });
 
       const data = await res.json();
+
+      if (res.status === 409 && data.code === "PRICES_CHANGED" && data.calculation) {
+        // Показываем новый итог (сообщение «было → стало» — эффект выше); сохранит мастер сам.
+        applyFreshResult(data.calculation, result.total);
+        return;
+      }
 
       if (!res.ok) {
         toast.error(data.error || "Ошибка сохранения");
@@ -258,6 +280,16 @@ function CalculatorContent() {
   if (result) {
     return (
       <div className="space-y-6">
+        {pricesChanged && (
+          <div role="status" className="flex items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>
+              Цены в прайсе изменились — расчёт обновлён: было {money(pricesChanged.was)}, стало {money(pricesChanged.now)}. Проверьте и сохраните ещё раз.
+            </p>
+            <Button variant="ghost" size="sm" onClick={dismissPricesChanged}>
+              Понятно
+            </Button>
+          </div>
+        )}
         <CalculationResults
           result={result}
           onSave={(inputs) => {

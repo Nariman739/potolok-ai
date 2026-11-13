@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
-import type { CalculationResult } from "@/lib/types";
+import type { CalculationResult, RoomInput, ExtraItem } from "@/lib/types";
+import { calculateForOwner } from "@/lib/calculate-for-owner";
 import { KP_LIMITS, defaultPriceFor } from "@/lib/constants";
 import { getOrCreateClient, addClientEvent, findObjectClientByName } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
@@ -128,6 +129,29 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     }
 
     const body = await request.json();
+
+    // Калькулятор сайта (13.11.2026): расчёт у него лежит в браузере и мог устареть —
+    // мастер поменял прайс, вошёл другой аккаунт, прошла неделя. Сайт шлёт комнаты, допы
+    // и итог, который видел мастер; считаем сами по текущему прайсу. Итог другой — КП не
+    // создаём, отдаём свежий расчёт: мастер должен видеть сумму, которую отправляет.
+    // Приложение поле recalc не шлёт — оно считает само, для него ничего не меняется.
+    const recalc = body.recalc as { rooms?: RoomInput[]; extraItems?: ExtraItem[]; expectedTotal?: number } | undefined;
+    if (recalc && Array.isArray(recalc.rooms) && recalc.rooms.length > 0) {
+      const fresh = await calculateForOwner(scope.ownerId, recalc.rooms, Array.isArray(recalc.extraItems) ? recalc.extraItems : undefined);
+      if (!Number.isFinite(fresh.total)) {
+        return NextResponse.json({ error: "Не удалось посчитать: у комнаты нет размеров" }, { status: 400 });
+      }
+      if (fresh.total !== recalc.expectedTotal) {
+        return NextResponse.json(
+          { error: "Цены в прайсе изменились — расчёт обновлён. Проверьте и сохраните ещё раз.", code: "PRICES_CHANGED", calculation: fresh },
+          { status: 409 },
+        );
+      }
+      body.calculationData = fresh;
+      body.roomsData = fresh.rooms;
+      body.totalArea = fresh.totalArea;
+    }
+
     const {
       roomsData,
       calculationData,

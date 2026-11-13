@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CurrencyProvider } from "@/components/currency-provider";
+import { draftOwnerStamp } from "@/lib/draft-owner";
 
 export default async function DashboardLayout({
   children,
@@ -39,7 +40,9 @@ export default async function DashboardLayout({
     // «Сохранить») уезжал под панель браузера и нижнее меню — мастер видел
     // кнопку, тыкал и попадал в навигацию. Внутренний скролл оставляем только
     // на десктопе (md+), где сайдбар должен стоять на месте.
-    <div className="flex min-h-[100dvh] md:h-screen md:overflow-hidden">
+    // data-draft-owner — чьи черновики лежат в браузере (калькулятор, запасная копия замера):
+    // src/lib/draft-owner.ts сверяет штамп и стирает чужие.
+    <div className="flex min-h-[100dvh] md:h-screen md:overflow-hidden" data-draft-owner={master ? draftOwnerStamp(master.id, master.activeCompanyId) : undefined}>
       <Sidebar isOwner={isOwner} />
       {/*
         min-w-0 обязателен: у flex-элемента min-width по умолчанию auto, и
