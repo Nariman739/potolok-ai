@@ -4,7 +4,7 @@ import type { PdfData } from "../pdf-data";
 import { fmtDate, MasterLogo, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { hasPlans, KpPlanHero } from "./PlanStyles";
-import { countSpots, spotsLabel } from "./spots-count";
+import { countSpots, roomsLabel, spotsLabel } from "./spots-count";
 
 // Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
 // по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
@@ -378,7 +378,7 @@ function CoverMinimal({
           flexDirection: "row",
         }}
       >
-        <StatMinimal label="помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatMinimal label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatMinimal label="м² площади" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <StatMinimal label={spotsLabel(spotsCount)} value={String(spotsCount)} theme={theme} fonts={fonts} />
@@ -794,7 +794,7 @@ function CoverPremiumDark({
           alignItems: "center",
         }}
       >
-        <StatPremium label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatPremium label={roomsLabel(estimate.rooms.length, true)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <DotGold />
         <StatPremium label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
@@ -1202,7 +1202,7 @@ function CoverWarmHandmade({
           width: 160,
         }}
       >
-        <StatWarm label="помещения" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatWarm label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatWarm label="м² общей" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <StatWarm label={spotsLabel(spotsCount)} value={String(spotsCount)} theme={theme} fonts={fonts} />
@@ -1603,7 +1603,7 @@ function CoverClassicArchitectural({
           flexDirection: "row",
         }}
       >
-        <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
+        <StatClassic label={roomsLabel(estimate.rooms.length, true)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
         <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         <StatClassic
           label={spotsCount > 0 ? spotsLabel(spotsCount, true) : "Позиций"}
@@ -1958,7 +1958,7 @@ function CoverBoldColor({
           flexDirection: "row",
         }}
       >
-        <StatBold label="помещений" value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+        <StatBold label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         <StatBold label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         {spotsCount > 0 && (
           <StatBold label={spotsLabel(spotsCount)} value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
