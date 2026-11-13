@@ -15,7 +15,12 @@ export type ContractRequisites = {
   contractCity?: string | null;
 };
 
-/** Тип договора вообще выбран? Без него раздел договора не показываем. */
+/**
+ * Тип договора выбран? От этого зависят только печатные PDF «Договор»/«Акт» (их роуты без типа
+ * отвечают 400). Электронный договор и акт создаются и показываются при любых реквизитах —
+ * так всегда делали сервер и приложение; сайт до 13.11.2026 прятал за этим условием даже уже
+ * созданный и подписанный договор (58 из 101 живого договора).
+ */
 export function isContractConfigured(m: ContractRequisites): boolean {
   return !!m.contractType && m.contractType !== "none";
 }
@@ -25,10 +30,11 @@ export function isContractConfigured(m: ContractRequisites): boolean {
  * Для мастера из России (валюта RUB) — российские названия: ИНН, ОГРНИП, паспорт (27.10.2026).
  */
 export function missingContractFields(m: ContractRequisites, currency?: string | null): string[] {
-  if (!isContractConfigured(m)) return ["Тип договора"];
-
   const rf = currency === "RUB";
   const missing: string[] = [];
+  // Тип не выбран — шаблон оформляет документ как от физического лица: перечисляем и его поля,
+  // чтобы мастер видел, чего именно не будет в документе у клиента, а не одно «Тип договора».
+  if (!isContractConfigured(m)) missing.push("Тип договора");
 
   if (m.contractType === "ip") {
     if (!m.bin && !m.iin) missing.push(rf ? "ОГРНИП или ИНН" : "БИН или ИИН");

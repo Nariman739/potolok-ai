@@ -45,10 +45,10 @@ export default async function ActPublicPage({
   searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ lang?: string; by?: string }>;
+  searchParams: Promise<{ lang?: string; by?: string; print?: string }>;
 }) {
   const { publicId } = await params;
-  const { lang: langParam, by } = await searchParams;
+  const { lang: langParam, by, print } = await searchParams;
   // «Подписать здесь» из приложения мастера: клиент рядом, подпись на
   // телефоне мастера — в акте так и пишем (30.09.2026).
   const onDevice = by === "device";
@@ -110,7 +110,7 @@ export default async function ActPublicPage({
       )}
 
       <div className="max-w-3xl mx-auto px-3 pt-4 flex justify-end gap-2 print:hidden">
-        <PrintButton lang={lang} />
+        <PrintButton lang={lang} autoPrint={print === "1"} />
         <Link
           href={`?lang=${otherLang}${onDevice ? "&by=device" : ""}`}
           prefetch={false}
