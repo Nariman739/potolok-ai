@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getBoardItems } from "@/lib/crm-board";
+import { dealTotal, dealKpCount, DEAL_ESTIMATE_SELECT } from "@/lib/client-deal";
 import type { Metadata } from "next";
 import { ClientsList } from "./clients-list";
 import { ClientsBoard } from "./clients-board";
@@ -44,8 +45,9 @@ export default async function ClientsPage({
       notes: true,
       createdAt: true,
       updatedAt: true,
-      _count: { select: { estimates: true, events: true } },
-      estimates: { select: { total: true } },
+      _count: { select: { events: true } },
+      // Сумма и «N КП» — по единому правилу сделки (src/lib/client-deal.ts), не «все КП подряд».
+      estimates: { select: DEAL_ESTIMATE_SELECT },
       events: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -64,8 +66,8 @@ export default async function ClientsPage({
     notes: c.notes,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
-    estimatesCount: c._count.estimates,
-    totalSum: c.estimates.reduce((acc, e) => acc + (e.total || 0), 0),
+    estimatesCount: dealKpCount(c.estimates),
+    totalSum: dealTotal(c.estimates),
     mine: c.masterId === master.id,
     lastEvent: c.events[0]
       ? {

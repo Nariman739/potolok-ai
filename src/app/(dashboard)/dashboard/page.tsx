@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentMaster } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
+import { dealTotal, DEAL_ESTIMATE_SELECT } from "@/lib/client-deal";
 import {
   Card,
   CardContent,
@@ -60,7 +61,7 @@ export default async function DashboardPage() {
     recentEstimates,
     monthEstimates,
     confirmedCount,
-    confirmedSum,
+    confirmedEstimates,
     measurementsCount,
     clientsCount,
     masterFull,
@@ -92,9 +93,10 @@ export default async function DashboardPage() {
     prisma.estimate.count({
       where: { ...inScope(scope), status: "CONFIRMED", deletedAt: null },
     }),
-    prisma.estimate.aggregate({
+    // Принятые КП — для суммы по сделкам: два принятых варианта одного объекта считаются один раз.
+    prisma.estimate.findMany({
       where: { ...inScope(scope), status: "CONFIRMED", deletedAt: null },
-      _sum: { total: true },
+      select: DEAL_ESTIMATE_SELECT,
     }),
     prisma.measurementObject.count({
       where: { ...inScope(scope), deletedAt: null },
@@ -112,6 +114,8 @@ export default async function DashboardPage() {
       },
     }),
   ]);
+  // Сумма принятого — по сделкам (src/lib/client-deal.ts): по одному принятому КП на объект.
+  const confirmedTotal = dealTotal(confirmedEstimates);
 
   const hasProfile = !!(
     masterFull?.companyName &&
@@ -297,8 +301,8 @@ export default async function DashboardPage() {
                   </div>
                   <p className="text-xl font-bold text-green-600">{confirmedCount}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {confirmedSum._sum.total
-                      ? `на ${formatPrice(confirmedSum._sum.total)}`
+                    {confirmedTotal
+                      ? `на ${formatPrice(confirmedTotal)}`
                       : "—"
                     }
                   </p>
