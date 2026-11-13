@@ -51,21 +51,23 @@ interface DesignerElement {
 }
 
 /**
- * Площадь и периметр с чертежа для комнат, которые нельзя посчитать как длина × ширина.
- * У обычного прямоугольника полей нет: его расчёт не меняется.
+ * Площадь и периметр с чертежа — источник метража для КП, как в приложении.
  */
 export function measuredGeometry(room: {
   walls: number[]; normalCorners?: boolean[]; angles?: number[]; area: number; perimeter: number;
   arcBulges?: number[]; columns?: unknown[]; cornerRadii?: number[]; cutouts?: unknown[];
-}): { measuredArea?: number; measuredPerimeter?: number; measuredMinWidth?: number } {
+}): { measuredArea?: number; measuredPerimeter?: number; measuredMinWidth?: number; measuredRect?: boolean } {
   const rectangle = room.walls.length === 4 && (room.angles ?? []).every((a) => Math.abs(a) === 90);
   const plain = rectangle
     && !room.arcBulges?.some((b) => b)
     && !room.cornerRadii?.some((r) => r > 0)
     && !room.columns?.length
     && !room.cutouts?.length;
-  if (plain) return {};
-  return { measuredArea: room.area, measuredPerimeter: room.perimeter, ...minWidthFromWalls(room.walls, room.normalCorners, room.angles) };
+  // Прямоугольник тоже считаем по площади замера, а не «длина × ширина» габарита
+  // (13.11.2026): так считает приложение, и сохранённая площадь бывает другой.
+  // Замер без площади или периметра — по габариту, как раньше.
+  if (plain && !(room.area > 0 && room.perimeter > 0)) return {};
+  return { measuredArea: room.area, measuredPerimeter: room.perimeter, ...minWidthFromWalls(room.walls, room.normalCorners, room.angles), ...(plain && { measuredRect: true }) };
 }
 
 /** Наименьшая ширина по стенам и углам, как считает приложение. Битая геометрия — без поля. */
@@ -132,6 +134,25 @@ export function splitSpotGroups<T extends { groupId?: string; variant?: string }
     else spotPairsCount += 1;
   }
   return { spotPairsCount, spotPairsClientCount, singleSpots };
+}
+
+/**
+ * Люстры, бра, диффузоры и обходы труб с чертежа — как считает приложение (estimate.tsx):
+ * «наша» люстра/бра — закладная + установка, клиентская (variant = "client") — только
+ * закладная; диффузор — элемент vent; обход трубы — колонна вида pipe.
+ * Одно место для страницы замера, правки комнаты в КП и сверочного стенда (13.11.2026).
+ */
+export function fixtureFields(els: { type: string; variant?: string }[], columns?: unknown[] | null) {
+  const count = (type: string, ours?: boolean) =>
+    els.filter((e) => e.type === type && (ours === undefined || (e.variant !== "client") === ours)).length;
+  return {
+    chandelierCount: count("chandelier"),
+    chandelierInstallCount: count("chandelier", true),
+    pendantCount: count("pendant"),
+    pendantInstallCount: count("pendant", true),
+    ventCount: count("vent"),
+    pipeBypasses: (Array.isArray(columns) ? columns : []).filter((c) => (c as { kind?: string } | null)?.kind === "pipe").length,
+  };
 }
 
 /** Длины гардины по строкам КП: обычная, однорядная (rows = 1), с подсветкой. В метрах. */
@@ -222,9 +243,8 @@ export function buildRoomInputFromDesigner(
   const allSpots = els.filter((e) => e.type === "spot");
   const { spotPairsCount, spotPairsClientCount, singleSpots } = splitSpotGroups(allSpots);
   const { spotsOurs, spotsClient, spotsCount, legacySpotType, spotsByType } = spotBreakdown(singleSpots, existing?.spotType);
-  const chandelierCount = els.filter((e) => e.type === "chandelier").length;
-  const pendantCount = els.filter((e) => e.type === "pendant").length;
-  const ventCount = els.filter((e) => e.type === "vent").length;
+  // Трубы на веб-чертеже не рисуются: берём колонны, сохранённые в комнате КП.
+  const fixtures = fixtureFields(els, existing?.designerData?.columns);
   const lightAndTrack = trackFields(els);
   const gardina = gardinaFields(els);
   const verticesForRoom = getVertices(room.walls, room.normalCorners, room.angles);
@@ -279,17 +299,20 @@ export function buildRoomInputFromDesigner(
     spotsCount,
     spotType: spotsCount > 0 ? (legacySpotType ?? (spotsClient > 0 && spotsOurs === 0 ? "spot_client" : "spot_ours")) : legacySpotType,
     spotsByType: spotsByType.length > 0 ? spotsByType : undefined,
-    chandelierCount,
-    chandelierInstallCount:
-      existing?.chandelierInstallCount ?? chandelierCount,
-    pendantCount,
-    ventCount,
+    ...fixtures,
+    // «Уст. люстр» / подвесов мастер правит в форме руками (клиент вешает сам → 0).
+    // Пока число на чертеже то же — его решение держим, правка стены его не сбрасывает.
+    ...(existing?.chandelierInstallCount != null && existing.chandelierCount === fixtures.chandelierCount
+      && { chandelierInstallCount: existing.chandelierInstallCount }),
+    ...(existing?.pendantInstallCount != null && existing.pendantCount === fixtures.pendantCount
+      && { pendantInstallCount: existing.pendantInstallCount }),
+    // Нет колонн-труб в сохранённой комнате — число обходов из КП (ручной ввод в форме).
+    pipeBypasses: fixtures.pipeBypasses || (existing?.pipeBypasses ?? 0),
     spotPairsCount,
     spotPairsClientCount,
     spotTriplesCount: 0,
     ...lightAndTrack,
     curtainRodLength: existing?.curtainRodLength ?? 0,
-    pipeBypasses: existing?.pipeBypasses ?? 0,
     cornersCount: visibleCornersCount,
     eurobrusCount: existing?.eurobrusCount ?? 0,
     ...gardina,

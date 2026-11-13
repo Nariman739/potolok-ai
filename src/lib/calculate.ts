@@ -162,8 +162,10 @@ function calculateRoom(
   ownItemsById?: Record<string, CustomItemInfo>
 ): RoomResult {
   // Площадь натяжного потолка: вычитаем мебель «до потолка» (она съедает площадь).
+  // Метраж в КП — до 0,1, как в приложении (13.11.2026): полотно, профиль, вставка,
+  // гардина, трек, линия, подшторник. Раньше сайт считал до 0,01 (13,02 м² против 13).
   const furnitureArea = room.furnitureCeilingArea ?? 0;
-  const areaFull = Math.max(0, computeArea(room) - furnitureArea);
+  const areaFull = Math.max(0, roundTenth((room.measuredArea ?? computeArea(room)) - furnitureArea));
   // Нижний уровень уходит из обычного полотна. Без «2 уровней» площадь прежняя.
   const area = room.level2 ? roundTenth(roundHundredth(Math.max(0, roundTenth(areaFull) - room.level2.canvasCutM2))) : areaFull;
   const perimeter = computePerimeter(room);
@@ -203,8 +205,8 @@ function calculateRoom(
   const profilePerimeter = Math.max(0, perimeter - podOnWallM + furniturePerimDelta);
   // Парящий профиль идёт отдельной позицией и вычитается из периметра
   // обычного профиля (плacтик/вставка), чтобы не было двойного счёта.
-  const floatingLen = Math.min(room.floatingLength ?? 0, profilePerimeter);
-  const baseProfileLen = Math.max(0, profilePerimeter - floatingLen);
+  const floatingLen = roundTenth(Math.min(room.floatingLength ?? 0, profilePerimeter));
+  const baseProfileLen = roundTenth(Math.max(0, profilePerimeter - floatingLen));
 
   // Полотно: плёнка или строка, выбранная на комнату (выбор на объект приходит сюда же),
   // иначе основная лестница по ширине, тем же кодом, что в приложении.
@@ -306,7 +308,7 @@ function calculateRoom(
   } else {
     // Shadow or floating — single aluminum profile.
     // Если у комнаты явно указан profile_floating, по периметру весь парящий.
-    const profileItem = makeLineItem(profileCode, profilePerimeter, prices);
+    const profileItem = makeLineItem(profileCode, roundTenth(profilePerimeter), prices);
     if (profileItem) items.push(profileItem);
   }
 
@@ -409,7 +411,8 @@ function calculateRoom(
   if (pendantCount > 0) {
     const pendantItem = makeLineItem("pendant", pendantCount, prices);
     if (pendantItem) items.push(pendantItem);
-    const pendantInstallItem = makeLineItem("pendant_install", pendantCount, prices);
+    // Клиентские бра — только закладная; нет поля — с установкой все (старые КП).
+    const pendantInstallItem = makeLineItem("pendant_install", Math.min(pendantCount, room.pendantInstallCount ?? pendantCount), prices);
     if (pendantInstallItem) items.push(pendantInstallItem);
   }
 
@@ -423,7 +426,8 @@ function calculateRoom(
   // Track magnetic
   // Трек с типом на элементе. Свой вариант удалён из прайса — считаем как трек без типа.
   let trackLegacyM = room.trackMagneticLength;
-  for (const t of room.tracksByType ?? []) {
+  for (const tr of room.tracksByType ?? []) {
+    const t = { ...tr, length: roundTenth(tr.length) };
     if (t.length <= 0) continue;
     if (t.variantId) {
       const info = ownItemsById?.[t.variantId];
@@ -438,6 +442,7 @@ function calculateRoom(
     const typed = makeLineItem(t.code && PRODUCT_BY_CODE[t.code] ? t.code : "track_magnetic", t.length, prices);
     if (typed) items.push(typed);
   }
+  trackLegacyM = roundTenth(trackLegacyM);
   if (trackLegacyM > 0) {
     const variant = variantFor("track");
     const trackItem = variant
@@ -449,15 +454,18 @@ function calculateRoom(
     const unitPrice = getPrice(prices, code);
     return { itemCode: code, itemName: name, quantity, unit: "м.п.", unitPrice, total: Math.round(unitPrice * quantity), installCode: code };
   };
-  if ((room.trackClientLength ?? 0) > 0) items.push(installOnly("install_track", "Установка клиентского трека", room.trackClientLength ?? 0));
-  if ((room.lightLineClientLength ?? 0) > 0) items.push(installOnly("install_lightline", "Установка клиентской линии", room.lightLineClientLength ?? 0));
+  const trackClientM = roundTenth(room.trackClientLength ?? 0);
+  const lightLineClientM = roundTenth(room.lightLineClientLength ?? 0);
+  if (trackClientM > 0) items.push(installOnly("install_track", "Установка клиентского трека", trackClientM));
+  if (lightLineClientM > 0) items.push(installOnly("install_lightline", "Установка клиентской линии", lightLineClientM));
 
   // Light line
-  if (room.lightLineLength > 0) {
+  const lightLineM = roundTenth(room.lightLineLength ?? 0);
+  if (lightLineM > 0) {
     const variant = variantFor("lightline");
     const lightItem = variant
-      ? variantLine(variant, "lightline", room.lightLineLength, "light_line")
-      : makeLineItem("light_line", room.lightLineLength, prices);
+      ? variantLine(variant, "lightline", lightLineM, "light_line")
+      : makeLineItem("light_line", lightLineM, prices);
     if (lightItem) items.push(lightItem);
   }
 
@@ -478,7 +486,7 @@ function calculateRoom(
   // Curtain rod — master's choice or default
   if (room.curtainRodLength > 0) {
     const curtainCode = room.curtainType || "curtain_ldsp";
-    const curtainItem = makeLineItem(curtainCode, room.curtainRodLength, prices);
+    const curtainItem = makeLineItem(curtainCode, roundTenth(room.curtainRodLength), prices);
     if (curtainItem) items.push(curtainItem);
   }
 
@@ -495,10 +503,12 @@ function calculateRoom(
   }
 
   // Gardina (пластиковая на потолок / встроенная в потолок)
-  const gardinaLightM = room.gardinaLightLength ?? 0;
-  const gardinaVariant = (room.gardinaLength ?? 0) > 0 || gardinaLightM > 0 ? variantFor("gardina") : null;
-  if ((room.gardinaSingleLength ?? 0) > 0) {
-    const singleItem = makeLineItem("gardina_single", room.gardinaSingleLength ?? 0, prices);
+  const gardinaLightM = roundTenth(room.gardinaLightLength ?? 0);
+  const gardinaM = roundTenth(room.gardinaLength ?? 0);
+  const gardinaSingleM = roundTenth(room.gardinaSingleLength ?? 0);
+  const gardinaVariant = gardinaM > 0 || gardinaLightM > 0 ? variantFor("gardina") : null;
+  if (gardinaSingleM > 0) {
+    const singleItem = makeLineItem("gardina_single", gardinaSingleM, prices);
     if (singleItem) items.push(singleItem);
   }
   if (gardinaLightM > 0) {
@@ -516,18 +526,19 @@ function calculateRoom(
       installCode: "install_gardina",
     });
   }
-  if ((room.gardinaLength ?? 0) > 0) {
+  if (gardinaM > 0) {
     const gardinaCode = room.gardinaType || "gardina_plastic";
     const gardinaItem = gardinaVariant
-      ? variantLine(gardinaVariant, "gardina", room.gardinaLength ?? 0, gardinaCode)
-      : makeLineItem(gardinaCode, room.gardinaLength, prices);
+      ? variantLine(gardinaVariant, "gardina", gardinaM, gardinaCode)
+      : makeLineItem(gardinaCode, gardinaM, prices);
     if (gardinaItem) items.push(gardinaItem);
   }
 
   // Podshtornik
-  if ((room.podshtornikLength ?? 0) > 0) {
+  const podshtornikM = roundTenth(room.podshtornikLength ?? 0);
+  if (podshtornikM > 0) {
     const podshtornikCode = room.podshtornikType || "podshtornik_aluminum";
-    const podshtornikItem = makeLineItem(podshtornikCode, room.podshtornikLength, prices);
+    const podshtornikItem = makeLineItem(podshtornikCode, podshtornikM, prices);
     // Монтаж подшторника — по ставке карниза, как в приложении.
     if (podshtornikItem) items.push({ ...podshtornikItem, installCode: "install_curtain", installerName: "Монтаж подшторника", installerRate: getPrice(prices, "install_curtain") });
   }
@@ -546,7 +557,7 @@ function calculateRoom(
 
   // Обвод мебели до потолка (м.п.) — отдельная позиция, чтобы было видно почему дороже.
   // Backwards compat: если есть только furnitureCeilingCorners (старые расчёты), считаем как количество м.п.
-  const bypassM = room.furnitureCeilingBypassM ?? room.furnitureCeilingCorners ?? 0;
+  const bypassM = roundTenth(room.furnitureCeilingBypassM ?? room.furnitureCeilingCorners ?? 0);
   if (bypassM > 0) {
     const item = makeLineItem("corner_furniture_bypass", bypassM, prices);
     if (item) items.push(item);
@@ -630,11 +641,12 @@ export function calculate(
   currency?: string | null
 ): CalculationResult {
   const prices = priceBook(rawPrices, currency);
-  const totalArea = rooms.reduce((sum, r) => sum + computeArea(r), 0);
-  const totalPerimeter = rooms.reduce(
+  // Итог площади и периметра — до 0,1, как в приложении.
+  const totalArea = roundTenth(rooms.reduce((sum, r) => sum + computeArea(r), 0));
+  const totalPerimeter = roundTenth(rooms.reduce(
     (sum, r) => sum + computePerimeter(r),
     0
-  );
+  ));
   const totalSpots = rooms.reduce((sum, r) => sum + r.spotsCount, 0);
   const totalChandeliers = rooms.reduce(
     (sum, r) => sum + r.chandelierCount,

@@ -11,7 +11,7 @@ import RoomDesigner, { totalSubcurtainLengthCm, subcurtainOnWallLengthCm, getVer
 import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
-import { spotBreakdown, level2Fields, measuredGeometry, insertFields, wallProfileFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { spotBreakdown, fixtureFields, level2Fields, measuredGeometry, insertFields, wallProfileFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2472,8 +2472,6 @@ export default function ZameryPage() {
       const { spotPairsCount, spotPairsClientCount, singleSpots: singleSpotEls } = splitSpotGroups(allSpotEls);
       const spotTriplesCount = 0;
       const { spotsOurs, spotsClient, spotsCount, spotsByType } = spotBreakdown(singleSpotEls);
-      const pendantCount = els.filter(e => e.type === "pendant").length;
-      const chandelierCount = els.filter(e => e.type === "chandelier").length;
       const lightAndTrack = trackFields(els);
       const gardina = gardinaFields(els);
       const subStats = computeSubcurtainStats(
@@ -2512,16 +2510,14 @@ export default function ZameryPage() {
         spotsCount,
         spotType: spotsClient > 0 && spotsOurs === 0 ? "spot_client" : spotsOurs > 0 ? "spot_ours" : undefined,
         ...(spotsByType.length > 0 && { spotsByType }),
-        chandelierCount,
-        chandelierInstallCount: chandelierCount,
-        pendantCount,
+        // Люстры и бра (клиентские — только закладная), диффузоры, обходы труб — как в приложении
+        ...fixtureFields(els, room.columns),
         spotPairsCount,
         spotPairsClientCount,
         spotTriplesCount,
         floatingLength,
         ...lightAndTrack,
         curtainRodLength: 0,
-        pipeBypasses: 0,
         cornersCount: visibleCornersCount,
         eurobrusCount: 0,
         ...gardina,
@@ -2615,7 +2611,6 @@ export default function ZameryPage() {
               const { spotPairsCount: spotPairsCalc, spotPairsClientCount: spotPairsClientCalc, singleSpots: singleSpotElsCalc } = splitSpotGroups(allSpotElsCalc);
               const spotTriplesCalc = 0;
               const { spotsOurs, spotsClient, spotsCount: spotsCountCalc, spotsByType: spotsByTypeCalc } = spotBreakdown(singleSpotElsCalc);
-              const chandelierCount = elements.filter(e => e.type === "chandelier").length;
               const lightAndTrackCalc = trackFields(elements);
               const gardinaCalc = gardinaFields(elements);
               const subStatsCalc = computeSubcurtainStats(
@@ -2655,12 +2650,10 @@ export default function ZameryPage() {
                 spotPairsCount: spotPairsCalc,
                 spotPairsClientCount: spotPairsClientCalc,
                 spotTriplesCount: spotTriplesCalc,
-                chandelierCount,
-                chandelierInstallCount: chandelierCount,
+                ...fixtureFields(elements, room.columns),
                 floatingLength: floatingLengthCalc,
                 ...lightAndTrackCalc,
                 curtainRodLength: 0,
-                pipeBypasses: 0,
                 cornersCount: visibleCornersCountCalc,
                 eurobrusCount: 0,
                 ...gardinaCalc,
