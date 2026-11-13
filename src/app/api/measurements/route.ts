@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope, type Scope } from "@/lib/company";
-import { getOrCreateClient } from "@/lib/clients";
+import { getOrCreateClient, clientAddressFromObject } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { checkObjectLimit } from "@/lib/billing";
 import { activeMineWhere, activeByFor } from "@/lib/measurement-active";
@@ -84,7 +84,7 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
     let linkedClientId: string | null = null;
     if (clientId) {
       const exists = await prisma.client.findFirst({
-        where: { id: clientId, ...inScope(scope) },
+        where: { id: clientId, ...inScope(scope), deletedAt: null },
         select: { id: true },
       });
       linkedClientId = exists?.id ?? null;
@@ -96,7 +96,8 @@ async function createMeasurement(request: Request, masterId: string, scope: Scop
         masterIds: scope.masterIds,
         name: clientName || null,
         phone: clientPhone || null,
-        address: address || null,
+        // Адрес, равный имени, — название объекта, а не адрес клиента.
+        address: clientAddressFromObject(address, clientName),
       });
       linkedClientId = auto?.id ?? null;
     }

@@ -195,7 +195,8 @@ async function createEstimate(request: Request): Promise<NextResponse> {
     let linkedClientId: string | null = null;
     if (providedClientId) {
       const existing = await prisma.client.findFirst({
-        where: { id: providedClientId, ...inScope(scope) },
+        // Клиент из корзины к новому КП не привязывается.
+        where: { id: providedClientId, ...inScope(scope), deletedAt: null },
         select: { id: true },
       });
       linkedClientId = existing?.id ?? null;

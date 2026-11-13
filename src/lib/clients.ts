@@ -79,6 +79,8 @@ export function normalizeClientPhone(phone: string | null | undefined): string |
 }
 const normalizePhone = normalizeClientPhone;
 
+const normName = (v?: string | null) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 export type GetOrCreateClientInput = {
   masterId: string;
   /**
@@ -96,6 +98,18 @@ export type GetOrCreateClientInput = {
   longitude?: number | null;
   source?: ClientSource | null;
 };
+
+/**
+ * Адрес клиента из запроса замера (13.11.2026). Когда адреса нет, приложение
+ * подставляет в `address` имя клиента — это название объекта в ленте, а не адрес.
+ * В клиента его не пишем и дубль по нему не ищем: иначе новый замер «Айгуль» без
+ * телефона склеивался бы с любой прежней «Айгуль», у которой адрес = «Айгуль».
+ */
+export function clientAddressFromObject(address: string | null | undefined, clientName: string | null | undefined): string | null {
+  const a = address?.trim();
+  if (!a) return null;
+  return normName(a) === normName(clientName) ? null : a;
+}
 
 export async function getOrCreateClient(input: GetOrCreateClientInput) {
   const { masterId, companyId } = input;
@@ -170,8 +184,6 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
 
   return created;
 }
-
-const normName = (v?: string | null) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
 /**
  * Клиент «этого же объекта» для запроса с одним именем, без телефона (13.11.2026).

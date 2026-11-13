@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
-import { getOrCreateClient, findObjectClientByName } from "@/lib/clients";
+import { getOrCreateClient, findObjectClientByName, clientAddressFromObject } from "@/lib/clients";
 import { isActiveMine, activeByFor } from "@/lib/measurement-active";
 import { normalizeWallFurniture } from "@/lib/wall-furniture";
 import { Prisma } from "@/generated/prisma/client";
@@ -87,17 +87,14 @@ export async function PATCH(
       if (sameObject) {
         safeClientId = sameObject;
       } else {
-        // Адреса нет — приложение подставляет в address имя клиента (название объекта
-        // в ленте). Адресом клиента оно от этого не становится.
-        const clientAddress =
-          address && address.trim().toLowerCase() !== (clientName ?? "").trim().toLowerCase() ? address : null;
         const auto = await getOrCreateClient({
           masterId: master.id,
           companyId: scope.companyId,
           masterIds: scope.masterIds,
           name: clientName || null,
           phone: clientPhone || null,
-          address: clientAddress,
+          // Адрес, равный имени, — название объекта, а не адрес клиента.
+          address: clientAddressFromObject(address, clientName),
         });
         safeClientId = auto?.id ?? undefined;
       }
