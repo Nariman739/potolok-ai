@@ -50,6 +50,8 @@ export function BreakdownPage({
 
       {estimate.extraItems.length > 0 && (
         <View style={{ marginTop: 4, marginBottom: 8 }}>
+          {/* Заголовок допов + первая строка — один неразрывный блок (ревью 8d, 13.11.2026) */}
+          <View wrap={false}>
           <View
             style={{
               flexDirection: "row",
@@ -87,8 +89,12 @@ export function BreakdownPage({
               />
             )}
           </View>
-          {estimate.extraItems.map((item, i) => (
+          {estimate.extraItems.slice(0, 1).map((item, i) => (
             <ItemRow key={i} data={data} item={item} />
+          ))}
+          </View>
+          {estimate.extraItems.slice(1).map((item, i) => (
+            <ItemRow key={i + 1} data={data} item={item} />
           ))}
         </View>
       )}
