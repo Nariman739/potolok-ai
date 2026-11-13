@@ -30,6 +30,8 @@ interface Props {
   withInsert?: boolean;
   insertColor?: "black" | "white";
   wallFurniture?: WallFurnitureEntry[];
+  /** Имена своих позиций прайса (id → имя): по ним 3D выбирает вид софита/трека. */
+  variantNames: Record<string, { name: string }>;
   /** Подпись «3D · в разработке» на языке мастера. */
   betaLabel?: string;
   fallbackImageUrl?: string | null;
@@ -90,6 +92,7 @@ export function Public3DViewer({
   withInsert,
   insertColor,
   wallFurniture,
+  variantNames,
   betaLabel,
   fallbackImageUrl,
   backHref = null,
@@ -134,6 +137,7 @@ export function Public3DViewer({
           withInsert={withInsert}
           insertColor={insertColor}
           wallFurniture={wallFurniture}
+          variantNames={variantNames}
           betaLabel={betaLabel}
           readOnly
           // Клиент всегда видит 3D тоном «Показать клиенту» (решение Наримана 12.11).

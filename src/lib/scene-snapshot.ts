@@ -54,6 +54,9 @@ export interface ScenePresets {
   lightTempKey: LightTempKeyId;
   floorId?: string;
   wallId?: string;
+  /** Имена своих позиций прайса (id → имя) — кладёт сервер (from-snapshot), читает /render-scene:
+   *  воркер открывает страницу без логина и сам прайс мастера получить не может. */
+  variantNames?: Record<string, { name: string }>;
 }
 
 const ELEMENT_TYPES: ReadonlySet<ElementType> = new Set<ElementType>([

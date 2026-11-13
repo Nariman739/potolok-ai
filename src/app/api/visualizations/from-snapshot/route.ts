@@ -33,6 +33,8 @@ import {
   photoForClientUsedThisMonth,
 } from "@/lib/photo-for-client";
 import { markVisualizationFailed } from "@/lib/scene-render";
+import { getScope } from "@/lib/company";
+import { variantNamesFor } from "@/lib/variant-names";
 
 // Ответ 202 мгновенный; after() держит функцию, пока воркер рендерит (Chromium ~10-25 с
 // + AI ~15-25 с внутри /frames). Запас под холодный старт машины Fly.
@@ -94,6 +96,9 @@ export async function POST(request: Request) {
 
   const scene = normalizeSnapshot(snapshot);
   const presets = presetsFromRequest(snapshot, body);
+  // Свои софиты/треки: имена позиций из прайса компании мастера — воркер рисует без логина.
+  const scope = await getScope(master);
+  presets.variantNames = await variantNamesFor(scene.elements, { masterId: scope.ownerId, companyId: scope.companyId });
   const color = CEILING_COLORS.find((c) => c.id === presets.colorId) ?? CEILING_COLORS[0];
   const light = getLightTempByKey(presets.lightTempKey);
   const floor = presets.floorId ? getFloorPreset(presets.floorId) : null;

@@ -197,6 +197,7 @@ export function Scene3D({
   betaLabel,
   showTone = false,
   onGlFail,
+  variantNames,
 }: Scene3DProps) {
   // Серверный рендер — всегда без мастер-кнопок.
   const readOnly = readOnlyProp || renderMode;
@@ -460,7 +461,9 @@ export function Scene3D({
   useEffect(() => {
     const ids = new Set<string>();
     for (const el of elements) if (el.priceVariantId) ids.add(el.priceVariantId);
-    if (ids.size === 0) {
+    // Имена пришли с сервера (публичная страница, /render-scene) — прайс не запрашиваем:
+    // он под логином, клиенту ответил бы 401.
+    if (ids.size === 0 || variantNames) {
       if (priceVariants.size > 0) setPriceVariants(new Map());
       return;
     }
@@ -478,15 +481,16 @@ export function Scene3D({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elements]);
+  }, [elements, variantNames]);
   // Имена своих позиций прайса → тип софита/трека по названию (fixtureKinds, как в приложении).
-  // На публичной странице запрос без логина не проходит — тогда типы по spotType/trackType элемента.
+  // В кабинете — из запроса прайса выше; клиенту и воркеру — готовые с сервера (variantNames).
   const priceVariantNames = useMemo<VariantNames>(() => {
+    if (variantNames) return variantNames;
     if (priceVariants.size === 0) return undefined;
     const out: Record<string, { name: string }> = {};
     for (const [id, v] of priceVariants) out[id] = { name: v.name };
     return out;
-  }, [priceVariants]);
+  }, [priceVariants, variantNames]);
   const fixtures = useMemo(
     () => lightFixtures.map((f) => ({ ...f, spotKind: f.kind === "spot" ? resolveSpotKind(f.el, priceVariantNames) : undefined })),
     [lightFixtures, priceVariantNames],
