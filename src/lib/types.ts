@@ -70,6 +70,9 @@ export interface RoomInput {
   chandelierInstallCount: number;
   /** Подвесные светильники / бра — закладная + установка как у люстр, но дешевле. */
   pendantCount?: number;
+  /** Сколько из них с установкой («наши»). Клиентские — только закладная, как в приложении
+   *  (13.11.2026). Нет поля (КП до этой даты, ручной ввод) — с установкой все. */
+  pendantInstallCount?: number;
   /** Вытяжки (вентиляционные выходы) — отдельной позицией «vent». */
   ventCount?: number;
   /** Длина парящего профиля (м.п.) на отдельных стенах. Идёт отдельной
@@ -155,8 +158,8 @@ export interface RoomInput {
   oneOffItems?: OneOffItem[];
   /** PNG-снимок 3D-сцены этой комнаты (Vercel Blob URL) — попадает в Estimate.room3dPreviewUrl и на публичную КП. */
   previewUrl3d?: string;
-  /** Площадь (м²) и периметр (м) по чертежу. Только у комнат, которые нельзя посчитать
-   *  как длина × ширина: не прямоугольных, с дугами, колоннами, скруглениями. */
+  /** Площадь (м²) и периметр (м) по чертежу — как считает приложение. До 13.11.2026 —
+   *  только у комнат, которые нельзя посчитать как длина × ширина; теперь у всех с замера. */
   measuredArea?: number;
   measuredPerimeter?: number;
   /** Выбор варианта из прайса на комнату: { gardina: id, track: id, lightline: id, canvas: id }.
@@ -164,6 +167,9 @@ export interface RoomInput {
   variantOverrides?: Record<string, string>;
   /** Наименьшая ширина не прямоугольной комнаты, м, по чертежу: как считает приложение. */
   measuredMinWidth?: number;
+  /** Обычный прямоугольник с замера: площадь тоже с чертежа (13.11.2026), но длину и
+   *  ширину в форме калькулятора менять можно — тогда площадь снова по ним. */
+  measuredRect?: boolean;
   /** «2 уровня» с чертежа: нижний уровень уходит из полотна, верх, борт и подсветка — свои строки. */
   level2?: { canvasCutM2: number; upperM2: number; bortM: number; ledM: number };
   // Raw data for Room Designer round-trip editing

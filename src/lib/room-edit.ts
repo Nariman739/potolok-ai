@@ -20,9 +20,10 @@ export function isAppFormatRoom(room: RoomInput): boolean {
 
 export const APP_ESTIMATE_RECALC_MESSAGE = "Это КП из приложения, пересчитайте его в приложении";
 
-/** Площадь не прямоугольной комнаты задана чертежом, а не длиной и шириной. */
+/** Площадь не прямоугольной комнаты задана чертежом, а не длиной и шириной.
+ *  Обычный прямоугольник с замера (measuredRect) в форме править можно. */
 export function isDrawnRoom(room: RoomInput): boolean {
-  return room.measuredArea != null;
+  return room.measuredArea != null && !room.measuredRect;
 }
 
 const shapeOf = (s?: string) => (!s || s === "square" ? "rectangle" : s);
@@ -58,6 +59,7 @@ export function mergeEditedRoom(edit: RoomInput, form: RoomInput): RoomInput {
     merged.measuredArea = undefined;
     merged.measuredPerimeter = undefined;
     merged.measuredMinWidth = undefined;
+    merged.measuredRect = undefined;
     merged.designerData = undefined;
   }
   // Участок подшторника у стены описывает старую длину. Разбивка софитов по типам
