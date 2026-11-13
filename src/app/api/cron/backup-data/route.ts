@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { gzipSync } from "node:zlib";
 import { put, list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
@@ -32,8 +33,7 @@ function todayKeyAlmaty(): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

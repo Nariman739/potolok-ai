@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { activateSubscription, notifyUserAboutPaymentDecision } from "@/lib/payment";
@@ -24,12 +24,12 @@ export async function POST(
 
     const result = await activateSubscription({ paymentId: id, adminId: me.id, days });
 
-    notifyUserAboutPaymentDecision({
+    after(() => notifyUserAboutPaymentDecision({
       master: result.master,
       payment: result.payment,
       approved: true,
       firstApproved: result.firstApproved,
-    }).catch((err) => console.error("notifyUserAboutPaymentDecision failed:", err));
+    }).catch((err) => console.error("notifyUserAboutPaymentDecision failed:", err)));
 
     return NextResponse.json({
       success: true,

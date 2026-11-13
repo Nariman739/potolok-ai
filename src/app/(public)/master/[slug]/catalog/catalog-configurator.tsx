@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { MessageCircle, ChevronDown, ChevronUp, ShoppingCart, X, Send } from "lucide-react";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
+import { whatsappNumber } from "@/lib/phone-format";
 
 interface CatalogItem {
   code: string;
@@ -106,7 +107,7 @@ export function CatalogConfigurator({
     if (areaNum > 0) text += `\nЦена/м²: ${fmtPrice(totalPrice / areaNum)}`;
     text += `\n\nВыбрано в каталоге: potolok.ai/master/${slug}/catalog`;
 
-    const phone = contactPhone.replace(/\D/g, "");
+    const phone = whatsappNumber(contactPhone);
     const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;

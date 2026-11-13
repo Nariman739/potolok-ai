@@ -26,6 +26,7 @@ import {
   Clock,
   ClipboardCheck,
 } from "lucide-react";
+import { whatsappNumber } from "@/lib/phone-format";
 
 type Props = {
   estimateId: string;
@@ -113,7 +114,7 @@ export function ActSection({
     const url = getActUrl();
     if (!url) return;
     const text = `Здравствуйте! Акт выполненных работ: ${url}\n\nОткройте по ссылке и подтвердите приёмку.`;
-    const phone = clientPhone?.replace(/\D/g, "");
+    const phone = whatsappNumber(clientPhone);
     const wa = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;

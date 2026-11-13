@@ -25,6 +25,7 @@ import {
   LOGO_MAX_UPLOAD_BYTES,
   LOGO_TOO_BIG_MESSAGE,
 } from "@/lib/compress-logo-client";
+import { normalizeProfilePhone } from "@/lib/phone-format";
 
 const BOT_USERNAME = "potolokaiBot";
 
@@ -183,13 +184,10 @@ export default function ProfilePage() {
 
   async function handleSave() {
     setSaving(true);
-    // Нормализация KZ-номера: последние 10 цифр (нац. номер) + префикс +7.
-    // Отсекает лишний код страны (7/8/77), который мог продублироваться поверх
-    // «+7» (инцидент 06.07). Пустой whatsapp остаётся пустым.
-    const normKz = (v: string) => {
-      const d = (v || "").replace(/\D/g, "").slice(-10);
-      return d.length === 10 ? "+7" + d : v;
-    };
+    // Телефон — логин: номер с кодом другой страны (+996, +375…) не трогаем, «+7» приписываем
+    // только номерам КЗ/РФ, задвоенный код «+7 7…» схлопываем (см. normalizeProfilePhone).
+    // Пустой whatsapp остаётся пустым.
+    const normKz = normalizeProfilePhone;
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",

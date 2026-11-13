@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaymentConfig } from "@/lib/payment";
 import { BILLING_ENABLED, PAYMENTS_OPEN, FREE_OBJECTS_LIMIT, getBillingStatus } from "@/lib/billing";
 import { TIPTOP_ENABLED } from "@/lib/tiptop";
-import { VTB_COMMENT, VTB_ENABLED, cardQuote } from "@/lib/vtb";
+import { VTB_COMMENT, VTB_TEST_COMMENT, cardQuote, vtbAvailableFor } from "@/lib/vtb";
 import { currencyFor } from "@/lib/company";
 import { PricingClient } from "./PricingClient";
 
@@ -45,7 +45,8 @@ export default async function PricingPage() {
     paymentsOpen: PAYMENTS_OPEN,
     cardEnabled: PAYMENTS_OPEN && TIPTOP_ENABLED && currency !== "RUB",
     // Карта ВТБ: сумма всегда в тенге (для ₽-мастера — по правилу из vtb.ts).
-    vtb: PAYMENTS_OPEN && VTB_ENABLED
+    // Песочница (VTB_MODE=test) — кнопка только QA, остальным как будто выключено (аудит А7)
+    vtb: PAYMENTS_OPEN && vtbAvailableFor(me ? { id: me.id, phone: me.phone } : null)
       ? { month: cardQuote("month", currency), year: cardQuote("year", currency) }
       : null,
   };
@@ -63,7 +64,10 @@ export default async function PricingPage() {
   const [status, recent] = await Promise.all([
     getBillingStatus(master.id),
     prisma.pendingPayment.findMany({
-      where: { masterId: master.id },
+      // Тестовые заявки песочницы мастеру не показываем — иначе «Отклонена» в истории
+      // NOT по nullable-полю в SQL отбрасывает и строки с NULL (ручные Kaspi-заявки без
+      // комментария) — поэтому явное «comment пуст ИЛИ не тестовый» (13.11.2026, ревью 8d).
+      where: { masterId: master.id, OR: [{ comment: null }, { comment: { not: VTB_TEST_COMMENT } }] },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: { id: true, amount: true, currency: true, status: true, createdAt: true, activatedDays: true, comment: true },

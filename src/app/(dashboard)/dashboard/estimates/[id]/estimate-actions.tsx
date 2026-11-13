@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { APP_ESTIMATE_RECALC_MESSAGE } from "@/lib/room-edit";
+import { whatsappNumber } from "@/lib/phone-format";
 
 interface EstimateActionsProps {
   estimateId: string;
@@ -120,7 +121,7 @@ export function EstimateActions({
   const handleWhatsApp = () => {
     const url = `${window.location.origin}/kp/${publicId}`;
     const text = encodeURIComponent(`Ваш расчёт потолка готов! Посмотрите здесь: ${url}`);
-    const phone = clientPhone?.replace(/\D/g, "");
+    const phone = whatsappNumber(clientPhone);
     const waUrl = phone
       ? `https://wa.me/${phone}?text=${text}`
       : `https://wa.me/?text=${text}`;

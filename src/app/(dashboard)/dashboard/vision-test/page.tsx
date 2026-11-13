@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ensureDraftOwner } from "@/lib/draft-owner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
@@ -12,6 +13,7 @@ import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
 import { spotBreakdown, fixtureFields, level2Fields, measuredGeometry, insertFields, wallProfileFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { whatsappNumber } from "@/lib/phone-format";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -1643,6 +1645,9 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 // ─────────────────────────────────────────────────────
 
 export default function ZameryPage() {
+  // Запасная копия замера в браузере принадлежит аккаунту: чужую стираем до первого чтения
+  // (сверка одна на загрузку страницы, повторные вызовы ничего не делают).
+  ensureDraftOwner();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isCalculatorMode = searchParams.get("mode") === "calculator" || searchParams.get("mode") === "calculator-edit";
@@ -2779,7 +2784,7 @@ export default function ZameryPage() {
                     Открыть
                   </a>
                   <a
-                    href={`https://wa.me/${(activeClientPhone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Вот 3D-визуализация вашего потолка: ${share3d.url}`)}`}
+                    href={`https://wa.me/${whatsappNumber(activeClientPhone) ?? ""}?text=${encodeURIComponent(`Вот 3D-визуализация вашего потолка: ${share3d.url}`)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="col-span-2 text-center px-3 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold active:scale-95">
                     Отправить в WhatsApp 📤

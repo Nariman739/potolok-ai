@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CompareSlider } from "./compare-slider";
 import { DOC_ROBOTS } from "@/lib/doc-og";
+import { whatsappNumber } from "@/lib/phone-format";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -118,9 +119,9 @@ export default async function VisualPage({
           <p className="mb-3 text-sm text-slate-600">
             Свяжитесь с мастером {company} чтобы заказать такой потолок.
           </p>
-          {contactPhone && (
+          {whatsappNumber(contactPhone) && (
             <a
-              href={`https://wa.me/${contactPhone.replace(/\D/g, "")}`}
+              href={`https://wa.me/${whatsappNumber(contactPhone)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"

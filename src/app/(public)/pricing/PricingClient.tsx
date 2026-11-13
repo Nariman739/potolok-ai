@@ -42,7 +42,7 @@ type Config = {
 type CardQuoteView = { amountKzt: number; days: number; rub: number | null };
 
 /** Итог возврата из банка ВТБ: проверяем у сервера, он спрашивает банк. */
-type VtbReturn = "checking" | "pending" | "failed" | "review" | null;
+type VtbReturn = "checking" | "pending" | "failed" | "review" | "test" | null;
 
 // Виджет TipTop Pay: скрипт грузим только с их домена и только когда нажали «картой».
 // status: success | fail | cancel…; номер транзакции — в data.transactionId.
@@ -198,6 +198,10 @@ export function PricingClient(props: Props) {
           }
           if (data.status === "REVIEW") {
             setVtbReturn("review");
+            return;
+          }
+          if (data.status === "TEST") {
+            setVtbReturn("test");
             return;
           }
         } catch {}
@@ -539,7 +543,9 @@ export function PricingClient(props: Props) {
                       ? "Оплата не прошла"
                       : vtbReturn === "review"
                         ? "Оплата получена"
-                        : "Банк ещё подтверждает оплату"}
+                        : vtbReturn === "test"
+                          ? "Тестовая оплата прошла"
+                          : "Банк ещё подтверждает оплату"}
                 </DialogTitle>
                 <DialogDescription>
                   {vtbReturn === "checking"
@@ -548,7 +554,9 @@ export function PricingClient(props: Props) {
                       ? "Деньги не списаны. Попробуйте ещё раз или другую карту."
                       : vtbReturn === "review"
                         ? "Проверяем вручную — напишем в течение дня. Повторно платить не нужно."
-                        : "Если деньги списались, PRO включится автоматически в течение 10 минут — придёт уведомление."}
+                        : vtbReturn === "test"
+                          ? "Это тестовый режим банка: PRO не включается."
+                          : "Если деньги списались, PRO включится автоматически в течение 10 минут — придёт уведомление."}
                 </DialogDescription>
               </DialogHeader>
               {vtbReturn !== "checking" && (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { allowedLogoSource, renderOgLogo } from "@/lib/og-logo";
+import { allowedLogoSource, ogLogoCanonicalSearch, renderOgLogo } from "@/lib/og-logo";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * Лёгкая копия логотипа мастера для превью ссылок (og:image), 12.11.2026.
@@ -7,6 +8,10 @@ import { allowedLogoSource, renderOgLogo } from "@/lib/og-logo";
  *
  * GET /api/og-logo?u=<https://<store>.public.blob.vercel-storage.com/...>
  *  - чужой адрес → 400, наружу не ходим;
+ *  - лишний или повторный параметр, значение u не в нормализованном виде → 308 на канонический,
+ *    без скачивания и sharp: иначе ?u=…&x=1, &x=2… — разные ключи кэша CDN, каждый = пережатие
+ *    (регистр процент-кодировки не сверяем — см. комментарий в GET);
+ *  - больше 30 промахов кэша в минуту с одного IP → 302 на исходник (превью не ломаем);
  *  - Blob ответил не 200 / редирект / слишком большой файл / не картинка → 302 на исходник;
  *  - иначе 600 px: с альфой PNG, без — JPEG 80. Кэш навсегда: logoUrl
  *    меняется при каждой загрузке (случайный суффикс), копия не протухнет.
@@ -15,6 +20,9 @@ export const runtime = "nodejs";
 
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+/** До функции доходят только промахи кэша CDN: столько пережатий в минуту с одного IP. */
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 60 * 1000;
 
 function fallback(src: URL) {
   return NextResponse.redirect(src.toString(), {
@@ -34,8 +42,32 @@ function fail(src: URL, reason: string) {
 }
 
 export async function GET(request: Request) {
-  const src = allowedLogoSource(new URL(request.url).searchParams.get("u"));
+  const url = new URL(request.url);
+  const src = allowedLogoSource(url.searchParams.get("u"));
   if (!src) return NextResponse.json({ error: "bad source" }, { status: 400 });
+
+  // Только канонический адрес: ровно один параметр `u`, и его значение — уже нормализованный
+  // источник. Сверяем РАЗОБРАННЫЕ параметры, а не сырую строку: если CDN, Next или краулер
+  // перекодирует «%2F» в «%2f» или «:» в «%3A», сырое сравнение дало бы вечный 308 и сломало
+  // бы все превью. Разный регистр процент-кодировки поэтому даёт 200 (лишние ключи кэша от
+  // него ограничивает лимит ниже); 308 — только за лишние или повторные параметры и за
+  // значение, отличное от нормализованного. Редирект ведёт на адрес, который эту проверку
+  // проходит, — зациклиться не может.
+  const keys = [...url.searchParams.keys()];
+  if (keys.length !== 1 || keys[0] !== "u" || url.searchParams.get("u") !== src.toString()) {
+    return NextResponse.redirect(new URL(`${url.pathname}${ogLogoCanonicalSearch(src)}`, url), {
+      status: 308,
+      headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },
+    });
+  }
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const limit = await checkRateLimit(`og-logo:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) {
+    console.warn("[og-logo] rate limited");
+    // Не кэшируем: следующий запрос после окна должен получить лёгкую копию.
+    return NextResponse.redirect(src.toString(), { status: 302, headers: { "Cache-Control": "no-store" } });
+  }
 
   let input: Buffer;
   try {

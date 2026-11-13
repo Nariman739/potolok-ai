@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEveningQuestion, EVENING_QUESTION } from "@/lib/bot-memory";
 
@@ -17,8 +18,7 @@ const ACTIVE_DAYS = 14;
 const MISSED_LIMIT = 3;
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const dry = request.nextUrl.searchParams.get("dry") === "1";

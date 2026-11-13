@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { hashPassword } from "@/lib/auth";
@@ -13,7 +14,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Слишком много попыток." }, { status: 429 });
     }
 
-    const { phone: rawPhone, otp, newPassword } = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
+    const { phone: rawPhone, otp, newPassword } = body;
 
     const phone = normalizePhone(rawPhone);
     if (!phone) {

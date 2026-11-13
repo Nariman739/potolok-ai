@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -7,7 +7,7 @@ import type { BillingPeriod } from "@/lib/billing";
 import type { PaymentMethod } from "@/lib/payment";
 import { reportError } from "@/lib/report-error";
 import { currencyFor } from "@/lib/company";
-import { VTB_COMMENT } from "@/lib/vtb";
+import { isVtbComment } from "@/lib/vtb";
 
 /**
  * Заявка на оплату вручную (Kaspi-перевод + скрин чека). Срок и сумма
@@ -48,10 +48,10 @@ export async function POST(request: Request) {
     // Сумма в валюте мастера: ₽ для России (27.10.2026).
     const quote = quotePayment(period, new Date(), await currencyFor(master.id));
 
-    // Комментарий «Оплата картой (ВТБ)» — служебная метка заявок картой ВТБ
+    // Комментарии «Оплата картой (ВТБ)» и «…(ВТБ, ТЕСТ)» — служебные метки заявок картой ВТБ
     // (по ней их сверяет и закрывает крон): ручной заявке её не даём.
     let note = (comment ?? "").trim() || null;
-    if (note === VTB_COMMENT) note = `Мастер: ${note}`;
+    if (isVtbComment(note)) note = `Мастер: ${note}`;
 
     const payment = await prisma.pendingPayment.create({
       data: {
@@ -65,9 +65,9 @@ export async function POST(request: Request) {
       include: { master: true },
     });
 
-    notifyAdminAboutPayment(payment, method).catch((err) => {
+    after(() => notifyAdminAboutPayment(payment, method).catch((err) => {
       reportError(err, "payment/submit", "notifyAdminAboutPayment failed");
-    });
+    }));
 
     return NextResponse.json({
       id: payment.id,

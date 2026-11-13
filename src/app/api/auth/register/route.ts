@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
 import { prisma } from "@/lib/prisma";
 import { ensureOwnCompany } from "@/lib/company";
 import { hashPassword, createSession } from "@/lib/auth";
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
     const { phone: rawPhone, password, firstName, companyName, source: rawSource } = body;
     // Откуда узнал (07.10.2026): приложение может прислать сразу при регистрации.
     const source = ["instagram", "friend", "other"].includes(rawSource) ? rawSource : null;

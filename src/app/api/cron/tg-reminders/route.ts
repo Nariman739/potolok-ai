@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { reminderDate } from "@/lib/crm-calendar";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -27,9 +28,8 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest) {
-  // Проверка cron secret
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Проверка cron secret (нет секрета — 401, src/lib/cron-auth.ts)
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

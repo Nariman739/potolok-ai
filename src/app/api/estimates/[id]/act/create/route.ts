@@ -105,7 +105,7 @@ export async function POST(
     });
 
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "ACT_CREATED",
         content: "Акт приёмки работ создан и готов к отправке",

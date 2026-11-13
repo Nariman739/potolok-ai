@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Phone, MessageCircle } from "lucide-react";
 import { PortfolioGallery } from "./portfolio-gallery";
+import { whatsappNumber } from "@/lib/phone-format";
 
 export async function generateMetadata({
   params,
@@ -69,9 +70,8 @@ export default async function MasterPortfolioPage({
 
   const name = master.companyName || `${master.firstName} ${master.lastName || ""}`.trim();
   const whatsapp = master.whatsappPhone || master.phone;
-  const whatsappUrl = whatsapp
-    ? `https://wa.me/${whatsapp.replace(/[^0-9]/g, "")}`
-    : null;
+  const waNumber = whatsappNumber(whatsapp);
+  const whatsappUrl = waNumber ? `https://wa.me/${waNumber}` : null;
 
   return (
     <div className="min-h-screen">

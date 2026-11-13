@@ -210,7 +210,7 @@ export async function POST(
 
     // CRM event
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "CONTRACT_CREATED",
         content: "Договор создан и готов к отправке клиенту",

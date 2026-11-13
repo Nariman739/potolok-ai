@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
@@ -38,23 +38,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     const who = name || estimate.clientName || "Клиент";
     const where = estimate.clientAddress ? ` (${estimate.clientAddress})` : "";
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "NOTE",
         content: `Замечания к акту от ${who}: ${text}`,
         metadata: { estimateId: estimate.id, actPublicId: publicId },
       }).catch(() => {});
     }
-    void sendPushToMaster(estimate.masterId, {
+    after(() => sendPushToMaster(estimate.masterId, {
       title: `${who}: есть замечания к акту`,
       body: text.slice(0, 140),
       data: { screen: `/estimate/${estimate.id}` },
-    });
-    if (estimate.master?.telegramChatId && estimate.master.notifyDealWon !== false) {
-      sendTelegramMessage(
-        estimate.master.telegramChatId,
+    }));
+    const chatId = estimate.master?.telegramChatId;
+    if (chatId && estimate.master.notifyDealWon !== false) {
+      after(() => sendTelegramMessage(
+        chatId,
         `⚠️ <b>${who} оставил замечания к акту</b>${where}\n\n${text}\n\n<i>После устранения клиент сможет подписать акт по той же ссылке.</i>`,
-      );
+      ));
     }
     return NextResponse.json({ success: true, at: at.toISOString() });
   } catch (error) {

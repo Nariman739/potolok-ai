@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { VTB_ENABLED, reconcileVtbPayments } from "@/lib/vtb";
 import { reportError } from "@/lib/report-error";
 
@@ -10,7 +11,7 @@ import { reportError } from "@/lib/report-error";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!VTB_ENABLED) return NextResponse.json({ skipped: "vtb disabled" });

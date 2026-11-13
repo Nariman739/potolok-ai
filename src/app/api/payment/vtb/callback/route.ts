@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { VTB_COMMENT, getOrderStatus, getVtbConfig, notifyVtbRefund, settleVtbPayment } from "@/lib/vtb";
+import { getOrderStatus, getVtbConfig, isVtbComment, notifyVtbRefund, settleVtbPayment } from "@/lib/vtb";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
 
 /**
@@ -15,19 +16,36 @@ import { reportError } from "@/lib/report-error";
  */
 export const maxDuration = 25;
 
-async function handle(params: URLSearchParams): Promise<NextResponse> {
+/** Заявки старше 2 суток callback не трогает: крон их уже закрыл, ручные решения — у Наримана. */
+const MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
+
+async function handle(request: Request, params: URLSearchParams): Promise<NextResponse> {
   const cfg = getVtbConfig();
   if (!cfg) return NextResponse.json({ ok: false }, { status: 200 });
   const mdOrder = params.get("mdOrder")?.trim();
   const operation = params.get("operation") ?? "";
   if (!mdOrder || mdOrder.length > 64) return NextResponse.json({ ok: false }, { status: 200 });
 
+  // Лимит частоты (аудит В4): адрес публичный и без подписи — не даём гонять нас
+  // в банк. По IP — 429; по заказу — тихо 200 (банк повторяет 6 раз по 30 с,
+  // в 10 за 10 минут укладывается; дальше заказ дозакроет крон).
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!(await checkRateLimit(`vtb-cb-ip:${ip}`, 60, 60 * 1000)).allowed) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+  if (!(await checkRateLimit(`vtb-cb-order:${mdOrder}`, 10, 10 * 60 * 1000)).allowed) {
+    return NextResponse.json({ ok: true });
+  }
+
   try {
     const st = await getOrderStatus(cfg, { orderId: mdOrder });
     const paymentId = st?.orderNumber;
     if (!paymentId) return NextResponse.json({ ok: true });
-    const exists = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, select: { comment: true } });
-    if (!exists || exists.comment !== VTB_COMMENT) return NextResponse.json({ ok: true });
+    const exists = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, select: { comment: true, createdAt: true } });
+    if (!exists || !isVtbComment(exists.comment)) return NextResponse.json({ ok: true });
+    if (Date.now() - exists.createdAt.getTime() > MAX_AGE_MS && operation !== "refunded" && operation !== "reversed") {
+      return NextResponse.json({ ok: true });
+    }
 
     if (operation === "refunded" || operation === "reversed") {
       if (st.orderStatus === 3 || st.orderStatus === 4) await notifyVtbRefund(paymentId, operation).catch(() => {});
@@ -43,7 +61,7 @@ async function handle(params: URLSearchParams): Promise<NextResponse> {
 }
 
 export async function GET(request: Request) {
-  return handle(new URL(request.url).searchParams);
+  return handle(request, new URL(request.url).searchParams);
 }
 
 export async function POST(request: Request) {
@@ -58,5 +76,5 @@ export async function POST(request: Request) {
   } else {
     for (const [k, v] of new URLSearchParams(raw)) params.set(k, v);
   }
-  return handle(params);
+  return handle(request, params);
 }

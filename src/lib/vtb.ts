@@ -4,6 +4,7 @@ import { activateSubscription, notifyOwnerPush, notifyUserAboutPaymentDecision, 
 import type { BillingPeriod } from "@/lib/billing";
 import { asCurrency, type CurrencyCode } from "@/lib/currency";
 import { reportError } from "@/lib/report-error";
+import { ALL_QA_PHONES } from "@/lib/qa";
 
 /**
  * Оплата картой через эквайринг ВТБ Казахстан (шлюз RBS), 10.11.2026.
@@ -24,14 +25,26 @@ import { reportError } from "@/lib/report-error";
  * тенге — у мастера спишутся рубли по курсу его банка. Поэтому заказ всегда
  * в KZT, а сумму для рублёвого мастера даёт cardQuote (см. RUB_CARD_KZT).
  *
- * Включение: VTB_ENABLED=true. Режим VTB_MODE=test (по умолчанию) берёт
- * VTB_TEST_API_USER / VTB_TEST_PASSWORD / VTB_TEST_GATEWAY, VTB_MODE=prod —
- * VTB_API_USER / VTB_PASSWORD / VTB_GATEWAY.
+ * Включение: VTB_ENABLED=true и ЯВНЫЙ VTB_MODE (13.11.2026, аудит А7):
+ *  - VTB_MODE=prod — VTB_API_USER / VTB_PASSWORD / VTB_GATEWAY, настоящие деньги и PRO;
+ *  - VTB_MODE=test — VTB_TEST_* (песочница банка): заказ только QA-мастерам
+ *    (ALL_QA_PHONES + VTB_TEST_MASTER_IDS), PRO НЕ включается никогда;
+ *  - пусто или другое значение — оплата выключена + ошибка конфигурации в Sentry.
+ * Раньше без VTB_MODE режим был тестовым, и оплата тестовой картой включала
+ * боевой PRO.
  */
 
 export const VTB_REVIEWER = "vtb";
 /** Пометка заявки картой ВТБ в PendingPayment.comment (по ней её узнаёт крон и /pricing). */
 export const VTB_COMMENT = "Оплата картой (ВТБ)";
+/** Заявка песочницы (VTB_MODE=test): отдельная пометка — не видна мастеру в истории, не зачисляется боевым режимом. */
+export const VTB_TEST_COMMENT = "Оплата картой (ВТБ, ТЕСТ)";
+export function isVtbComment(c: string | null | undefined): boolean {
+  return c === VTB_COMMENT || c === VTB_TEST_COMMENT;
+}
+export function vtbCommentFor(cfg: { test: boolean }): string {
+  return cfg.test ? VTB_TEST_COMMENT : VTB_COMMENT;
+}
 
 const GATEWAY_TEST = "https://vtbkz.rbsuat.com/payment/rest";
 const GATEWAY_PROD = "https://payment.vtb.kz/payment/rest";
@@ -39,9 +52,20 @@ const KZT_NUMERIC = "398";
 
 export type VtbConfig = { gateway: string; userName: string; password: string; test: boolean };
 
+let modeWarned = false;
+
 export function getVtbConfig(): VtbConfig | null {
   if (process.env.VTB_ENABLED !== "true") return null;
-  const test = (process.env.VTB_MODE ?? "test") !== "prod";
+  const mode = process.env.VTB_MODE;
+  if (mode !== "prod" && mode !== "test") {
+    // Безопасно по умолчанию: без явного режима денег не принимаем и PRO не даём.
+    if (!modeWarned) {
+      modeWarned = true;
+      reportError(new Error("VTB config: VTB_ENABLED=true, но VTB_MODE не prod/test"), "payment/vtb", "ВТБ выключен: VTB_MODE не задан или неверен", { mode: mode ?? "(пусто)" });
+    }
+    return null;
+  }
+  const test = mode === "test";
   const userName = test ? process.env.VTB_TEST_API_USER : process.env.VTB_API_USER;
   const password = test ? process.env.VTB_TEST_PASSWORD : process.env.VTB_PASSWORD;
   const gateway = (test ? process.env.VTB_TEST_GATEWAY : process.env.VTB_GATEWAY) || (test ? GATEWAY_TEST : GATEWAY_PROD);
@@ -50,6 +74,20 @@ export function getVtbConfig(): VtbConfig | null {
 }
 
 export const VTB_ENABLED = getVtbConfig() !== null;
+
+/** Показывать ли оплату картой ВТБ этому мастеру: боевой режим — всем, песочница — только QA. */
+export function vtbAvailableFor(master: { id: string; phone: string } | null): boolean {
+  const cfg = getVtbConfig();
+  if (!cfg) return false;
+  return !cfg.test || (!!master && vtbTestAllowed(master));
+}
+
+/** Тестовый заказ (песочница) — только QA: телефоны из src/lib/qa.ts и id из VTB_TEST_MASTER_IDS (через запятую). */
+export function vtbTestAllowed(master: { id: string; phone: string }): boolean {
+  if (ALL_QA_PHONES.includes(master.phone)) return true;
+  const ids = (process.env.VTB_TEST_MASTER_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  return ids.includes(master.id);
+}
 
 // ── Сумма в тенге ────────────────────────────────────────────────────────
 /**
@@ -153,7 +191,7 @@ export async function getOrderStatus(cfg: VtbConfig, by: { orderNumber: string }
 // ── Зачисление ───────────────────────────────────────────────────────────
 export type SettleResult =
   | { ok: true; paymentId: string; alreadyApproved: boolean; paidUntil: Date | null }
-  | { ok: false; reason: string; final: boolean; declined?: boolean; mismatch?: boolean };
+  | { ok: false; reason: string; final: boolean; declined?: boolean; mismatch?: boolean; test?: boolean };
 
 /**
  * Включает PRO по заказу, оплату которого подтвердил шлюз. Идемпотентно:
@@ -164,7 +202,9 @@ export type SettleResult =
 export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()): Promise<SettleResult> {
   if (!cfg) return { ok: false, reason: "ВТБ не настроен", final: false };
   const payment = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, include: { master: true } });
-  if (!payment || payment.comment !== VTB_COMMENT) return { ok: false, reason: "заявка не найдена", final: true };
+  if (!payment || !isVtbComment(payment.comment)) return { ok: false, reason: "заявка не найдена", final: true };
+  // Заявка песочницы не зачисляется боевым режимом и наоборот (режим сменили, пока заявка висела)
+  if ((payment.comment === VTB_TEST_COMMENT) !== cfg.test) return { ok: false, reason: "режим заявки не совпадает с режимом оплаты", final: true };
   if (payment.status === "APPROVED") {
     return { ok: true, paymentId, alreadyApproved: true, paidUntil: payment.master.paidUntil };
   }
@@ -194,7 +234,22 @@ export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()):
     return { ok: false, reason: `оплачено, но ${mismatch}`, final: false, mismatch: true };
   }
 
-  const result = await activateSubscription({ paymentId: payment.id, adminId: VTB_REVIEWER, trackPurchase: !cfg.test });
+  // Песочница: оплата прошла, но PRO НЕ включаем никогда (аудит А7). Заявку закрываем
+  // своей пометкой; мастеру (это всегда QA) ничего не шлём, владельцу — одно сообщение.
+  if (cfg.test) {
+    const closed = await prisma.pendingPayment.updateMany({
+      where: { id: payment.id, status: "PENDING" },
+      data: { status: "REJECTED", reviewedAt: new Date(), reviewedBy: VTB_REVIEWER, reviewNotes: "ВТБ ТЕСТ: оплата песочницы прошла, PRO не включается" },
+    });
+    const adminChatId = process.env.ADMIN_TG_CHAT_ID;
+    if (closed.count > 0 && adminChatId) {
+      await sendTelegramMessage(adminChatId, `🧪 <b>ВТБ ТЕСТ</b>: оплата песочницы прошла, ${payment.amount}₸ · <code>${payment.master.phone}</code>. PRO не включался.`)
+        .catch((err) => console.error("vtb test notify failed:", err));
+    }
+    return { ok: false, reason: "тестовая оплата: PRO не включается", final: true, test: true };
+  }
+
+  const result = await activateSubscription({ paymentId: payment.id, adminId: VTB_REVIEWER, trackPurchase: true });
   // Одобрил кто-то другой (параллельный callback, confirm, крон или кнопка
   // в Telegram): срок уже продлён, второй раз не продлеваем и не уведомляем.
   if (!result.claimed) {
@@ -205,7 +260,7 @@ export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()):
   const country = st.bankInfo?.bankCountryName ? ` · ${st.bankInfo.bankCountryName}` : "";
   await prisma.pendingPayment.update({
     where: { id: payment.id },
-    data: { reviewNotes: `ВТБ${cfg.test ? " (тест)" : ""}${card}${country}` },
+    data: { reviewNotes: `ВТБ${card}${country}` },
   });
 
   // Уведомления не должны ронять ответ: PRO уже включён.
@@ -224,11 +279,11 @@ export async function settleVtbPayment(paymentId: string, cfg = getVtbConfig()):
     const term = (result.payment.activatedDays ?? 30) >= DAYS_YEAR ? "год" : "месяц";
     await sendTelegramMessage(
       adminChatId,
-      `💳 <b>Оплата картой ВТБ${cfg.test ? " (ТЕСТ)" : ""}</b>\n${name} · <code>${m.phone}</code>\n` +
+      `💳 <b>Оплата картой ВТБ</b>\n${name} · <code>${m.phone}</code>\n` +
         `${sum}₸ за ${term}${card}${country} · PRO до ${m.paidUntil?.toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" })}`,
     ).catch((err) => console.error("vtb notifyAdmin failed:", err));
     await notifyOwnerPush(
-      `💳 Оплата картой ВТБ${cfg.test ? " (тест)" : ""}: ${sum}₸`,
+      `💳 Оплата картой ВТБ: ${sum}₸`,
       `${name}. PRO включён автоматически, делать ничего не нужно.`,
     ).catch((err) => console.error("vtb notifyOwnerPush failed:", err));
   }
@@ -277,7 +332,7 @@ export async function notifyVtbRefund(paymentId: string, operation: string): Pro
   const chatId = process.env.ADMIN_TG_CHAT_ID;
   if (!chatId) return;
   const p = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, include: { master: true } });
-  if (!p || p.comment !== VTB_COMMENT) return;
+  if (!p || !isVtbComment(p.comment)) return;
   const what = operation === "refunded" ? "возврат" : "отмена";
   await sendTelegramMessage(
     chatId,
@@ -296,7 +351,8 @@ export async function reconcileVtbPayments(now = new Date()): Promise<{ checked:
   if (!cfg) return { checked: 0, settled: 0, closed: 0 };
   const pending = await prisma.pendingPayment.findMany({
     where: {
-      comment: VTB_COMMENT,
+      // Только заявки текущего режима: тестовые при боевом конфиге не трогаем (и наоборот)
+      comment: vtbCommentFor(cfg),
       status: "PENDING",
       // Оплачено, но не сошлось — уже у Наримана на ручной проверке, не трогаем.
       OR: [{ reviewNotes: null }, { NOT: { reviewNotes: { startsWith: MISMATCH_NOTE } } }],

@@ -5,6 +5,8 @@ import { CURRENCY_CODES } from "@/lib/currency";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import { DEFAULT_KP_CONFIG } from "@/lib/kp/templates";
 import { reseedPricesOnCurrencyChange, reseedHint, type ReseedOutcome } from "@/lib/price-reseed";
+import { normalizeProfilePhone } from "@/lib/phone-format";
+import { normalizePhone as normalizeE164 } from "@/lib/phone";
 
 export async function GET() {
   try {
@@ -113,9 +115,46 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Телефон и WhatsApp мастера (13.11.2026). Раньше сервер писал строку как прислали: форма
+    // сайта приписывала «+7» зарубежным номерам, и «+996 700 123 456» становился «+76700123456»
+    // — мастер терял вход (логин ищется по точному номеру в виде +ХХХ…). Теперь:
+    //  - номер приводится к этому виду здесь же, одной функцией с формой;
+    //  - тот же номер в другой записи («+7 701…» при «+77013330078» в базе) поле не трогает вовсе;
+    //  - новый номер должен быть полным номером с кодом страны, иначе 400 и ничего не пишем.
+    const current = ("phone" in updateData || "whatsappPhone" in updateData)
+      ? (await prisma.master.findUnique({ where: { id: master.id }, select: { phone: true, whatsappPhone: true } })) ?? { phone: master.phone, whatsappPhone: null }
+      : { phone: master.phone, whatsappPhone: null };
+    for (const field of ["phone", "whatsappPhone"] as const) {
+      if (!(field in updateData)) continue;
+      const raw = updateData[field];
+      const stored = current[field] ?? "";
+      // Пустой WhatsApp — «убрать номер»; пустой телефон допустим, только если он и был пуст.
+      if (raw === null || raw === "") {
+        if (field === "whatsappPhone") updateData[field] = "";
+        else if (stored === "") delete updateData[field];
+        else return badPhone(field, master.language);
+        continue;
+      }
+      if (typeof raw !== "string") return badPhone(field, master.language);
+      const next = normalizeProfilePhone(raw);
+      if (raw === stored || next === stored) {
+        delete updateData[field];
+        continue;
+      }
+      // Вкладка сайта, открытая до выката, всё ещё портит зарубежный номер на своей стороне:
+      // шлёт «+7» + последние 10 цифр того, что в базе. Это не смена номера — не трогаем.
+      const storedDigits = stored.replace(/\D/g, "");
+      if (!stored.startsWith("+7") && storedDigits.length > 10 && next === `+7${storedDigits.slice(-10)}`) {
+        delete updateData[field];
+        continue;
+      }
+      if (normalizeE164(next) !== next) return badPhone(field, master.language);
+      updateData[field] = next;
+    }
+
     // Телефон — логин, он уникален: занятый другим аккаунтом номер давал 500 (P2002, прод 11.11.2026).
     // Проверяем заранее и отвечаем понятным 409; гонку двух сохранений ловит catch ниже.
-    if (typeof updateData.phone === "string" && updateData.phone !== master.phone) {
+    if (typeof updateData.phone === "string" && updateData.phone !== current.phone) {
       const taken = await prisma.master.findFirst({ where: { phone: updateData.phone, NOT: { id: master.id } }, select: { id: true } });
       if (taken) return phoneTaken(master.language);
     }
@@ -157,6 +196,14 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
+}
+
+function badPhone(field: "phone" | "whatsappPhone", language: string | null | undefined) {
+  const what = field === "phone" ? (language === "kk" ? "Телефон нөмірін" : "номер телефона") : (language === "kk" ? "WhatsApp нөмірін" : "номер WhatsApp");
+  const error = language === "kk"
+    ? `${what} тексеріңіз: ел кодымен толық нөмір керек, мысалы +7 701 123 45 67.`
+    : `Проверьте ${what}: нужен полный номер с кодом страны, например +7 701 123 45 67.`;
+  return NextResponse.json({ error, code: "BAD_PHONE", field }, { status: 400 });
 }
 
 function phoneTaken(language: string | null | undefined) {
