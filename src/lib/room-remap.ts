@@ -201,7 +201,9 @@ export function remapRoomIndexed<P, F extends { wall: number }, C extends { corn
       const next = oldToNewWall.get(oldIdx);
       if (next !== undefined) out[next] = v as P; else dropped.profiles.push(oldIdx);
     }
-    wallProfiles = Object.keys(out).length > 0 ? out : undefined;
+    // Пусто — ЯВНО {}: undefined в приложении не доезжает до сервера (PATCH «не трогать»),
+    // и снятый профиль воскресал на сервере/сайте (живая проверка Android 13.11.2026).
+    wallProfiles = out;
   }
 
   let wallFurniture: F[] | undefined;
@@ -211,7 +213,7 @@ export function remapRoomIndexed<P, F extends { wall: number }, C extends { corn
       const next = oldToNewWall.get(f.wall);
       if (next !== undefined) out.push({ ...f, wall: next }); else dropped.furniture.push(f.wall);
     }
-    wallFurniture = out.length > 0 ? out : undefined;
+    wallFurniture = out; // пусто — [] (приложение шлёт null → DbNull на сервере)
   }
 
   let columns: C[] | undefined;
@@ -231,12 +233,12 @@ export function remapRoomIndexed<P, F extends { wall: number }, C extends { corn
       const from = oldToNewCorner.get(d.from), to = oldToNewCorner.get(d.to);
       if (from !== undefined && to !== undefined && from !== to) out.push({ ...d, from, to }); else dropped.obliqueDiagonals += 1;
     }
-    obliqueDiagonals = out.length > 0 ? out : undefined;
+    obliqueDiagonals = out; // пусто — [] явно, иначе на сервере остались бы старые концы
   }
 
   let measureDiagonals = room.measureDiagonals;
   if (opts.dropMeasureDiagonals && room.measureDiagonals?.length) {
-    measureDiagonals = undefined;
+    measureDiagonals = []; // явно пусто — см. wallProfiles
     dropped.measureDiagonals = true;
   }
 
