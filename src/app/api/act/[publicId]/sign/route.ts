@@ -9,6 +9,7 @@ import { asCurrency } from "@/lib/currency";
 import { ownerBrandFor } from "@/lib/company";
 import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
 import type { CalculationResult } from "@/lib/types";
+import { ACT_REPLACED_TEXT, isActReplaced } from "@/lib/estimate-replace";
 
 /**
  * Подпись акта заказчиком. Текст акта на обоих языках замораживается в
@@ -36,6 +37,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     });
     if (!estimate) return NextResponse.json({ error: "Акт не найден" }, { status: 404 });
     if (estimate.actSignedAt) return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
+    // Мастер выбрал другой вариант КП — этот акт не действует (13.11.2026)
+    if (isActReplaced(estimate)) return NextResponse.json({ error: ACT_REPLACED_TEXT, replaced: true }, { status: 409 });
 
     const h = await headers();
     const forwarded = h.get("x-forwarded-for") || "";
@@ -60,8 +63,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
       renderAct(master, signedEstimate, calc, "kk"),
     ]);
 
-    // Условие в самом запросе: из двух одновременных подписей пройдёт одна.
-    const { count } = await prisma.estimate.updateMany({
+    // Строка под замком (FOR UPDATE): из двух подписей пройдёт одна, а выбор нового
+    // варианта (confirmReplacing) либо уже пометил акт «заменён» — отказ, либо ждёт.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const [row] = await tx.$queryRaw<{ actSignedAt: Date | null; actTextSnapshot: unknown }[]>`
+        SELECT "actSignedAt", "actTextSnapshot" FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
+      if (!row || row.actSignedAt) return "signed" as const;
+      if (isActReplaced(row)) return "replaced" as const;
+      const { count } = await tx.estimate.updateMany({
       where: { id: estimate.id, actSignedAt: null },
       data: {
         actSignedAt: signedAt,
@@ -72,7 +81,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
         actTextSnapshot: { version: 1, html: { ru, kk }, createdAt: signedAt.toISOString() },
       },
     });
-    if (count === 0) {
+      return count === 0 ? ("signed" as const) : ("ok" as const);
+    });
+    if (outcome === "replaced") return NextResponse.json({ error: ACT_REPLACED_TEXT, replaced: true }, { status: 409 });
+    if (outcome === "signed") {
       return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
     }
 

@@ -10,7 +10,8 @@ import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
 import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { ActSignSection } from "./sign-section";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { ACT_REPLACED_TEXT, ACT_REPLACED_TEXT_KK, isActReplaced } from "@/lib/estimate-replace";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -78,6 +79,9 @@ export default async function ActPublicPage({
   const clientRemarksAt = estimate.actClientRemarksAt && !estimate.actSignedAt ? estimate.actClientRemarksAt : null;
 
   const isSigned = !!estimate.actSignedAt;
+  // Мастер выбрал другой вариант КП — этот акт не подписывают (13.11.2026)
+  const isReplaced = isActReplaced(estimate);
+  const replacedText = lang === "kk" ? ACT_REPLACED_TEXT_KK : ACT_REPLACED_TEXT;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -91,6 +95,15 @@ export default async function ActPublicPage({
               {estimate.actSignerName} ·{" "}
               {estimate.actSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {isReplaced && (
+        <div className="sticky top-0 z-10 bg-amber-500 text-white">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <div className="text-sm font-semibold">{replacedText}</div>
           </div>
         </div>
       )}
@@ -123,6 +136,11 @@ export default async function ActPublicPage({
               <br />
               {estimate.actSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
             </p>
+          </div>
+        ) : isReplaced ? (
+          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+            <p className="text-sm font-semibold">{replacedText}</p>
           </div>
         ) : (
           <ActSignSection

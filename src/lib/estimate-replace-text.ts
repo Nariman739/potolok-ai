@@ -2,8 +2,12 @@
 /** Тексты — одной строкой, чтобы легко поменять (покажут Нариману до выката). */
 export const CONTRACT_REPLACED_TEXT = "Этот договор больше не действует — мастер прислал новый вариант.";
 export const CONTRACT_REPLACED_TEXT_KK = "Бұл шарт енді жарамсыз — шебер жаңа нұсқа жіберді.";
+export const ACT_REPLACED_TEXT = "Этот акт больше не действует — мастер прислал новый вариант.";
+export const ACT_REPLACED_TEXT_KK = "Бұл акт енді жарамсыз — шебер жаңа нұсқа жіберді.";
 export const MASTER_CONTRACT_REPLACED_TEXT = "Договор был по прежнему КП — для нового варианта создайте новый.";
 const PREV_SIGNED_TAIL = "Если нужно изменить условия — напишите нам в WhatsApp.";
 export const PREV_CONTRACT_SIGNED_TEXT = `По прежнему КП клиент уже подписал договор — другой вариант выбрать нельзя. ${PREV_SIGNED_TAIL}`;
 export const PREV_ACT_SIGNED_TEXT = `По прежнему КП клиент уже подписал акт — другой вариант выбрать нельзя. ${PREV_SIGNED_TAIL}`;
 
+/** Клиенту по ссылке, если по прежнему КП уже подписан договор/акт — без подробностей. */
+export const CLIENT_CONTACT_MASTER_TEXT = "Свяжитесь с мастером.";

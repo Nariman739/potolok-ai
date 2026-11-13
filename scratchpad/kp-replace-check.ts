@@ -122,6 +122,53 @@ const sign = (pid: string) => fetch(`${BASE}/api/contract/${pid}/sign`, { method
       else console.log("   гонка нарушена:", { sign: sg.status, pick: pk.status, old: so?.status, signed: !!so?.contractSignedAt, nw: sn?.status });
     }
     check(`7 гонка: ${rounds} раундов, инвариант держится (подпись первой ${signWon}, выбор первым ${pickWon})`, raceOk === rounds);
+
+    // 8) Клиент сам «Принимает» по ссылке новый вариант при уже принятом прежнем (договор и акт НЕ подписаны)
+    const pubConfirm = (pid: string) => fetch(`${BASE}/api/estimates/by-public/${pid}/confirm`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then(async (x) => ({ status: x.status, j: await x.json().catch(() => null) }));
+    const pubOf = async (id: string) => (await prisma.estimate.findUnique({ where: { id }, select: { publicId: true } }))!.publicId;
+    const o8 = await newObj();
+    const act8 = `ctlact${randomBytes(6).toString("hex")}`;
+    const c8 = contract();
+    const old8 = await est(o8, "CONFIRMED", 800_000, { ...c8, actPublicId: act8, actCreatedAt: new Date() });
+    const new8 = await est(o8, "SENT", 750_000);
+    const evBefore = await prisma.clientEvent.count({ where: { clientId: client.id, type: "KP_CONFIRMED" } });
+    r = await pubConfirm(await pubOf(new8));
+    const s8 = await prisma.estimate.findUnique({ where: { id: old8 }, select: { status: true, contractTextSnapshot: true, actTextSnapshot: true } });
+    check("8 по ссылке: новый CONFIRMED, прежний REVISED, договор и акт помечены", r.status === 200 && (await st(new8))?.status === "CONFIRMED" && s8?.status === "REVISED" && (s8?.contractTextSnapshot as any)?.replacedByEstimateId === new8 && (s8?.actTextSnapshot as any)?.replacedByEstimateId === new8, { s: r.status, old: s8?.status });
+    const evAfter = await prisma.clientEvent.count({ where: { clientId: client.id, type: "KP_CONFIRMED" } });
+    check("8 событие «принял КП» ровно одно", evAfter - evBefore === 1, evAfter - evBefore);
+    const signAct = (pid: string) => fetch(`${BASE}/api/act/${pid}/sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signerName: "CTL Клиент", agreed: true }) }).then(async (x) => ({ status: x.status, j: await x.json().catch(() => null) }));
+    r = await signAct(act8);
+    check("8 подпись акта прежнего → 409 «акт больше не действует»", r.status === 409 && r.j?.replaced === true && String(r.j?.error).startsWith("Этот акт больше не действует"), r);
+    const actHtml = await (await fetch(`${BASE}/act/${act8}`)).text();
+    check("8 /act: плашка, формы подписи нет", actHtml.includes("Этот акт больше не действует"));
+    r = await sign(c8.contractPublicId);
+    check("8 подпись договора прежнего → 409", r.status === 409, r.status);
+
+    // 9) По ссылке, но по прежнему подписан договор → «Свяжитесь с мастером.», ничего не меняется
+    const o9 = await newObj();
+    const old9 = await est(o9, "CONFIRMED", 900_000, { ...contract(), contractSignedAt: new Date(), contractSignerName: "CTL" });
+    const new9 = await est(o9, "SENT", 850_000);
+    const ev9 = await prisma.clientEvent.count({ where: { clientId: client.id, type: "KP_CONFIRMED" } });
+    r = await pubConfirm(await pubOf(new9));
+    check("9 по ссылке при подписанном прежнем → 409 «Свяжитесь с мастером.»", r.status === 409 && r.j?.error === "Свяжитесь с мастером.", r);
+    check("9 статусы не тронуты, события нет", (await st(old9))?.status === "CONFIRMED" && (await st(new9))?.status === "SENT" && (await prisma.clientEvent.count({ where: { clientId: client.id, type: "KP_CONFIRMED" } })) === ev9);
+
+    // 10) Гонка: клиент принимает B по ссылке, мастер в тот же миг выбирает A → ровно одно CONFIRMED
+    let race2 = 0;
+    for (let i = 0; i < 6; i++) {
+      const o = await newObj();
+      const oldE = await est(o, "CONFIRMED", 1_000_000, contract());
+      const a10 = await est(o, "SENT", 950_000);
+      const b10 = await est(o, "SENT", 900_000);
+      const pidB = await pubOf(b10);
+      await Promise.all([pubConfirm(pidB), api(A, `/estimates/${a10}`, { method: "PUT", body: JSON.stringify({ status: "CONFIRMED" }) })]);
+      const all = await prisma.estimate.findMany({ where: { measurementObjectId: o }, select: { id: true, status: true } });
+      const confirmed = all.filter((x) => x.status === "CONFIRMED");
+      if (confirmed.length === 1 && (await st(oldE))?.status === "REVISED") race2++;
+      else console.log("   гонка 2 нарушена:", all.map((x) => x.status));
+    }
+    check("10 гонка клиент-B против мастер-A: 6 раундов, ровно одно принятое", race2 === 6, race2);
   } catch (err) {
     fails++;
     console.log("ERROR", err);

@@ -11,7 +11,7 @@ import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
 import { reportError } from "@/lib/report-error";
-import { confirmReplacing, isContractReplaced, ReplaceBlockedError } from "@/lib/estimate-replace";
+import { confirmReplacing, ConfirmStatusError, isContractReplaced, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 export async function GET(
   _request: Request,
@@ -152,22 +152,18 @@ export async function PUT(
     // объекта становятся «пересмотренными», чтобы деньги и этап объекта
     // считались по одной цене.
     if (status === "CONFIRMED") {
-      // Уже принятое КП объекта — значит, это замена: клиент согласился на новый
-      // вариант (часто устно), и мастер отмечает черновик, не пересылая его (13.11.2026).
-      const hasConfirmed = !!existing.measurementObjectId && (await prisma.estimate.count({
-        where: { measurementObjectId: existing.measurementObjectId, id: { not: id }, deletedAt: null, status: "CONFIRMED" },
-      })) > 0;
-      const allowed = hasConfirmed ? ["SENT", "VIEWED", "REVISED", "DRAFT"] : ["SENT", "VIEWED", "REVISED"];
-      if (!allowed.includes(existing.status)) {
-        return NextResponse.json({ error: "Это КП нельзя отметить выбранным" }, { status: 400 });
-      }
+      // Допустимые статусы, разжалование прежних принятых и проверка подписи — в одной
+      // транзакции под замком объекта (confirmReplacing). Из DRAFT — только если в объекте
+      // уже есть принятое КП: клиент согласился на новый вариант устно (13.11.2026).
       let replacedTotals: number[] = [];
       try {
-        // Прежние принятые → «пересмотрено» в одной транзакции с проверкой подписи
-        ({ replacedTotals } = await prisma.$transaction((tx) => confirmReplacing(tx, id, existing.measurementObjectId)));
+        ({ replacedTotals } = await prisma.$transaction((tx) => confirmReplacing(tx, id, existing.measurementObjectId, "master")));
       } catch (e) {
         if (e instanceof ReplaceBlockedError) {
           return NextResponse.json({ error: e.message, code: "PREV_SIGNED", kind: e.kind }, { status: 409 });
+        }
+        if (e instanceof ConfirmStatusError) {
+          return NextResponse.json({ error: e.message }, { status: 400 });
         }
         throw e;
       }
