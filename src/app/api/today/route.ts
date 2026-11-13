@@ -89,7 +89,7 @@ export async function GET() {
           client: { select: { id: true, name: true, phone: true } },
         },
       }),
-      getActionableClients(scope.masterIds),
+      getActionableClients(scope),
       prisma.measurementObject.count({ where: { ...inScope(scope), deletedAt: null } }),
       // Монтажи, назначенные на объектах (Этап 3): кто и куда едет
       prisma.measurementObject.findMany({

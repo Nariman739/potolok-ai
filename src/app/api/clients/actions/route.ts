@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
-    const buckets = await getActionableClients(scope.masterIds);
+    const buckets = await getActionableClients(scope);
     return NextResponse.json(buckets);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
