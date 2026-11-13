@@ -116,3 +116,36 @@ export function shareInFlight<T>(inFlight: Map<string, Promise<T>>, key: string,
   inFlight.set(key, started);
   return started;
 }
+
+/**
+ * Открытого объекта на сервере нет. Заводить ли его самим под комнаты из запасной копии?
+ * Да — только если копия целиком состоит из комнат, которые сервер ещё не получил, и объект в
+ * ней не записан: это замер, чей объект так и не создался. Если в копии записан объект (он за
+ * это время сохранён, закрыт или удалён) или есть уже подтверждённые комнаты — нет: новый объект
+ * получил бы только часть комнат с экрана, остальные остались бы в прежнем.
+ * Срока здесь нет: комната, нарисованная без сети, может ждать и час — спутать её не с чем,
+ * открытого объекта нет.
+ */
+export function shouldCreateObjectForBackup(rooms: { unsynced?: boolean }[], backupObjectId: string | null | undefined): boolean {
+  return !backupObjectId && rooms.length > 0 && rooms.every((r) => r.unsynced === true);
+}
+
+/**
+ * Названия комнат для вопроса мастеру. Одинаковые названия на экране («Помещение», «Помещение»)
+ * получают номер по порядку — «Помещение 1», «Помещение 2»; уникальные остаются как есть.
+ * Только для текста вопроса: сами комнаты не переименовываются.
+ */
+export function roomLabelsForQuestion(allRooms: { id: string; name?: string | null }[], ids: string[]): string[] {
+  const nameOf = (r: { name?: string | null }) => (r.name ?? "").trim() || "Без названия";
+  const total = new Map<string, number>();
+  for (const r of allRooms) total.set(nameOf(r), (total.get(nameOf(r)) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  const label = new Map<string, string>();
+  for (const r of allRooms) {
+    const name = nameOf(r);
+    const n = (seen.get(name) ?? 0) + 1;
+    seen.set(name, n);
+    label.set(r.id, (total.get(name) ?? 0) > 1 ? `${name} ${n}` : name);
+  }
+  return ids.map((id) => label.get(id) ?? "Без названия");
+}

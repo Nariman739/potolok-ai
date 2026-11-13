@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ensureDraftOwner } from "@/lib/draft-owner";
-import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, type RemovedRoom } from "@/lib/zamer-unsynced";
+import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, shouldCreateObjectForBackup, roomLabelsForQuestion, type RemovedRoom } from "@/lib/zamer-unsynced";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
@@ -1709,6 +1709,8 @@ export default function ZameryPage() {
   const attemptedRoomsRef = useRef<Set<string>>(new Set());
   /** Комнаты, удалённые мастером до ответа сервера: не досылать, а доехавшую — убрать. */
   const removedUnsyncedRef = useRef<Set<string>>(new Set());
+  /** Создание открытого объекта, которое сейчас в пути: второй объект параллельно не заводим. */
+  const creatingObjectRef = useRef<Map<string, Promise<string>>>(new Map());
 
   // Capture GPS coordinates
   useEffect(() => {
@@ -1856,6 +1858,8 @@ export default function ZameryPage() {
                     if (pending.length > 0) void flushUnsynced(loid, pending);
                     void cleanupRemovedRooms(loid);
                   }
+                } else if (shouldCreateObjectForBackup(parsed, loid)) {
+                  void createObjectForBackup(lo ?? "", parsed);
                 }
               }
             }
@@ -1885,24 +1889,43 @@ export default function ZameryPage() {
   }, []);
 
   // ── Helper: ensure active object exists on server ──
-  async function ensureActiveObject(): Promise<string> {
+  /** address — название объекта, когда оно ещё не дошло до состояния (подъём запасной копии при открытии). */
+  function ensureActiveObject(address?: string): Promise<string> {
     // Use ref to get latest value (avoids stale closure in rapid async calls)
-    if (activeObjectIdRef.current) return activeObjectIdRef.current;
-    const res = await fetch("/api/measurements", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        address: objectName,
-        status: "active",
-        ...(activeClientId && { clientId: activeClientId }),
-        ...(objectFilmId && { canvasItemId: objectFilmId }),
-      }),
+    if (activeObjectIdRef.current) return Promise.resolve(activeObjectIdRef.current);
+    // Объект уже создаётся другим вызовом (досылка при открытии и «Готово» почти одновременно) —
+    // ждём его, а не заводим второй.
+    return shareInFlight(creatingObjectRef.current, "object", async () => {
+      const res = await fetch("/api/measurements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: address ?? objectName,
+          status: "active",
+          ...(activeClientId && { clientId: activeClientId }),
+          ...(objectFilmId && { canvasItemId: objectFilmId }),
+        }),
+      });
+      if (!res.ok) throw new Error("Не удалось создать объект замера");
+      const obj = await res.json();
+      setActiveObjectId(obj.id);
+      activeObjectIdRef.current = obj.id; // update ref immediately (no wait for re-render)
+      return obj.id as string;
     });
-    if (!res.ok) throw new Error("Не удалось создать объект замера");
-    const obj = await res.json();
-    setActiveObjectId(obj.id);
-    activeObjectIdRef.current = obj.id; // update ref immediately (no wait for re-render)
-    return obj.id;
+  }
+
+  /**
+   * Открыли «Замер», открытого объекта на сервере нет, а в запасной копии — комнаты, которые
+   * сервер так и не получил (перезагрузка через долю секунды после «Готово» или комната
+   * нарисована без сети): заводим объект и досылаем сами. Раньше такие комнаты ждали, пока
+   * мастер нарисует следующую или нажмёт «Сохранить». Не вышло (нет сети, лимит объектов) —
+   * комнаты остаются на экране и в копии, как были.
+   */
+  async function createObjectForBackup(address: string, pending: Room[]) {
+    try {
+      const objId = await ensureActiveObject(address);
+      await flushUnsynced(objId, pending);
+    } catch { /* остаётся локальным черновиком */ }
   }
 
   /** Тело запроса комнаты — одно и то же для первой отправки, досылки и уборки удалённой. */
@@ -2157,7 +2180,8 @@ export default function ZameryPage() {
           if (!confirm("Этот объект удалён или недоступен. Сохранить комнаты новым объектом?")) return;
           currentId = null;
         } else if (sent.failed.length > 0) {
-          const names = sent.failed.map(r => `«${r.name || "Без названия"}»`).join(", ");
+          // Одинаковые названия («Помещение», «Помещение») в вопросе получают номер по порядку на экране.
+          const names = roomLabelsForQuestion(roomsRef.current, sent.failed.map(r => r.id)).map(n => `«${n}»`).join(", ");
           const one = sent.failed.length === 1;
           const ok = confirm(
             `${one ? "Комната" : "Комнаты"} ${names} не ${one ? "отправилась" : "отправились"} на сервер. Проверьте интернет и попробуйте ещё раз.\n\n` +
