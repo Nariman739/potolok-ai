@@ -9,6 +9,7 @@ export function LegalArticle({ title, children }: { title: string; children: Rea
         <Link href="/" className="hover:underline">← На главную</Link>
         <Link href="/pricing" className="hover:underline">Тарифы</Link>
         <Link href="/terms" className="hover:underline">Оферта</Link>
+        <Link href="/subscription" className="hover:underline">Подписка</Link>
         <Link href="/refund" className="hover:underline">Возврат</Link>
         <Link href="/privacy" className="hover:underline">Конфиденциальность</Link>
         <Link href="/contacts" className="hover:underline">Контакты</Link>

@@ -37,6 +37,7 @@ export default async function ContactsPage() {
       <h2>Документы</h2>
       <ul>
         <li><a href="/terms">Публичный договор-оферта</a></li>
+        <li><a href="/subscription">Условия подписки и автопродления</a></li>
         <li><a href="/refund">Возврат оплаты и отмена подписки</a></li>
         <li><a href="/privacy">Политика конфиденциальности</a></li>
         <li><a href="/pricing">Тарифы</a></li>
