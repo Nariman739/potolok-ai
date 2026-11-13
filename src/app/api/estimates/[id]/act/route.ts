@@ -189,7 +189,7 @@ export async function GET(
           `Подписант: ${estimate.actSignerName ?? clientName}` +
           `\nДата и время: ${ts}` +
           (estimate.actSignerIp ? `\nIP: ${estimate.actSignerIp}` : "") +
-          `\nАкт к Договору № ${contractNum}`,
+          `\nАкт к ${master.contractType === "ip" ? "Договору" : "Соглашению"} № ${contractNum}`,
         L,
         stampY,
         { width: CW, align: "center" },
