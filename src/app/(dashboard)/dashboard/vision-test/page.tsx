@@ -2254,14 +2254,14 @@ export default function ZameryPage() {
     // или комнаты, а уберёт его в сохранённые.
     const currentObjId = activeObjectIdRef.current;
     let parkedCurrent: SavedObject | null = null;
+    let keptOnServer = false;
     if (currentObjId && currentObjId !== obj.id && rooms.length === 0) {
       try {
         const res = await fetch(`/api/measurements/${currentObjId}?mode=switch`, { method: "DELETE" });
         const out = res.ok ? await res.json().catch(() => null) : null;
-        // Сервер объект не удалил (у него есть КП или комнаты) — он в сохранённых: показываем там.
-        if (out?.kept) {
-          parkedCurrent = { id: currentObjId, address: objectName, rooms: [], totalArea: 0, savedAt: Date.now(), clientId: activeClientId, noInsert: objectNoInsert };
-        }
+        // Сервер объект не удалил (у него есть КП или комнаты) — он в сохранённых. Что в нём на
+        // самом деле (комнаты, площадь), экран не знает: список перечитаем с сервера ниже.
+        keptOnServer = out?.kept === true;
       } catch { /* non-critical */ }
     } else if (currentObjId && currentObjId !== obj.id) {
       try {
@@ -2306,6 +2306,13 @@ export default function ZameryPage() {
       setActiveClientPhone(null);
     }
     setSavedObjects(prev => [...prev.filter(o => o.id !== obj.id), ...(parkedCurrent ? [parkedCurrent] : [])]);
+    if (keptOnServer) {
+      // Открываемый объект из списка убираем сами — на случай, если сервер ещё числит его сохранённым.
+      fetch("/api/measurements?status=saved")
+        .then(r => (r.ok ? r.json() : null))
+        .then((list: ServerObject[] | null) => { if (Array.isArray(list)) setSavedObjects(list.map(toSavedObject).filter(o => o.id !== obj.id)); })
+        .catch(() => { /* останется прежний список — объект появится после обновления страницы */ });
+    }
     setShowHistory(false);
     activeObjectIdRef.current = obj.id;
     setActiveObjectId(obj.id);
