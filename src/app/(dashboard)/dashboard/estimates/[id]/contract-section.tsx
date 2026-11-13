@@ -34,7 +34,6 @@ type Props = {
   /** Не принятое КП, а в объекте клиент выбрал другой вариант — договор здесь не создаём. */
   otherChosen?: boolean;
   clientPhone: string | null;
-  contractConfigured: boolean;
   /** Незаполненные реквизиты — показываем мастеру, чего не хватает. */
   missingRequisites: string[];
   defaultPrepaymentPercent: number;
@@ -42,6 +41,34 @@ type Props = {
   workDurationDays: number | null;
   paymentSchedule: PaymentStage[] | null;
 };
+
+/**
+ * Чего не хватает в реквизитах мастера. Договор создаётся и показывается при любых реквизитах
+ * (как в приложении), поэтому мастер должен видеть, что именно клиент НЕ увидит в документе.
+ */
+function MissingRequisites({ fields, existing }: { fields: string[]; existing: boolean }) {
+  if (fields.length === 0) return null;
+  const noType = fields.includes("Тип договора");
+  return (
+    <div role="alert" className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
+      <p className="font-semibold">{existing ? "В этом договоре не заполнено:" : "В договоре не будет заполнено:"}</p>
+      <ul className="mt-1 list-disc pl-5">
+        {fields.map((f) => (
+          <li key={f}>{f}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-amber-800">
+        {noType && "Тип договора не выбран — документ оформляется как от физического лица. "}
+        {existing
+          ? "Клиент видит документ без этих данных. Заполните их в профиле — договор по той же ссылке обновится сам."
+          : "Договор создастся и так, но клиент увидит документ без этих данных."}{" "}
+        <Link href="/dashboard/profile" className="underline font-semibold">
+          Заполнить в профиле
+        </Link>
+      </p>
+    </div>
+  );
+}
 
 export function ContractSection({
   estimateId,
@@ -52,7 +79,6 @@ export function ContractSection({
   contractReplaced = false,
   otherChosen = false,
   clientPhone,
-  contractConfigured,
   missingRequisites,
   defaultPrepaymentPercent,
   workStartDate,
@@ -117,28 +143,6 @@ export function ContractSection({
     window.open(wa, "_blank");
   }
 
-  if (!contractConfigured) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileSignature className="h-4 w-4" />
-            Электронный договор
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Договор подставит ваши реквизиты автоматически — заполните их один
-            раз в профиле, дальше всё будет собираться само.
-          </p>
-          <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
-            <Link href="/dashboard/profile">Заполнить реквизиты</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   if (!contractPublicId && otherChosen) {
     return (
       <Card>
@@ -170,19 +174,7 @@ export function ContractSection({
           <p className="text-sm text-muted-foreground">
             Создайте договор и отправьте клиенту ссылку. Клиент откроет в браузере и подпишет электронно — без распечатки. Все данные сохранятся в карточке клиента.
           </p>
-          {missingRequisites.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-              <p className="font-medium">
-                В договоре не хватит: {missingRequisites.join(", ")}
-              </p>
-              <p className="text-xs mt-1 text-amber-800">
-                Договор создастся и так, но клиент увидит документ без этих данных.{" "}
-                <Link href="/dashboard/profile" className="underline font-medium">
-                  Заполнить в профиле
-                </Link>
-              </p>
-            </div>
-          )}
+          <MissingRequisites fields={missingRequisites} existing={false} />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
             onClick={() => setTermsOpen(true)}
@@ -254,12 +246,16 @@ export function ContractSection({
             {MASTER_CONTRACT_REPLACED_TEXT}
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Создан{" "}
-            {contractCreatedAt
-              ? new Date(contractCreatedAt).toLocaleString("ru-RU")
-              : ""}
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground">
+              Создан{" "}
+              {contractCreatedAt
+                ? new Date(contractCreatedAt).toLocaleString("ru-RU")
+                : ""}
+            </p>
+            {/* Договор уже у клиента, но ещё не подписан: реквизиты подставляются при открытии. */}
+            <MissingRequisites fields={missingRequisites} existing />
+          </>
         )}
 
         <div className="flex flex-wrap gap-2">
