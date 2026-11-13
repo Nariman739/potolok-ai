@@ -526,6 +526,7 @@ export function PricingClient(props: Props) {
 
       <p className="text-xs text-muted-foreground text-center">
         <Link href="/terms" className="underline">Договор-оферта</Link> ·{" "}
+        <Link href="/subscription" className="underline">Условия подписки</Link> ·{" "}
         <Link href="/refund" className="underline">Возврат и отмена</Link> ·{" "}
         <Link href="/privacy" className="underline">Конфиденциальность</Link>
       </p>

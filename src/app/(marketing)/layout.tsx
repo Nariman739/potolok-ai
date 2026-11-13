@@ -165,6 +165,7 @@ export default function MarketingLayout({
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-[#475569]">
               <Link href="/pricing" className="hover:text-[#94A3B8] transition-colors">Тарифы</Link>
               <Link href="/terms" className="hover:text-[#94A3B8] transition-colors">Договор-оферта</Link>
+              <Link href="/subscription" className="hover:text-[#94A3B8] transition-colors">Условия подписки</Link>
               <Link href="/refund" className="hover:text-[#94A3B8] transition-colors">Возврат</Link>
               <Link href="/privacy" className="hover:text-[#94A3B8] transition-colors">Конфиденциальность</Link>
               <Link href="/contacts" className="hover:text-[#94A3B8] transition-colors">Контакты</Link>
