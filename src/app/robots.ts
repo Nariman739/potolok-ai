@@ -13,6 +13,8 @@ import type { MetadataRoute } from "next";
  */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/dashboard", "/api/"] }],
+    // /api/og-logo открыт: это картинка логотипа для превью ссылок — боты превью,
+    // соблюдающие robots.txt (facebookexternalhit, Twitterbot, LinkedInBot), иначе её не скачают.
+    rules: [{ userAgent: "*", allow: ["/", "/api/og-logo"], disallow: ["/dashboard", "/api/"] }],
   };
 }
