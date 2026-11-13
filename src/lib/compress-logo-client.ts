@@ -10,6 +10,7 @@
  * Правила:
  * - маленький файл (≤ 300 КБ и ≤ 1200 px) — отправляем как есть;
  * - PNG/WEBP (может быть прозрачность) — остаётся PNG, чтобы фон не стал чёрным;
+ * - SVG — всегда растрируется в PNG (сервер SVG не принимает), см. rasterizeSvg;
  *   если PNG всё равно вышел больше 4 МБ — JPEG на белом фоне;
  * - остальное (JPEG, HEIC в Safari) — JPEG 0.85;
  * - браузер не смог раскрыть файл (HEIC в Chrome) — отправляем как есть.
@@ -27,7 +28,15 @@ const MAX_SIDE = 1200;
 const SMALL_BYTES = 300 * 1024;
 const JPEG_QUALITY = 0.85;
 
+export const LOGO_UNREADABLE_MESSAGE = "Не получилось прочитать картинку. Попробуйте PNG или JPG.";
+
+const SVG_DEFAULT_SIDE = 800;
+
 export async function compressLogoForUpload(file: File): Promise<File> {
+  // SVG сервер не принимает (исполняемая разметка) — всегда растрируем в PNG,
+  // исходник не отправляем никогда (13.11.2026).
+  if (isSvg(file)) return rasterizeSvg(file);
+
   let img: HTMLImageElement;
   try {
     img = await loadImage(file);
@@ -45,10 +54,8 @@ export async function compressLogoForUpload(file: File): Promise<File> {
     return file;
   }
 
-  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
-  const width = Math.max(1, Math.round(w * scale));
-  const height = Math.max(1, Math.round(h * scale));
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "logo";
+  const { width, height } = fitSize(w, h);
+  const baseName = baseNameOf(file);
 
   try {
     const mayHaveAlpha = /png|webp/i.test(file.type);
@@ -64,6 +71,80 @@ export async function compressLogoForUpload(file: File): Promise<File> {
   } catch {
     return file;
   }
+}
+
+function isSvg(file: File): boolean {
+  return /svg/i.test(file.type) || /\.svg$/i.test(file.name);
+}
+
+function baseNameOf(file: File): string {
+  return file.name.replace(/\.[^.]+$/, "") || "logo";
+}
+
+function fitSize(w: number, h: number) {
+  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+  return {
+    width: Math.max(1, Math.round(w * scale)),
+    height: Math.max(1, Math.round(h * scale)),
+  };
+}
+
+/**
+ * SVG → PNG (прозрачность сохраняется). Если у SVG нет своих width/height в
+ * пикселях — проставляем их сами: по пропорциям viewBox 1200 px по большей
+ * стороне, без viewBox — 800×800. Без размеров Firefox/Chrome не рисуют SVG
+ * в canvas (naturalWidth = 0). Не открылся — понятная ошибка, исходник не шлём.
+ */
+async function rasterizeSvg(file: File): Promise<File> {
+  try {
+    const doc = new DOMParser().parseFromString(await file.text(), "image/svg+xml");
+    const root = doc.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== "svg" || doc.querySelector("parsererror")) {
+      throw new Error("bad svg");
+    }
+
+    const pxW = parsePx(root.getAttribute("width"));
+    const pxH = parsePx(root.getAttribute("height"));
+    const vb = (root.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
+    const vbW = vb.length === 4 && vb[2] > 0 ? vb[2] : null;
+    const vbH = vb.length === 4 && vb[3] > 0 ? vb[3] : null;
+
+    let w: number;
+    let h: number;
+    if (pxW && pxH) {
+      ({ width: w, height: h } = fitSize(pxW, pxH));
+    } else if (vbW && vbH) {
+      const scale = MAX_SIDE / Math.max(vbW, vbH);
+      w = Math.max(1, Math.round(vbW * scale));
+      h = Math.max(1, Math.round(vbH * scale));
+    } else {
+      w = SVG_DEFAULT_SIDE;
+      h = SVG_DEFAULT_SIDE;
+    }
+    root.setAttribute("width", String(w));
+    root.setAttribute("height", String(h));
+
+    const svgBlob = new Blob([new XMLSerializer().serializeToString(doc)], {
+      type: "image/svg+xml",
+    });
+    const img = await loadImage(svgBlob);
+    const name = baseNameOf(file);
+    const png = await draw(img, w, h, "image/png");
+    if (png.size <= LOGO_MAX_UPLOAD_BYTES) {
+      return new File([png], `${name}.png`, { type: "image/png" });
+    }
+    const jpeg = await draw(img, w, h, "image/jpeg", JPEG_QUALITY, "#ffffff");
+    return new File([jpeg], `${name}.jpg`, { type: "image/jpeg" });
+  } catch {
+    throw new Error(LOGO_UNREADABLE_MESSAGE);
+  }
+}
+
+/** Ширина/высота SVG в пикселях: «120» или «120px». Проценты и em — не размеры. */
+function parsePx(v: string | null): number | null {
+  const m = v?.trim().match(/^(\d+(?:\.\d+)?)(px)?$/i);
+  const n = m ? Number(m[1]) : NaN;
+  return n > 0 ? n : null;
 }
 
 /** Если сжатие не помогло, а исходник проходит лимит и не HEIC — оставляем исходник. */
@@ -98,7 +179,7 @@ function draw(
   });
 }
 
-function loadImage(file: File): Promise<HTMLImageElement> {
+function loadImage(file: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
