@@ -79,7 +79,9 @@ export function normalizeClientPhone(phone: string | null | undefined): string |
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");
   if (!digits) return null;
-  if (digits.length === 10 && digits.startsWith("7")) return `7${digits}`;
+  // Десять цифр КЗ/РФ без «+7»: не только «701…», но и российские «926…», «812…» (13.11.2026) —
+  // иначе «926 123 45 67» и «+7 926 123 45 67» заводились двумя клиентами.
+  if (digits.length === 10 && /^[34789]/.test(digits)) return `7${digits}`;
   if (digits.length === 11 && digits.startsWith("8")) return `7${digits.slice(1)}`;
   return digits;
 }

@@ -13,6 +13,7 @@ import type { RoomElement } from "./room-designer";
 import { furnitureCeilingStats } from "@/lib/furniture-ceiling";
 import { LinkClientButton } from "@/components/clients/link-client-button";
 import { spotBreakdown, fixtureFields, level2Fields, measuredGeometry, insertFields, wallProfileFields, splitSpotGroups, gardinaFields, trackFields } from "@/lib/room-input-builder";
+import { whatsappDigits } from "@/lib/phone-format";
 
 // ─────────────────────────────────────────────────────
 // Geometry (supports arbitrary angles)
@@ -2783,7 +2784,7 @@ export default function ZameryPage() {
                     Открыть
                   </a>
                   <a
-                    href={`https://wa.me/${(activeClientPhone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Вот 3D-визуализация вашего потолка: ${share3d.url}`)}`}
+                    href={`https://wa.me/${whatsappDigits(activeClientPhone) ?? ""}?text=${encodeURIComponent(`Вот 3D-визуализация вашего потолка: ${share3d.url}`)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="col-span-2 text-center px-3 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold active:scale-95">
                     Отправить в WhatsApp 📤
