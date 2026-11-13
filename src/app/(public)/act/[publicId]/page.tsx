@@ -8,15 +8,15 @@ import { contractT } from "@/lib/i18n/contract";
 import Link from "next/link";
 import type { CalculationResult } from "@/lib/types";
 import type { Metadata } from "next";
-import { brandedDocMetadata } from "@/lib/doc-og";
+import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { ActSignSection } from "./sign-section";
 import { CheckCircle2 } from "lucide-react";
 
-// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
-// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
-// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
-// (аудит 24.09.2026).
-export const robots = { index: false, follow: false };
+// Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
+// в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
+// Закрыто от индексации через metadata.robots (DOC_ROBOTS) — `export const
+// robots` в page.tsx Next не читает (13.11.2026) — и заголовком X-Robots-Tag
+// в next.config.ts.
 
 // Превью ссылки в WhatsApp — с логотипом и названием мастера (11.11.2026)
 export async function generateMetadata({
@@ -29,7 +29,7 @@ export async function generateMetadata({
     where: { actPublicId: publicId, deletedAt: null },
     select: { masterId: true, companyId: true, master: { select: { companyName: true, firstName: true, logoUrl: true } } },
   });
-  if (!estimate) return { title: "Акт выполненных работ", robots: { index: false, follow: false } };
+  if (!estimate) return { title: "Акт выполненных работ", robots: DOC_ROBOTS };
   const m = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
   const company = m.companyName || m.firstName;
   return brandedDocMetadata({

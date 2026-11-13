@@ -6,7 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { asLang, tFor, localeOf, formatDocDate, type Lang } from "@/lib/i18n";
 import "@/lib/i18n/work-order";
-import { currencyFor } from "@/lib/company";
+import { currencyFor, inScope, type Scope } from "@/lib/company";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
 import { summarizeMaterials, type MaterialLine } from "@/lib/object-materials";
 import { pickPrimaryEstimate } from "@/lib/object-stage";
@@ -30,8 +30,13 @@ export async function loadWorkOrderByToken(token: string) {
   return prisma.measurementObject.findFirst({ where: { workOrderToken: token, deletedAt: null }, include });
 }
 
-export async function loadWorkOrderById(id: string, masterIds: string[]) {
-  return prisma.measurementObject.findFirst({ where: { id, masterId: { in: masterIds }, deletedAt: null }, include });
+/**
+ * Объект для мастера из приложения. Доступ — по компании (`inScope`), а не по
+ * автору (13.11.2026): иначе убранный из бригады продолжал качать план с именем,
+ * телефоном и адресом заказчика, а владелец получал 404 на объекты ушедшего.
+ */
+export async function loadWorkOrderById(id: string, scope: Scope) {
+  return prisma.measurementObject.findFirst({ where: { id, ...inScope(scope), deletedAt: null }, include });
 }
 
 export type WorkOrderRoom = {

@@ -46,7 +46,15 @@ const nextConfig: NextConfig = {
   async headers() {
     // Явные MIME-типы для 3D-ассетов. Safari бывает капризен к .hdr/.glb без
     // корректного Content-Type; заодно длинный кэш — файлы иммутабельны.
+    // Страницы и файлы с данными заказчика — не индексировать (13.11.2026).
+    // Вторая линия к metadata.robots: мета-тег есть только в HTML, а PDF наряда
+    // и ответы API несут те же имя, телефон и адрес. В robots.txt эти пути НЕ
+    // закрыты намеренно — иначе поисковик не увидит запрет и покажет голый адрес.
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
     return [
+      ...["/n/:path*", "/z/:path*", "/kp/:path*", "/contract/:path*", "/act/:path*", "/visual/:path*", "/api/:path*"].map(
+        (source) => ({ source, headers: noindex }),
+      ),
       {
         source: "/hdri/:path*.hdr",
         headers: [

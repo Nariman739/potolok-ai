@@ -18,11 +18,11 @@ import { sendPushToMaster } from "@/lib/push";
 import { pickRoomForScene3D } from "@/lib/room-3d";
 import { stripInternalPrices } from "@/lib/public-calc";
 
-// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
-// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
-// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
-// (аудит 24.09.2026).
-export const robots = { index: false, follow: false };
+// Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
+// в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
+// Закрыто от индексации через metadata.robots (DOC_ROBOTS) — `export const
+// robots` в page.tsx Next не читает (13.11.2026) — и заголовком X-Robots-Tag
+// в next.config.ts.
 
 export async function generateMetadata({
   params,

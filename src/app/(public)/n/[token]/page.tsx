@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { tFor } from "@/lib/i18n";
+import type { Metadata } from "next";
+import { prisma } from "@/lib/prisma";
+import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
+import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/work-order";
 import { RoomPlanSvg } from "@/lib/work-order-plan";
 import { loadWorkOrderByToken, buildWorkOrderModel } from "@/lib/work-order-data";
@@ -16,13 +19,32 @@ import { loadWorkOrderByToken, buildWorkOrderModel } from "@/lib/work-order-data
  * PDF — src/lib/work-order-data.ts.
  */
 
-// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
-// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
-// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
-// (аудит 24.09.2026).
-export const robots = { index: false, follow: false };
+// Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
+// в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
+// Закрыто от индексации через metadata.robots (DOC_ROBOTS) — `export const
+// robots` в page.tsx Next не читает (13.11.2026) — и заголовком X-Robots-Tag
+// в next.config.ts.
 
 export const dynamic = "force-dynamic";
+
+// Заголовок и превью ссылки — только «Наряд на монтаж — <компания>»: адрес, имя
+// и телефон заказчика, сумма монтажнику сюда не попадают (превью видно всем в
+// чате, куда ссылку перешлют). Компания — та же, что в шапке наряда.
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params;
+  const obj = await prisma.measurementObject.findFirst({
+    where: { workOrderToken: token, deletedAt: null },
+    select: { master: { select: { firstName: true, lastName: true, companyName: true, logoUrl: true, language: true } } },
+  });
+  if (!obj) return { title: "Наряд не найден", robots: DOC_ROBOTS };
+  const t = tFor(asLang(obj.master.language));
+  const company = obj.master.companyName || [obj.master.firstName, obj.master.lastName].filter(Boolean).join(" ");
+  return brandedDocMetadata({
+    title: `${t("wo.title")} — ${company}`,
+    description: t("wo.ogDescription"),
+    logoUrl: obj.master.logoUrl,
+  });
+}
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

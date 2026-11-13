@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/lib/room-3d";
 import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/kp-public";
+import { DOC_ROBOTS } from "@/lib/doc-og";
 import { Public3DViewer } from "../../kp/[publicId]/3d/Public3DViewer";
 
 // Публичная 3D-ссылка ПРЯМО с замера (/z/[shareId]) — до создания КП.
@@ -34,11 +35,11 @@ async function loadShared(shareId: string) {
   return obj;
 }
 
-// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
-// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
-// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
-// (аудит 24.09.2026).
-export const robots = { index: false, follow: false };
+// Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
+// в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
+// Закрыто от индексации через metadata.robots (DOC_ROBOTS) — `export const
+// robots` в page.tsx Next не читает (13.11.2026) — и заголовком X-Robots-Tag
+// в next.config.ts.
 
 export async function generateMetadata({
   params,
@@ -47,22 +48,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { shareId } = await params;
   const obj = await loadShared(shareId);
-  if (!obj) return { title: "3D-просмотр не найден" };
+  if (!obj) return { title: "3D-просмотр не найден", robots: DOC_ROBOTS };
 
   const company = obj.master.companyName || obj.master.firstName;
-  const title = `3D-просмотр потолка | ${company}`;
+  // absolute — без хвоста « | potolok.ai»: ссылку клиент получает от мастера
+  const title = `3D потолка — ${company}`;
   const description = `3D-визуализация натяжного потолка от ${company}`;
   const preview = obj.rooms.find((r) => r.previewUrl3d)?.previewUrl3d;
 
   if (preview) {
     return {
-      title,
+      title: { absolute: title },
       description,
+      robots: DOC_ROBOTS,
       openGraph: { title, description, images: [{ url: preview }] },
       twitter: { card: "summary_large_image", title, description, images: [preview] },
     };
   }
-  return { title, description };
+  return { title: { absolute: title }, description, robots: DOC_ROBOTS, openGraph: { title, description } };
 }
 
 export default async function PublicMeasurement3DPage({

@@ -8,12 +8,13 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CompareSlider } from "./compare-slider";
+import { DOC_ROBOTS } from "@/lib/doc-og";
 
-// Ссылки на эти страницы уходят клиенту в WhatsApp и живут вечно: если такую
-// перешлют в общий чат или выложат в отзыв, поисковик проиндексирует имя,
-// телефон, адрес заказчика и сумму сделки. Закрываем от индексации
-// (аудит 24.09.2026).
-export const robots = { index: false, follow: false };
+// Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
+// в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
+// Закрыто от индексации через metadata.robots (DOC_ROBOTS) — `export const
+// robots` в page.tsx Next не читает (13.11.2026) — и заголовком X-Robots-Tag
+// в next.config.ts.
 
 export async function generateMetadata({
   params,
@@ -25,10 +26,11 @@ export async function generateMetadata({
     where: { publicHash: hash },
     include: { master: { select: { companyName: true, firstName: true } } },
   });
-  if (!viz) return { title: "Визуализация не найдена" };
+  if (!viz) return { title: "Визуализация не найдена", robots: DOC_ROBOTS };
   const company = viz.master.companyName || viz.master.firstName;
   return {
     title: `AI-визуализация потолка | ${company}`,
+    robots: DOC_ROBOTS,
     description: `Как будет выглядеть потолок в вашей комнате — фотореалистичная AI-визуализация от ${company}`,
     openGraph: {
       title: `Ваш потолок «вживую» | ${company}`,
