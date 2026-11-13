@@ -8,7 +8,7 @@ import { currencyFor, ownerBrandFor } from "@/lib/company";
 import { CONTRACT_MASTER_SELECT, contractHash, renderLiveContract } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
 import { reportError } from "@/lib/report-error";
-import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced } from "@/lib/estimate-replace";
+import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced, lockForSign, otherVariantChosen } from "@/lib/estimate-replace";
 
 export async function POST(
   request: Request,
@@ -65,7 +65,7 @@ export async function POST(
       { error: asLang(langParam) === "kk" ? CONTRACT_REPLACED_TEXT_KK : CONTRACT_REPLACED_TEXT, replaced: true },
       { status: 409 },
     );
-    if (isContractReplaced(estimate)) return replacedError();
+    if (isContractReplaced(estimate) || (await otherVariantChosen(prisma, estimate))) return replacedError();
 
     // Подпись замораживает текст, который клиент видел: неподписанный договор
     // рисуется из живого шаблона, и снимок дня создания мог от него отстать.
@@ -99,11 +99,15 @@ export async function POST(
     // Строку берём под замок (FOR UPDATE): из двух одновременных подписей пройдёт одна,
     // а выбор мастером нового варианта (confirmReplacing, тоже FOR UPDATE) либо
     // успел пометить договор «заменён» — тогда отказ, либо ждёт и увидит подпись.
+    // Замки объект → КП (как у выбора варианта): подпись и выбор другого варианта идут по очереди.
     const outcome = await prisma.$transaction(async (tx) => {
-      const [row] = await tx.$queryRaw<{ contractSignedAt: Date | null; contractTextSnapshot: unknown }[]>`
-        SELECT "contractSignedAt", "contractTextSnapshot" FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
+      await lockForSign(tx, estimate.id, estimate.measurementObjectId);
+      const [row] = await tx.$queryRaw<{ contractSignedAt: Date | null; contractTextSnapshot: unknown; status: string }[]>`
+        SELECT "contractSignedAt", "contractTextSnapshot", status::text AS status FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
       if (!row || row.contractSignedAt) return "signed" as const;
       if (isContractReplaced(row)) return "replaced" as const;
+      // Договор, созданный уже после выбора другого варианта: пометки нет, но КП не принято
+      if (await otherVariantChosen(tx, { id: estimate.id, status: row.status, measurementObjectId: estimate.measurementObjectId })) return "replaced" as const;
       const { count } = await tx.estimate.updateMany({
       where: { id: estimate.id, contractSignedAt: null },
       data: {

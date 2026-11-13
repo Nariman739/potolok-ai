@@ -250,13 +250,18 @@ export function ActSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            {copied ? "Скопировано" : "Копировать ссылку"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={whatsappShare}>
-            WhatsApp
-          </Button>
+          {/* Недействующий акт клиенту не отправляем — только просмотр */}
+          {!actReplaced && (
+            <>
+              <Button variant="outline" size="sm" onClick={copyLink}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                {copied ? "Скопировано" : "Копировать ссылку"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={whatsappShare}>
+                WhatsApp
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" asChild>
             <a
               href={`/act/${actPublicId}`}
@@ -267,16 +272,19 @@ export function ActSection({
               Открыть
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a
-              href={`/api/estimates/${estimateId}/act`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              PDF
-            </a>
-          </Button>
+          {/* PDF акта отдаётся только для принятого КП (иначе 400) — у недействующего не показываем */}
+          {!actReplaced && (
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={`/api/estimates/${estimateId}/act`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                PDF
+              </a>
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

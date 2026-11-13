@@ -11,7 +11,7 @@ import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { SignSection } from "./sign-section";
 import { PrintButton } from "./print-button";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
-import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced } from "@/lib/estimate-replace";
+import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced, otherVariantChosen } from "@/lib/estimate-replace";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -85,7 +85,8 @@ export default async function ContractPublicPage({
 
   const isSigned = !!estimate.contractSignedAt;
   // Мастер выбрал другой вариант КП — этот договор не подписывают (13.11.2026)
-  const isReplaced = isContractReplaced(estimate);
+  // …или договор создан после выбора другого варианта на непринятом КП
+  const isReplaced = !isSigned && (isContractReplaced(estimate) || (await otherVariantChosen(prisma, estimate)));
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">

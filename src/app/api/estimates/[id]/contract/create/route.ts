@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CONTRACT_OTHER_CHOSEN_TEXT, otherVariantChosen } from "@/lib/estimate-replace";
 import { renderContract } from "@/lib/contract-render";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -94,6 +95,10 @@ export async function POST(
 
     if (!estimate) {
       return NextResponse.json({ error: "КП не найдено" }, { status: 404 });
+    }
+    // В объекте клиент выбрал другой вариант — договор только по выбранному КП (13.11.2026)
+    if (await otherVariantChosen(prisma, estimate)) {
+      return NextResponse.json({ error: CONTRACT_OTHER_CHOSEN_TEXT, code: "OTHER_CHOSEN" }, { status: 409 });
     }
     // Бренд/реквизиты — владельца компании, если КП делал участник бригады (Этап 3)
     estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);

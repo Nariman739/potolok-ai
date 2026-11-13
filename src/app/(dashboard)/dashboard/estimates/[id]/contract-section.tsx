@@ -20,7 +20,7 @@ import {
   type PaymentStage,
 } from "./contract-terms-dialog";
 import { Pencil } from "lucide-react";
-import { MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
+import { CONTRACT_OTHER_CHOSEN_TEXT, MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 
 type Props = {
   estimateId: string;
@@ -30,6 +30,8 @@ type Props = {
   contractSignerName: string | null;
   /** Мастер выбрал другой вариант — этот неподписанный договор больше не действует (13.11.2026). */
   contractReplaced?: boolean;
+  /** Не принятое КП, а в объекте клиент выбрал другой вариант — договор здесь не создаём. */
+  otherChosen?: boolean;
   clientPhone: string | null;
   contractConfigured: boolean;
   /** Незаполненные реквизиты — показываем мастеру, чего не хватает. */
@@ -47,6 +49,7 @@ export function ContractSection({
   contractSignedAt,
   contractSignerName,
   contractReplaced = false,
+  otherChosen = false,
   clientPhone,
   contractConfigured,
   missingRequisites,
@@ -130,6 +133,24 @@ export function ContractSection({
           <Button asChild className="bg-[#1e3a5f] hover:bg-[#152d4a]">
             <Link href="/dashboard/profile">Заполнить реквизиты</Link>
           </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!contractPublicId && otherChosen) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileSignature className="h-4 w-4" />
+            Электронный договор
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-800">
+            {CONTRACT_OTHER_CHOSEN_TEXT}
+          </p>
         </CardContent>
       </Card>
     );
@@ -241,13 +262,18 @@ export function ContractSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            {copied ? "Скопировано" : "Копировать ссылку"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={whatsappShare}>
-            WhatsApp
-          </Button>
+          {/* Недействующий договор клиенту не отправляем — только просмотр */}
+          {!contractReplaced && (
+            <>
+              <Button variant="outline" size="sm" onClick={copyLink}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                {copied ? "Скопировано" : "Копировать ссылку"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={whatsappShare}>
+                WhatsApp
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" asChild>
             <a
               href={`/contract/${contractPublicId}`}
@@ -268,7 +294,7 @@ export function ContractSection({
               PDF
             </a>
           </Button>
-          {!isSigned && (
+          {!isSigned && !contractReplaced && (
             <Button
               variant="outline"
               size="sm"

@@ -19,6 +19,8 @@ import { Prisma } from "@/generated/prisma/client";
 
 import { PREV_ACT_SIGNED_TEXT, PREV_CONTRACT_SIGNED_TEXT } from "./estimate-replace-text";
 export {
+  ACT_OTHER_CHOSEN_TEXT,
+  CONTRACT_OTHER_CHOSEN_TEXT,
   ACT_REPLACED_TEXT,
   ACT_REPLACED_TEXT_KK,
   CONTRACT_REPLACED_TEXT,
@@ -43,6 +45,33 @@ export function isContractReplaced(e: { contractSignedAt: Date | string | null; 
 /** Акт этого КП заменён (и не подписан). Пометка — в actTextSnapshot (у неподписанного акта он пуст). */
 export function isActReplaced(e: { actSignedAt: Date | string | null; actTextSnapshot: unknown }): boolean {
   return !e.actSignedAt && hasMark(e.actTextSnapshot);
+}
+
+/**
+ * Дыра пометки (40, 13.11.2026): пометка «заменён» ставится только на документы,
+ * существовавшие в момент замены. Договор/акт, созданные ПОСЛЕ на пересмотренном КП,
+ * были без пометки — клиент мог подписать договор на непринятом КП. Правило в корне:
+ * у КП, которое не принято, когда в его объекте есть ДРУГОЕ принятое, документы не
+ * создаются и не подписываются (оба принятых — наследие — не трогаем).
+ * db — prisma или транзакция (в подписи — под замками объекта и КП).
+ */
+export async function otherVariantChosen(
+  db: Pick<Prisma.TransactionClient, "estimate">,
+  e: { id: string; status: string; measurementObjectId: string | null },
+): Promise<boolean> {
+  if (e.status === "CONFIRMED" || !e.measurementObjectId) return false;
+  const n = await db.estimate.count({
+    where: { measurementObjectId: e.measurementObjectId, id: { not: e.id }, status: "CONFIRMED", deletedAt: null },
+  });
+  return n > 0;
+}
+
+/**
+ * Подпись документа КП: замки в том же порядке, что у confirmReplacing (объект → КП),
+ * иначе выбор нового варианта и подпись старого могли бы разминуться.
+ */
+export async function lockForSign(tx: Prisma.TransactionClient, estimateId: string, objectId: string | null): Promise<void> {
+  if (objectId) await tx.$queryRaw`SELECT id FROM "MeasurementObject" WHERE id = ${objectId} FOR UPDATE`;
 }
 
 export class ReplaceBlockedError extends Error {

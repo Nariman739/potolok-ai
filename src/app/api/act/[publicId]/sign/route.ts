@@ -9,7 +9,7 @@ import { asCurrency } from "@/lib/currency";
 import { ownerBrandFor } from "@/lib/company";
 import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
 import type { CalculationResult } from "@/lib/types";
-import { ACT_REPLACED_TEXT, isActReplaced } from "@/lib/estimate-replace";
+import { ACT_REPLACED_TEXT, isActReplaced, lockForSign, otherVariantChosen } from "@/lib/estimate-replace";
 
 /**
  * Подпись акта заказчиком. Текст акта на обоих языках замораживается в
@@ -38,7 +38,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     if (!estimate) return NextResponse.json({ error: "Акт не найден" }, { status: 404 });
     if (estimate.actSignedAt) return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
     // Мастер выбрал другой вариант КП — этот акт не действует (13.11.2026)
-    if (isActReplaced(estimate)) return NextResponse.json({ error: ACT_REPLACED_TEXT, replaced: true }, { status: 409 });
+    if (isActReplaced(estimate) || (await otherVariantChosen(prisma, estimate))) return NextResponse.json({ error: ACT_REPLACED_TEXT, replaced: true }, { status: 409 });
 
     const h = await headers();
     const forwarded = h.get("x-forwarded-for") || "";
@@ -65,11 +65,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
 
     // Строка под замком (FOR UPDATE): из двух подписей пройдёт одна, а выбор нового
     // варианта (confirmReplacing) либо уже пометил акт «заменён» — отказ, либо ждёт.
+    // Замки объект → КП (как у выбора варианта): подпись и выбор другого варианта идут по очереди.
     const outcome = await prisma.$transaction(async (tx) => {
-      const [row] = await tx.$queryRaw<{ actSignedAt: Date | null; actTextSnapshot: unknown }[]>`
-        SELECT "actSignedAt", "actTextSnapshot" FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
+      await lockForSign(tx, estimate.id, estimate.measurementObjectId);
+      const [row] = await tx.$queryRaw<{ actSignedAt: Date | null; actTextSnapshot: unknown; status: string }[]>`
+        SELECT "actSignedAt", "actTextSnapshot", status::text AS status FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
       if (!row || row.actSignedAt) return "signed" as const;
       if (isActReplaced(row)) return "replaced" as const;
+      // Акт, созданный уже после выбора другого варианта: пометки нет, но КП не принято
+      if (await otherVariantChosen(tx, { id: estimate.id, status: row.status, measurementObjectId: estimate.measurementObjectId })) return "replaced" as const;
       const { count } = await tx.estimate.updateMany({
       where: { id: estimate.id, actSignedAt: null },
       data: {

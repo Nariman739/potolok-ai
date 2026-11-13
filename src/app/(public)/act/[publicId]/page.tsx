@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import { brandedDocMetadata, DOC_ROBOTS } from "@/lib/doc-og";
 import { ActSignSection } from "./sign-section";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
-import { ACT_REPLACED_TEXT, ACT_REPLACED_TEXT_KK, isActReplaced } from "@/lib/estimate-replace";
+import { ACT_REPLACED_TEXT, ACT_REPLACED_TEXT_KK, isActReplaced, otherVariantChosen } from "@/lib/estimate-replace";
 
 // Ссылки на эти страницы уходят в WhatsApp и живут вечно: если такую перешлют
 // в общий чат или выложат в отзыв, поисковик проиндексирует данные заказчика.
@@ -80,7 +80,8 @@ export default async function ActPublicPage({
 
   const isSigned = !!estimate.actSignedAt;
   // Мастер выбрал другой вариант КП — этот акт не подписывают (13.11.2026)
-  const isReplaced = isActReplaced(estimate);
+  // …или акт создан после выбора другого варианта на непринятом КП
+  const isReplaced = !isSigned && (isActReplaced(estimate) || (await otherVariantChosen(prisma, estimate)));
   const replacedText = lang === "kk" ? ACT_REPLACED_TEXT_KK : ACT_REPLACED_TEXT;
 
   return (

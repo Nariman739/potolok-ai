@@ -1,5 +1,5 @@
 import { getCurrentMaster } from "@/lib/auth";
-import { isActReplaced, isContractReplaced } from "@/lib/estimate-replace";
+import { isActReplaced, isContractReplaced, otherVariantChosen } from "@/lib/estimate-replace";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -72,6 +72,8 @@ export default async function EstimateDetailPage({
   // Серверный компонент: валюту передаём явно, глобал formatPrice тут не работает (07.10.2026).
   const formatPrice = (n: number) => formatPriceIn(n, master.currency);
 
+  // Не принятое КП, а в объекте выбран другой вариант — договор/акт здесь не действуют (13.11.2026)
+  const otherChosen = await otherVariantChosen(prisma, estimate);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,7 +172,8 @@ export default async function EstimateDetailPage({
         contractCreatedAt={estimate.contractCreatedAt ? estimate.contractCreatedAt.toISOString() : null}
         contractSignedAt={estimate.contractSignedAt ? estimate.contractSignedAt.toISOString() : null}
         contractSignerName={estimate.contractSignerName}
-        contractReplaced={isContractReplaced(estimate)}
+        contractReplaced={isContractReplaced(estimate) || otherChosen}
+        otherChosen={otherChosen}
         clientPhone={estimate.clientPhone}
         contractConfigured={isContractConfigured(requisites)}
         missingRequisites={missingContractFields(requisites, requisites.currency)}
@@ -190,7 +193,7 @@ export default async function EstimateDetailPage({
         actCreatedAt={estimate.actCreatedAt ? estimate.actCreatedAt.toISOString() : null}
         actSignedAt={estimate.actSignedAt ? estimate.actSignedAt.toISOString() : null}
         actSignerName={estimate.actSignerName}
-        actReplaced={isActReplaced(estimate)}
+        actReplaced={isActReplaced(estimate) || otherChosen}
         actCompletionDate={estimate.actCompletionDate ? estimate.actCompletionDate.toISOString() : null}
         clientPhone={estimate.clientPhone}
         estimateStatus={estimate.status}

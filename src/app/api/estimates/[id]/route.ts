@@ -11,7 +11,7 @@ import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { KP_PRICE_VIEWS } from "@/lib/kp/types";
 import type { CalculationResult } from "@/lib/types";
 import { reportError } from "@/lib/report-error";
-import { confirmReplacing, ConfirmStatusError, isContractReplaced, ReplaceBlockedError } from "@/lib/estimate-replace";
+import { confirmReplacing, ConfirmStatusError, isContractReplaced, otherVariantChosen, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 export async function GET(
   _request: Request,
@@ -43,6 +43,7 @@ export async function GET(
       );
     }
 
+    const otherChosen = await otherVariantChosen(prisma, estimate);
     const mo = estimate.measurementObject;
     const workshopReady = !!mo && !mo.deletedAt && mo.rooms.length > 0;
 
@@ -52,7 +53,10 @@ export async function GET(
       workshopMeasurementId: workshopReady ? mo.id : null,
       measurementAddress: workshopReady ? mo.address : null,
       // Неподписанный договор этого КП заменён новым вариантом (13.11.2026)
-      contractReplaced: isContractReplaced(estimate),
+      // …и договор/акт, созданные на непринятом КП после выбора другого варианта
+      contractReplaced: isContractReplaced(estimate) || otherChosen,
+      /** Не принятое КП, а в объекте выбран другой вариант: договор/акт здесь не создаются. */
+      otherVariantChosen: otherChosen,
     });
   } catch (error) {
     if (error instanceof KpAdjustError) {
