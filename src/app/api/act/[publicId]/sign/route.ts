@@ -118,7 +118,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
         metadata: { estimateId: estimate.id, actPublicId: publicId, ip, method },
       }).catch(() => {});
       if (accepted) {
-        addClientEvent({ clientId: estimate.clientId, type: "KP_CONFIRMED", content: "КП принято подписью акта", metadata: { estimateId: estimate.id, bySign: "act" } }).catch(() => {});
+        await addClientEvent({ clientId: estimate.clientId, type: "KP_CONFIRMED", content: "КП принято подписью акта", metadata: { estimateId: estimate.id, bySign: "act" } }).catch(() => {});
       }
     }
     // Этап объекта — существующим синком (ручной этап не трогаем, статус клиента только вверх)
