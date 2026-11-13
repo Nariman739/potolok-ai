@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendPushToMaster } from "@/lib/push";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -20,8 +21,7 @@ export const maxDuration = 60;
 const PAID_DAYS = new Set([7, 3, 0, -3]);
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!BILLING_ENABLED) return NextResponse.json({ skipped: "billing disabled" });

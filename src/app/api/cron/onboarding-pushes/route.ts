@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { QA_PHONES } from "@/lib/qa";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendPushToMaster } from "@/lib/push";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -83,7 +85,6 @@ const TEXTS: Record<Step, Record<Lang, { title: string; body: string }> & { scre
 };
 
 /** QA-аккаунты и тестовые регистрации — им цепочка не нужна. */
-const QA_PHONES = ["+77000000077", "+77000000078", "+77000000079", "+77000000099"];
 const QA_NAME_PATTERNS = ["qa", "test", "тест"];
 
 function isQa(m: { phone: string; firstName: string; companyName: string | null; source: string | null }): boolean {
@@ -102,8 +103,7 @@ function isQuietHours(now: Date): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

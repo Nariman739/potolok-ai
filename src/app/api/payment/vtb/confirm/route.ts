@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { VTB_COMMENT, settleVtbPayment } from "@/lib/vtb";
+import { isVtbComment, settleVtbPayment } from "@/lib/vtb";
 import { reportError } from "@/lib/report-error";
 
 /**
@@ -22,12 +22,14 @@ export async function POST(request: Request) {
     if (!paymentId) return NextResponse.json({ error: "Нет paymentId" }, { status: 400 });
 
     const payment = await prisma.pendingPayment.findUnique({ where: { id: paymentId }, select: { masterId: true, comment: true } });
-    if (!payment || payment.masterId !== me.id || payment.comment !== VTB_COMMENT) {
+    if (!payment || payment.masterId !== me.id || !isVtbComment(payment.comment)) {
       return NextResponse.json({ error: "Заявка не найдена" }, { status: 404 });
     }
 
     const r = await settleVtbPayment(paymentId);
     if (r.ok) return NextResponse.json({ ok: true, status: "APPROVED", paidUntil: r.paidUntil });
+    // Песочница: оплата прошла, но PRO в тестовом режиме не включается
+    if (r.test) return NextResponse.json({ ok: false, status: "TEST", reason: r.reason });
     const status = r.mismatch ? "REVIEW" : r.final || r.declined ? "FAILED" : "PENDING";
     return NextResponse.json({ ok: false, status, reason: r.reason });
   } catch (error) {

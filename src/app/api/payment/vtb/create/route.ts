@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { PAYMENTS_OPEN, type BillingPeriod } from "@/lib/billing";
 import { currencyFor } from "@/lib/company";
-import { VTB_COMMENT, cardQuote, getVtbConfig, registerOrder } from "@/lib/vtb";
+import { cardQuote, getVtbConfig, registerOrder, vtbCommentFor, vtbTestAllowed } from "@/lib/vtb";
 import { reportError } from "@/lib/report-error";
 
 /**
@@ -17,6 +17,10 @@ export async function POST(request: Request) {
     const me = await requireAuth();
     const cfg = getVtbConfig();
     if (!cfg || !PAYMENTS_OPEN) {
+      return NextResponse.json({ error: "Оплата картой пока не подключена" }, { status: 503 });
+    }
+    // Песочница — только QA: тестовая оплата не должна быть доступна мастерам (аудит А7)
+    if (cfg.test && !vtbTestAllowed(me)) {
       return NextResponse.json({ error: "Оплата картой пока не подключена" }, { status: 503 });
     }
     if (me.isOwner) {
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
         amount: quote.amountKzt,
         currency: "KZT",
         activatedDays: quote.days,
-        comment: VTB_COMMENT,
+        comment: vtbCommentFor(cfg),
       },
     });
 
