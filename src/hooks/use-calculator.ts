@@ -57,15 +57,20 @@ function dropDraftOriginIfRoomsGone(rooms: RoomInput[]) {
   if (!alive) setDraftOrigin(null);
 }
 
-/** Клиент для окна «Сохранить КП». Через сутки без изменений черновика не подставляется. */
+/**
+ * Клиент для окна «Сохранить КП».
+ * Черновик привязан к объекту замера — клиент этого объекта подставляется всегда, без срока:
+ * КП всё равно уйдёт в этот объект, и если через сутки окно откроется пустым, мастер впишет
+ * другое имя — в одном объекте окажутся КП двух клиентов (замечание живой проверки 13.11.2026).
+ * Клиент БЕЗ объекта (КП без объекта, старый формат) через сутки без изменений черновика не
+ * подставляется — как раньше.
+ */
 export function draftClientId(): string | null {
   ensureDraftOwner();
   const origin = readDraftOrigin();
   if (!origin?.clientId) return null;
-  if (!calculatorDraftIsFresh(DRAFT_CLIENT_TTL_MS)) {
-    // Срок — только на подстановку клиента. Объект остаётся: комнаты его замера на месте,
-    // значит КП по-прежнему этого объекта, сколько бы ни прошло.
-    setDraftOrigin({ objectId: origin.objectId }, origin.roomIds);
+  if (!origin.objectId && !calculatorDraftIsFresh(DRAFT_CLIENT_TTL_MS)) {
+    setDraftOrigin(null);
     return null;
   }
   return origin.clientId;

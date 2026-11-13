@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { objectDeleteQuestion, objectDeleteInfoFrom } from "@/lib/object-delete-question";
+import { useCurrency } from "@/components/currency-provider";
 import { ensureDraftOwner } from "@/lib/draft-owner";
 import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, shouldCreateObjectForBackup, roomLabelsForQuestion, objectOpId, type RemovedRoom } from "@/lib/zamer-unsynced";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1652,6 +1654,7 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 // ─────────────────────────────────────────────────────
 
 export default function ZameryPage() {
+  const { format: formatMoney } = useCurrency();
   // Запасная копия замера в браузере принадлежит аккаунту: чужую стираем до первого чтения
   // (сверка одна на загрузку страницы, повторные вызовы ничего не делают).
   ensureDraftOwner();
@@ -2292,12 +2295,19 @@ export default function ZameryPage() {
       return;
     }
 
-    // Текущий активный замер убираем в сохранённые как есть, пустой — в корзину.
+    // Текущий активный замер убираем в сохранённые как есть, пустой — в корзину. «Пустой» здесь —
+    // по списку комнат на экране; сервер (?mode=switch) сам не удалит объект, у которого есть КП
+    // или комнаты, а уберёт его в сохранённые.
     const currentObjId = activeObjectIdRef.current;
     let parkedCurrent: SavedObject | null = null;
+    let keptOnServer = false;
     if (currentObjId && currentObjId !== obj.id && rooms.length === 0) {
       try {
-        await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
+        const res = await fetch(`/api/measurements/${currentObjId}?mode=switch`, { method: "DELETE" });
+        const out = res.ok ? await res.json().catch(() => null) : null;
+        // Сервер объект не удалил (у него есть КП или комнаты) — он в сохранённых. Что в нём на
+        // самом деле (комнаты, площадь), экран не знает: список перечитаем с сервера ниже.
+        keptOnServer = out?.kept === true;
       } catch { /* non-critical */ }
     } else if (currentObjId && currentObjId !== obj.id) {
       try {
@@ -2342,6 +2352,13 @@ export default function ZameryPage() {
       setActiveClientPhone(null);
     }
     setSavedObjects(prev => [...prev.filter(o => o.id !== obj.id), ...(parkedCurrent ? [parkedCurrent] : [])]);
+    if (keptOnServer) {
+      // Открываемый объект из списка убираем сами — на случай, если сервер ещё числит его сохранённым.
+      fetch("/api/measurements?status=saved")
+        .then(r => (r.ok ? r.json() : null))
+        .then((list: ServerObject[] | null) => { if (Array.isArray(list)) setSavedObjects(list.map(toSavedObject).filter(o => o.id !== obj.id)); })
+        .catch(() => { /* останется прежний список — объект появится после обновления страницы */ });
+    }
     setShowHistory(false);
     activeObjectIdRef.current = obj.id;
     setActiveObjectId(obj.id);
@@ -2375,7 +2392,13 @@ export default function ZameryPage() {
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {
-    if (!confirm("Удалить замер? Он попадёт в Корзину — можно будет восстановить.")) return;
+    // Что уйдёт в корзину вместе с замером: оплаты (выпадут из отчёта за месяц), подписанные
+    // договор и акт, КП — спрашиваем об этом заранее. Не узнали (нет сети) — общий вопрос.
+    const info = await fetch(`/api/objects/${id}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(objectDeleteInfoFrom)
+      .catch(() => null);
+    if (!confirm(objectDeleteQuestion(info, formatMoney))) return;
     setSavedObjects(prev => prev.filter(o => o.id !== id));
     try {
       const res = await fetch(`/api/measurements/${id}`, { method: "DELETE" });
