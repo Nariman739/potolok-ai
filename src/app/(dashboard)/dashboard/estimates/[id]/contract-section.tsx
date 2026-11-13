@@ -22,6 +22,7 @@ import {
 import { Pencil } from "lucide-react";
 import { whatsappNumber } from "@/lib/phone-format";
 import { CONTRACT_OTHER_CHOSEN_TEXT, MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
+import { formatDocDateTime } from "@/lib/doc-date";
 
 type Props = {
   estimateId: string;
@@ -234,9 +235,7 @@ export function ContractSection({
                   {contractSignerName}
                 </p>
                 <p className="text-xs text-emerald-700">
-                  {contractSignedAt
-                    ? new Date(contractSignedAt).toLocaleString("ru-RU")
-                    : ""}
+                  {formatDocDateTime(contractSignedAt)}
                 </p>
               </div>
             </div>
@@ -249,9 +248,7 @@ export function ContractSection({
           <>
             <p className="text-xs text-muted-foreground">
               Создан{" "}
-              {contractCreatedAt
-                ? new Date(contractCreatedAt).toLocaleString("ru-RU")
-                : ""}
+              {formatDocDateTime(contractCreatedAt)}
             </p>
             {/* Договор уже у клиента, но ещё не подписан: реквизиты подставляются при открытии. */}
             <MissingRequisites fields={missingRequisites} existing />
