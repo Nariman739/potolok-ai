@@ -6,7 +6,7 @@ import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/work-order";
 import { RoomPlanSvg } from "@/lib/work-order-plan";
 import { loadWorkOrderByToken, buildWorkOrderModel } from "@/lib/work-order-data";
-import { whatsappDigits } from "@/lib/phone-format";
+import { whatsappNumber } from "@/lib/phone-format";
 
 /**
  * Наряд монтажнику (Этап 3, 20.09.2026). Открывается по ссылке из WhatsApp
@@ -80,7 +80,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ toke
             <p><span className="text-slate-500">{t("wo.clientPhone")}:</span> <a className="text-blue-700 underline" href={`tel:${m.clientPhone}`}>{m.clientPhone}</a></p>
           )}
           {m.masterPhone && (
-            <p><span className="text-slate-500">{t("wo.questions")}:</span> <a className="text-blue-700 underline" href={`https://wa.me/${whatsappDigits(m.masterPhone) ?? m.masterPhone.replace(/\D/g, "")}`}>{m.masterPhone}</a> ({m.company})</p>
+            <p><span className="text-slate-500">{t("wo.questions")}:</span> <a className="text-blue-700 underline" href={`https://wa.me/${whatsappNumber(m.masterPhone) ?? m.masterPhone.replace(/\D/g, "")}`}>{m.masterPhone}</a> ({m.company})</p>
           )}
           {m.fee && m.payLines.length === 0 && (
             <p className="pt-1 text-lg"><span className="text-slate-500">{t("wo.fee")}:</span> <b>{m.fee}</b></p>

@@ -34,7 +34,7 @@ export function formatPhone(phone: string): string {
  * Все кнопки «Написать в WhatsApp» строят ссылку через эту функцию, а не из сырых цифр:
  * сырой «8 701 333 00 78» давал wa.me/8701… — ссылку на несуществующий номер.
  */
-export function whatsappDigits(phone: string | null | undefined): string | null {
+export function whatsappNumber(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const n = normalizePhone(phone);
   if (n) return n;
@@ -44,7 +44,7 @@ export function whatsappDigits(phone: string | null | undefined): string | null 
 
 /** Ссылка wa.me без «+», как в приложении. */
 export function whatsappUrl(phone: string): string | null {
-  const digits = whatsappDigits(phone);
+  const digits = whatsappNumber(phone);
   return digits ? `https://wa.me/${digits}` : null;
 }
 
