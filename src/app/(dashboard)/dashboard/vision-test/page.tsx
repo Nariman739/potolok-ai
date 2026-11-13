@@ -2249,12 +2249,19 @@ export default function ZameryPage() {
       return;
     }
 
-    // Текущий активный замер убираем в сохранённые как есть, пустой — в корзину.
+    // Текущий активный замер убираем в сохранённые как есть, пустой — в корзину. «Пустой» здесь —
+    // по списку комнат на экране; сервер (?mode=switch) сам не удалит объект, у которого есть КП
+    // или комнаты, а уберёт его в сохранённые.
     const currentObjId = activeObjectIdRef.current;
     let parkedCurrent: SavedObject | null = null;
     if (currentObjId && currentObjId !== obj.id && rooms.length === 0) {
       try {
-        await fetch(`/api/measurements/${currentObjId}`, { method: "DELETE" });
+        const res = await fetch(`/api/measurements/${currentObjId}?mode=switch`, { method: "DELETE" });
+        const out = res.ok ? await res.json().catch(() => null) : null;
+        // Сервер объект не удалил (у него есть КП или комнаты) — он в сохранённых: показываем там.
+        if (out?.kept) {
+          parkedCurrent = { id: currentObjId, address: objectName, rooms: [], totalArea: 0, savedAt: Date.now(), clientId: activeClientId, noInsert: objectNoInsert };
+        }
       } catch { /* non-critical */ }
     } else if (currentObjId && currentObjId !== obj.id) {
       try {

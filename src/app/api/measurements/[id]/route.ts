@@ -204,13 +204,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const master = await requireAuth();
     const scope = await getScope(master);
     const { id } = await params;
+    const switching = new URL(request.url).searchParams.get("mode") === "switch";
 
     // Soft-delete: запись остаётся в БД, восстанавливается через /dashboard/trash.
     // См. PR-A 2026-06-03 — закрывает блокер из аудита 2026-06-01.
@@ -220,11 +221,34 @@ export async function DELETE(
     // объекта, а восстановление (оно поднимает КП по отметке времени) возвращало объект без них.
     const existing = await prisma.measurementObject.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
-      select: { id: true },
+      select: {
+        id: true,
+        status: true,
+        _count: { select: { rooms: true, estimates: { where: { deletedAt: null } } } },
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
+
+    // «Убрать пустой открытый замер» — не то же, что «Удалить». Страница «Замер» зовёт этот роут,
+    // когда мастер открывает другой замер, а текущий на ЭКРАНЕ пуст. Но мастер мог сделать замер,
+    // отправить КП, убрать комнаты, чтобы перемерить, — и открыть другой объект: объект и все
+    // его КП (в том числе с подписанным договором) молча ушли бы в корзину, у клиента умерли бы
+    // ссылки. Поэтому на этом пути объект с живыми КП или с комнатами на сервере не удаляется, а
+    // убирается в сохранённые. Путь узнаём по флагу ?mode=switch и — для вкладок, открытых до
+    // выката, — по статусу: явное «Удалить» есть только у сохранённых замеров, открытый объект
+    // удаляет только переключение.
+    if (switching || existing.status === "active") {
+      if (existing._count.estimates > 0 || existing._count.rooms > 0) {
+        await prisma.measurementObject.update({
+          where: { id },
+          data: { status: "saved", ...activeByFor("saved", master.id) },
+        });
+        return NextResponse.json({ success: true, kept: true, estimatesDeleted: 0 });
+      }
+    }
+
     const now = new Date();
     const [, estimates] = await prisma.$transaction([
       prisma.measurementObject.update({ where: { id }, data: { deletedAt: now } }),
