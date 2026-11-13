@@ -6,6 +6,8 @@ import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
+import { getVertices } from "@/lib/room-geometry";
+import { mapByGeometry, remapRoomIndexed } from "@/lib/room-remap";
 import type { CalculationResult, RoomInput, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData, discountInputFromState, persistPartner, partnerRoomBases } from "@/lib/kp-adjust-server";
 import { scaleCalc, sumCalc, computeDiscount, computePartner } from "@/lib/kp-adjust";
@@ -122,6 +124,29 @@ export async function POST(
       return NextResponse.json({ success: true, total: estimate.total, previousTotal: estimate.total, unchanged: true });
     }
 
+    // Профили по стенам (подшторник, парящий, теневой — деньги в КП) привязаны к
+    // НОМЕРАМ стен. Раньше builder держал их только при том же числе стен — по
+    // индексам: удалил выступ → все профили молча пропадали, поправил контур при
+    // том же числе стен → профиль мог сесть на чужую стену. Теперь стена «та же»
+    // по геометрии (оба конца совпали, либо та же прямая с общим концом — укороченная/
+    // удлинённая наследует, метраж пересчитается по новой длине), как в приложении
+    // (файл-близнец room-remap.ts, Б5 13.11.2026). Снятое — в ответ клиенту.
+    let existingForBuild: RoomInput = { ...existingRoom, name: newName };
+    let remap: { kept: number; droppedWalls: number[] } | null = null;
+    const wpd = existingRoom.wallProfileData;
+    if (wpd && Object.keys(wpd.wallProfiles ?? {}).length > 0 && !geometryUnchanged) {
+      const oldWalls = savedDrawing.walls ?? wpd.walls;
+      const oldNC = savedDrawing.normalCorners?.length === oldWalls.length ? savedDrawing.normalCorners : oldWalls.map(() => true);
+      const oldAngles = savedDrawing.angles?.length === oldWalls.length ? savedDrawing.angles : undefined;
+      const oldPoly = getVertices(oldWalls, oldNC, oldAngles).slice(0, oldWalls.length);
+      const newPoly = getVertices(body.designer.walls, body.designer.normalCorners, body.designer.angles).slice(0, body.designer.walls.length);
+      const map = mapByGeometry(oldPoly, newPoly);
+      const { patch, dropped } = remapRoomIndexed({ wallProfiles: wpd.wallProfiles }, map, { dropMeasureDiagonals: false });
+      const wallProfiles = Object.fromEntries(Object.entries(patch.wallProfiles ?? {}).map(([k, v]) => [String(k), v as string]));
+      existingForBuild = { ...existingForBuild, wallProfileData: { ...wpd, walls: body.designer.walls, wallProfiles } };
+      remap = { kept: Object.keys(wallProfiles).length, droppedWalls: dropped.profiles };
+    }
+
     const builtRoom = buildRoomInputFromDesigner(
       {
         id: existingRoom.id,
@@ -135,7 +160,7 @@ export async function POST(
         elements: body.designer.elements,
         previewUrl3d: body.designer.previewUrl3d,
       },
-      { ...existingRoom, name: newName }
+      existingForBuild
     );
     // Меняли только элементы: площадь и периметр остаются теми, по которым сохранено КП.
     // Чертёж становится источником площади только при правке формы или размеров.
@@ -261,7 +286,7 @@ export async function POST(
 
       revalidatePath(`/dashboard/estimates/${id}`);
       revalidatePath(`/dashboard/estimates/${id}/edit-room/${idx}`);
-      return NextResponse.json({ success: true, total, previousTotal: estimate.total, areaFromDrawing: !keepsSavedArea });
+      return NextResponse.json({ success: true, total, previousTotal: estimate.total, areaFromDrawing: !keepsSavedArea, remap });
     }
 
     // Старое КП без позиций по комнатам — сопоставить не с чем, считаем всё КП заново.
@@ -291,7 +316,7 @@ export async function POST(
     revalidatePath(`/dashboard/estimates/${id}`);
     revalidatePath(`/dashboard/estimates/${id}/edit-room/${idx}`);
 
-    return NextResponse.json({ success: true, total: adjust.total, previousTotal: estimate.total, areaFromDrawing: !keepsSavedArea });
+    return NextResponse.json({ success: true, total: adjust.total, previousTotal: estimate.total, areaFromDrawing: !keepsSavedArea, remap });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });

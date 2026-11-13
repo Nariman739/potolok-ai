@@ -82,7 +82,12 @@ export function EstimateRoomEditor({ estimateId, idx, room }: EditorProps) {
       toast.error("Не удалось сохранить чертёж");
       return;
     }
-    const data = (await res.json().catch(() => null)) as { total?: number; previousTotal?: number; unchanged?: boolean; areaFromDrawing?: boolean } | null;
+    const data = (await res.json().catch(() => null)) as { total?: number; previousTotal?: number; unchanged?: boolean; areaFromDrawing?: boolean; remap?: { kept: number; droppedWalls: number[] } | null } | null;
+    // Профиль стоял на стене, которой после правки больше нет (сервер снял его) — сказать, а не молчать.
+    if (data?.remap?.droppedWalls?.length) {
+      const walls = data.remap.droppedWalls.map((i) => i + 1).join(", ");
+      toast.warning(`Профиль стен ${walls} снят: этих стен больше нет. Проверьте профили в КП.`);
+    }
     if (data?.unchanged) {
       toast.success("Чертёж не менялся, сумма КП осталась прежней");
     } else if (data?.total != null && data.previousTotal != null && data.total !== data.previousTotal) {
