@@ -126,7 +126,7 @@ export async function GET(
     doc.font("Sans").fontSize(10)
       .text(`${executorDesc}, с одной стороны, и`, L, doc.y, { width: CW })
       .moveDown(0.3)
-      .text(`${clientName}, именуемый(-ая) в дальнейшем «Заказчик», с другой стороны, заключили настоящий ${isIp ? "Договор" : "Соглашение"}:`, L, doc.y, { width: CW });
+      .text(`${clientName}, именуемый(-ая) в дальнейшем «Заказчик», с другой стороны, заключили ${isIp ? "настоящий Договор" : "настоящее Соглашение"}:`, L, doc.y, { width: CW });
     doc.moveDown(0.6);
 
     const section = (num: string, heading: string) => {
@@ -248,7 +248,7 @@ export async function GET(
 
     // 5. Прочее
     section("5", "ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ");
-    para(`5.1. ${isIp ? "Договор" : "Соглашение"} вступает в силу с момента подписания. Составлен в двух экземплярах.`);
+    para(`5.1. ${isIp ? "Договор" : "Соглашение"} вступает в силу с момента подписания. ${isIp ? "Составлен" : "Составлено"} в двух экземплярах.`);
     para("5.2. Все споры решаются путём переговоров, при недостижении согласия — в судебном порядке.");
 
     // Signatures
@@ -306,7 +306,7 @@ export async function GET(
           (estimate.contractSignerPassport ? `, удостоверение ${estimate.contractSignerPassport}` : "") +
           `\nДата и время: ${dateStr2}` +
           (estimate.contractSignerIp ? `\nIP: ${estimate.contractSignerIp}` : "") +
-          `\nДоговор № ${contractNum}`,
+          `\n${isIp ? "Договор" : "Соглашение"} № ${contractNum}`,
         L,
         stampY,
         { width: CW, align: "center" },

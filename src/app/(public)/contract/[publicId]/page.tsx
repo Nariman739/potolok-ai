@@ -84,6 +84,9 @@ export default async function ContractPublicPage({
   const doc = contractView(html);
 
   const isSigned = !!estimate.contractSignedAt;
+  // Документ мастера без ИП называется «Соглашение» — так же называем его в шапке и у кнопки подписи.
+  const isIp = estimate.master.contractType === "ip";
+  const signedKey = isIp ? "page.ct.signed" : "page.ct.signed.ind";
   // Мастер выбрал другой вариант КП — этот договор не подписывают (13.11.2026)
   // …или договор создан после выбора другого варианта на непринятом КП
   const isReplaced = !isSigned && (isContractReplaced(estimate) || (await otherVariantChosen(prisma, estimate)));
@@ -95,7 +98,7 @@ export default async function ContractPublicPage({
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
             <div className="text-sm">
-              <span className="font-semibold">{t("page.ct.signed")}</span>
+              <span className="font-semibold">{t(signedKey)}</span>
               {" — "}
               {estimate.contractSignerName} ·{" "}
               {estimate.contractSignedAt?.toLocaleString(localeOf(lang), { timeZone: "Asia/Almaty" })}
@@ -135,7 +138,7 @@ export default async function ContractPublicPage({
         {isSigned ? (
           <div className="bg-white rounded-lg shadow-sm p-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-3" />
-            <h2 className="text-lg font-bold mb-1">{t("page.ct.signed")}</h2>
+            <h2 className="text-lg font-bold mb-1">{t(signedKey)}</h2>
             <p className="text-sm text-muted-foreground">
               <strong>{estimate.contractSignerName}</strong>
               {estimate.contractSignerPassport
@@ -151,7 +154,7 @@ export default async function ContractPublicPage({
             <p className="text-sm font-semibold">{lang === "kk" ? CONTRACT_REPLACED_TEXT_KK : CONTRACT_REPLACED_TEXT}</p>
           </div>
         ) : (
-          <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} seenHash={contractHash(html)} />
+          <SignSection publicId={publicId} lang={lang} currency={estimate.master.currency} seenHash={contractHash(html)} isIp={isIp} />
         )}
       </div>
     </div>

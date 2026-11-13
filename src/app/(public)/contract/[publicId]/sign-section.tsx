@@ -10,7 +10,7 @@ import { CheckCircle2, FileSignature } from "lucide-react";
 import { type Lang } from "@/lib/i18n";
 import { contractT } from "@/lib/i18n/contract";
 
-export function SignSection({ publicId, lang = "ru", currency, seenHash }: { publicId: string; lang?: Lang; currency?: string | null; seenHash?: string }) {
+export function SignSection({ publicId, lang = "ru", currency, seenHash, isIp = true }: { publicId: string; lang?: Lang; currency?: string | null; seenHash?: string; /** false — документ называется «Соглашение» (мастер без ИП) */ isIp?: boolean }) {
   // Рублёвый мастер → подпись и паспорт по правилам РФ (27.10.2026).
   const t = contractT(lang, currency);
   const router = useRouter();
@@ -55,7 +55,7 @@ export function SignSection({ publicId, lang = "ru", currency, seenHash }: { pub
       <CardContent className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <FileSignature className="h-5 w-5 text-[#1e3a5f]" />
-          <h2 className="text-lg font-bold">{t("sign.ct.title")}</h2>
+          <h2 className="text-lg font-bold">{t(isIp ? "sign.ct.title" : "sign.ct.title.ind")}</h2>
         </div>
         <p className="text-sm text-muted-foreground">
           {t("sign.ct.hint")}
@@ -91,7 +91,7 @@ export function SignSection({ publicId, lang = "ru", currency, seenHash }: { pub
               className="mt-1"
             />
             <span>
-              {t("sign.ct.consent")}
+              {t(isIp ? "sign.ct.consent" : "sign.ct.consent.ind")}
             </span>
           </label>
 
