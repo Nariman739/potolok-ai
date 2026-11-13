@@ -70,7 +70,7 @@ export function QuickPage({ data }: { data: PdfData }) {
           },
           {
             title: "Монтаж от одного дня",
-            body: `Чистый монтаж, уборка после работ. Гарантия ${master.warrantyMaterials} ${pluralRu(master.warrantyMaterials, ["год", "года", "лет"])} на плёнку, ${master.warrantyInstall} ${pluralRu(master.warrantyInstall, ["год", "года", "лет"])} на работы.`,
+            body: `Чистый монтаж, уборка после работ. Гарантия ${master.warrantyMaterials}\u00A0${pluralRu(master.warrantyMaterials, ["год", "года", "лет"])} на плёнку, ${master.warrantyInstall}\u00A0${pluralRu(master.warrantyInstall, ["год", "года", "лет"])} на работы.`,
           },
         ];
   const ctaLabel = q.ctaLabel ?? "Написать в WhatsApp · ответим в течение 15 минут";
@@ -546,7 +546,8 @@ function IncludedItem({
           fontFamily: fonts.display.family,
           fontWeight: fonts.display.weight as 400 | 700 | 800,
           fontSize: 22,
-          color: theme.palette.accent,
+          // bold-color: акцент = цвет фона страницы (brandColor) — номер сливался (13.11.2026)
+          color: theme.id === "bold-color" ? (isDark ? "#FFFFFF" : theme.palette.pageText) : theme.palette.accent,
           marginBottom: 6,
           letterSpacing: -0.5,
         }}

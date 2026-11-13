@@ -1614,8 +1614,14 @@ function CoverClassicArchitectural({
         />
         {/* Гарантия — из настроек мастера. Раньше обложка обещала 10 лет
             независимо от того, что стоит у мастера и что написано в
-            договоре (аудит 24.09.2026). */}
-        <StatClassic label="Гарантия" value={`${master.warrantyMaterials} ${yearsWord(master.warrantyMaterials)}`} theme={theme} fonts={fonts} />
+            договоре (аудит 24.09.2026). Гарантия 0 — «0 лет» не печатаем:
+            вместо неё позиции, как в fourthStat; если позиции уже стоят на
+            месте софитов — ячейки нет (13.11.2026). */}
+        {master.warrantyMaterials > 0 ? (
+          <StatClassic label="Гарантия" value={`${master.warrantyMaterials} ${yearsWord(master.warrantyMaterials)}`} theme={theme} fonts={fonts} />
+        ) : spotsCount > 0 ? (
+          <StatClassic label={positionsLabel(positionsCount, true)} value={String(positionsCount)} theme={theme} fonts={fonts} />
+        ) : null}
       </View>
 
       {/* Цена — крупно по центру внизу, бордо */}
