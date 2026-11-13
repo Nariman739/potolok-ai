@@ -13,6 +13,22 @@ import { formatMoney } from "@/lib/currency";
 import { checkObjectLimit } from "@/lib/billing";
 import { asPriceView } from "@/lib/kp/types";
 import { reportError } from "@/lib/report-error";
+import { normalizeWallFurniture } from "@/lib/wall-furniture";
+
+/** Массив из roomsData как есть (так же хранит POST /api/measurements); не массив или пусто — колонка остаётся NULL. */
+function jsonList(v: unknown): object[] | number[] | undefined {
+  return Array.isArray(v) && v.length > 0 ? v : undefined;
+}
+
+/** Когда мастер замерял: самая ранняя комната (createdAt из приложения). Не из будущего. */
+function earliestRoomDate(rooms: { createdAt?: unknown }[]): Date | null {
+  let min: number | null = null;
+  for (const r of rooms) {
+    const t = typeof r.createdAt === "string" || typeof r.createdAt === "number" ? new Date(r.createdAt).getTime() : NaN;
+    if (Number.isFinite(t) && t <= Date.now() && (min === null || t < min)) min = t;
+  }
+  return min === null ? null : new Date(min);
+}
 
 export async function GET() {
   try {
@@ -259,6 +275,8 @@ async function createEstimate(request: Request): Promise<NextResponse> {
           columns?: unknown[]; wallProfiles?: Record<string, string>; variantOverrides?: Record<string, string>;
           /** Решение по вставке в комнате — телефон кладёт его в roomsData с 30.10.2026. */
           withInsert?: boolean | null;
+          /** Замеренные диагонали, цвет вставки, фасады шкафов, время замера комнаты (13.11.2026). */
+          measureDiagonals?: unknown; obliqueDiagonals?: unknown; insertColor?: unknown; wallFurniture?: unknown; createdAt?: unknown;
         };
         const rooms = (roomsData as RawRoom[]).filter(
           (r) => r && Array.isArray(r.walls) && r.walls.length >= 3,
@@ -361,13 +379,17 @@ async function createEstimate(request: Request): Promise<NextResponse> {
               address: clientAddress || clientName || "",
               status: "saved",
               totalArea: Math.round(rooms.reduce((sum, r) => sum + (r.area ?? 0), 0) * 100) / 100,
-              measuredAt: new Date(),
+              // Кто и когда замерял — как в POST /api/measurements: автор объекта и самая ранняя комната.
+              measuredByMemberId: scope.members.find((m) => m.isMe)?.id ?? null,
+              measuredAt: earliestRoomDate(rooms) ?? new Date(),
               rooms: {
                 create: rooms.map((r, i) => ({
                   name: r.name || `Комната ${i + 1}`,
                   walls: r.walls!,
+                  // Как шлёт сам телефон при «Сохранить замер»: обычный угол — положительный поворот.
+                  // До 13.11.2026 здесь стояло a === 0, и у объекта из КП все углы писались «внутренними».
                   normalCorners: Array.isArray(r.angles)
-                    ? r.angles.map((a) => a === 0)
+                    ? r.angles.map((a) => a > 0)
                     : r.walls!.map(() => true),
                   angles: r.angles ?? undefined,
                   arcBulges: r.bulges ?? undefined,
@@ -385,6 +407,13 @@ async function createEstimate(request: Request): Promise<NextResponse> {
                   // объект родится со вставкой по умолчанию, и чертёж наряда покажет
                   // «Вставка: N м», которой в КП нет (ревью 30.10.2026).
                   withInsert: typeof r.withInsert === "boolean" ? r.withInsert : null,
+                  // Замеренные диагонали (13.11.2026): объект из КП рождался без них, и «В цех»
+                  // уходил без контрольных размеров, хотя мастер их снимал. Заодно цвет вставки
+                  // и фасады шкафов — всё, что POST /api/measurements кладёт в комнату.
+                  measureDiagonals: jsonList(r.measureDiagonals),
+                  obliqueDiagonals: jsonList(r.obliqueDiagonals),
+                  insertColor: r.insertColor === "black" || r.insertColor === "white" ? r.insertColor : null,
+                  wallFurniture: normalizeWallFurniture(r.wallFurniture, r.walls?.length) ?? undefined,
                   sortOrder: i,
                 })),
               },
