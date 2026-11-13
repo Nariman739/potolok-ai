@@ -85,6 +85,8 @@ export function normalizeClientPhone(phone: string | null | undefined): string |
 }
 const normalizePhone = normalizeClientPhone;
 
+const normName = (v?: string | null) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 export type GetOrCreateClientInput = {
   masterId: string;
   /**
@@ -93,7 +95,7 @@ export type GetOrCreateClientInput = {
    * дважды, а карточка с историей оставалась у того, кто позвонил первым.
    */
   companyId?: string | null;
-  /** Мастера компании — чтобы найти клиента, заведённого напарником до перехода. */
+  /** Мастера компании — чтобы найти клиента без компании (старая запись), заведённого напарником. */
   masterIds?: string[];
   name: string | null | undefined;
   phone?: string | null;
@@ -103,12 +105,28 @@ export type GetOrCreateClientInput = {
   source?: ClientSource | null;
 };
 
+/**
+ * Адрес клиента из запроса замера (13.11.2026). Когда адреса нет, приложение
+ * подставляет в `address` имя клиента — это название объекта в ленте, а не адрес.
+ * В клиента его не пишем и дубль по нему не ищем: иначе новый замер «Айгуль» без
+ * телефона склеивался бы с любой прежней «Айгуль», у которой адрес = «Айгуль».
+ */
+export function clientAddressFromObject(address: string | null | undefined, clientName: string | null | undefined): string | null {
+  const a = address?.trim();
+  if (!a) return null;
+  return normName(a) === normName(clientName) ? null : a;
+}
+
 export async function getOrCreateClient(input: GetOrCreateClientInput) {
   const { masterId, companyId } = input;
   // Клиент принадлежит компании: ищем дубль по всей бригаде, а не только
   // среди своих записей. Без companyId (старый вызов) — прежнее поведение.
+  // Ветка по автору — только для записей БЕЗ компании, как в inScope (13.11.2026).
+  // Без оговорки убранный из бригады участник, заведя замер с телефоном клиента
+  // бригады, привязывал свой объект к её клиенту: получал его имя и адрес, а у
+  // владельца в карточке клиента появлялся замер чужой компании.
   const owner: Prisma.ClientWhereInput = companyId
-    ? { OR: [{ companyId }, { masterId: { in: input.masterIds?.length ? input.masterIds : [masterId] } }] }
+    ? { OR: [{ companyId }, { AND: [{ companyId: null }, { masterId: { in: input.masterIds?.length ? input.masterIds : [masterId] } }] }] }
     : { masterId };
   const name = (input.name ?? "").trim();
   const phone = normalizePhone(input.phone);
@@ -171,6 +189,46 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   });
 
   return created;
+}
+
+/**
+ * Клиент «этого же объекта» для запроса с одним именем, без телефона (13.11.2026).
+ *
+ * Приложение при «Создать КП» шлёт подряд POST /estimates и PATCH замера, оба только
+ * с именем. По одному имени getOrCreateClient не склеивает, и на одно сохранение
+ * заводилось два клиента: у одного КП, у другого объект (12 пар у 6 мастеров с 01.11).
+ * Здесь связь не угадывается, а берётся из самого объекта: его клиент или клиент его КП,
+ * если имя то же. Две разные «Айгуль» на разных объектах по-прежнему не склеиваются.
+ *
+ * С телефоном не применяется — там дубль находит getOrCreateClient по номеру.
+ * `scopeWhere` — inScope(scope): объект должен быть виден вызывающему.
+ */
+export async function findObjectClientByName(input: {
+  objectId: string;
+  scopeWhere: Prisma.MeasurementObjectWhereInput;
+  name: string | null | undefined;
+  phone?: string | null;
+}): Promise<string | null> {
+  const wanted = normName(input.name);
+  if (!wanted || normalizePhone(input.phone)) return null;
+  const client = { select: { id: true, name: true, deletedAt: true } } as const;
+  const obj = await prisma.measurementObject.findFirst({
+    where: { id: input.objectId, ...input.scopeWhere, deletedAt: null },
+    select: {
+      client,
+      estimates: {
+        where: { deletedAt: null, clientId: { not: null } },
+        orderBy: { createdAt: "asc" },
+        select: { client },
+      },
+    },
+  });
+  if (!obj) return null;
+  // Сначала клиент самого объекта, потом клиенты его КП — от старого к новому.
+  for (const c of [obj.client, ...obj.estimates.map((e) => e.client)]) {
+    if (c && !c.deletedAt && normName(c.name) === wanted) return c.id;
+  }
+  return null;
 }
 
 export type AddEventInput = {
