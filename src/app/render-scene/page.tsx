@@ -66,6 +66,17 @@ function toJpeg(dataUrl: string): Promise<{ url: string; w: number; h: number }>
   });
 }
 
+/** presets приходят снаружи — берём только строки id → имя, с лимитами. */
+function cleanVariantNames(raw: unknown): Record<string, { name: string }> {
+  const out: Record<string, { name: string }> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, v] of Object.entries(raw as Record<string, unknown>).slice(0, 200)) {
+    const name = (v as { name?: unknown } | null)?.name;
+    if (id.length <= 80 && typeof name === "string") out[id] = { name: name.slice(0, 200) };
+  }
+  return out;
+}
+
 export default function RenderScenePage() {
   const [input, setInput] = useState<{ scene: NormalizedScene; presets: Partial<ScenePresets> } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +131,9 @@ export default function RenderScenePage() {
     toJpeg(beauty).then(({ url, w, h }) => p.resolve({ beauty: url, ceilingMask, floatingMask, width: w, height: h }));
   }, []);
 
+  // Имена своих позиций кладёт сервер в presets; пустой объект — тоже «прайс не запрашивать».
+  const variantNames = useMemo(() => cleanVariantNames(input?.presets.variantNames), [input]);
+
   const initialLook = useMemo(
     () =>
       input
@@ -152,6 +166,7 @@ export default function RenderScenePage() {
           withInsert={input.scene.withInsert}
           insertColor={input.scene.insertColor}
           wallFurniture={input.scene.wallFurniture}
+          variantNames={variantNames}
           renderMode
           initialLook={initialLook}
           onSceneReady={onSceneReady}

@@ -5,6 +5,7 @@ import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/l
 import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/kp-public";
 import { DOC_ROBOTS } from "@/lib/doc-og";
+import { variantNamesFor } from "@/lib/variant-names";
 import { Public3DViewer } from "../../kp/[publicId]/3d/Public3DViewer";
 
 // Публичная 3D-ссылка ПРЯМО с замера (/z/[shareId]) — до создания КП.
@@ -14,6 +15,8 @@ async function loadShared(shareId: string) {
   const obj = await prisma.measurementObject.findFirst({
     where: { publicShareId: shareId, deletedAt: null },
     select: {
+      masterId: true,
+      companyId: true,
       rooms: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -92,6 +95,8 @@ export default async function PublicMeasurement3DPage({
   const room = pickRoomForScene3D(roomShapes);
   const sceneProps = room ? mapRoomToScene3DProps(room) : null;
   if (!sceneProps) notFound();
+  // Свои софиты/треки мастера: имена позиций — с сервера, клиенту прайс под логином недоступен.
+  const variantNames = await variantNamesFor(sceneProps.elements, { masterId: obj.masterId, companyId: obj.companyId });
 
   const brandColor = obj.master.brandColor || "#1e3a5f";
   const fallbackImageUrl = obj.rooms.find((r) => r.previewUrl3d)?.previewUrl3d ?? null;
@@ -108,6 +113,7 @@ export default async function PublicMeasurement3DPage({
       withInsert={sceneProps.withInsert}
       insertColor={sceneProps.insertColor}
       wallFurniture={sceneProps.wallFurniture}
+      variantNames={variantNames}
       betaLabel={t("kp.beta3d")}
       fallbackImageUrl={fallbackImageUrl}
       noGl={{ title: t("kp.no3dTitle"), text: t("kp.no3dText"), retry: t("kp.no3dRetry") }}

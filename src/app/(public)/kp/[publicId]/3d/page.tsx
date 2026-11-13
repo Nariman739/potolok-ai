@@ -6,6 +6,7 @@ import { pickRoomForScene3D, mapRoomToScene3DProps, type SavedRoom3D } from "@/l
 import { asLang, tFor } from "@/lib/i18n";
 import "@/lib/i18n/kp-public";
 import { DOC_ROBOTS } from "@/lib/doc-og";
+import { variantNamesFor } from "@/lib/variant-names";
 import { Public3DViewer } from "./Public3DViewer";
 
 export async function generateMetadata({
@@ -104,6 +105,8 @@ export default async function Public3DPage({
     wallFurniture: mRoom?.wallFurniture ?? undefined,
   } as SavedRoom3D);
   if (!sceneProps) redirect(`/kp/${publicId}`);
+  // Свои софиты/треки мастера: имена позиций — с сервера, клиенту прайс под логином недоступен.
+  const variantNames = await variantNamesFor(sceneProps.elements, { masterId: estimate.masterId, companyId: estimate.companyId });
 
   const brandColor = estimate.master.brandColor || "#1e3a5f";
   const t = tFor(asLang(estimate.master.language));
@@ -119,6 +122,7 @@ export default async function Public3DPage({
       withInsert={sceneProps.withInsert}
       insertColor={sceneProps.insertColor}
       wallFurniture={sceneProps.wallFurniture}
+      variantNames={variantNames}
       betaLabel={t("kp.beta3d")}
       fallbackImageUrl={estimate.room3dPreviewUrl}
       backHref={`/kp/${publicId}`}

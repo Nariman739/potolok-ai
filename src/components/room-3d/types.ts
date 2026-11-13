@@ -68,6 +68,10 @@ export interface Scene3DProps {
   showTone?: boolean;
   /** WebGL-контекст не создался за 10 с или потерян без восстановления — страница покажет запасной экран. */
   onGlFail?: () => void;
+  /** Имена своих позиций прайса (id → имя) с сервера — для клиента и воркера, у которых
+   *  прайс под логином недоступен (src/lib/variant-names.ts). Передан (хоть пустой) →
+   *  Scene3D прайс не запрашивает. Не передан (кабинет мастера) → берёт сам. 13.11.2026. */
+  variantNames?: Record<string, { name: string }>;
 }
 
 export const cm2m = (cm: number) => cm / 100;
