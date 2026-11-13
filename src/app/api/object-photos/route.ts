@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (safeClientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: safeClientId,
         type: "PHOTO_ADDED",
         content: caption?.trim() || `Фото (${category.toLowerCase()})`,

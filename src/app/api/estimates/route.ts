@@ -483,7 +483,7 @@ async function createEstimate(request: Request): Promise<NextResponse> {
 
     // CRM: log KP_CREATED event
     if (linkedClientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: linkedClientId,
         type: "KP_CREATED",
         content: total ? `Сумма: ${formatMoney(total, master.currency)}` : null,

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -65,9 +65,9 @@ export async function POST(request: Request) {
       include: { master: true },
     });
 
-    notifyAdminAboutPayment(payment, method).catch((err) => {
+    after(() => notifyAdminAboutPayment(payment, method).catch((err) => {
       reportError(err, "payment/submit", "notifyAdminAboutPayment failed");
-    });
+    }));
 
     return NextResponse.json({
       id: payment.id,

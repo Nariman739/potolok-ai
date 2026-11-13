@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rejectPayment, notifyUserAboutPaymentDecision } from "@/lib/payment";
@@ -23,11 +23,11 @@ export async function POST(
 
     const result = await rejectPayment({ paymentId: id, adminId: me.id, notes });
 
-    notifyUserAboutPaymentDecision({
+    after(() => notifyUserAboutPaymentDecision({
       master: result.master,
       payment: result.payment,
       approved: false,
-    }).catch((err) => console.error("notifyUserAboutPaymentDecision failed:", err));
+    }).catch((err) => console.error("notifyUserAboutPaymentDecision failed:", err)));
 
     return NextResponse.json({ success: true });
   } catch (error) {

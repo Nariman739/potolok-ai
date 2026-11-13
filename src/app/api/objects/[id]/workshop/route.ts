@@ -91,7 +91,7 @@ async function createWorkshopOrder(request: Request, masterId: string, id: strin
     });
 
     if (obj.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: obj.clientId,
         type: "WORKSHOP_SENT",
         content: `В цех: ${roomIds.length} комн. · ${area} м²${obj.address ? ` · ${obj.address}` : ""}`,

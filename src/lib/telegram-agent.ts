@@ -12,6 +12,8 @@ import type {
 } from "openai/resources/chat/completions";
 import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
+import { changeClientStatus } from "@/lib/clients";
+import { syncColumnForStatus } from "@/lib/crm-board";
 import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type { DealStatus, EventType } from "@/generated/prisma/client";
 
@@ -337,16 +339,12 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
         const c = await prisma.client.findFirst({ where: { id, masterId, deletedAt: null } });
         if (!c) return JSON.stringify({ error: "Клиент не найден" });
         const prev = c.status;
-        await prisma.$transaction([
-          prisma.client.update({ where: { id }, data: { status: newStatus } }),
-          prisma.clientEvent.create({
-            data: {
-              clientId: id,
-              type: "STATUS_CHANGE",
-              content: `${STATUS_LABELS[prev]} → ${STATUS_LABELS[newStatus]}`,
-            },
-          }),
-        ]);
+        // Тем же путём, что сайт и приложение (13.11.2026): раньше бот писал статус напрямую,
+        // и этап канбана за ним не шёл — «Сделка» из бота оставляла карточку в прежней колонке.
+        if (prev !== newStatus) {
+          await changeClientStatus(id, newStatus, `${STATUS_LABELS[prev]} → ${STATUS_LABELS[newStatus]}`);
+          await syncColumnForStatus(id, newStatus);
+        }
         return JSON.stringify({ ok: true, client: c.name, from: STATUS_LABELS[prev], to: STATUS_LABELS[newStatus] });
       }
 
