@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function ContactsPage() {
   const o = await getOwnerLegalInfo();
   return (
-    <LegalArticle title="Контакты">
+    <LegalArticle title="Контакты" edition="14 ноября 2026 г.">
       <p>
         PotolokAI делает один человек — мастер натяжных потолков из Астаны. Поэтому поддержка
         отвечает лично и обычно быстро: в рабочие дни в течение нескольких часов.
