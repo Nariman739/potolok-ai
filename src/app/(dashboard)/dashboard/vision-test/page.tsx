@@ -2329,7 +2329,7 @@ export default function ZameryPage() {
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {
-    if (!confirm("Удалить замер? Он попадёт в Корзину — можно будет восстановить.")) return;
+    if (!confirm("Удалить замер? Он попадёт в Корзину вместе со своими КП — можно будет восстановить.")) return;
     setSavedObjects(prev => prev.filter(o => o.id !== id));
     try {
       const res = await fetch(`/api/measurements/${id}`, { method: "DELETE" });

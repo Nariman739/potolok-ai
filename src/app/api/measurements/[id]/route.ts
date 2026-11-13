@@ -214,16 +214,23 @@ export async function DELETE(
 
     // Soft-delete: запись остаётся в БД, восстанавливается через /dashboard/trash.
     // См. PR-A 2026-06-03 — закрывает блокер из аудита 2026-06-01.
-    const result = await prisma.measurementObject.updateMany({
+    // Замер и объект — одна сущность, и удаляются теперь одинаково (13.11.2026): вместе с
+    // объектом в корзину уходят его КП, той же отметкой времени — как в DELETE /api/objects/:id.
+    // Раньше этот роут КП не трогал: после удаления замера с сайта КП оставались «живыми» без
+    // объекта, а восстановление (оно поднимает КП по отметке времени) возвращало объект без них.
+    const existing = await prisma.measurementObject.findFirst({
       where: { id, ...inScope(scope), deletedAt: null },
-      data: { deletedAt: new Date() },
+      select: { id: true },
     });
-
-    if (result.count === 0) {
+    if (!existing) {
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
-
-    return NextResponse.json({ success: true });
+    const now = new Date();
+    const [, estimates] = await prisma.$transaction([
+      prisma.measurementObject.update({ where: { id }, data: { deletedAt: now } }),
+      prisma.estimate.updateMany({ where: { measurementObjectId: id, deletedAt: null }, data: { deletedAt: now } }),
+    ]);
+    return NextResponse.json({ success: true, estimatesDeleted: estimates.count });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
