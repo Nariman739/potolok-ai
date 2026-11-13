@@ -20,8 +20,8 @@ import {
   type PaymentStage,
 } from "./contract-terms-dialog";
 import { Pencil } from "lucide-react";
-import { CONTRACT_OTHER_CHOSEN_TEXT, MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 import { whatsappNumber } from "@/lib/phone-format";
+import { CONTRACT_OTHER_CHOSEN_TEXT, MASTER_CONTRACT_REPLACED_TEXT } from "@/lib/estimate-replace-text";
 
 type Props = {
   estimateId: string;
