@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { inScope, type Scope } from "./company";
 import type { ClientSource, DealStatus, EventType, Prisma } from "@/generated/prisma/client";
 
 // Legacy → canonical статусы. В UI у мастера теперь только 4 кнопки
@@ -33,14 +34,19 @@ function endOfTomorrowAlmaty(): Date {
   return new Date(endOfTodayAlmaty().getTime() + 24 * 60 * 60 * 1000);
 }
 
-export async function getActionableClients(masterId: string | string[]) {
+/**
+ * «Кому позвонить». Доступ — по компании (`inScope`), а не по автору записи
+ * (13.11.2026): иначе убранный из бригады продолжал видеть имя, телефон и адрес
+ * клиентов, которых завёл в бригаде, а владелец терял их из списка.
+ */
+export async function getActionableClients(scope: Scope) {
   const tomorrowEnd = endOfTomorrowAlmaty();
   const todayEnd = endOfTodayAlmaty();
   const now = new Date();
 
   const rows = await prisma.client.findMany({
     where: {
-      masterId: Array.isArray(masterId) ? { in: masterId } : masterId,
+      ...inScope(scope),
       deletedAt: null,
       nextContactAt: { lte: tomorrowEnd },
       status: { notIn: ["WON" as DealStatus, "LOST" as DealStatus] },
