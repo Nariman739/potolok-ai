@@ -2,6 +2,7 @@ import { confirmReplacing, ConfirmStatusError, ReplaceBlockedError } from "@/lib
 import { CLIENT_CONTACT_MASTER_TEXT, prevReplacedLine } from "@/lib/estimate-replace-text";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { syncColumnForStatus } from "@/lib/crm-board";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 import { formatPrice } from "@/lib/format";
@@ -107,15 +108,17 @@ export async function POST(
     const currency = await currencyFor(estimate.masterId);
 
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "KP_CONFIRMED",
         content: price ? `Сумма: ${formatPrice(price, currency)}` : null,
         metadata: { estimateId: estimate.id },
       }).catch(() => {});
-      changeClientStatus(estimate.clientId, "WON", "КП подтверждено клиентом").catch(
+      await changeClientStatus(estimate.clientId, "WON", "КП подтверждено клиентом").catch(
         () => {},
       );
+      // Этап канбана идёт за «Сделкой» — как при смене статуса из карточки (не ниже «Договора»).
+      await syncColumnForStatus(estimate.clientId, "WON").catch(() => {});
     }
 
     const clientStr = estimate.clientName || "Клиент";
@@ -135,7 +138,8 @@ export async function POST(
         (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
         (prevLine ? `\n${prevLine}\n` : "") +
         `\n<i>Откройте дашборд PotolokAI, чтобы посмотреть детали.</i>`;
-      sendTelegramMessage(estimate.master.telegramChatId, text);
+      const chatId = estimate.master.telegramChatId;
+      after(() => sendTelegramMessage(chatId, text));
     }
 
     // Пуш на телефон. Самое важное уведомление в продаже — раньше доходило

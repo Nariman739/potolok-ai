@@ -1,5 +1,6 @@
 import { getCurrentMaster } from "@/lib/auth";
 import { replacedDocIds } from "@/lib/estimate-replace";
+import { dealTotal } from "@/lib/client-deal";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
@@ -45,6 +46,8 @@ export default async function ClientPage({
           contractCreatedAt: true,
           contractSignedAt: true,
           contractSignerName: true,
+          // для суммы сделки: КП группируются по объекту (src/lib/client-deal.ts)
+          measurementObjectId: true,
         },
       },
       measurements: {
@@ -143,6 +146,7 @@ export default async function ClientPage({
         scheduledAt: e.scheduledAt?.toISOString() ?? null,
         createdAt: e.createdAt.toISOString(),
       }))}
+      dealSum={dealTotal(client.estimates)}
       estimates={client.estimates.map((e) => ({
         id: e.id,
         publicId: e.publicId,

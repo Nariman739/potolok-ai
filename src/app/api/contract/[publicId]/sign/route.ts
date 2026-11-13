@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
+import { syncColumnForStatus } from "@/lib/crm-board";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { addClientEvent, changeClientStatus } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
@@ -16,7 +18,9 @@ export async function POST(
 ) {
   try {
     const { publicId } = await params;
-    const body = await request.json();
+    // Пустое или битое тело — ошибка клиента: 400, а не 500 (как в auth-роутах).
+    const body = await readJsonObject(request);
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
     const { signerName, signerPassport, agreed, seenHash, lang: langParam } = body as {
       signerName?: string;
       signerPassport?: string;
@@ -133,7 +137,7 @@ export async function POST(
 
     // CRM event + перевод сделки в WON
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "CONTRACT_SIGNED",
         content: `${signedName} подписал договор электронно`,
@@ -144,9 +148,11 @@ export async function POST(
           passport: signedPassport,
         },
       }).catch(() => {});
-      changeClientStatus(estimate.clientId, "WON", "Договор подписан клиентом").catch(
+      await changeClientStatus(estimate.clientId, "WON", "Договор подписан клиентом").catch(
         () => {},
       );
+      // Этап канбана идёт за «Сделкой» — как при смене статуса из карточки (не ниже «Договора»).
+      await syncColumnForStatus(estimate.clientId, "WON").catch(() => {});
     }
 
     // Telegram-уведомление мастеру
@@ -162,7 +168,8 @@ export async function POST(
         (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
         `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
         `\n<i>Скачайте подписанный PDF из дашборда.</i>`;
-      sendTelegramMessage(estimate.master.telegramChatId, text);
+      const chatId = estimate.master.telegramChatId;
+      after(() => sendTelegramMessage(chatId, text));
     }
 
     return NextResponse.json({
