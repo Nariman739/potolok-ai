@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ensureDraftOwner } from "@/lib/draft-owner";
-import { pendingRoomsFromBackup, roomOpId, confirmRoom } from "@/lib/zamer-unsynced";
+import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, type RemovedRoom } from "@/lib/zamer-unsynced";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, X, Camera, Loader2, Upload, History, ChevronRight, ImageIcon } from "lucide-react";
 import { PinchZoom } from "@/components/ui/pinch-zoom";
@@ -522,6 +522,9 @@ interface Room {
 function markRoomsWithoutElements(list: Room[]): Room[] {
   return list.map(r => (r.elements === undefined ? { ...r, elementsNotLoaded: true } : r));
 }
+
+/** Исход отправки неподтверждённой комнаты (см. sendRoom). */
+type RoomSendResult = "sent" | "failed" | "gone";
 
 interface SavedObject {
   id: string;
@@ -1698,8 +1701,11 @@ export default function ZameryPage() {
   // Свежий список комнат для асинхронных отправок (замыкание к ответу сервера устаревает).
   const roomsRef = useRef<Room[]>(rooms);
   useEffect(() => { roomsRef.current = rooms; }, [rooms]);
-  /** Локальные id комнат, которые сейчас отправляются; вторую такую же отправку не начинаем. */
-  const sendingRoomsRef = useRef<Set<string>>(new Set());
+  /** Отправки комнат, которые сейчас в пути (по локальному id): вторую такую же не начинаем,
+   *  а ждём исход первой — иначе «Сохранить» закрыл бы объект, не дождавшись комнаты. */
+  const sendingRoomsRef = useRef<Map<string, Promise<RoomSendResult>>>(new Map());
+  /** Комнаты, которые хоть раз пытались отправить: такая могла доехать, даже если ответа не было. */
+  const attemptedRoomsRef = useRef<Set<string>>(new Set());
   /** Комнаты, удалённые мастером до ответа сервера: не досылать, а доехавшую — убрать. */
   const removedUnsyncedRef = useRef<Set<string>>(new Set());
 
@@ -1720,6 +1726,8 @@ export default function ZameryPage() {
       localStorage.setItem("zamery-rooms", JSON.stringify(rooms));
       localStorage.setItem("zamery-object", objectName);
       if (activeObjectId) localStorage.setItem("zamery-objectId", activeObjectId);
+      // Свежесть копии: копия без id объекта пристёгивается к открытому объекту только свежей.
+      localStorage.setItem("zamery-savedAt", String(Date.now()));
     } catch { /* quota exceeded — ignore */ }
   }, [rooms, objectName, activeObjectId, loading]);
 
@@ -1812,12 +1820,16 @@ export default function ZameryPage() {
                 serverObjectId: obj.id,
                 backupRooms: JSON.parse(localStorage.getItem("zamery-rooms") ?? "[]"),
                 backupObjectId: localStorage.getItem("zamery-objectId"),
+                backupSavedAt: Number(localStorage.getItem("zamery-savedAt")) || null,
+                now: Date.now(),
               }));
               if (pending.length > 0) {
                 setRooms(prev => [...prev, ...pending]);
                 void resendUnsynced(obj.id, pending);
               }
             } catch { /* копия повреждена — остаёмся с серверными комнатами */ }
+            // Комнаты, удалённые до ответа сервера: если какая-то всё же доехала — убрать и там.
+            void cleanupRemovedRooms(obj.id);
           }
         }
         // If server has no active object, restore from localStorage backup
@@ -1841,6 +1853,7 @@ export default function ZameryPage() {
                     activeObjectIdRef.current = loid;
                     const pending = parsed.filter(r => r.unsynced);
                     if (pending.length > 0) void flushUnsynced(loid, pending);
+                    void cleanupRemovedRooms(loid);
                   }
                 }
               }
@@ -1891,55 +1904,119 @@ export default function ZameryPage() {
     return obj.id;
   }
 
+  /** Тело запроса комнаты — одно и то же для первой отправки, досылки и уборки удалённой. */
+  function roomBody(r: Room) {
+    return {
+      name: r.name,
+      walls: r.walls,
+      normalCorners: r.normalCorners,
+      angles: r.angles,
+      arcBulges: r.arcBulges,
+      columns: r.columns,
+      area: r.area,
+      perimeter: r.perimeter,
+      cornerRadii: r.cornerRadii,
+      elements: r.elements || [],
+      previewUrl3d: r.previewUrl3d,
+      variantOverrides: r.variantOverrides,
+    };
+  }
+
+  /** POST комнаты с X-Op-Id = локальный id: повтор дошедшего запроса вернёт ту же комнату. */
+  async function postRoom(objId: string, localId: string, body: unknown): Promise<{ status: number; serverId: string | null }> {
+    const res = await fetch(`/api/measurements/${objId}/rooms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Op-Id": roomOpId(localId) },
+      body: JSON.stringify([body]),
+    });
+    const created = res.ok ? await res.json() : null;
+    const serverId: unknown = (Array.isArray(created) ? created[0] : created)?.id;
+    return { status: res.status, serverId: typeof serverId === "string" && serverId ? serverId : null };
+  }
+
   /**
-   * Отправить на сервер комнаты, которых там ещё нет. По одной, с X-Op-Id = локальный id:
-   * повтор после оборванного ответа вернёт ту же комнату, а не создаст вторую.
-   * true — все доехали (или были удалены мастером по дороге).
+   * Отправить одну неподтверждённую комнату. Если она уже в пути у другого вызова — ждём его
+   * исход, а не начинаем вторую отправку и не считаем комнату доехавшей.
+   *  sent — на сервере (или мастер удалил её по дороге); failed — сбой, комната осталась
+   *  локальной; gone — объекта на сервере больше нет или он не мой (404/403).
    */
-  async function flushUnsynced(objId: string, list: Room[]): Promise<boolean> {
-    let allSent = true;
-    for (const queued of list) {
-      const localId = queued.id;
-      if (removedUnsyncedRef.current.has(localId) || sendingRoomsRef.current.has(localId)) continue;
-      sendingRoomsRef.current.add(localId);
+  function sendRoom(objId: string, queued: Room): Promise<RoomSendResult> {
+    const localId = queued.id;
+    return shareInFlight(sendingRoomsRef.current, localId, async (): Promise<RoomSendResult> => {
       try {
+        attemptedRoomsRef.current.add(localId);
         // Самая свежая версия: пока ждали очереди, мастер мог поправить комнату.
         const r = roomsRef.current.find(x => x.id === localId) ?? queued;
-        const res = await fetch(`/api/measurements/${objId}/rooms`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Op-Id": roomOpId(localId) },
-          body: JSON.stringify([{
-            name: r.name,
-            walls: r.walls,
-            normalCorners: r.normalCorners,
-            angles: r.angles,
-            arcBulges: r.arcBulges,
-            columns: r.columns,
-            area: r.area,
-            perimeter: r.perimeter,
-            cornerRadii: r.cornerRadii,
-            elements: r.elements || [],
-            previewUrl3d: r.previewUrl3d,
-            variantOverrides: r.variantOverrides,
-          }]),
-        });
-        const created = res.ok ? await res.json() : null;
-        const serverId: unknown = (Array.isArray(created) ? created[0] : created)?.id;
-        if (typeof serverId !== "string" || !serverId) { allSent = false; continue; }
+        const { status, serverId } = await postRoom(objId, localId, roomBody(r));
+        if (status === 404 || status === 403) return "gone";
+        if (!serverId) return "failed";
         if (removedUnsyncedRef.current.has(localId)) {
           // Мастер удалил комнату, пока она ехала: на сервере она тоже не нужна.
-          fetch(`/api/measurements/${objId}/rooms/${serverId}`, { method: "DELETE" }).catch(() => {});
-          continue;
+          const del = await fetch(`/api/measurements/${objId}/rooms/${serverId}`, { method: "DELETE" }).catch(() => null);
+          if (del && (del.ok || del.status === 404)) forgetRemovedRoom(localId);
+          return "sent";
         }
         // Update local room ID to match server ID
         setRooms(prev => confirmRoom(prev, localId, serverId));
+        return "sent";
       } catch {
-        allSent = false;
-      } finally {
-        sendingRoomsRef.current.delete(localId);
+        return "failed";
       }
+    });
+  }
+
+  /**
+   * Отправить на сервер комнаты, которых там ещё нет, по одной.
+   * failed — комнаты, которые не доехали; gone — объекта на сервере больше нет (остальные
+   * комнаты даже не пробуем, они остаются локальными).
+   */
+  async function flushUnsynced(objId: string, list: Room[]): Promise<{ failed: Room[]; gone: boolean }> {
+    const failed: Room[] = [];
+    for (const queued of list) {
+      if (removedUnsyncedRef.current.has(queued.id)) continue;
+      const result = await sendRoom(objId, queued);
+      if (result === "gone") return { failed, gone: true };
+      if (result === "failed") failed.push(queued);
     }
-    return allSent;
+    return { failed, gone: false };
+  }
+
+  // ── Удалённые до ответа сервера: пометки в браузере (zamery-removed) ──
+  function readRemovedRooms(): RemovedRoom[] {
+    try { return parseRemovedRooms(localStorage.getItem("zamery-removed"), Date.now()); } catch { return []; }
+  }
+  function writeRemovedRooms(list: RemovedRoom[]) {
+    try {
+      if (list.length > 0) localStorage.setItem("zamery-removed", JSON.stringify(list));
+      else localStorage.removeItem("zamery-removed");
+    } catch { /* ignore */ }
+  }
+  function forgetRemovedRoom(localId: string) {
+    writeRemovedRooms(readRemovedRooms().filter(e => e.id !== localId));
+  }
+
+  /**
+   * После перезагрузки: комната, удалённая мастером до ответа сервера, могла всё же доехать.
+   * Повторяем её запрос с тем же X-Op-Id — сервер вернёт ту же комнату (или создаст, если первый
+   * запрос не дошёл) — и удаляем её по серверному id. Не вышло — пометка ждёт следующего открытия.
+   */
+  async function cleanupRemovedRooms(objId: string) {
+    const all = readRemovedRooms();
+    writeRemovedRooms(all); // заодно выбрасываем протухшие
+    for (const entry of all) {
+      removedUnsyncedRef.current.add(entry.id);
+      if (entry.objectId !== objId) continue;
+      try {
+        const { status, serverId } = await postRoom(objId, entry.id, entry.body);
+        if (status === 404 || status === 403) { forgetRemovedRoom(entry.id); continue; }
+        if (!serverId) continue;
+        const del = await fetch(`/api/measurements/${objId}/rooms/${serverId}`, { method: "DELETE" });
+        if (del.ok || del.status === 404) {
+          forgetRemovedRoom(entry.id);
+          setRooms(prev => prev.filter(r => r.id !== serverId));
+        }
+      } catch { /* нет сети — попробуем при следующем открытии */ }
+    }
   }
 
   /** Досылка после перезагрузки: только в объект, который всё ещё открыт у меня. Иначе
@@ -1962,8 +2039,8 @@ export default function ZameryPage() {
       const objId = await ensureActiveObject();
       // Заодно — комнаты, не доехавшие раньше (сбой сети, поднятые из запасной копии).
       const earlier = roomsRef.current.filter(r => r.unsynced && !marked.some(m => m.id === r.id));
-      const allSent = await flushUnsynced(objId, [...earlier, ...marked]);
-      if (!allSent) throw new Error("not sent");
+      const sent = await flushUnsynced(objId, [...earlier, ...marked]);
+      if (sent.gone || sent.failed.length > 0) throw new Error("not sent");
     } catch {
       alert("Не удалось сохранить комнату на сервер. Данные сохранены локально.");
     }
@@ -1971,12 +2048,18 @@ export default function ZameryPage() {
 
   // ── Remove room ──
   async function removeRoom(roomId: string) {
-    const wasUnsynced = roomsRef.current.find(r => r.id === roomId)?.unsynced === true;
+    const room = roomsRef.current.find(r => r.id === roomId);
     setRooms(prev => prev.filter(r => r.id !== roomId));
-    // Сервер комнату ещё не знает: удалять там нечего. Запоминаем, чтобы отправка, которая
-    // сейчас в пути или пойдёт досылкой, её не вернула.
-    if (wasUnsynced) {
+    // Сервер комнату ещё не подтвердил: удалять там по этому id нечего. Запоминаем, чтобы
+    // отправка, которая сейчас в пути или пойдёт досылкой, её не вернула.
+    if (room?.unsynced) {
       removedUnsyncedRef.current.add(roomId);
+      // Отправка уже начиналась — комната могла доехать. Пометку кладём и в браузер: если
+      // страницу перезагрузят до ответа, при следующем открытии комнату уберём и с сервера.
+      const objId = activeObjectIdRef.current;
+      if (objId && attemptedRoomsRef.current.has(roomId)) {
+        writeRemovedRooms([...readRemovedRooms().filter(e => e.id !== roomId), { id: roomId, objectId: objId, at: Date.now(), body: roomBody(room) }]);
+      }
       return;
     }
     const objId = activeObjectIdRef.current;
@@ -2052,21 +2135,39 @@ export default function ZameryPage() {
       alert("Это старая копия замера без расстановки, сохранить её нельзя. Обновите страницу и откройте замер из «Сохранённых».");
       return;
     }
-    const totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
+    let totalArea = Math.round(rooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
 
     // Save to server FIRST, then clear local state
-    const currentRooms = [...rooms];
+    let currentRooms = [...rooms];
     const currentName = objectName;
-    const currentId = activeObjectId;
+    let currentId = activeObjectId;
 
     try {
+      // «Сохранить» у открытого объекта комнаты не шлёт — только статус. Недоехавшие комнаты
+      // сначала досылаем (и ждём те, что уже в пути), иначе объект сохранился бы без них.
+      const notSent = currentId ? roomsRef.current.filter(r => r.unsynced) : [];
+      if (currentId && notSent.length > 0) {
+        const sent = await flushUnsynced(currentId, notSent);
+        if (sent.gone) {
+          // Объекта на сервере больше нет (удалён или закрыт не здесь): сохраняем всё, что на
+          // экране, новым объектом — веткой ниже, она шлёт комнаты целиком.
+          currentId = null;
+        } else if (sent.failed.length > 0) {
+          const names = sent.failed.map(r => `«${r.name || "Без названия"}»`).join(", ");
+          const one = sent.failed.length === 1;
+          const ok = confirm(
+            `${one ? "Комната" : "Комнаты"} ${names} не ${one ? "отправилась" : "отправились"} на сервер. Проверьте интернет и попробуйте ещё раз.\n\n` +
+            `Сохранить объект без ${one ? "неё" : "них"}?`,
+          );
+          if (!ok) return;
+          const skip = new Set(sent.failed.map(r => r.id));
+          currentRooms = currentRooms.filter(r => !skip.has(r.id));
+          totalArea = Math.round(currentRooms.reduce((s, r) => s + r.area, 0) * 100) / 100;
+        }
+      }
       let savedId = currentId;
 
       if (currentId) {
-        // «Сохранить» у открытого объекта комнаты не шлёт — только статус. Недоехавшие комнаты
-        // сначала досылаем, иначе объект сохранился бы без них.
-        const notSent = roomsRef.current.filter(r => r.unsynced);
-        if (notSent.length > 0 && !(await flushUnsynced(currentId, notSent))) throw new Error("Комнаты не доехали");
         const res = await fetch(`/api/measurements/${currentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

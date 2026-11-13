@@ -44,7 +44,7 @@ const COMPANY_DRAFT_KEYS = [
  * копию при каждой правке), цен и клиентов в ней нет. Смена активной компании не должна
  * молча её стирать; чужой мастер её не получает.
  */
-const MASTER_DRAFT_KEYS = ["zamery-rooms", "zamery-object", "zamery-objectId", "zamery-saved"] as const;
+const MASTER_DRAFT_KEYS = ["zamery-rooms", "zamery-object", "zamery-objectId", "zamery-saved", "zamery-savedAt", "zamery-removed"] as const;
 
 /** Все ключи незаконченной работы. */
 export const DRAFT_KEYS = [...COMPANY_DRAFT_KEYS, ...MASTER_DRAFT_KEYS] as const;
