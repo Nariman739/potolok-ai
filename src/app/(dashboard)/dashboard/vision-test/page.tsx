@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { objectDeleteQuestion, objectDeleteInfoFrom } from "@/lib/object-delete-question";
+import { useCurrency } from "@/components/currency-provider";
 import { ensureDraftOwner } from "@/lib/draft-owner";
 import { pendingRoomsFromBackup, roomOpId, confirmRoom, parseRemovedRooms, shareInFlight, type RemovedRoom } from "@/lib/zamer-unsynced";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1652,6 +1654,7 @@ function PhotoUpload({ onRoomsLoaded }: { onRoomsLoaded: (rooms: Room[]) => void
 // ─────────────────────────────────────────────────────
 
 export default function ZameryPage() {
+  const { format: formatMoney } = useCurrency();
   // Запасная копия замера в браузере принадлежит аккаунту: чужую стираем до первого чтения
   // (сверка одна на загрузку страницы, повторные вызовы ничего не делают).
   ensureDraftOwner();
@@ -2329,7 +2332,13 @@ export default function ZameryPage() {
 
   // ── Delete from history ──
   async function handleDeleteSaved(id: string) {
-    if (!confirm("Удалить замер? Он попадёт в Корзину вместе со своими КП — можно будет восстановить.")) return;
+    // Что уйдёт в корзину вместе с замером: оплаты (выпадут из отчёта за месяц), подписанные
+    // договор и акт, КП — спрашиваем об этом заранее. Не узнали (нет сети) — общий вопрос.
+    const info = await fetch(`/api/objects/${id}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(objectDeleteInfoFrom)
+      .catch(() => null);
+    if (!confirm(objectDeleteQuestion(info, formatMoney))) return;
     setSavedObjects(prev => prev.filter(o => o.id !== id));
     try {
       const res = await fetch(`/api/measurements/${id}`, { method: "DELETE" });
