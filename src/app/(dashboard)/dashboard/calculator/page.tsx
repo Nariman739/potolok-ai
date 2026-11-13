@@ -9,7 +9,7 @@ import { RoomCard } from "@/components/calculator/room-card";
 import { CalculationResults, type KpMoneyInputs } from "@/components/calculator/calculation-results";
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
-import { useCalculator, draftClientId } from "@/hooks/use-calculator";
+import { useCalculator, draftClientId, calculatorDraftIsEmpty } from "@/hooks/use-calculator";
 import { useCurrency } from "@/components/currency-provider";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
@@ -49,6 +49,7 @@ function CalculatorContent() {
     replaceWithMeasurement,
     extraItems,
     setExtraItems,
+    hydrated,
     pricesChanged,
     dismissPricesChanged,
     applyFreshResult,
@@ -114,7 +115,7 @@ function CalculatorContent() {
           const imported: RoomInput[] = JSON.parse(stored);
           const draftSource = localStorage.getItem("calculator-draft-source");
           const sameMeasurement = !!sourceId && draftSource === sourceId;
-          const hasDraft = rooms.length > 0 || extraItems.length > 0;
+          const hasDraft = !calculatorDraftIsEmpty();
           const replace = !hasDraft || sameMeasurement
             || confirm("В калькуляторе есть несохранённый расчёт. Заменить его этим замером?");
           if (replace) {
@@ -267,6 +268,16 @@ function CalculatorContent() {
   }
 
   // Loading rooms from existing estimate
+  // Черновик из браузера ещё не поднят (сервер и первый рендер в браузере рисуют одно и то же —
+  // иначе React #418): тот же экран загрузки, без подписи.
+  if (!hydrated) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   if (loadingFrom) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
