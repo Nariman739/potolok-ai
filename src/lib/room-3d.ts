@@ -167,11 +167,20 @@ export function pickRoomForScene3D(rooms: unknown): SavedRoom3D | null {
   return null;
 }
 
+/** У комнаты есть стена-дуга: приложение хранит выгиб в `bulges`, замер на сайте — в `arcBulges`. */
+function hasArcWalls(room: SavedRoom3D): boolean {
+  for (const key of ["bulges", "arcBulges"] as const) {
+    const list = room[key];
+    if (Array.isArray(list) && list.some((b) => typeof b === "number" && b !== 0)) return true;
+  }
+  return false;
+}
+
 /**
  * Комната КП для публичного 3D (/kp/<id>/3d и кнопка «3D» на странице КП).
  *  - как раньше: первая комната с normalCorners (КП с сайта) — у любого КП;
  *  - новое: КП, созданное не раньше KP_3D_FROM_ANGLES_SINCE, — первая комната приложения
- *    (стены + углы) с замкнутым контуром. Многокомнатные — первая годная комната.
+ *    (стены + углы) с замкнутым контуром и без стен-дуг. Многокомнатные — первая годная комната.
  * fromAngles нужно передать дальше в mapRoomToScene3DProps.
  */
 export function pickKpRoomForScene3D(
@@ -187,6 +196,9 @@ export function pickKpRoomForScene3D(
   for (const r of rooms as SavedRoom3D[]) {
     if (!mapRoomToScene3DProps(r, { fromAngles: true })) continue;
     if (!contourCloses(r.walls as number[], r.angles as number[])) continue;
+    // Дуга (ненулевой bulge) по хорде «замыкается», но сцена дуг не рисует — клиент увидел бы
+    // прямую стену вместо дуги. Такую комнату в 3D не предлагаем.
+    if (hasArcWalls(r)) continue;
     return { room: r, fromAngles: true };
   }
   return null;
