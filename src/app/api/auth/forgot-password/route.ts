@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -17,7 +18,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { phone: rawPhone } = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
+    const { phone: rawPhone } = body;
     const phone = normalizePhone(rawPhone);
     if (!phone) {
       return NextResponse.json({ error: "Неверный формат телефона" }, { status: 400 });
