@@ -73,3 +73,22 @@ export function roomsLabel(n: number, capital = false): string {
   const w = pluralRu(n, ["помещение", "помещения", "помещений"]);
   return capital ? w[0].toUpperCase() + w.slice(1) : w;
 }
+
+function cap(w: string, capital: boolean): string {
+  return capital ? w[0].toUpperCase() + w.slice(1) : w;
+}
+
+/** «год / года / лет» — слово отдельно (например «3 года»). */
+export function yearsWord(n: number): string {
+  return pluralRu(n, ["год", "года", "лет"]);
+}
+
+/** Подпись под числом лет: «год гарантии / года гарантии / лет гарантии». */
+export function warrantyLabel(n: number, capital = false): string {
+  return cap(`${yearsWord(n)} гарантии`, capital);
+}
+
+/** Подпись под числом позиций: «позиция / позиции / позиций». */
+export function positionsLabel(n: number, capital = false): string {
+  return cap(pluralRu(n, ["позиция", "позиции", "позиций"]), capital);
+}

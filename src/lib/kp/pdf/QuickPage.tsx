@@ -70,7 +70,7 @@ export function QuickPage({ data }: { data: PdfData }) {
           },
           {
             title: "Монтаж от одного дня",
-            body: `Чистый монтаж, уборка после работ. Гарантия ${master.warrantyMaterials} лет на плёнку, ${master.warrantyInstall} ${pluralRu(master.warrantyInstall, ["год", "года", "лет"])} на работы.`,
+            body: `Чистый монтаж, уборка после работ. Гарантия ${master.warrantyMaterials} ${pluralRu(master.warrantyMaterials, ["год", "года", "лет"])} на плёнку, ${master.warrantyInstall} ${pluralRu(master.warrantyInstall, ["год", "года", "лет"])} на работы.`,
           },
         ];
   const ctaLabel = q.ctaLabel ?? "Написать в WhatsApp · ответим в течение 15 минут";
