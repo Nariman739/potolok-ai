@@ -35,7 +35,8 @@ export function spotsPerUnit(line: SpotLine): number {
     return 1;
   }
   // Запасной путь — по названию (старые КП, свои позиции)
-  if (!/софит|спот/.test(name)) return 0;
+  // Без слова «софит» — по типу светильника («Светильник GX53» в быстром КП).
+  if (!/софит|спот/.test(name) && !/gx\s?-?53|bh\s?-?\d|вн\s?-?53|gu\s?-?10/i.test(name)) return 0;
   if (NOT_A_SPOT_RE.test(name)) return 0;
   if (/тройн/.test(name)) return 3;
   if (/двойн/.test(name) || unit.startsWith("пар")) return 2;
