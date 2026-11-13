@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { addClientEvent, changeClientStatus } from "@/lib/clients";
+import { addClientEvent, changeClientStatus, syncClientStatusForObject } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
 import { currencyFor, ownerBrandFor } from "@/lib/company";
 import { CONTRACT_MASTER_SELECT, contractHash, renderLiveContract } from "@/lib/contract-render";
 import { asLang } from "@/lib/i18n";
 import { reportError } from "@/lib/report-error";
-import { CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced, lockForSign, otherVariantChosen } from "@/lib/estimate-replace";
+import { confirmReplacing, CONTRACT_REPLACED_TEXT, CONTRACT_REPLACED_TEXT_KK, isContractReplaced, lockForSign, otherVariantChosen, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 export async function POST(
   request: Request,
@@ -100,7 +100,11 @@ export async function POST(
     // а выбор мастером нового варианта (confirmReplacing, тоже FOR UPDATE) либо
     // успел пометить договор «заменён» — тогда отказ, либо ждёт и увидит подпись.
     // Замки объект → КП (как у выбора варианта): подпись и выбор другого варианта идут по очереди.
-    const outcome = await prisma.$transaction(async (tx) => {
+    // Подпись = принятие КП (13.11.2026): в той же транзакции, под теми же замками.
+    let accepted = false;
+    let outcome: "signed" | "replaced" | "ok";
+    try {
+    outcome = await prisma.$transaction(async (tx) => {
       await lockForSign(tx, estimate.id, estimate.measurementObjectId);
       const [row] = await tx.$queryRaw<{ contractSignedAt: Date | null; contractTextSnapshot: unknown; status: string }[]>`
         SELECT "contractSignedAt", "contractTextSnapshot", status::text AS status FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
@@ -124,8 +128,19 @@ export async function POST(
         },
       },
     });
-      return count === 0 ? ("signed" as const) : ("ok" as const);
+      if (count === 0) return "signed" as const;
+      // Клиент подписал договор непринятого КП — КП принято (те же правила, что «Выбрал»)
+      if (row.status !== "CONFIRMED") {
+        await confirmReplacing(tx, estimate.id, estimate.measurementObjectId, "sign");
+        accepted = true;
+      }
+      return "ok" as const;
     });
+    } catch (e) {
+      // По другому КП объекта уже подписан договор/акт — этот договор не действует
+      if (e instanceof ReplaceBlockedError) outcome = "replaced";
+      else throw e;
+    }
     if (outcome === "replaced") return replacedError();
     if (outcome === "signed") {
       return NextResponse.json({ error: "Договор уже подписан" }, { status: 400 });
@@ -147,6 +162,14 @@ export async function POST(
       changeClientStatus(estimate.clientId, "WON", "Договор подписан клиентом").catch(
         () => {},
       );
+      if (accepted) {
+        addClientEvent({ clientId: estimate.clientId, type: "KP_CONFIRMED", content: "КП принято подписью договора", metadata: { estimateId: estimate.id, bySign: "contract" } }).catch(() => {});
+      }
+    }
+    // Этап объекта — существующим синком (ручной этап не трогаем, статус клиента только вверх)
+    if (accepted && estimate.measurementObjectId) {
+      const objectId = estimate.measurementObjectId;
+      after(() => syncClientStatusForObject(objectId).catch(() => {}));
     }
 
     // Telegram-уведомление мастеру
@@ -161,6 +184,7 @@ export async function POST(
         `📝 <b>${signedName} подписал договор электронно!</b>\n\n` +
         (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
         `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
+        (accepted ? `✅ КП теперь принято.\n` : "") +
         `\n<i>Скачайте подписанный PDF из дашборда.</i>`;
       sendTelegramMessage(estimate.master.telegramChatId, text);
     }
