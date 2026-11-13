@@ -78,9 +78,10 @@ const companyOf = async (ownerId: string) => prisma.company.findUnique({ where: 
     check("S5 PDF наряда отдаётся", pdf.status === 200 && pdfBuf.length > 1000, { status: pdf.status, bytes: pdfBuf.length });
 
     r = await api(A, wo(), { method: "PUT", body: JSON.stringify({ lines: [{ key: "pct", room: "", name: "30 % от суммы заказа", qty: 1, unit: "усл.", price: 84000 }, { key: "own:2", room: "", name: "Доплата", qty: 1, unit: "усл.", price: 1000 }] }) });
-    check("S6 старая сборка: PUT {lines} без pay → построчно, сумма как есть", r.status === 200 && r.j.total === 85000 && r.j.pay.mode === "lines", r.j);
+    // С аудита 12.11: строка процента цела (сумма та же) — старая сборка правила свои строки, режим остаётся.
+    check("S6 старая сборка: PUT {lines} без pay, pct цела → процент остаётся, 84 000 + 1 000", r.status === 200 && r.j.total === 85000 && r.j.pay.mode === "percent", r.j);
     r = await api(A, wo());
-    check("S6 после старой сборки GET: по работам, не stale", r.j.pay.mode === "lines" && r.j.total === 85000 && r.j.stale === false, { pay: r.j.pay, total: r.j.total, stale: r.j.stale });
+    check("S6 после старой сборки GET: процентом, не stale", r.j.pay.mode === "percent" && r.j.total === 85000 && r.j.stale === false, { pay: r.j.pay, total: r.j.total, stale: r.j.stale });
 
     r = await api(A, wo(), { method: "PUT", body: JSON.stringify({ pay: { mode: "lines" } }) });
     c = await companyOf(ownerId);
