@@ -3,15 +3,14 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ownerBrandFor, getScope, inScope } from "@/lib/company";
 import { asCurrency, currencySymbol, type CurrencyCode } from "@/lib/currency";
-import type { CalculationResult, RoomResult, LineItem } from "@/lib/types";
+import type { CalculationResult } from "@/lib/types";
 import PDFDocument from "pdfkit";
 import { NOTO_SANS_REGULAR, NOTO_SANS_BOLD } from "@/lib/fonts";
-import { defaultPricesFor } from "@/lib/constants";
 import { priceBookCompanyId, priceMapFor } from "@/lib/price-items";
 import { reportError } from "@/lib/report-error";
 import { fileDate, pdfDisposition, prettyPdfName } from "@/lib/content-disposition";
-// Клиентская позиция → монтажная ставка: одна карта с нарядом (29.10.2026)
-import { INSTALL_MAP, installSeenKey } from "@/lib/work-order-lines";
+// Строки — из того же источника, что наряд (13.11.2026)
+import { installerPdfModel } from "@/lib/installer-pdf-lines";
 
 const C = {
   primary: "#374151",
@@ -70,74 +69,20 @@ export async function GET(
     estimate.master = await ownerBrandFor(estimate.masterId, estimate.master, estimate.companyId);
     const cur = asCurrency(estimate.master.currency);
 
-    // Load master's install prices (overrides)
-    // Дефолты монтажных ставок — в валюте владельца (10.11.2026)
+    // Ставки владельца, дефолты — в его валюте (10.11.2026)
     const priceOverrides = await priceMapFor(await priceBookCompanyId(scope.ownerId), cur);
-    const installDefaults = defaultPricesFor(cur);
-
-    function getInstallPrice(code: string): number {
-      return priceOverrides[code] ?? installDefaults[code] ?? 0;
-    }
-
     const calc = (estimate.calculationData ?? {}) as unknown as CalculationResult;
     const company = estimate.master.companyName || estimate.master.firstName || "";
 
-     
-    const roomResults: RoomResult[] = calc?.roomResults
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms
-      ?? [];
-
-    // ── Build installer line items per room ──
-    interface InstallItem {
-      name: string;
-      quantity: number;
-      unit: string;
-      unitPrice: number;
-      total: number;
-    }
-
-    let grandTotal = 0;
-
-    const installRooms = roomResults.map(rr => {
-      const installItems: InstallItem[] = [];
-      const seen = new Set<string>();
-
-      for (const item of (rr.items ?? []) as LineItem[]) {
-        // Своя строка монтажа (профиль по стенам, подшторник, скругление, вставка) — как в наряде.
-        if (item.installerName) {
-          const price = Math.max(0, Math.round(item.installerRate ?? 0));
-          if (price > 0 && item.quantity > 0) installItems.push({ name: item.installerName, quantity: item.quantity, unit: item.unit, unitPrice: price, total: item.quantity * price });
-          continue;
-        }
-        const installCode = item.installCode ?? INSTALL_MAP[item.itemCode];
-        if (!installCode) continue;
-        // Софиты разных типов (28.10.2026) — каждая строка монтируется отдельно;
-        // для остального дубли по коду монтажа схлопываем (профиль + вставка = один монтаж).
-        const seenKey = installSeenKey(installCode, item.itemCode);
-        if (seen.has(seenKey)) continue;
-        seen.add(seenKey);
-
-        const price = item.installerRate
-          ?? (item.itemCode === "corner_rounded" ? Math.round(item.unitPrice * 0.3) : getInstallPrice(installCode));
-        if (price <= 0) continue;
-
-        // Use same quantity as client item
-        const total = item.quantity * price;
-        installItems.push({
-          name: item.itemName + " (монтаж)",
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: price,
-          total,
-        });
-      }
-
-      const roomTotal = installItems.reduce((s, i) => s + i.total, 0);
-      grandTotal += roomTotal;
-
-      return { name: rr.roomName ?? "Комната", area: rr.area ?? 0, items: installItems, total: roomTotal };
-    });
+    // Сохранённый наряд объекта: если он от этого КП — печатаем его (правки мастера, процент).
+    const savedDoc = estimate.measurementObjectId
+      ? (await prisma.measurementObject.findUnique({ where: { id: estimate.measurementObjectId }, select: { workOrderLines: true } }))?.workOrderLines
+      : null;
+    const model = installerPdfModel(calc, priceOverrides, cur, estimate.id, savedDoc);
+    const installRooms = model.rooms;
+    const grandTotal = model.total;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const roomCount = (calc?.roomResults ?? (calc as any)?.variants?.find((v: any) => v.type === "standard")?.rooms ?? []).length;
 
     // ── Generate PDF ──
     const doc = new PDFDocument({ size: "A4", margin: 0 });
@@ -189,7 +134,7 @@ export async function GET(
 
     // ── Summary pills ──
     doc.font("Sans").fontSize(9).fillColor(C.textLight)
-      .text(`Помещений: ${roomResults.length}  •  Площадь: ${(calc.totalArea ?? 0).toFixed(1)} м²  •  Светильников: ${calc.totalSpots ?? 0}`, ML, y, { width: contentW, align: "center" });
+      .text([`Помещений: ${roomCount}`, `Площадь: ${(calc.totalArea ?? 0).toFixed(1)} м²`, ...(model.spots > 0 ? [`Светильников: ${model.spots}`] : [])].join("  •  "), ML, y, { width: contentW, align: "center" });
     y += 22;
 
     // ── Rooms ──
@@ -202,7 +147,7 @@ export async function GET(
       // Room header
       doc.rect(ML, y, 4, 20).fill(C.accent);
       doc.font("Sans-Bold").fontSize(12).fillColor(C.primary)
-        .text(`${room.name} — ${room.area.toFixed(1)} м²`, ML + 12, y + 3);
+        .text(room.area != null ? `${room.name} — ${room.area.toFixed(1)} м²` : room.name, ML + 12, y + 3);
       y += 28;
 
       // Table header
@@ -226,9 +171,12 @@ export async function GET(
 
         doc.font("Sans").fontSize(9).fillColor(C.text)
           .text(item.name, colX[0] + 8, y, { width: colW2[0] });
-        doc.fillColor(C.textLight)
-          .text(`${item.quantity} ${item.unit}`, colX[1], y, { width: colW2[1], align: "center" })
-          .text(fmtPrice(item.unitPrice, cur), colX[2], y, { width: colW2[2], align: "right" });
+        // Процент от КП — без «кол-во × цена» (базу КП монтажнику не показываем, 12.11.2026)
+        if (!item.flat) {
+          doc.fillColor(C.textLight)
+            .text(`${item.quantity} ${item.unit}`, colX[1], y, { width: colW2[1], align: "center" })
+            .text(fmtPrice(item.unitPrice, cur), colX[2], y, { width: colW2[2], align: "right" });
+        }
         doc.font("Sans-Bold").fillColor(C.text)
           .text(fmtPrice(item.total, cur), colX[3], y, { width: colW2[3], align: "right" });
         y += 16;
