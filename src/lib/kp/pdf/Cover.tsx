@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
-import { fmtDate, MasterLogo, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
+import { companyNameFontSize, fmtDate, MasterLogo, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { hasPlans, KpPlanHero } from "./PlanStyles";
 import { countSpots, positionsLabel, roomsLabel, spotsLabel, warrantyLabel, yearsWord } from "./spots-count";
@@ -206,16 +206,17 @@ function CoverMinimal({
           alignItems: "center",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 16 }}>
           {master.logoUrl ? (
             <MasterLogo src={master.logoUrl} size={28} marginRight={12} />
           ) : null}
-          <View>
+          <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
-                fontSize: 11,
+                fontSize: companyNameFontSize(master.companyName, 11, 34),
+                flexShrink: 1,
                 color: theme.palette.pageText,
                 letterSpacing: -0.2,
               }}
@@ -237,7 +238,7 @@ function CoverMinimal({
             )}
           </View>
         </View>
-        <View style={{ alignItems: "flex-end" }}>
+        <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
           <Text
             style={{
               fontFamily: fonts.body.family,
@@ -659,16 +660,17 @@ function CoverPremiumDark({
           alignItems: "center",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 16 }}>
           {master.logoUrl ? (
             <MasterLogo src={master.logoUrl} size={32} marginRight={12} />
           ) : null}
-          <View>
+          <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
-                fontSize: 13,
+                fontSize: companyNameFontSize(master.companyName, 13, 28),
+                flexShrink: 1,
                 color: "#F8FAFC",
                 letterSpacing: 0.8,
               }}
@@ -691,7 +693,7 @@ function CoverPremiumDark({
             )}
           </View>
         </View>
-        <View style={{ alignItems: "flex-end" }}>
+        <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
           <Text
             style={{
               fontFamily: fonts.body.family,
@@ -1077,16 +1079,17 @@ function CoverWarmHandmade({
           alignItems: "flex-start",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 16 }}>
           {master.logoUrl ? (
             <MasterLogo src={master.logoUrl} size={32} marginRight={12} />
           ) : null}
-          <View>
+          <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
-                fontSize: 14,
+                fontSize: companyNameFontSize(master.companyName, 14, 28),
+                flexShrink: 1,
                 color: theme.palette.coverText,
               }}
             >
@@ -1106,7 +1109,7 @@ function CoverWarmHandmade({
             )}
           </View>
         </View>
-        <View style={{ alignItems: "flex-end" }}>
+        <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
           {/* Декоративный «штамп» с номером — круглая плашка */}
           <View
             style={{
@@ -1433,11 +1436,12 @@ function CoverClassicArchitectural({
             letterSpacing: 3,
             textTransform: "uppercase",
             fontWeight: 600,
+            flexShrink: 0,
           }}
         >
           № {estimate.id.slice(0, 8).toUpperCase()} · {fmtDate(estimate.createdAt)}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "flex-end", marginLeft: 16 }}>
           {master.logoUrl ? (
             <MasterLogo src={master.logoUrl} size={24} marginRight={10} />
           ) : null}
@@ -1445,7 +1449,9 @@ function CoverClassicArchitectural({
             style={{
               fontFamily: fonts.display.family,
               fontWeight: fonts.display.weight as 400 | 700 | 800,
-              fontSize: 14,
+              fontSize: companyNameFontSize(master.companyName, 14, 20),
+              flexShrink: 1,
+              textAlign: "right",
               color: "#000000",
               letterSpacing: 0.5,
             }}
@@ -1864,7 +1870,7 @@ function CoverBoldColor({
           alignItems: "center",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 16 }}>
           {master.logoUrl ? (
             <MasterLogo src={master.logoUrl} size={28} marginRight={10} />
           ) : null}
@@ -1872,7 +1878,8 @@ function CoverBoldColor({
             style={{
               fontFamily: fonts.display.family,
               fontWeight: 800,
-              fontSize: 12,
+              fontSize: companyNameFontSize(master.companyName, 12, 30),
+              flexShrink: 1,
               color: TEXT,
               letterSpacing: -0.3,
             }}
@@ -1887,6 +1894,7 @@ function CoverBoldColor({
             fontSize: 9,
             color: TEXT,
             letterSpacing: 2,
+            flexShrink: 0,
           }}
         >
           № {estimate.id.slice(0, 8).toUpperCase()}

@@ -16,6 +16,22 @@ export const A4 = { width: 595, height: 842 };
  * шире maxRatio×size; contain — если упёрлись в ширину, картинка вписывается без искажения.
  * Квадратный логотип — тот же size×size, вёрстка шапки не меняется.
  */
+/**
+ * Название компании в шапке PDF КП (13.11.2026). Блок названия в шапке сжимается (flex: 1)
+ * и переносит по пробелам, а соседняя метка (№, дата) не сжимается — так длинное название
+ * не наезжает на неё и не уходит за край. Мельчим шрифт только там, где перенос не спасёт:
+ *  - слово без пробелов длиннее wordChars («Shanyrak_natyajnoi_potolok», почта) — перенос
+ *    внутри слова выключен (fonts.ts);
+ *  - название не влезает в две строки (длиннее 2 × wordChars).
+ * Не мельче minRatio от base.
+ */
+export function companyNameFontSize(name: string, base: number, wordChars = 28, minRatio = 0.6): number {
+  const s = (name || "").trim();
+  const longestWord = Math.max(0, ...s.split(/\s+/).map((w) => w.length));
+  const k = Math.min(1, wordChars / Math.max(1, longestWord), (2 * wordChars) / Math.max(1, s.length));
+  return Math.max(base * minRatio, Math.round(base * k * 10) / 10);
+}
+
 export function MasterLogo({ src, size, marginRight, maxRatio = 3 }: { src: string; size: number; marginRight: number; maxRatio?: number }) {
   return <Image src={src} style={{ height: size, maxWidth: size * maxRatio, objectFit: "contain", marginRight }} />;
 }

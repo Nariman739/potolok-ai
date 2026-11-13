@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData, PdfLineItem } from "../pdf-data";
-import { fmtDate, MasterLogo, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
+import { companyNameFontSize, fmtDate, MasterLogo, PriceText, QtyPriceText, tengeSafeFamily } from "./shared";
 import { currencySymbol } from "@/lib/currency";
 import { whatsappNumber } from "@/lib/phone-format";
 
@@ -120,7 +120,7 @@ export function QuickPage({ data }: { data: PdfData }) {
           marginBottom: 28,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 16 }}>
           {master.logoUrl ? (
             // В шапке быстрого КП справа длинная метка «Предварительный расчёт · дата» — широкий логотип
             // шире 2×36 выталкивал её за поле (кадры 12.11).
@@ -148,13 +148,15 @@ export function QuickPage({ data }: { data: PdfData }) {
               </Text>
             </View>
           )}
-          <View>
+          {/* Длинное название переносится по пробелам и мельчает — не наезжает на метку справа (13.11.2026) */}
+          <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontFamily: fonts.display.family,
                 fontWeight: fonts.display.weight as 400 | 700 | 800,
-                fontSize: 14,
+                fontSize: companyNameFontSize(master.companyName, 14, 26),
                 color: textMain,
+                flexShrink: 1,
               }}
             >
               {master.companyName}
@@ -174,7 +176,7 @@ export function QuickPage({ data }: { data: PdfData }) {
             )}
           </View>
         </View>
-        <Text style={{ ...eyebrow, fontWeight: 400, letterSpacing: 1.5 }}>
+        <Text style={{ ...eyebrow, fontWeight: 400, letterSpacing: 1.5, flexShrink: 0 }}>
           Предварительный расчёт · {fmtDate(estimate.createdAt)}
         </Text>
       </View>
