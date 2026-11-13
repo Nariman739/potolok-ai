@@ -4,17 +4,18 @@ import type { PdfData } from "../pdf-data";
 import { fmtDate, MasterLogo, PAGE_PADDING, PriceText, fmtPriceNum, tengeSafeFamily } from "./shared";
 import { currencySymbol, type CurrencyCode } from "@/lib/currency";
 import { hasPlans, KpPlanHero } from "./PlanStyles";
+import { countSpots, positionsLabel, roomsLabel, spotsLabel, warrantyLabel, yearsWord } from "./spots-count";
 
 // Без фото обложки (у большинства мастеров) в окне фото рисуем план квартиры
 // по замеру (26.10.2026). Раньше окно просто пустовало — полстраницы воздуха.
 // «5–7 дней работы» было вшито в обложку выдумкой. Вместо него — гарантия
 // мастера из настроек; если мастер поставил 0 — число позиций, а не чужие
 // «10 лет» (аудит 24.09.2026, ревью 26.10.2026).
-function fourthStat(data: PdfData): { label: string; value: string } {
+function fourthStat(data: PdfData, capital = false): { label: string; value: string } {
   const years = data.master.warrantyMaterials;
-  if (years > 0) return { label: "лет гарантии", value: String(years) };
+  if (years > 0) return { label: warrantyLabel(years, capital), value: String(years) };
   const n = data.estimate.rooms.reduce((s, r) => s + r.items.length, 0) + data.estimate.extraItems.length;
-  return { label: "позиций", value: String(n) };
+  return { label: positionsLabel(n, capital), value: String(n) };
 }
 
 // СТРАНИЦА 1 — Обложка.
@@ -52,18 +53,6 @@ export function CoverPage({
     default:
       return <CoverMinimal data={data} pageNum={pageNum} totalPages={totalPages} />;
   }
-}
-
-// ============================================
-// Хелпер: подсчёт точек света для hero-stats
-// ============================================
-function countSpots(estimate: PdfData["estimate"]): number {
-  return estimate.rooms.reduce((s, r) => {
-    const spotsItem = r.items.find((i) =>
-      /софит|спот|светильник|led/i.test(i.name)
-    );
-    return s + (spotsItem ? Math.round(spotsItem.quantity) : 0);
-  }, 0);
 }
 
 // fmtPriceParts — число и знак валюты мастера (₸/₽) отдельно: их рисуют разными шрифтами
@@ -389,10 +378,10 @@ function CoverMinimal({
           flexDirection: "row",
         }}
       >
-        <StatMinimal label="помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatMinimal label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatMinimal label="м² площади" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatMinimal label="софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
+          <StatMinimal label={spotsLabel(spotsCount)} value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
         <StatMinimal label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
       </View>
@@ -805,17 +794,17 @@ function CoverPremiumDark({
           alignItems: "center",
         }}
       >
-        <StatPremium label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatPremium label={roomsLabel(estimate.rooms.length, true)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <DotGold />
         <StatPremium label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
           <>
             <DotGold />
-            <StatPremium label="Софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
+            <StatPremium label={spotsLabel(spotsCount, true)} value={String(spotsCount)} theme={theme} fonts={fonts} />
           </>
         )}
         <DotGold />
-        <StatPremium label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
+        <StatPremium label={fourthStat(data, true).label} value={fourthStat(data, true).value} theme={theme} fonts={fonts} />
       </View>
 
       {/* Тонкая золотая линия */}
@@ -1213,10 +1202,10 @@ function CoverWarmHandmade({
           width: 160,
         }}
       >
-        <StatWarm label="помещения" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
+        <StatWarm label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} />
         <StatWarm label="м² общей" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatWarm label="софитов" value={String(spotsCount)} theme={theme} fonts={fonts} />
+          <StatWarm label={spotsLabel(spotsCount)} value={String(spotsCount)} theme={theme} fonts={fonts} />
         )}
         <StatWarm label={fourthStat(data).label} value={fourthStat(data).value} theme={theme} fonts={fonts} />
       </View>
@@ -1384,6 +1373,7 @@ function CoverClassicArchitectural({
 }) {
   const { theme, fonts, master, estimate } = data;
   const spotsCount = countSpots(estimate);
+  const positionsCount = estimate.rooms.reduce((s, r) => s + r.items.length, 0) + estimate.extraItems.length;
   const heroImageUrl = master.coverPhotoUrl || estimate.room3dPreviewUrl || "";
   const price = fmtPriceParts(estimate.total, master.currency);
   const BORDO = theme.palette.accent; // #6B2737
@@ -1614,18 +1604,24 @@ function CoverClassicArchitectural({
           flexDirection: "row",
         }}
       >
-        <StatClassic label="Помещений" value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
+        <StatClassic label={roomsLabel(estimate.rooms.length, true)} value={String(estimate.rooms.length)} theme={theme} fonts={fonts} first />
         <StatClassic label="Кв.метров" value={estimate.totalArea.toFixed(1).replace(".", ",")} theme={theme} fonts={fonts} />
         <StatClassic
-          label={spotsCount > 0 ? "Софитов" : "Позиций"}
-          value={String(spotsCount > 0 ? spotsCount : estimate.rooms.reduce((s, r) => s + r.items.length, 0) + estimate.extraItems.length)}
+          label={spotsCount > 0 ? spotsLabel(spotsCount, true) : positionsLabel(positionsCount, true)}
+          value={String(spotsCount > 0 ? spotsCount : positionsCount)}
           theme={theme}
           fonts={fonts}
         />
         {/* Гарантия — из настроек мастера. Раньше обложка обещала 10 лет
             независимо от того, что стоит у мастера и что написано в
-            договоре (аудит 24.09.2026). */}
-        <StatClassic label="Гарантия" value={`${master.warrantyMaterials} лет`} theme={theme} fonts={fonts} />
+            договоре (аудит 24.09.2026). Гарантия 0 — «0 лет» не печатаем:
+            вместо неё позиции, как в fourthStat; если позиции уже стоят на
+            месте софитов — ячейки нет (13.11.2026). */}
+        {master.warrantyMaterials > 0 ? (
+          <StatClassic label="Гарантия" value={`${master.warrantyMaterials} ${yearsWord(master.warrantyMaterials)}`} theme={theme} fonts={fonts} />
+        ) : spotsCount > 0 ? (
+          <StatClassic label={positionsLabel(positionsCount, true)} value={String(positionsCount)} theme={theme} fonts={fonts} />
+        ) : null}
       </View>
 
       {/* Цена — крупно по центру внизу, бордо */}
@@ -1969,10 +1965,10 @@ function CoverBoldColor({
           flexDirection: "row",
         }}
       >
-        <StatBold label="помещений" value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+        <StatBold label={roomsLabel(estimate.rooms.length)} value={String(estimate.rooms.length)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         <StatBold label="м²" value={estimate.totalArea.toFixed(1).replace(".", ",")} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         {spotsCount > 0 && (
-          <StatBold label="софитов" value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
+          <StatBold label={spotsLabel(spotsCount)} value={String(spotsCount)} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
         )}
         <StatBold label={fourthStat(data).label} value={fourthStat(data).value} text={TEXT} muted={SOFT_TEXT} fonts={fonts} />
       </View>
