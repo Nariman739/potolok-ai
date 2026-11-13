@@ -5,7 +5,8 @@
  * владельца: на общем компьютере следующий вошедший видел чужой расчёт и мог сохранить его
  * себе, а запасная копия замера поднималась у другого мастера.
  *
- * Теперь рядом с черновиками лежит штамп «мастер:компания». Layout кабинета кладёт текущий
+ * Теперь рядом с черновиками лежит штамп «мастер:компания» (расчёт и клиент сверяются по
+ * обоим, черновик замера — только по мастеру). Layout кабинета кладёт текущий
  * штамп в разметку (`data-draft-owner`); перед любым чтением черновика зовём
  * `ensureDraftOwner()` — при несовпадении всё стирается. Черновик без штампа (сделан до
  * выката) достаётся первому вошедшему: работу мастера посреди расчёта не теряем, а цены
@@ -18,8 +19,12 @@ const OWNER_KEY = "draft-owner";
 /** Когда черновик калькулятора меняли в последний раз (мс). */
 const CALC_TOUCHED_KEY = "calculator-draft-at";
 
-/** Все ключи незаконченной работы. Новый ключ черновика — добавить сюда, иначе он переживёт смену аккаунта. */
-export const DRAFT_KEYS = [
+/**
+ * Черновики, привязанные к мастеру И компании: расчёт посчитан по прайсу компании, клиент —
+ * её клиент. Сменил активную компанию — они стираются.
+ * Новый ключ черновика — добавить в один из двух списков, иначе он переживёт смену аккаунта.
+ */
+const COMPANY_DRAFT_KEYS = [
   // калькулятор
   "calculator-rooms-draft",
   "calculator-extra-items-draft",
@@ -27,16 +32,22 @@ export const DRAFT_KEYS = [
   "calculator-draft-source",
   "calculator-draft-client",
   CALC_TOUCHED_KEY,
-  // замер: запасная копия и передача комнат в калькулятор
-  "zamery-rooms",
-  "zamery-object",
-  "zamery-objectId",
-  "zamery-saved",
+  // передача комнат из замера в калькулятор (вместе с клиентом замера)
   "vision-rooms",
   "vision-rooms-source",
   "vision-rooms-client",
   "vision-edit-room",
 ] as const;
+
+/**
+ * Черновик страницы замера — только к мастеру: это его несохранённая работа (страница пишет
+ * копию при каждой правке), цен и клиентов в ней нет. Смена активной компании не должна
+ * молча её стирать; чужой мастер её не получает.
+ */
+const MASTER_DRAFT_KEYS = ["zamery-rooms", "zamery-object", "zamery-objectId", "zamery-saved"] as const;
+
+/** Все ключи незаконченной работы. */
+export const DRAFT_KEYS = [...COMPANY_DRAFT_KEYS, ...MASTER_DRAFT_KEYS] as const;
 
 /** Запомненный клиент замера подставляется в окно «Сохранить КП» не дольше суток. */
 export const DRAFT_CLIENT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -60,15 +71,24 @@ export function draftOwnerStamp(masterId: string, activeCompanyId?: string | nul
   return `${masterId}:${activeCompanyId ?? ""}`;
 }
 
-function removeDrafts(ls: Storage) {
-  for (const key of DRAFT_KEYS) ls.removeItem(key);
+function removeDrafts(ls: Storage, keys: readonly string[] = DRAFT_KEYS) {
+  for (const key of keys) ls.removeItem(key);
+}
+
+/** Мастер из штампа «мастер:компания»; штамп без двоеточия читается как один мастер. */
+function masterOf(stamp: string): string {
+  const i = stamp.indexOf(":");
+  return i === -1 ? stamp : stamp.slice(0, i);
 }
 
 let checkedFor: string | null = null;
 
 /**
- * Сверить владельца черновиков с текущим аккаунтом. Чужие — стереть, ничьи — взять себе.
- * Звать перед чтением любого черновика. Возвращает true, если черновики были стёрты.
+ * Сверить владельца черновиков с текущим аккаунтом. Звать перед чтением любого черновика.
+ *  - штампа нет (черновик сделан до выката) — взять себе, ничего не стирая;
+ *  - другой мастер — стереть всё;
+ *  - тот же мастер, другая компания — стереть расчёт и клиента, черновик замера оставить.
+ * Возвращает true, если что-то было стёрто.
  */
 export function ensureDraftOwner(): boolean {
   const ls = storage();
@@ -78,7 +98,7 @@ export function ensureDraftOwner(): boolean {
   try {
     const stored = ls.getItem(OWNER_KEY);
     const foreign = !!stored && stored !== owner;
-    if (foreign) removeDrafts(ls);
+    if (foreign) removeDrafts(ls, masterOf(stored) === masterOf(owner) ? COMPANY_DRAFT_KEYS : DRAFT_KEYS);
     if (stored !== owner) ls.setItem(OWNER_KEY, owner);
     checkedFor = owner;
     return foreign;
