@@ -588,7 +588,7 @@ export function PricingClient(props: Props) {
                 <DialogTitle>PRO на {period === "year" && !launchOpen ? "год" : "месяц"} — {fmt(amountToPay)}</DialogTitle>
                 <DialogDescription>
                   {fromRf && cfg.vtb
-                    ? "Картой «Мир» любого российского банка — PRO включится сразу, списание в рублях по курсу банка. Или переводом на карту Kaspi по номеру ниже с чеком — включим после проверки, обычно в течение часа."
+                    ? "Картой «Мир» — PRO включится сразу. Списание в тенге, сумма в рублях справочная. Или переводом на карту Kaspi по номеру ниже с чеком — включим после проверки, обычно в течение часа."
                     : fromRf
                     ? "Карты банков России через нашу платёжку не проходят. Переведите на карту Kaspi по номеру ниже и загрузите чек — PRO включим после проверки, обычно в течение часа."
                     : cardOn
@@ -604,7 +604,7 @@ export function PricingClient(props: Props) {
                     </Button>
                     {fromRf && vtbQuote?.rub && (
                       <p className="text-xs text-muted-foreground mt-1.5 text-center">
-                        Картой «Мир» любого российского банка. Спишется в рублях по курсу вашего банка, ≈ {formatMoney(vtbQuote.amountKzt, "KZT")}
+                        Картой «Мир». Списание в тенге: {formatMoney(vtbQuote.amountKzt, "KZT")}, сумма в рублях справочная — рубли по своему курсу спишет ваш банк.
                       </p>
                     )}
                   </div>

@@ -10,22 +10,16 @@ export const dynamic = "force-dynamic";
 
 export default async function PrivacyPage() {
   const o = await getOwnerLegalInfo();
-  const today = new Date().toLocaleDateString("ru-RU", {
-    timeZone: "Asia/Almaty",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
 
   return (
     <article className="container mx-auto max-w-3xl px-4 py-10 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mt-0 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_p]:my-3 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-3 [&_li]:leading-relaxed text-sm md:text-base">
       <Link href="/" className="text-sm text-muted-foreground hover:underline">← На главную</Link>
       <h1>Политика конфиденциальности</h1>
-      <p className="text-sm text-muted-foreground">Редакция от {today}.</p>
+      <p className="text-sm text-muted-foreground">Редакция от 14 ноября 2026 г.</p>
 
       <p>
         Настоящая Политика конфиденциальности (далее — «Политика») разработана
-        {" "}{o.legalName}{o.bin ? `, БИН ${o.bin}` : ""} (далее — «Оператор»),
+        {" "}{o.legalName}{o.bin ? `, БИН ${o.bin}` : o.iin ? `, ИИН ${o.iin}` : ""} (далее — «Оператор»),
         являющимся владельцем сервиса PotolokAI (сайт potolok.ai и мобильные приложения),
         в соответствии с Законом Республики Казахстан «О персональных данных и их защите»
         от 21 мая 2013 года № 94-V (далее — «Закон»). Политика определяет порядок сбора,
@@ -53,7 +47,8 @@ export default async function PrivacyPage() {
         <li>идентификатор Telegram-аккаунта (при привязке Telegram-бота);</li>
         <li>технические данные: IP-адрес, тип браузера, операционная система, лог-файлы запросов к Сервису;</li>
         <li>пользовательский контент: фотографии помещений, замеры, КП, договоры, акты;</li>
-        <li>информация о платежах (статус, сумма, время) — без хранения данных банковских карт.</li>
+        <li>информация о платежах (статус, сумма, время) — без хранения данных банковских карт;</li>
+        <li>при включении автопродления — идентификатор привязки карты, выданный банком (без номера карты, срока действия и CVV), и журнал согласий на автопродление (дата и время, IP-адрес, устройство, версия условий, сумма и период).</li>
       </ul>
 
       <h2>3. Цели обработки персональных данных</h2>
@@ -77,7 +72,7 @@ export default async function PrivacyPage() {
       <h2>5. Передача персональных данных третьим лицам</h2>
       <p>Оператор не передаёт персональные данные третьим лицам, за исключением следующих случаев:</p>
       <ul>
-        <li>передача платёжному оператору (TipTopPay и/или иной банк-эквайер) — для проведения платежей;</li>
+        <li>передача платёжным операторам (TipTop Pay, АО «Банк ВТБ (Казахстан)») — для проведения платежей, в том числе автопродления подписки;</li>
         <li>передача провайдеру облачного хостинга (Vercel Inc., США) — для технической работы Сервиса;</li>
         <li>передача провайдеру базы данных (Neon, США) — для хранения данных Сервиса;</li>
         <li>передача провайдеру файлового хранилища (Vercel Blob) — для хранения загруженных файлов;</li>
@@ -163,6 +158,7 @@ export default async function PrivacyPage() {
       <ul>
         <li><b>Оператор:</b> {o.legalName}</li>
         {o.bin && <li><b>БИН:</b> {o.bin}</li>}
+        {!o.bin && o.iin && <li><b>ИИН:</b> {o.iin}</li>}
         <li><b>Адрес:</b> {o.legalAddress}</li>
         <li><b>Email для обращений:</b> {o.email}</li>
         <li><b>Телефон:</b> {o.phone}</li>
