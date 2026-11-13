@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
-import { addClientEvent } from "@/lib/clients";
+import { addClientEvent, syncClientStatusForObject } from "@/lib/clients";
 import { formatPrice } from "@/lib/format";
 import { asCurrency } from "@/lib/currency";
 import { ownerBrandFor } from "@/lib/company";
 import { renderAct, ACT_MASTER_SELECT } from "@/lib/act-render";
 import type { CalculationResult } from "@/lib/types";
-import { ACT_REPLACED_TEXT, isActReplaced, lockForSign, otherVariantChosen } from "@/lib/estimate-replace";
+import { ACT_REPLACED_TEXT, confirmReplacing, isActReplaced, lockForSign, otherVariantChosen, ReplaceBlockedError } from "@/lib/estimate-replace";
 
 /**
  * Подпись акта заказчиком. Текст акта на обоих языках замораживается в
@@ -21,7 +22,9 @@ import { ACT_REPLACED_TEXT, isActReplaced, lockForSign, otherVariantChosen } fro
 export async function POST(request: Request, { params }: { params: Promise<{ publicId: string }> }) {
   try {
     const { publicId } = await params;
-    const body = (await request.json().catch(() => ({}))) as { signerName?: string; agreed?: boolean; method?: string };
+    // Пустое или битое тело, а также не-объект (null, массив) — ошибка клиента: 400, а не 500.
+    const body = (await readJsonObject(request)) as { signerName?: string; agreed?: boolean; method?: string } | null;
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
     const { signerName, agreed } = body;
     if (!agreed) {
       return NextResponse.json({ error: "Нужно подтвердить согласие" }, { status: 400 });
@@ -66,7 +69,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     // Строка под замком (FOR UPDATE): из двух подписей пройдёт одна, а выбор нового
     // варианта (confirmReplacing) либо уже пометил акт «заменён» — отказ, либо ждёт.
     // Замки объект → КП (как у выбора варианта): подпись и выбор другого варианта идут по очереди.
-    const outcome = await prisma.$transaction(async (tx) => {
+    // Подпись акта = принятие КП (13.11.2026): в той же транзакции, под теми же замками.
+    let accepted = false;
+    let outcome: "signed" | "replaced" | "ok";
+    try {
+    outcome = await prisma.$transaction(async (tx) => {
       await lockForSign(tx, estimate.id, estimate.measurementObjectId);
       const [row] = await tx.$queryRaw<{ actSignedAt: Date | null; actTextSnapshot: unknown; status: string }[]>`
         SELECT "actSignedAt", "actTextSnapshot", status::text AS status FROM "Estimate" WHERE id = ${estimate.id} FOR UPDATE`;
@@ -85,37 +92,58 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
         actTextSnapshot: { version: 1, html: { ru, kk }, createdAt: signedAt.toISOString() },
       },
     });
-      return count === 0 ? ("signed" as const) : ("ok" as const);
+      if (count === 0) return "signed" as const;
+      // Клиент подписал акт непринятого КП — КП принято (те же правила, что «Выбрал»)
+      if (row.status !== "CONFIRMED") {
+        await confirmReplacing(tx, estimate.id, estimate.measurementObjectId, "sign");
+        accepted = true;
+      }
+      return "ok" as const;
     });
+    } catch (e) {
+      // По другому КП объекта уже подписан договор/акт — этот акт не действует
+      if (e instanceof ReplaceBlockedError) outcome = "replaced";
+      else throw e;
+    }
     if (outcome === "replaced") return NextResponse.json({ error: ACT_REPLACED_TEXT, replaced: true }, { status: 409 });
     if (outcome === "signed") {
       return NextResponse.json({ error: "Акт уже подписан" }, { status: 400 });
     }
 
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "ACT_SIGNED",
         content: `${signedName} подписал акт приёмки работ`,
         metadata: { estimateId: estimate.id, actPublicId: publicId, ip, method },
       }).catch(() => {});
+      if (accepted) {
+        await addClientEvent({ clientId: estimate.clientId, type: "KP_CONFIRMED", content: "КП принято подписью акта", metadata: { estimateId: estimate.id, bySign: "act" } }).catch(() => {});
+      }
+    }
+    // Этап объекта — существующим синком (ручной этап не трогаем, статус клиента только вверх)
+    if (accepted && estimate.measurementObjectId) {
+      const objectId = estimate.measurementObjectId;
+      after(() => syncClientStatusForObject(objectId).catch(() => {}));
     }
     const price = estimate.total || 0;
     // Валюта — владельца компании, уже подтянута ownerBrandFor (07.10.2026)
     const currency = asCurrency(master.currency);
-    void sendPushToMaster(estimate.masterId, {
+    after(() => sendPushToMaster(estimate.masterId, {
       title: `${signedName} принял работы`,
-      body: `Акт подписан${price ? ` · ${formatPrice(price, currency)}` : ""}`,
+      body: `Акт подписан${price ? ` · ${formatPrice(price, currency)}` : ""}${accepted ? ". КП теперь принято." : ""}`,
       data: { screen: `/estimate/${estimate.id}` },
-    });
-    if (estimate.master?.telegramChatId && estimate.master.notifyDealWon !== false) {
-      sendTelegramMessage(
-        estimate.master.telegramChatId,
+    }));
+    const chatId = estimate.master?.telegramChatId;
+    if (chatId && estimate.master.notifyDealWon !== false) {
+      after(() => sendTelegramMessage(
+        chatId,
         `📝 <b>${signedName} подписал АКТ приёмки работ!</b>\n\n` +
           (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
           `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
+          (accepted ? `✅ КП теперь принято.\n` : "") +
           `\n<i>С этой даты идёт гарантия. Подписанный акт — по той же ссылке.</i>`,
-      );
+      ));
     }
     return NextResponse.json({ success: true, signedAt: signedAt.toISOString(), signerName: signedName });
   } catch (error) {

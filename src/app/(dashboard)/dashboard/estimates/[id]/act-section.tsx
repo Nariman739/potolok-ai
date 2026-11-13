@@ -27,6 +27,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { whatsappNumber } from "@/lib/phone-format";
+import { formatDocDateTime } from "@/lib/doc-date";
 
 type Props = {
   estimateId: string;
@@ -243,9 +244,7 @@ export function ActSection({
                   {actSignerName}
                 </p>
                 <p className="text-xs text-emerald-700">
-                  {actSignedAt
-                    ? new Date(actSignedAt).toLocaleString("ru-RU")
-                    : ""}
+                  {formatDocDateTime(actSignedAt)}
                 </p>
               </div>
             </div>
@@ -257,9 +256,7 @@ export function ActSection({
         ) : (
           <p className="text-xs text-muted-foreground">
             Создан{" "}
-            {actCreatedAt
-              ? new Date(actCreatedAt).toLocaleString("ru-RU")
-              : ""}
+            {formatDocDateTime(actCreatedAt)}
           </p>
         )}
 

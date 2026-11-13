@@ -116,6 +116,7 @@ export function ClientCard({
   nearest,
   events: initialEvents,
   estimates,
+  dealSum,
   measurements,
   photos,
   contracts,
@@ -129,6 +130,8 @@ export function ClientCard({
   nearest: { measure: string | null; install: string | null };
   events: Event[];
   estimates: Estimate[];
+  /** Сумма сделки: по одному главному КП на объект, без пересмотренных и отклонённых (client-deal.ts). */
+  dealSum: number;
   measurements: Measurement[];
   photos: ObjectPhoto[];
   contracts: Contract[];
@@ -174,7 +177,6 @@ export function ClientCard({
     client.source ?? "",
   );
 
-  const totalSum = estimates.reduce((s, e) => s + (e.total || 0), 0);
   const signedContractsCount = contracts.filter((c) => c.contractSignedAt)
     .length;
   const lastEvent = events[0];
@@ -550,13 +552,13 @@ export function ClientCard({
               value={`${signedContractsCount}/${contracts.length}`}
             />
           </div>
-          {totalSum > 0 && (
+          {dealSum > 0 && (
             <Card>
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  Сумма всех КП
+                  Сумма сделки
                 </span>
-                <span className="text-lg font-bold">{formatMoney(totalSum)}</span>
+                <span className="text-lg font-bold">{formatMoney(dealSum)}</span>
               </CardContent>
             </Card>
           )}

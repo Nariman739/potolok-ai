@@ -128,7 +128,7 @@ export async function confirmReplacing(
   tx: Prisma.TransactionClient,
   estimateId: string,
   objectId: string | null,
-  by: "master" | "client",
+  by: "master" | "client" | "sign",
 ): Promise<{ replacedTotals: number[]; replaced: { total: number; contract: boolean; act: boolean }[] }> {
   // Замок объекта — очередь для всех выборов в этом объекте (подпись договора берёт
   // только строку КП и сюда не ходит — взаимной блокировки нет).
@@ -144,12 +144,23 @@ export async function confirmReplacing(
         estimateId,
       )
     : [];
-  const allowed = by === "client"
-    ? ["SENT", "VIEWED"]
-    : prev.length > 0 ? ["SENT", "VIEWED", "REVISED", "DRAFT"] : ["SENT", "VIEWED", "REVISED"];
+  // "sign" — клиент подписал договор/акт этого КП (13.11.2026): подпись = принятие, из любого статуса
+  const allowed = by === "sign"
+    ? ["DRAFT", "SENT", "VIEWED", "REVISED", "REJECTED"]
+    : by === "client"
+      ? ["SENT", "VIEWED"]
+      : prev.length > 0 ? ["SENT", "VIEWED", "REVISED", "DRAFT"] : ["SENT", "VIEWED", "REVISED"];
   if (!allowed.includes(self.status)) throw new ConfirmStatusError(self.status);
-  const signed = prev.find((p) => p.contractSignedAt || p.actSignedAt);
-  if (signed) throw new ReplaceBlockedError(signed.contractSignedAt ? "contract" : "act");
+  // Подписанный договор/акт на ЛЮБОМ другом КП объекта (не только принятом): договор
+  // мог быть подписан по SENT-КП до правила «подпись = принятие» — выбрать мимо него нельзя.
+  const signed = objectId
+    ? await tx.$queryRaw<{ contractSignedAt: Date | null }[]>`
+        SELECT "contractSignedAt" FROM "Estimate"
+        WHERE "measurementObjectId" = ${objectId} AND id <> ${estimateId} AND "deletedAt" IS NULL
+          AND ("contractSignedAt" IS NOT NULL OR "actSignedAt" IS NOT NULL)
+        LIMIT 1`
+    : [];
+  if (signed.length > 0) throw new ReplaceBlockedError(signed[0].contractSignedAt ? "contract" : "act");
 
   const replacedTotals: number[] = [];
   const replaced: { total: number; contract: boolean; act: boolean }[] = [];
