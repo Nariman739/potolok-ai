@@ -14,6 +14,8 @@ export type ObjectDeleteInfo = {
   contractSigned: boolean;
   /** Клиент подписал акт приёмки. */
   actSigned: boolean;
+  /** У клиента на руках ссылки: есть КП, отправленное, открытое или принятое клиентом. */
+  sentToClient: boolean;
 };
 
 export function objectDeleteQuestion(info: ObjectDeleteInfo | null, formatMoney: (n: number) => string): string {
@@ -24,6 +26,10 @@ export function objectDeleteQuestion(info: ObjectDeleteInfo | null, formatMoney:
     lines.push(`По этому объекту клиент подписал ${docs}.`);
   }
   if (info.paid > 0) lines.push(`У объекта есть оплаты на ${formatMoney(info.paid)} — они пропадут из отчёта за месяц.`);
+  // Публичные страницы КП, договора и акта у объекта в корзине не открываются.
+  if (info.sentToClient || info.contractSigned || info.actSigned) {
+    lines.push("Ссылки, которые получил клиент, перестанут открываться, пока объект в Корзине.");
+  }
   if (lines.length === 0 && info.kpCount === 0) return "Удалить замер? Он попадёт в Корзину — можно будет восстановить.";
   if (lines.length === 0) return "Удалить замер? Он попадёт в Корзину вместе со своими КП — можно будет восстановить.";
   lines.push(info.kpCount > 0 ? "Удалить вместе с КП? Можно будет восстановить из Корзины." : "Удалить? Можно будет восстановить из Корзины.");
@@ -35,7 +41,13 @@ export function objectDeleteInfoFrom(data: unknown): ObjectDeleteInfo | null {
   if (!data || typeof data !== "object") return null;
   const d = data as { money?: { paid?: unknown }; estimates?: unknown };
   if (!Array.isArray(d.estimates)) return null;
-  const alive = (d.estimates as { deletedAt?: unknown; contractSignedAt?: unknown; actSignedAt?: unknown }[]).filter((e) => e && !e.deletedAt);
+  const alive = (d.estimates as { deletedAt?: unknown; status?: unknown; contractSignedAt?: unknown; actSignedAt?: unknown }[]).filter((e) => e && !e.deletedAt);
   const paid = typeof d.money?.paid === "number" && Number.isFinite(d.money.paid) ? d.money.paid : 0;
-  return { paid, kpCount: alive.length, contractSigned: alive.some((e) => !!e.contractSignedAt), actSigned: alive.some((e) => !!e.actSignedAt) };
+  return {
+    paid,
+    kpCount: alive.length,
+    contractSigned: alive.some((e) => !!e.contractSignedAt),
+    actSigned: alive.some((e) => !!e.actSignedAt),
+    sentToClient: alive.some((e) => e.status === "SENT" || e.status === "VIEWED" || e.status === "CONFIRMED"),
+  };
 }
