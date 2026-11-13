@@ -16,8 +16,12 @@ import sharp from "sharp";
 
 export const OG_LOGO_SIDE = 600;
 const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
-/** Логотипы мастеров в Blob (все 122 logoUrl на 12.11.2026). */
-const LOGOS_PREFIX = "/logos/";
+/**
+ * Логотипы мастеров в Blob: /logos/<id мастера>/<файл> — так их кладёт загрузка, и так лежат
+ * все 124 logoUrl и все 148 записей истории логотипов (проверено по базе 13.11.2026).
+ * Строгий вид пути отсекает перебор произвольных адресов ещё до запроса в Blob.
+ */
+const LOGO_PATH = /^\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[^/]+$/i;
 
 /**
  * Хост НАШЕГО Blob-стора. Суффикса .public.blob.vercel-storage.com мало:
@@ -26,6 +30,15 @@ const LOGOS_PREFIX = "/logos/";
  * из BLOB_READ_WRITE_TOKEN (vercel_blob_rw_<storeId>_<secret>). Не нашли —
  * null: прокси выключен, превью берёт исходный logoUrl.
  */
+/**
+ * Хост — наш Blob-стор? true/false, либо null, когда id стора в окружении не найден
+ * (тогда вызывающий решает сам: прокси выключается, сохранение логотипа — см. /api/logo/save).
+ */
+export function isOurBlobHost(hostname: string): boolean | null {
+  const ours = ourBlobHost();
+  return ours ? hostname.toLowerCase() === ours : null;
+}
+
 function ourBlobHost(): string | null {
   const explicit = process.env.BLOB_PUBLIC_HOST?.trim().toLowerCase();
   if (explicit) return explicit;
@@ -36,7 +49,7 @@ function ourBlobHost(): string | null {
 /**
  * Разрешён ли адрес для скачивания: только https, только хост нашего
  * Blob-стора, без логина/пароля и без нестандартного порта, только логотипы
- * (/logos/…), без query и hash. Возвращает нормализованный URL или null.
+ * (/logos/<id мастера>/<файл>), без query и hash. Возвращает нормализованный URL или null.
  */
 export function allowedLogoSource(raw: string | null | undefined): URL | null {
   if (!raw || raw.length > 2048) return null;
@@ -57,7 +70,7 @@ export function allowedLogoSource(raw: string | null | undefined): URL | null {
   if (u.search || u.hash) return null;
   // Ресайзим только логотипы. pathname уже нормализован WHATWG: «/logos/../x» и
   // «/logos/%2e%2e/x» → «/x»; «%2F» не декодируется, «/logos%2F…» сюда не пролезет.
-  if (!u.pathname.startsWith(LOGOS_PREFIX) || u.pathname.length <= LOGOS_PREFIX.length) return null;
+  if (!LOGO_PATH.test(u.pathname)) return null;
   return new URL(`${u.protocol}//${u.host}${u.pathname}`);
 }
 
@@ -65,11 +78,20 @@ function siteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://potolok.ai").replace(/\/$/, "");
 }
 
+/**
+ * Каноническая строка запроса прокси для источника: ровно один параметр `u`, закодированный
+ * encodeURIComponent. Её же строит ogLogoProxyUrl, и только её роут обслуживает (остальное —
+ * редирект сюда): один логотип = один адрес = одна запись в кэше CDN.
+ */
+export function ogLogoCanonicalSearch(src: URL): string {
+  return `?u=${encodeURIComponent(src.toString())}`;
+}
+
 /** Адрес лёгкой копии логотипа для og:image, или null, если источник не наш Blob. */
 export function ogLogoProxyUrl(logoUrl: string | null | undefined): string | null {
   const src = allowedLogoSource(logoUrl);
   if (!src) return null;
-  return `${siteUrl()}/api/og-logo?u=${encodeURIComponent(src.toString())}`;
+  return `${siteUrl()}/api/og-logo${ogLogoCanonicalSearch(src)}`;
 }
 
 /** Копия 600 px: с альфой — PNG (прозрачность сохраняем), без — JPEG 80. EXIF-поворот применяем. */

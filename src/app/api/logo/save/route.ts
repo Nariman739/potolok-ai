@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isOurBlobHost } from "@/lib/og-logo";
 
 /**
  * Логотипом можно сделать только файл из нашего хранилища в папке этого
  * мастера (аудит 07.10.2026). Раньше принималась любая строка: чужой хост
  * ронял страницу портфолио (next/image вне remotePatterns), а PDF скачивал
  * произвольный URL со стороны сервера.
+ * 13.11.2026: хост — именно НАШ Blob-стор, а не любой *.public.blob.vercel-storage.com
+ * (под этим суффиксом сторы всех клиентов Vercel). Если id стора в окружении не найден,
+ * остаётся прежняя проверка по суффиксу — сохранение логотипа из-за окружения не ломаем.
  */
 function isOwnLogoUrl(url: string, masterId: string): boolean {
   try {
     const u = new URL(url);
+    const ours = isOurBlobHost(u.hostname);
+    if (ours === null) console.warn("[logo/save] Blob store id is unknown, host is checked by suffix only");
     return (
       u.protocol === "https:" &&
-      u.hostname.endsWith(".public.blob.vercel-storage.com") &&
+      (ours ?? u.hostname.endsWith(".public.blob.vercel-storage.com")) &&
       u.pathname.startsWith(`/logos/${masterId}/`)
     );
   } catch {
