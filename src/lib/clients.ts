@@ -87,7 +87,7 @@ export type GetOrCreateClientInput = {
    * дважды, а карточка с историей оставалась у того, кто позвонил первым.
    */
   companyId?: string | null;
-  /** Мастера компании — чтобы найти клиента, заведённого напарником до перехода. */
+  /** Мастера компании — чтобы найти клиента без компании (старая запись), заведённого напарником. */
   masterIds?: string[];
   name: string | null | undefined;
   phone?: string | null;
@@ -101,8 +101,12 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   const { masterId, companyId } = input;
   // Клиент принадлежит компании: ищем дубль по всей бригаде, а не только
   // среди своих записей. Без companyId (старый вызов) — прежнее поведение.
+  // Ветка по автору — только для записей БЕЗ компании, как в inScope (13.11.2026).
+  // Без оговорки убранный из бригады участник, заведя замер с телефоном клиента
+  // бригады, привязывал свой объект к её клиенту: получал его имя и адрес, а у
+  // владельца в карточке клиента появлялся замер чужой компании.
   const owner: Prisma.ClientWhereInput = companyId
-    ? { OR: [{ companyId }, { masterId: { in: input.masterIds?.length ? input.masterIds : [masterId] } }] }
+    ? { OR: [{ companyId }, { AND: [{ companyId: null }, { masterId: { in: input.masterIds?.length ? input.masterIds : [masterId] } }] }] }
     : { masterId };
   const name = (input.name ?? "").trim();
   const phone = normalizePhone(input.phone);
