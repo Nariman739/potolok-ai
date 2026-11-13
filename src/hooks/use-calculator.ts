@@ -12,52 +12,69 @@ const DRAFT_CLIENT_KEY = "calculator-draft-client";
 const RESULT_KEY = "calculator-result-draft";
 
 /**
- * Клиент замера помнится вместе с комнатами этого замера (13.11.2026): пока в черновике
- * есть хоть одна из них — это всё ещё КП того же клиента. Убрали все (и набрали другие) —
- * это уже чужой расчёт, клиента забываем. Раньше он сбрасывался только кнопкой «Новый
- * расчёт», и КП клиента Б могло сохраниться на А.
- * Старый формат — просто id строкой (без комнат): живёт до пустого черновика.
+ * Происхождение черновика: из какого объекта замера он собран, чей это клиент и какие комнаты
+ * пришли оттуда (13.11.2026). Пока в черновике есть хоть одна из этих комнат — это всё ещё КП
+ * того же объекта и того же клиента. Убрали все (и набрали другие) — это уже чужой расчёт,
+ * происхождение забываем. Раньше клиент сбрасывался только кнопкой «Новый расчёт», и КП клиента
+ * Б могло сохраниться на А; а id объекта при сохранении не передавался вовсе, и КП, созданное
+ * из замера, оставалось без объекта (не видно в карточке объекта и в приложении, наряд его
+ * не видит).
+ * Свои комнаты, добавленные мастером, происхождение не меняют: это вариант КП того же объекта.
+ * Ключ и старый формат прежние: id клиента строкой (без комнат и объекта) — живёт до пустого
+ * черновика.
  */
-type DraftClient = { id: string; roomIds: string[] | null };
+type DraftOrigin = { clientId: string | null; objectId: string | null; roomIds: string[] | null };
 
-function readDraftClient(): DraftClient | null {
+function readDraftOrigin(): DraftOrigin | null {
   try {
     const raw = localStorage.getItem(DRAFT_CLIENT_KEY);
     if (!raw) return null;
-    if (!raw.startsWith("{")) return { id: raw, roomIds: null };
-    const parsed = JSON.parse(raw) as { id?: unknown; roomIds?: unknown };
-    if (typeof parsed.id !== "string" || !parsed.id) return null;
-    return { id: parsed.id, roomIds: Array.isArray(parsed.roomIds) ? parsed.roomIds.filter((x): x is string => typeof x === "string") : null };
+    if (!raw.startsWith("{")) return { clientId: raw, objectId: null, roomIds: null };
+    const parsed = JSON.parse(raw) as { id?: unknown; objectId?: unknown; roomIds?: unknown };
+    const clientId = typeof parsed.id === "string" && parsed.id ? parsed.id : null;
+    const objectId = typeof parsed.objectId === "string" && parsed.objectId ? parsed.objectId : null;
+    if (!clientId && !objectId) return null;
+    return { clientId, objectId, roomIds: Array.isArray(parsed.roomIds) ? parsed.roomIds.filter((x): x is string => typeof x === "string") : null };
   } catch {
     return null;
   }
 }
 
-function setDraftClient(clientId: string | null, roomIds: string[] = []) {
+function setDraftOrigin(origin: { clientId?: string | null; objectId?: string | null } | null, roomIds: string[] | null = []) {
   try {
-    if (clientId) localStorage.setItem(DRAFT_CLIENT_KEY, JSON.stringify({ id: clientId, roomIds }));
+    const clientId = origin?.clientId || null;
+    const objectId = origin?.objectId || null;
+    if (clientId || objectId) localStorage.setItem(DRAFT_CLIENT_KEY, JSON.stringify({ id: clientId, objectId, roomIds }));
     else localStorage.removeItem(DRAFT_CLIENT_KEY);
   } catch {}
 }
 
-/** Состав комнат изменился: клиент замера остаётся, только пока жива хоть одна его комната. */
-function dropDraftClientIfRoomsGone(rooms: RoomInput[]) {
-  const client = readDraftClient();
-  if (!client) return;
-  const alive = client.roomIds ? rooms.some((r) => client.roomIds!.includes(r.id)) : rooms.length > 0;
-  if (!alive) setDraftClient(null);
+/** Состав комнат изменился: происхождение остаётся, только пока жива хоть одна его комната. */
+function dropDraftOriginIfRoomsGone(rooms: RoomInput[]) {
+  const origin = readDraftOrigin();
+  if (!origin) return;
+  const alive = origin.roomIds ? rooms.some((r) => origin.roomIds!.includes(r.id)) : rooms.length > 0;
+  if (!alive) setDraftOrigin(null);
 }
 
 /** Клиент для окна «Сохранить КП». Через сутки без изменений черновика не подставляется. */
 export function draftClientId(): string | null {
   ensureDraftOwner();
-  const client = readDraftClient();
-  if (!client) return null;
+  const origin = readDraftOrigin();
+  if (!origin?.clientId) return null;
   if (!calculatorDraftIsFresh(DRAFT_CLIENT_TTL_MS)) {
-    setDraftClient(null);
+    // Срок — только на подстановку клиента. Объект остаётся: комнаты его замера на месте,
+    // значит КП по-прежнему этого объекта, сколько бы ни прошло.
+    setDraftOrigin({ objectId: origin.objectId }, origin.roomIds);
     return null;
   }
-  return client.id;
+  return origin.clientId;
+}
+
+/** Объект замера, к которому привяжется КП при сохранении (fromMeasurementId), или null. */
+export function draftObjectId(): string | null {
+  ensureDraftOwner();
+  return readDraftOrigin()?.objectId ?? null;
 }
 
 // ── localStorage as the single source of truth ──
@@ -118,7 +135,7 @@ function setRoomsStore(next: RoomInput[]) {
       localStorage.removeItem(AUTOSAVE_KEY);
     }
   } catch {}
-  dropDraftClientIfRoomsGone(next);
+  dropDraftOriginIfRoomsGone(next);
   touchCalculatorDraft();
   // Notify all subscribers (triggers React re-render)
   notify();
@@ -310,19 +327,22 @@ export function useCalculator() {
     }
   }, []);
 
-  const loadRooms = useCallback((importedRooms: RoomInput[]) => {
-    setRoomsStore(importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() })));
+  /** Комнаты существующего КП («Редактировать как новое»): новое КП — того же объекта и клиента. */
+  const loadRooms = useCallback((importedRooms: RoomInput[], origin: { objectId?: string | null; clientId?: string | null } | null = null) => {
+    const next = importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() }));
+    // Сначала происхождение с новыми комнатами, потом сами комнаты (см. replaceWithMeasurement).
+    setDraftOrigin(origin, next.map((r) => r.id));
+    setRoomsStore(next);
     setResultStore(null);
     setError(null);
-    setDraftClient(null);
   }, []);
 
   /** Весь замер в калькулятор: заменяет черновик вместе с доп. работами и клиентом прошлого замера. */
   const replaceWithMeasurement = useCallback((importedRooms: RoomInput[], sourceId: string, clientId: string | null = null) => {
     const next = importedRooms.map((r) => ({ ...r, id: crypto.randomUUID() }));
-    // Сначала клиент с комнатами этого замера, потом сами комнаты: иначе запись комнат
-    // сверила бы их с клиентом прошлого замера.
-    setDraftClient(clientId, next.map((r) => r.id));
+    // Сначала происхождение с комнатами этого замера, потом сами комнаты: иначе запись комнат
+    // сверила бы их с происхождением прошлого черновика.
+    setDraftOrigin({ clientId, objectId: sourceId || null }, next.map((r) => r.id));
     setRoomsStore(next);
     setResultStore(null);
     setError(null);
@@ -335,7 +355,7 @@ export function useCalculator() {
     setResultStore(null);
     setError(null);
     setExtrasStore([]);
-    setDraftClient(null);
+    setDraftOrigin(null);
   }, []);
 
   return {

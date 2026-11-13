@@ -9,7 +9,7 @@ import { RoomCard } from "@/components/calculator/room-card";
 import { CalculationResults, type KpMoneyInputs } from "@/components/calculator/calculation-results";
 import { ExtraItemsForm } from "@/components/calculator/extra-items-form";
 import { SaveDialog, type SaveDialogPayload } from "@/components/calculator/save-dialog";
-import { useCalculator, draftClientId, calculatorDraftIsEmpty } from "@/hooks/use-calculator";
+import { useCalculator, draftClientId, draftObjectId, calculatorDraftIsEmpty } from "@/hooks/use-calculator";
 import { useCurrency } from "@/components/currency-provider";
 import { computeArea } from "@/lib/room-geometry";
 import { Plus, Calculator, Loader2 } from "lucide-react";
@@ -181,7 +181,9 @@ function CalculatorContent() {
           return;
         }
         if (importedRooms.length > 0) {
-          loadRooms(importedRooms);
+          // Новое КП — того же объекта и клиента, что исходное (объект из корзины не берём).
+          const sourceObjectId = est.measurementObject && !est.measurementObject.deletedAt ? est.measurementObjectId : null;
+          loadRooms(importedRooms, { objectId: sourceObjectId ?? null, clientId: est.clientId ?? null });
           setFormOpen(false);
           toast.success(`Загружено ${importedRooms.length} комнат — редактируйте и пересчитайте`);
         }
@@ -239,6 +241,9 @@ function CalculatorContent() {
           clientPhone: payload.clientPhone?.trim() || undefined,
           clientAddress: payload.clientAddress?.trim() || undefined,
           clientId: payload.clientId || undefined,
+          // Объект замера, из которого собран черновик (пока жива хоть одна его комната): без
+          // этого КП с сайта оставалось без объекта. Сервер проверяет, что объект мой и жив.
+          fromMeasurementId: draftObjectId() || undefined,
         }),
       });
 
