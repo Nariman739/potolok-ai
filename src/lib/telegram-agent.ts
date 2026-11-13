@@ -14,6 +14,7 @@ import { getOpenRouter, AI_MODEL } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
 import { changeClientStatus } from "@/lib/clients";
 import { syncColumnForStatus } from "@/lib/crm-board";
+import { dealTotal, DEAL_ESTIMATE_SELECT } from "@/lib/client-deal";
 import { computeCostFromUsage } from "@/lib/ai-cost-cap";
 import type { DealStatus, EventType } from "@/generated/prisma/client";
 
@@ -393,13 +394,11 @@ async function executeTool(name: string, args: ToolArgs, masterId: string): Prom
           prisma.estimate.count({ where: { masterId, createdAt: { gte: start }, deletedAt: null } }),
           prisma.client.findMany({
             where: { masterId, status: "WON", updatedAt: { gte: start }, deletedAt: null },
-            select: { estimates: { select: { total: true } } },
+            select: { estimates: { select: DEAL_ESTIMATE_SELECT } },
           }),
         ]);
-        const wonTotal = wonClients.reduce(
-          (sum, c) => sum + c.estimates.reduce((s, e) => s + (e.total || 0), 0),
-          0,
-        );
+        // Сумма сделок — по единому правилу (главное КП объекта), а не «все КП клиента подряд».
+        const wonTotal = wonClients.reduce((sum, c) => sum + dealTotal(c.estimates), 0);
         return JSON.stringify({
           month: now.toLocaleString("ru-RU", { month: "long", year: "numeric" }),
           new_clients: newClients,

@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
 import { getOrCreateClient } from "@/lib/clients";
+import { dealTotal, dealKpCount, DEAL_ESTIMATE_SELECT } from "@/lib/client-deal";
 import type { ClientSource, DealStatus, Prisma } from "@/generated/prisma/client";
 
 const ALLOWED_STATUSES = [
@@ -60,10 +61,9 @@ export async function GET(request: Request) {
         nextContactAt: true,
         createdAt: true,
         updatedAt: true,
-        _count: { select: { estimates: true, events: true } },
-        estimates: {
-          select: { total: true, status: true },
-        },
+        _count: { select: { events: true } },
+        // Сумма и «N КП» — по единому правилу сделки (src/lib/client-deal.ts), не «все КП подряд».
+        estimates: { select: DEAL_ESTIMATE_SELECT },
         events: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     });
 
     const items = clients.map((c) => {
-      const totalSum = c.estimates.reduce((acc, e) => acc + (e.total || 0), 0);
+      const totalSum = dealTotal(c.estimates);
       return {
         id: c.id,
         name: c.name,
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         nextContactAt: c.nextContactAt,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
-        estimatesCount: c._count.estimates,
+        estimatesCount: dealKpCount(c.estimates),
         eventsCount: c._count.events,
         totalSum,
         lastEvent: c.events[0] ?? null,
