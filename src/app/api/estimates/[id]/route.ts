@@ -4,6 +4,7 @@ import { formatPrice } from "@/lib/format";
 import { currencyFor } from "@/lib/company";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncColumnForStatus } from "@/lib/crm-board";
 import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope } from "@/lib/company";
 import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } from "@/lib/kp-adjust-server";
@@ -183,24 +184,28 @@ export async function PUT(
       // Замена — запись в ленту мастера (ClientEvent; клиенту наружу ничего не уходит)
       if (existing.clientId && replacedTotals.length > 0) {
         const currency = await currencyFor(existing.masterId);
-        addClientEvent({
+        await addClientEvent({
           clientId: existing.clientId,
           type: "KP_CONFIRMED",
           content: `Мастер выбрал новый вариант: ${formatPrice(existing.total ?? 0, currency)} (было ${replacedTotals.map((v) => formatPrice(v, currency)).join(", ")})`,
           metadata: { estimateId: id, replaced: true },
         }).catch(() => {});
-        changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        await changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        // Этап канбана идёт за «Сделкой» — как при смене статуса из карточки (не ниже «Договора»).
+        await syncColumnForStatus(existing.clientId, "WON").catch(() => {});
         return NextResponse.json(confirmed);
       }
       if (existing.clientId) {
         const currency = await currencyFor(existing.masterId);
-        addClientEvent({
+        await addClientEvent({
           clientId: existing.clientId,
           type: "KP_CONFIRMED",
           content: existing.total ? `Сумма: ${formatPrice(existing.total, currency)} · отметил мастер` : "Отметил мастер",
           metadata: { estimateId: id },
         }).catch(() => {});
-        changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        await changeClientStatus(existing.clientId, "WON", "Мастер отметил выбранное КП").catch(() => {});
+        // Этап канбана идёт за «Сделкой» — как при смене статуса из карточки (не ниже «Договора»).
+        await syncColumnForStatus(existing.clientId, "WON").catch(() => {});
       }
       return NextResponse.json(confirmed);
     }

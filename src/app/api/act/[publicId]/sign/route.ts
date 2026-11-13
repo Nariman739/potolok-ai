@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { BAD_JSON_TEXT, readJsonObject } from "@/lib/read-json";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendPushToMaster } from "@/lib/push";
 import { addClientEvent, syncClientStatusForObject } from "@/lib/clients";
@@ -21,7 +22,9 @@ import { ACT_REPLACED_TEXT, confirmReplacing, isActReplaced, lockForSign, otherV
 export async function POST(request: Request, { params }: { params: Promise<{ publicId: string }> }) {
   try {
     const { publicId } = await params;
-    const body = (await request.json().catch(() => ({}))) as { signerName?: string; agreed?: boolean; method?: string };
+    // Пустое или битое тело, а также не-объект (null, массив) — ошибка клиента: 400, а не 500.
+    const body = (await readJsonObject(request)) as { signerName?: string; agreed?: boolean; method?: string } | null;
+    if (!body) return NextResponse.json({ error: BAD_JSON_TEXT }, { status: 400 });
     const { signerName, agreed } = body;
     if (!agreed) {
       return NextResponse.json({ error: "Нужно подтвердить согласие" }, { status: 400 });
@@ -108,7 +111,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     }
 
     if (estimate.clientId) {
-      addClientEvent({
+      await addClientEvent({
         clientId: estimate.clientId,
         type: "ACT_SIGNED",
         content: `${signedName} подписал акт приёмки работ`,
@@ -126,20 +129,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ pub
     const price = estimate.total || 0;
     // Валюта — владельца компании, уже подтянута ownerBrandFor (07.10.2026)
     const currency = asCurrency(master.currency);
-    void sendPushToMaster(estimate.masterId, {
+    after(() => sendPushToMaster(estimate.masterId, {
       title: `${signedName} принял работы`,
       body: `Акт подписан${price ? ` · ${formatPrice(price, currency)}` : ""}${accepted ? ". КП теперь принято." : ""}`,
       data: { screen: `/estimate/${estimate.id}` },
-    });
-    if (estimate.master?.telegramChatId && estimate.master.notifyDealWon !== false) {
-      sendTelegramMessage(
-        estimate.master.telegramChatId,
+    }));
+    const chatId = estimate.master?.telegramChatId;
+    if (chatId && estimate.master.notifyDealWon !== false) {
+      after(() => sendTelegramMessage(
+        chatId,
         `📝 <b>${signedName} подписал АКТ приёмки работ!</b>\n\n` +
           (price ? `💰 Сумма: <b>${formatPrice(price, currency)}</b>\n` : "") +
           `📅 ${signedAt.toLocaleString("ru-RU", { timeZone: "Asia/Almaty" })}\n` +
           (accepted ? `✅ КП теперь принято.\n` : "") +
           `\n<i>С этой даты идёт гарантия. Подписанный акт — по той же ссылке.</i>`,
-      );
+      ));
     }
     return NextResponse.json({ success: true, signedAt: signedAt.toISOString(), signerName: signedName });
   } catch (error) {
