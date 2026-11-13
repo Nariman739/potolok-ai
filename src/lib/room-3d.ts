@@ -59,7 +59,18 @@ export interface Scene3DInputs {
 
 const DEFAULT_CEILING_HEIGHT_CM = 270;
 
-function pickGeometry(room: SavedRoom3D): RoomGeometryFields | null {
+/**
+ * 3D по КП из приложения доступен для КП, созданных не раньше этого момента (решение Наримана
+ * 13.11.2026: «только в новых КП»). У старых КП из приложения 3D по ссылке не было — у них
+ * ничего не меняется. ПОРОГ СТАВИТСЯ ПРИ ВЫКАТЕ — одна строка.
+ */
+export const KP_3D_FROM_ANGLES_SINCE = new Date("2026-11-14T00:00:00+05:00");
+
+/** Контур «стены + углы» должен замкнуться: расхождение не больше 5 см или 2 % периметра. */
+const CLOSE_TOLERANCE_CM = 5;
+const CLOSE_TOLERANCE_SHARE = 0.02;
+
+function pickGeometry(room: SavedRoom3D, fromAngles = false): RoomGeometryFields | null {
   if (Array.isArray(room.walls) && room.walls.length > 0
       && Array.isArray(room.normalCorners) && room.normalCorners.length > 0) {
     return room;
@@ -69,7 +80,28 @@ function pickGeometry(room: SavedRoom3D): RoomGeometryFields | null {
       && Array.isArray(dd.normalCorners) && dd.normalCorners.length > 0) {
     return dd;
   }
+  // Комната из приложения: в КП лежат стены и углы поворота, normalCorners там нет. Вершины
+  // getVertices строит по углам; normalCorners — как их шлёт само приложение (угол > 0).
+  if (fromAngles && Array.isArray(room.walls) && room.walls.length >= 3
+      && Array.isArray(room.angles) && room.angles.length === room.walls.length
+      && room.walls.every((w) => typeof w === "number" && Number.isFinite(w) && w > 0)
+      && room.angles.every((a) => typeof a === "number" && Number.isFinite(a))) {
+    return { ...room, normalCorners: room.angles.map((a) => a > 0) };
+  }
   return null;
+}
+
+/**
+ * Контур замыкается? У комнат с косыми стенами приложение достраивает форму по диагоналям, а
+ * сайт этого не умеет: по одним стенам и углам такая комната вышла бы перекошенной — клиенту
+ * её не показываем.
+ */
+export function contourCloses(walls: number[], angles: number[]): boolean {
+  const v = getVertices(walls, angles.map((a) => a > 0), angles);
+  const last = v[v.length - 1];
+  if (!last || !Number.isFinite(last.x) || !Number.isFinite(last.y)) return false;
+  const perimeter = walls.reduce((s, w) => s + w, 0);
+  return Math.hypot(last.x - v[0].x, last.y - v[0].y) <= Math.max(CLOSE_TOLERANCE_CM, perimeter * CLOSE_TOLERANCE_SHARE);
 }
 
 /** Record<string, string> из JSON → Record<number, string> только с целыми индексами стен. */
@@ -86,9 +118,13 @@ function pickWallProfiles(raw: unknown, wallCount: number): Record<number, strin
   return n > 0 ? out : undefined;
 }
 
-export function mapRoomToScene3DProps(room: SavedRoom3D | null | undefined): Scene3DInputs | null {
+export function mapRoomToScene3DProps(
+  room: SavedRoom3D | null | undefined,
+  /** fromAngles — принять комнату приложения (стены + углы, без normalCorners). Только для КП. */
+  opts?: { fromAngles?: boolean },
+): Scene3DInputs | null {
   if (!room) return null;
-  const geom = pickGeometry(room);
+  const geom = pickGeometry(room, opts?.fromAngles === true);
   if (!geom?.walls?.length || !geom.normalCorners?.length) return null;
 
   const angles = Array.isArray(geom.angles) ? geom.angles : undefined;
@@ -129,4 +165,73 @@ export function pickRoomForScene3D(rooms: unknown): SavedRoom3D | null {
     if (mapRoomToScene3DProps(r as SavedRoom3D)) return r as SavedRoom3D;
   }
   return null;
+}
+
+/**
+ * Комната КП для публичного 3D (/kp/<id>/3d и кнопка «3D» на странице КП).
+ *  - как раньше: первая комната с normalCorners (КП с сайта) — у любого КП;
+ *  - новое: КП, созданное не раньше KP_3D_FROM_ANGLES_SINCE, — первая комната приложения
+ *    (стены + углы) с замкнутым контуром. Многокомнатные — первая годная комната.
+ * fromAngles нужно передать дальше в mapRoomToScene3DProps.
+ */
+export function pickKpRoomForScene3D(
+  rooms: unknown,
+  createdAt: Date | string | null | undefined,
+  since: Date = KP_3D_FROM_ANGLES_SINCE,
+): { room: SavedRoom3D; fromAngles: boolean } | null {
+  const legacy = pickRoomForScene3D(rooms);
+  if (legacy) return { room: legacy, fromAngles: false };
+  if (!Array.isArray(rooms) || !createdAt) return null;
+  const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (!(created.getTime() >= since.getTime())) return null;
+  for (const r of rooms as SavedRoom3D[]) {
+    if (!mapRoomToScene3DProps(r, { fromAngles: true })) continue;
+    if (!contourCloses(r.walls as number[], r.angles as number[])) continue;
+    return { room: r, fromAngles: true };
+  }
+  return null;
+}
+
+/**
+ * Комната объекта для комнаты КП: по id (комната приложения помнит serverId), затем по
+ * единственному совпадению имени, затем по номеру — только если списки одной длины (иначе по
+ * номеру взялись бы данные чужой комнаты). Не нашли — undefined.
+ */
+export function matchObjectRoom<M extends { id?: string | null; name?: string | null }>(
+  room: { serverId?: unknown; name?: unknown },
+  index: number,
+  roomsCount: number,
+  objectRooms: M[],
+): M | undefined {
+  if (typeof room.serverId === "string" && room.serverId) {
+    const byId = objectRooms.find((r) => r.id === room.serverId);
+    if (byId) return byId;
+  }
+  const name = typeof room.name === "string" ? room.name.trim() : "";
+  const byName = name ? objectRooms.filter((r) => (r.name ?? "").trim() === name) : [];
+  if (byName.length === 1) return byName[0];
+  return objectRooms.length === roomsCount && index >= 0 ? objectRooms[index] : undefined;
+}
+
+/**
+ * Комната КП с данными для сцены. Источники по порядку: снимок КП → wallProfileData (КП с
+ * сайта) → комната объекта. Комната приложения несёт свои профили прямо в КП — это вариант,
+ * который видел клиент; раньше они затирались профилями объекта. «Фасад шкафа» в КП обычно
+ * нет — берётся из комнаты объекта.
+ */
+export function kpRoomWithObjectData(
+  room: SavedRoom3D,
+  objectRoom?: { wallProfiles?: unknown; withInsert?: boolean | null; insertColor?: string | null; wallFurniture?: unknown } | null,
+): SavedRoom3D {
+  const own = room.wallProfiles && typeof room.wallProfiles === "object" && Object.keys(room.wallProfiles).length > 0
+    ? room.wallProfiles
+    : undefined;
+  const ownFurniture = Array.isArray(room.wallFurniture) && room.wallFurniture.length > 0 ? room.wallFurniture : undefined;
+  return {
+    ...room,
+    wallProfiles: own ?? room.wallProfileData?.wallProfiles ?? (objectRoom?.wallProfiles as Record<string, string> | null | undefined) ?? undefined,
+    withInsert: typeof room.withInsert === "boolean" ? room.withInsert : objectRoom?.withInsert,
+    insertColor: room.insertColor ?? objectRoom?.insertColor,
+    wallFurniture: ownFurniture ?? objectRoom?.wallFurniture ?? undefined,
+  };
 }

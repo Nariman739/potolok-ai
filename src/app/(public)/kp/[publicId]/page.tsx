@@ -15,7 +15,7 @@ import { ConfirmSection } from "./confirm-section";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { after } from "next/server";
 import { sendPushToMaster } from "@/lib/push";
-import { pickRoomForScene3D } from "@/lib/room-3d";
+import { pickKpRoomForScene3D } from "@/lib/room-3d";
 import { stripInternalPrices } from "@/lib/public-calc";
 import { whatsappNumber } from "@/lib/phone-format";
 
@@ -222,7 +222,8 @@ export default async function PublicKpPage({
   // 3D-просмотр доступен если в roomsData есть комната с walls/normalCorners
   // Кратко: 3D не предлагаем — страница 3D отдаёт клиенту точные длины стен из
   // roomsData, по ним конкурент посчитает без замера.
-  const has3DRoom = priceView !== "summary" && !!pickRoomForScene3D(estimate.roomsData);
+  // КП из приложения (стены + углы) — только созданные после выката 3D по КП (room-3d.ts).
+  const has3DRoom = priceView !== "summary" && !!pickKpRoomForScene3D(estimate.roomsData, estimate.createdAt);
   const previewUrl = estimate.room3dPreviewUrl;
 
   const isExpired =
