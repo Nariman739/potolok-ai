@@ -1,0 +1,66 @@
+/**
+ * Настоящие контакты поддержки и факты о продукте для подсказок ИИ (13.11.2026).
+ *
+ * Зачем: мастер Ирина спросила ассистента, как связаться с поддержкой, и он
+ * выдумал всё — бота «@potolok_ai_bot», WhatsApp «+7 775 112 0003», кнопку
+ * «Поддержка» в профиле, почту support@potolok.ai. Telegram-бот на тот же
+ * вопрос придумал кнопку «Написать нам» и дал группу @potolok_ai. Другому
+ * мастеру ассистент сказал, что рулеток в приложении нет.
+ *
+ * Здесь — только то, что реально есть в коде:
+ *  - WhatsApp поддержки: приложение, src/constants/support.ts (DEFAULT_SUPPORT),
+ *    кнопка «Не получается — написать нам» на экране «Забыли пароль?»;
+ *    тот же номер — у владельца на /contacts и в potolok.ai/go.
+ *  - Бот @potolokaiBot: /contacts, профиль, onboarding-пуши.
+ *  - Рулетки: приложение, src/lib/ble/constants.ts (Xiaomi, SNDWAY) и экран
+ *    «Настройка рулетки» (src/lib/i18n/ru/misc.ts).
+ * Почты в справке нет намеренно: support@potolok.ai — лишь значение по
+ * умолчанию в owner.ts, ящик не подтверждён.
+ *
+ * Меняешь номер или путь в приложении — меняй здесь, подсказки ассистента
+ * и бота подхватят сами.
+ */
+
+export const SUPPORT_WHATSAPP_DIGITS = "77758899739";
+export const SUPPORT_WHATSAPP_DISPLAY = "+7 775 889 97 39";
+export const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_DIGITS}`;
+export const SUPPORT_TELEGRAM_BOT = "@potolokaiBot";
+export const SUPPORT_TELEGRAM_BOT_URL = "https://t.me/potolokaiBot";
+export const SUPPORT_CONTACTS_PAGE_URL = "https://potolok.ai/contacts";
+
+/** Короткий готовый ответ «как связаться с поддержкой» — для быстрых ответов без модели. */
+export const SUPPORT_SHORT_ANSWER =
+  `Поддержка potolok.ai — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}).` +
+  `\n\nTelegram-бот: ${SUPPORT_TELEGRAM_BOT}. Контакты на сайте: ${SUPPORT_CONTACTS_PAGE_URL}`;
+
+export const SUPPORT_SHORT_ANSWER_KK =
+  `potolok.ai қолдауы — WhatsApp ${SUPPORT_WHATSAPP_DISPLAY} (${SUPPORT_WHATSAPP_URL}).` +
+  `\n\nTelegram-бот: ${SUPPORT_TELEGRAM_BOT}. Сайттағы байланыстар: ${SUPPORT_CONTACTS_PAGE_URL}`;
+
+/** Справка для системной подсказки: контакты + запрет выдумывать. */
+export const SUPPORT_CONTACTS_PROMPT = `## ПОДДЕРЖКА И КОНТАКТЫ (единственный источник — копируй дословно)
+
+Как связаться с поддержкой / разработчиком potolok.ai:
+- WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY} — ${SUPPORT_WHATSAPP_URL} — поддержка potolok.ai
+- Telegram-бот: ${SUPPORT_TELEGRAM_BOT} — ${SUPPORT_TELEGRAM_BOT_URL} (уведомления, календарь, коды для сброса пароля)
+- В приложении ссылка на поддержку есть только на экране «Забыли пароль?» (со страницы входа) — кнопка «Не получается — написать нам», она открывает WhatsApp поддержки.
+- Контакты и реквизиты на сайте: ${SUPPORT_CONTACTS_PAGE_URL}
+
+Правила про контакты:
+- Телефоны, WhatsApp, Telegram-ники, ботов, группы, почту и сайты называй ТОЛЬКО из списка выше, символ в символ. Никогда не придумывай и не «достраивай» контакт.
+- Почту поддержки не называй — её в списке нет.
+- Сроки ответа поддержки не обещай и не называй.
+- Кнопок «Поддержка», «Техподдержка», «Написать нам», «Связаться с нами» в профиле и в меню приложения НЕТ — не отправляй мастера туда.
+- Telegram @potolok_ai и группа мастеров в WhatsApp — общие чаты мастеров, а не поддержка. Как контакт поддержки их не давай.
+- Не знаешь ответа, не уверен, что кнопка или экран существуют, — так и скажи и дай WhatsApp поддержки из списка.`;
+
+/** Факты о Bluetooth-рулетках — чтобы ассистент не говорил «рулеток нет». */
+export const RANGEFINDER_FACTS_PROMPT = `## BLUETOOTH-РУЛЕТКИ (лазерные дальномеры)
+
+Приложение работает с Bluetooth-рулетками: замер стены сразу попадает в поле.
+- Поддерживаются: Xiaomi (Mi Smart Laser Measure) и SNDWAY (например, SW-DS50).
+- Другие марки, в том числе Bosch, пока НЕ подключаются — так прямо и скажи.
+- Где настроить: Профиль → «Настройка рулетки».
+- SNDWAY: кнопка «У меня рулетка SNDWAY» — без кода и QR. Включи Bluetooth на рулетке, на замере нажми значок рулетки — дальше каждое нажатие READ попадает в поле.
+- Xiaomi: «Сканировать QR с коробки» (QR на коробке рулетки от Potolok.ai) или ввести token вручную со стикера на рулетке. Потом на замере нажми значок рулетки. Нет ни QR, ни стикера — дай WhatsApp поддержки.
+- Не подключается или модели нет в списке — честно скажи и дай WhatsApp поддержки.`;
