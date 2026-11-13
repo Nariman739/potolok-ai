@@ -7,7 +7,7 @@
 # данные (сайт src/lib ↔ приложение src/lib/shared)
 src/lib/canvas-pricing.ts                     src/lib/shared/canvas-pricing.ts        nohdr
 src/lib/wall-furniture.ts                     src/lib/shared/wall-furniture.ts
-src/lib/room-remap.ts                        src/lib/shared/room-remap.ts
+src/lib/room-remap.ts                         src/lib/shared/room-remap.ts            optional
 src/lib/furniture-ceiling.ts                  src/lib/shared/furniture-ceiling.ts
 src/lib/spot-types.ts                         src/lib/shared/spot-types.ts
 src/lib/shared/level2-geometry.ts             src/lib/shared/level2-geometry.ts

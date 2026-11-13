@@ -6,8 +6,7 @@ import { isEstimateLocked, estimateLockMessage } from "@/lib/estimate-lock";
 import { getScope, inScope, currencyFor } from "@/lib/company";
 import { calculate } from "@/lib/calculate";
 import { buildRoomInputFromDesigner } from "@/lib/room-input-builder";
-import { getVertices } from "@/lib/room-geometry";
-import { mapByGeometry, remapRoomIndexed } from "@/lib/room-remap";
+import { mapByHeadings, remapRoomIndexed } from "@/lib/room-remap";
 import type { CalculationResult, RoomInput, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData, discountInputFromState, persistPartner, partnerRoomBases } from "@/lib/kp-adjust-server";
 import { scaleCalc, sumCalc, computeDiscount, computePartner } from "@/lib/kp-adjust";
@@ -127,20 +126,24 @@ export async function POST(
     // Профили по стенам (подшторник, парящий, теневой — деньги в КП) привязаны к
     // НОМЕРАМ стен. Раньше builder держал их только при том же числе стен — по
     // индексам: удалил выступ → все профили молча пропадали, поправил контур при
-    // том же числе стен → профиль мог сесть на чужую стену. Теперь стена «та же»
-    // по геометрии (оба конца совпали, либо та же прямая с общим концом — укороченная/
-    // удлинённая наследует, метраж пересчитается по новой длине), как в приложении
-    // (файл-близнец room-remap.ts, Б5 13.11.2026). Снятое — в ответ клиенту.
+    // Правило (Б5 13.11.2026 + ревью 8d №43): здесь правят ДЛИНЫ в веб-конструкторе —
+    // число стен не изменилось → профили остаются на своих номерах (identity; метраж
+    // пересчитается по новой длине). Число стен изменилось (убрали/добавили выступ) →
+    // стены сопоставляются по направлению (накопленные углы) с сохранением порядка,
+    // НЕ по координатам: правка одной длины сдвигает все вершины после неё, и
+    // координатное сравнение снимало бы профили соседних стен (400×300 → 401×300).
+    // Файл-близнец room-remap.ts (mapByHeadings). Снятое — в ответ клиенту.
     let existingForBuild: RoomInput = { ...existingRoom, name: newName };
     let remap: { kept: number; droppedWalls: number[] } | null = null;
     const wpd = existingRoom.wallProfileData;
     if (wpd && Object.keys(wpd.wallProfiles ?? {}).length > 0 && !geometryUnchanged) {
       const oldWalls = savedDrawing.walls ?? wpd.walls;
-      const oldNC = savedDrawing.normalCorners?.length === oldWalls.length ? savedDrawing.normalCorners : oldWalls.map(() => true);
-      const oldAngles = savedDrawing.angles?.length === oldWalls.length ? savedDrawing.angles : undefined;
-      const oldPoly = getVertices(oldWalls, oldNC, oldAngles).slice(0, oldWalls.length);
-      const newPoly = getVertices(body.designer.walls, body.designer.normalCorners, body.designer.angles).slice(0, body.designer.walls.length);
-      const map = mapByGeometry(oldPoly, newPoly);
+      const newWalls = body.designer.walls;
+      const turnsOf = (walls: number[], nc: boolean[] | undefined, angles: number[] | undefined) =>
+        angles?.length === walls.length ? angles : walls.map((_, i) => (nc?.length === walls.length ? nc[i] : true) ? 90 : -90);
+      const map = oldWalls.length === newWalls.length
+        ? { walls: oldWalls.map((_, i) => i), corners: oldWalls.map((_, i) => i) }
+        : mapByHeadings(oldWalls, turnsOf(oldWalls, savedDrawing.normalCorners, savedDrawing.angles), newWalls, turnsOf(newWalls, body.designer.normalCorners, body.designer.angles));
       const { patch, dropped } = remapRoomIndexed({ wallProfiles: wpd.wallProfiles }, map, { dropMeasureDiagonals: false });
       const wallProfiles = Object.fromEntries(Object.entries(patch.wallProfiles ?? {}).map(([k, v]) => [String(k), v as string]));
       existingForBuild = { ...existingForBuild, wallProfileData: { ...wpd, walls: body.designer.walls, wallProfiles } };

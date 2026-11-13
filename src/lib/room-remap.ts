@@ -97,6 +97,61 @@ export function mapByIndex(oldWalls: number[], newWalls: number[], opts?: { kept
   };
 }
 
+/**
+ * Сопоставление по НАПРАВЛЕНИЯМ стен (сайт, «Изменить стены» в веб-конструкторе,
+ * ревью 8d 13.11.2026): там правят длины, и координаты всех вершин после правленной
+ * стены сдвигаются — mapByGeometry снимала бы профиль соседней стены при 400×300 →
+ * 401×300. Поэтому: число стен не изменилось → identity (решает вызывающий); число
+ * изменилось (удалили/добавили выступ) → выравнивание последовательностей стен по
+ * абсолютному направлению (накопленные повороты) с порядком, как diff/LCS: стена
+ * «та же», если направление совпало и порядок сохранён; при выборе из нескольких
+ * кандидатов предпочитаем ближайшую по длине (убрали выступ → правая стена 300 берёт
+ * старую правую 300, а не стенку выступа 50 того же направления; верхняя стена, собранная
+ * из частей, наследует самую длинную часть), при равенстве — более раннюю стену.
+ * Углы — начало сопоставленной стены (та же вершина, пока стену не удлинили с начала).
+ * turns — поворот ПОСЛЕ каждой стены в градусах (угол комнаты: 90 / −90 / свой).
+ * Нумерация стен в обеих версиях должна начинаться с одной и той же стены (так в
+ * веб-конструкторе); иначе направления сдвинуты и пар не будет — всё снято с предупреждением.
+ */
+export function mapByHeadings(
+  oldWalls: number[], oldTurns: number[], newWalls: number[], newTurns: number[],
+  opts?: { tolDeg?: number },
+): WallMap {
+  const tolDeg = opts?.tolDeg ?? 1;
+  // Очки пары: направление совпало → 2000 + близость длин (0…1000; та же длина = 3000).
+  // Целые — чтобы равные пути давали ровно равные суммы при обратном ходе.
+  const pairScore = (i: number, k: number) => {
+    const a = oldWalls[i], b = newWalls[k];
+    return 2000 + Math.round(1000 * (1 - Math.abs(a - b) / Math.max(a, b, 1)));
+  };
+  const headings = (walls: number[], turns: number[]) => {
+    const h: number[] = []; let a = 0;
+    for (let i = 0; i < walls.length; i++) { h.push(((a % 360) + 360) % 360); a += turns[i] ?? 90; }
+    return h;
+  };
+  const ho = headings(oldWalls, oldTurns), hn = headings(newWalls, newTurns);
+  const m = oldWalls.length, n = newWalls.length;
+  const sameDir = (a: number, b: number) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d) <= tolDeg; };
+  // DP: score[i][k] — лучшее выравнивание old[0..i) и new[0..k).
+  const score: number[][] = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let k = 1; k <= n; k++) {
+      const match = sameDir(ho[i - 1], hn[k - 1]) ? pairScore(i - 1, k - 1) : 0;
+      score[i][k] = Math.max(score[i - 1][k], score[i][k - 1], match ? score[i - 1][k - 1] + match : 0);
+    }
+  }
+  const walls: (number | null)[] = new Array(n).fill(null);
+  let i = m, k = n;
+  // Обратный ход с конца: пока пропуск не теряет очков — пропускаем (так пара
+  // достаётся САМОЙ РАННЕЙ из равнозначных стен), пару берём только когда без неё хуже.
+  while (i > 0 && k > 0) {
+    if (score[i - 1][k] === score[i][k]) i--;
+    else if (score[i][k - 1] === score[i][k]) k--;
+    else { walls[k - 1] = i - 1; i--; k--; }
+  }
+  return { walls, corners: [...walls] };
+}
+
 /** Минимум полей комнаты, которые индексированы по стенам/углам (SavedRoom в приложении, MeasurementRoom на сайте). */
 export interface IndexedRoomFields<P = unknown, F extends { wall: number } = { wall: number }, C extends { corner: number } = { corner: number }, E extends { wallIndex?: number } = { wallIndex?: number }> {
   wallProfiles?: Record<number, P>;
