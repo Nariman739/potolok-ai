@@ -65,7 +65,9 @@ export default async function PricingPage() {
     getBillingStatus(master.id),
     prisma.pendingPayment.findMany({
       // Тестовые заявки песочницы мастеру не показываем — иначе «Отклонена» в истории
-      where: { masterId: master.id, NOT: { comment: VTB_TEST_COMMENT } },
+      // NOT по nullable-полю в SQL отбрасывает и строки с NULL (ручные Kaspi-заявки без
+      // комментария) — поэтому явное «comment пуст ИЛИ не тестовый» (13.11.2026, ревью 8d).
+      where: { masterId: master.id, OR: [{ comment: null }, { comment: { not: VTB_TEST_COMMENT } }] },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: { id: true, amount: true, currency: true, status: true, createdAt: true, activatedDays: true, comment: true },
