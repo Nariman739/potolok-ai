@@ -3,6 +3,7 @@ import { Link, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfData } from "../pdf-data";
 import { makeStyles, PageFooter } from "./shared";
 import { SectionHeader } from "./SectionHeader";
+import { whatsappDigits } from "@/lib/phone-format";
 
 // СТРАНИЦА — Финал. CTA, контакты, реквизиты, футер.
 // QR на онлайн-версию убран (Нариман 14.09.2026) — клиент получает PDF в WhatsApp.
@@ -23,7 +24,7 @@ export function ContactsPage({
   const { theme, fonts, master } = data;
   const styles = makeStyles(theme, fonts);
 
-  const waPhone = master.whatsappPhone.replace(/\D/g, "");
+  const waPhone = whatsappDigits(master.whatsappPhone) ?? master.whatsappPhone.replace(/\D/g, "");
   const waUrl = `https://wa.me/${waPhone}`;
 
   return (

@@ -20,6 +20,7 @@ import {
   type PaymentStage,
 } from "./contract-terms-dialog";
 import { Pencil } from "lucide-react";
+import { whatsappDigits } from "@/lib/phone-format";
 
 type Props = {
   estimateId: string;
@@ -102,7 +103,7 @@ export function ContractSection({
     const url = getContractUrl();
     if (!url) return;
     const text = `Здравствуйте! Договор на работы по натяжному потолку: ${url}\n\nОткройте по ссылке и подтвердите согласие.`;
-    const phone = clientPhone?.replace(/\D/g, "");
+    const phone = whatsappDigits(clientPhone);
     const wa = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
