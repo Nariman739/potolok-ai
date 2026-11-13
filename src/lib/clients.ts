@@ -167,6 +167,48 @@ export async function getOrCreateClient(input: GetOrCreateClientInput) {
   return created;
 }
 
+const normName = (v?: string | null) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * Клиент «этого же объекта» для запроса с одним именем, без телефона (13.11.2026).
+ *
+ * Приложение при «Создать КП» шлёт подряд POST /estimates и PATCH замера, оба только
+ * с именем. По одному имени getOrCreateClient не склеивает, и на одно сохранение
+ * заводилось два клиента: у одного КП, у другого объект (12 пар у 6 мастеров с 01.11).
+ * Здесь связь не угадывается, а берётся из самого объекта: его клиент или клиент его КП,
+ * если имя то же. Две разные «Айгуль» на разных объектах по-прежнему не склеиваются.
+ *
+ * С телефоном не применяется — там дубль находит getOrCreateClient по номеру.
+ * `scopeWhere` — inScope(scope): объект должен быть виден вызывающему.
+ */
+export async function findObjectClientByName(input: {
+  objectId: string;
+  scopeWhere: Prisma.MeasurementObjectWhereInput;
+  name: string | null | undefined;
+  phone?: string | null;
+}): Promise<string | null> {
+  const wanted = normName(input.name);
+  if (!wanted || normalizePhone(input.phone)) return null;
+  const client = { select: { id: true, name: true, deletedAt: true } } as const;
+  const obj = await prisma.measurementObject.findFirst({
+    where: { id: input.objectId, ...input.scopeWhere, deletedAt: null },
+    select: {
+      client,
+      estimates: {
+        where: { deletedAt: null, clientId: { not: null } },
+        orderBy: { createdAt: "asc" },
+        select: { client },
+      },
+    },
+  });
+  if (!obj) return null;
+  // Сначала клиент самого объекта, потом клиенты его КП — от старого к новому.
+  for (const c of [obj.client, ...obj.estimates.map((e) => e.client)]) {
+    if (c && !c.deletedAt && normName(c.name) === wanted) return c.id;
+  }
+  return null;
+}
+
 export type AddEventInput = {
   clientId: string;
   type: EventType;

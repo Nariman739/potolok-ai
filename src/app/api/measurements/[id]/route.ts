@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScope, inScope } from "@/lib/company";
-import { getOrCreateClient } from "@/lib/clients";
+import { getOrCreateClient, findObjectClientByName } from "@/lib/clients";
 import { isActiveMine, activeByFor } from "@/lib/measurement-active";
 import { normalizeWallFurniture } from "@/lib/wall-furniture";
 import { Prisma } from "@/generated/prisma/client";
@@ -75,15 +75,32 @@ export async function PATCH(
       });
       safeClientId = exists?.id ?? null;
     } else if (clientName || clientPhone) {
-      const auto = await getOrCreateClient({
-        masterId: master.id,
-        companyId: scope.companyId,
-        masterIds: scope.masterIds,
-        name: clientName || null,
-        phone: clientPhone || null,
-        address: address || null,
+      // Имя без телефона: сначала клиент этого же объекта или его КП (13.11.2026) —
+      // приложение после «Создать КП» дописывает объекту имя вторым запросом, и без
+      // этого на одно сохранение заводился второй клиент с тем же именем.
+      const sameObject = await findObjectClientByName({
+        objectId: id,
+        scopeWhere: inScope(scope),
+        name: clientName,
+        phone: clientPhone,
       });
-      safeClientId = auto?.id ?? undefined;
+      if (sameObject) {
+        safeClientId = sameObject;
+      } else {
+        // Адреса нет — приложение подставляет в address имя клиента (название объекта
+        // в ленте). Адресом клиента оно от этого не становится.
+        const clientAddress =
+          address && address.trim().toLowerCase() !== (clientName ?? "").trim().toLowerCase() ? address : null;
+        const auto = await getOrCreateClient({
+          masterId: master.id,
+          companyId: scope.companyId,
+          masterIds: scope.masterIds,
+          name: clientName || null,
+          phone: clientPhone || null,
+          address: clientAddress,
+        });
+        safeClientId = auto?.id ?? undefined;
+      }
     }
 
     // Проверяем что объект принадлежит мастеру

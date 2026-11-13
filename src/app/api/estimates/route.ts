@@ -6,7 +6,7 @@ import { readAdjustInputs, resolveAdjust, persistPartner, estimateAdjustData } f
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import type { CalculationResult } from "@/lib/types";
 import { KP_LIMITS, defaultPriceFor } from "@/lib/constants";
-import { getOrCreateClient, addClientEvent } from "@/lib/clients";
+import { getOrCreateClient, addClientEvent, findObjectClientByName } from "@/lib/clients";
 import { withIdempotency } from "@/lib/idempotency";
 import { priceBookCompanyId } from "@/lib/price-items";
 import { formatMoney } from "@/lib/currency";
@@ -200,6 +200,19 @@ async function createEstimate(request: Request): Promise<NextResponse> {
       });
       linkedClientId = existing?.id ?? null;
     }
+    // Имя без телефона, а у объекта, из которого считают КП, уже есть клиент с этим
+    // именем (или он у его прежних КП) — это он же, второго не заводим (13.11.2026).
+    if (!linkedClientId && clientName && typeof fromMeasurementId === "string" && fromMeasurementId) {
+      linkedClientId = await findObjectClientByName({
+        objectId: fromMeasurementId,
+        scopeWhere: inScope(scope),
+        name: clientName,
+        phone: clientPhone,
+      }).catch((e) => {
+        console.warn("find object client failed:", e);
+        return null;
+      });
+    }
     if (!linkedClientId && (clientName || clientPhone)) {
       const auto = await getOrCreateClient({
         masterId: master.id,
@@ -223,6 +236,14 @@ async function createEstimate(request: Request): Promise<NextResponse> {
           select: { id: true },
         });
         linkedMeasurementId = m?.id ?? null;
+        // Объект ещё без клиента (черновик автосохранения) — отдаём ему клиента КП сразу:
+        // КП и объект одного сохранения живут в одной карточке, даже если приложение
+        // не дошлёт свой PATCH замера. Чужого клиента не перезаписываем (clientId: null).
+        if (linkedMeasurementId && linkedClientId) {
+          await prisma.measurementObject
+            .updateMany({ where: { id: linkedMeasurementId, clientId: null }, data: { clientId: linkedClientId } })
+            .catch((e) => console.warn("link measurement to client failed:", e));
+        }
       }
 
       // Мастер мог посчитать КП прямо из свежего замера, не нажимая «Сохранить»
