@@ -55,6 +55,12 @@ export async function GET(
     // Этот PDF рисует типовой текст и о своём шаблоне не знает. Кнопка кабинета
     // (?web=1) в таком случае открывает страницу договора с печатью.
     if (new URL(request.url).searchParams.get("web")) {
+      // Подписанный договор — всегда печатная версия его страницы: она показывает текст,
+      // замороженный при подписании. PDF ниже собирается из ТЕКУЩИХ реквизитов мастера, и после
+      // правки профиля это был бы уже не тот текст, под которым стоит подпись клиента.
+      if (estimate.contractSignedAt && estimate.contractPublicId) {
+        return NextResponse.redirect(new URL(`/contract/${estimate.contractPublicId}?print=1`, request.url));
+      }
       const lang = asLang(master.language);
       const snap = estimate.contractTextSnapshot as { templateVersion?: Record<string, number | null> } | null;
       const ownTemplate = estimate.contractSignedAt

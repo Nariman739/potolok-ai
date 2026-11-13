@@ -29,8 +29,8 @@ function collectPdf(doc: PDFKit.PDFDocument): Promise<Buffer> {
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const masterAuth = await requireAuth();
@@ -47,6 +47,12 @@ export async function GET(
     if (!estimate) return NextResponse.json({ error: "Расчёт не найден" }, { status: 404 });
     if (estimate.status !== "CONFIRMED") {
       return NextResponse.json({ error: "Акт доступен только для подтверждённых КП" }, { status: 400 });
+    }
+
+    // Кнопка кабинета (?web=1): у подписанного акта со снимком текста — печатная версия его
+    // страницы (текст, под которым стоит подпись), а не PDF из текущих реквизитов мастера.
+    if (new URL(request.url).searchParams.get("web") && estimate.actSignedAt && estimate.actTextSnapshot && estimate.actPublicId) {
+      return NextResponse.redirect(new URL(`/act/${estimate.actPublicId}?print=1`, request.url));
     }
 
     const calc = estimate.calculationData as unknown as CalculationResult;

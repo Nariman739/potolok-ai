@@ -280,7 +280,7 @@ export function EstimateActions({
         </Button>
         {showAct && (
           <Button variant="outline" size="sm" asChild>
-            <a href={`/api/estimates/${estimateId}/act`}>
+            <a href={`/api/estimates/${estimateId}/act?web=1`}>
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Акт
             </a>
@@ -400,7 +400,7 @@ export function EstimateActions({
             </DropdownMenuItem>
             {showAct && (
               <DropdownMenuItem asChild>
-                <a href={`/api/estimates/${estimateId}/act`}>
+                <a href={`/api/estimates/${estimateId}/act?web=1`}>
                   <ClipboardCheck />
                   Акт
                 </a>

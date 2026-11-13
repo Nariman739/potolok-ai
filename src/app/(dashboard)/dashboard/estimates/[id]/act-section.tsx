@@ -290,7 +290,7 @@ export function ActSection({
           {!actReplaced && (
             <Button variant="outline" size="sm" asChild>
               <a
-                href={`/api/estimates/${estimateId}/act`}
+                href={`/api/estimates/${estimateId}/act?web=1`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
