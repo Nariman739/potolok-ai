@@ -402,6 +402,9 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef, catalog }: It
       unit: line.unit,
       unitPrice: line.unitPrice,
       installerRate: line.installerRate,
+      // Строка становится каталожной: чужой variantId сделал бы её «своим вариантом»
+      // и смешал ключ kp-manual (код + вариант). В JSON undefined не попадает.
+      variantId: undefined,
     });
     setShowSwap(false);
   }
