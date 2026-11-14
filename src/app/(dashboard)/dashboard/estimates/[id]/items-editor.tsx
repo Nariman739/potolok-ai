@@ -10,8 +10,43 @@ import { Pencil, Plus, Trash2, Check, X, Replace, Pen } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrency } from "@/components/currency-provider";
 import { unitLabel } from "@/lib/currency";
-import { PRODUCT_ITEMS, PRODUCT_BY_CODE } from "@/lib/constants";
+import { PRODUCT_ITEMS } from "@/lib/constants";
 import type { LineItem, RoomResult } from "@/lib/types";
+
+/** Позиция каталога для «Добавить позицию» и «Сменить тип» — из прайса мастера. */
+export type CatalogPick = {
+  code: string;
+  /** Имя строки прайса мастера — так же строку называет приложение. */
+  name: string;
+  unit: string;
+  category: string;
+  /** Цена мастера в его валюте (нет строки в прайсе — дефолт каталога в этой валюте). */
+  price: number;
+  installerPrice: number | null;
+};
+
+/** Без прайса (старый вызов) — дефолты каталога, как было. */
+const DEFAULT_PICKS: CatalogPick[] = PRODUCT_ITEMS.filter(
+  (p) => p.category !== "install" && p.category !== "special"
+).map((p) => ({ code: p.code, name: p.name, unit: p.unit, category: p.category, price: p.defaultPrice, installerPrice: null }));
+
+/**
+ * Строка КП из позиции каталога. На КП с посредником позиция входит с той же наценкой,
+ * что и остальные — иначе одна строка будет «голой» (ручную правку цены в строке не
+ * трогаем: мастер видит уже наценённую). Ставка монтажа — из прайса, если задана.
+ */
+function lineFromPick(pick: CatalogPick, partnerCoef: number): LineItem {
+  const unitPrice = partnerCoef === 1 ? pick.price : Math.round((pick.price * partnerCoef) / 10) * 10;
+  return {
+    itemCode: pick.code,
+    itemName: pick.name,
+    quantity: 1,
+    unit: pick.unit,
+    unitPrice,
+    total: unitPrice,
+    ...(pick.installerPrice != null && { installerRate: pick.installerPrice }),
+  };
+}
 
 interface ItemsEditorProps {
   estimateId: string;
@@ -19,6 +54,8 @@ interface ItemsEditorProps {
   initialExtraItems: LineItem[];
   /** Коэффициент посредника: цены в КП уже умножены на него (1 = посредника нет) */
   partnerCoef?: number;
+  /** Каталог из прайса мастера (скрытые уже убраны). */
+  catalog?: CatalogPick[];
 }
 
 export function ItemsEditor({
@@ -26,12 +63,8 @@ export function ItemsEditor({
   initialRoomResults,
   initialExtraItems,
   partnerCoef = 1,
+  catalog = DEFAULT_PICKS,
 }: ItemsEditorProps) {
-  // Позиция из прайса на КП с посредником должна войти с той же наценкой,
-  // что и остальные — иначе одна строка будет «голой». Ручной ввод цены
-  // не трогаем: мастер видит и правит уже наценённую цену.
-  const withCoef = (price: number) =>
-    partnerCoef === 1 ? price : Math.round((price * partnerCoef) / 10) * 10;
   const router = useRouter();
   const { format: formatPrice } = useCurrency(); // валюта мастера (07.10.2026)
   const [editing, setEditing] = useState(false);
@@ -93,31 +126,10 @@ export function ItemsEditor({
     );
   }
 
-  function addItemToRoom(
-    roomIdx: number,
-    code: string,
-    name: string,
-    unit: string,
-    price: number
-  ) {
+  function addItemToRoom(roomIdx: number, line: LineItem) {
     setRooms((prev) =>
       prev.map((rr, i) =>
-        i !== roomIdx
-          ? rr
-          : {
-              ...rr,
-              items: [
-                ...rr.items,
-                {
-                  itemCode: code,
-                  itemName: name,
-                  quantity: 1,
-                  unit,
-                  unitPrice: withCoef(price),
-                  total: withCoef(price),
-                },
-              ],
-            }
+        i !== roomIdx ? rr : { ...rr, items: [...rr.items, line] }
       )
     );
     setAdderRoomId(null);
@@ -133,23 +145,8 @@ export function ItemsEditor({
     setExtras((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function addExtra(
-    code: string,
-    name: string,
-    unit: string,
-    price: number
-  ) {
-    setExtras((prev) => [
-      ...prev,
-      {
-        itemCode: code,
-        itemName: name,
-        quantity: 1,
-        unit,
-        unitPrice: withCoef(price),
-        total: withCoef(price),
-      },
-    ]);
+  function addExtra(line: LineItem) {
+    setExtras((prev) => [...prev, line]);
     setAdderTarget(null);
   }
 
@@ -261,6 +258,7 @@ export function ItemsEditor({
               {rr.items.map((item, itemIdx) => (
                 <ItemRow
                   partnerCoef={partnerCoef}
+                  catalog={catalog}
                   key={itemIdx}
                   item={item}
                   editing={editing}
@@ -270,9 +268,9 @@ export function ItemsEditor({
               ))}
               {editing && adderRoomId === (rr.roomId ?? String(roomIdx)) ? (
                 <ItemAdder
-                  onAdd={(code, name, unit, price) =>
-                    addItemToRoom(roomIdx, code, name, unit, price)
-                  }
+                  catalog={catalog}
+                  partnerCoef={partnerCoef}
+                  onAdd={(line) => addItemToRoom(roomIdx, line)}
                   onCancel={() => setAdderRoomId(null)}
                 />
               ) : editing ? (
@@ -303,6 +301,7 @@ export function ItemsEditor({
               {totals.extras.map((item, idx) => (
                 <ItemRow
                   partnerCoef={partnerCoef}
+                  catalog={catalog}
                   key={idx}
                   item={item}
                   editing={editing}
@@ -312,6 +311,8 @@ export function ItemsEditor({
               ))}
               {editing && adderTarget === "extras" ? (
                 <ItemAdder
+                  catalog={catalog}
+                  partnerCoef={partnerCoef}
                   onAdd={addExtra}
                   onCancel={() => setAdderTarget(null)}
                 />
@@ -348,9 +349,10 @@ interface ItemRowProps {
   onChange: (patch: Partial<LineItem>) => void;
   onDelete: () => void;
   partnerCoef: number;
+  catalog: CatalogPick[];
 }
 
-function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProps) {
+function ItemRow({ item, editing, onChange, onDelete, partnerCoef, catalog }: ItemRowProps) {
   const { format: formatPrice, symbol } = useCurrency();
   const [showSwap, setShowSwap] = useState(false);
   // Локальные строковые значения — чтобы пользователь мог стереть всё
@@ -383,25 +385,23 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
 
   // Подбираем альтернативы из той же категории каталога — чтобы поменять
   // "Споты GX53 (наши)" на "Споты клиентские" одним кликом.
-  const currentInCatalog = PRODUCT_BY_CODE[item.itemCode];
-  const alternatives = currentInCatalog
-    ? PRODUCT_ITEMS.filter(
-        (p) =>
-          p.category === currentInCatalog.category &&
-          p.code !== item.itemCode &&
-          p.category !== "install" &&
-          p.category !== "special"
-      )
+  // Категория текущей строки — по каталогу; сама строка может быть скрыта в прайсе.
+  const currentCategory = PRODUCT_ITEMS.find((p) => p.code === item.itemCode)?.category;
+  const alternatives = currentCategory
+    ? catalog.filter((p) => p.category === currentCategory && p.code !== item.itemCode)
     : [];
 
   function applySwap(code: string) {
-    const target = PRODUCT_BY_CODE[code];
+    const target = catalog.find((p) => p.code === code);
     if (!target) return;
+    const line = lineFromPick(target, partnerCoef);
+    // Ставку монтажа прежней позиции не тащим на новую: у новой своя или по умолчанию.
     onChange({
-      itemCode: target.code,
-      itemName: target.name,
-      unit: target.unit,
-      unitPrice: Math.round((target.defaultPrice * partnerCoef) / 10) * 10,
+      itemCode: line.itemCode,
+      itemName: line.itemName,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+      installerRate: line.installerRate,
     });
     setShowSwap(false);
   }
@@ -448,7 +448,7 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
               >
                 {alt.name}
                 <span className="text-muted-foreground/70 ml-1">
-                  ({formatPrice(alt.defaultPrice)}/{unitLabel(alt.unit, symbol)})
+                  ({formatPrice(alt.price)}/{unitLabel(alt.unit, symbol)})
                 </span>
               </button>
             ))}
@@ -510,30 +510,31 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef }: ItemRowProp
 }
 
 interface ItemAdderProps {
-  onAdd: (code: string, name: string, unit: string, price: number) => void;
+  catalog: CatalogPick[];
+  partnerCoef: number;
+  onAdd: (line: LineItem) => void;
   onCancel: () => void;
 }
 
-function ItemAdder({ onAdd, onCancel }: ItemAdderProps) {
+function ItemAdder({ catalog, partnerCoef, onAdd, onCancel }: ItemAdderProps) {
   const { format: formatPrice, symbol } = useCurrency();
-  const [mode, setMode] = useState<"catalog" | "custom">("catalog");
-  const [selectedCode, setSelectedCode] = useState<string>(
-    PRODUCT_ITEMS[0]?.code ?? ""
-  );
+  const [mode, setMode] = useState<"catalog" | "custom">(catalog.length > 0 ? "catalog" : "custom");
+  const [selectedCode, setSelectedCode] = useState<string>(catalog[0]?.code ?? "");
   const [customName, setCustomName] = useState("");
   const [customUnit, setCustomUnit] = useState("шт.");
   const [customPrice, setCustomPrice] = useState("0");
 
   function handleAdd() {
     if (mode === "catalog") {
-      const item = PRODUCT_ITEMS.find((p) => p.code === selectedCode);
-      if (!item) return;
-      onAdd(item.code, item.name, item.unit, item.defaultPrice);
+      const pick = catalog.find((p) => p.code === selectedCode);
+      if (!pick) return;
+      onAdd(lineFromPick(pick, partnerCoef));
     } else {
       const price = parseFloat(customPrice) || 0;
       const name = customName.trim();
       if (!name) return;
-      onAdd(`custom_${Date.now()}`, name, customUnit, price);
+      // Как раньше: наценка посредника ложится и на свою позицию.
+      onAdd(lineFromPick({ code: `custom_${Date.now()}`, name, unit: customUnit, category: "custom", price, installerPrice: null }, partnerCoef));
     }
   }
 
@@ -569,13 +570,11 @@ function ItemAdder({ onAdd, onCancel }: ItemAdderProps) {
           onChange={(e) => setSelectedCode(e.target.value)}
           className="w-full h-8 text-xs border rounded-md px-2 bg-background"
         >
-          {PRODUCT_ITEMS.filter((p) => p.category !== "install" && p.category !== "special").map(
-            (p) => (
-              <option key={p.code} value={p.code}>
-                {p.name} — {formatPrice(p.defaultPrice)}/{unitLabel(p.unit, symbol)}
-              </option>
-            )
-          )}
+          {catalog.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.name} — {formatPrice(p.price)}/{unitLabel(p.unit, symbol)}
+            </option>
+          ))}
         </select>
       ) : (
         <div className="grid grid-cols-3 gap-1.5">

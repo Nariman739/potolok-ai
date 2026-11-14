@@ -2,7 +2,8 @@ import { getCurrentMaster } from "@/lib/auth";
 import { isActReplaced, isContractReplaced, otherVariantChosen } from "@/lib/estimate-replace";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getScope, inScope } from "@/lib/company";
+import { getScope, inScope, currencyFor } from "@/lib/company";
+import { priceBookCompanyId, loadPriceItems, legacyPricesView } from "@/lib/price-items";
 import {
   missingContractFields,
 } from "@/lib/contract-requirements";
@@ -18,7 +19,7 @@ import { computeArea } from "@/lib/room-geometry";
 import { EstimateActions } from "./estimate-actions";
 import { ContractSection } from "./contract-section";
 import { ActSection } from "./act-section";
-import { ItemsEditor } from "./items-editor";
+import { ItemsEditor, type CatalogPick } from "./items-editor";
 import { isAppFormatRoom } from "@/lib/room-edit";
 import type { RoomInput } from "@/lib/types";
 
@@ -73,6 +74,17 @@ export default async function EstimateDetailPage({
 
   // Не принятое КП, а в объекте выбран другой вариант — договор/акт здесь не действуют (13.11.2026)
   const otherChosen = await otherVariantChosen(prisma, estimate);
+
+  // «Добавить позицию → Из каталога» и «Сменить тип»: цены и имена из прайса
+  // владельца в его валюте, скрытые позиции не предлагаем (fe 14.11.2026: были
+  // тенговые дефолты каталога — у RU-мастера профиль 500 вместо 200).
+  const [priceRows, priceCurrency] = await Promise.all([
+    priceBookCompanyId(scope.ownerId).then((cid) => loadPriceItems(cid)),
+    currencyFor(scope.ownerId),
+  ]);
+  const catalogPicks: CatalogPick[] = legacyPricesView(priceRows, priceCurrency)
+    .filter((p) => !p.isHidden && p.category !== "install" && p.category !== "special" && p.category !== "custom")
+    .map((p) => ({ code: p.code, name: p.name, unit: p.unit, category: p.category, price: p.price, installerPrice: p.installerPrice }));
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -235,6 +247,7 @@ export default async function EstimateDetailPage({
               initialRoomResults={roomResults}
               initialExtraItems={extraItems}
               partnerCoef={estimate.partner?.coef ?? 1}
+              catalog={catalogPicks}
             />
           );
         }
