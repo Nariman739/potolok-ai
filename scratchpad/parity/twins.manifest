@@ -11,6 +11,8 @@ src/lib/room-remap.ts                         src/lib/shared/room-remap.ts
 src/lib/furniture-ceiling.ts                  src/lib/shared/furniture-ceiling.ts
 src/lib/spot-types.ts                         src/lib/shared/spot-types.ts
 src/lib/shared/level2-geometry.ts             src/lib/shared/level2-geometry.ts
+# ручные правки КП (calculationData.manual): ключ строки/комнаты — сайт читает и правит отметки приложения (14.11.2026)
+src/lib/kp-manual-key.ts                      src/lib/kp-manual.ts
 # 3D: баланс света (сайт src/lib/shared ↔ приложение room-3d)
 src/lib/shared/lightBalance.ts                src/components/room-3d/lightBalance.ts
 # 3D-модули (сайт src/components/room-3d ↔ приложение src/components/room-3d)

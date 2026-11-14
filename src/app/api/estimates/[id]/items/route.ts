@@ -8,6 +8,8 @@ import type { CalculationResult, LineItem, RoomResult } from "@/lib/types";
 import { resolveAdjust, estimateAdjustData } from "@/lib/kp-adjust-server";
 import { KpAdjustError } from "@/lib/kp-adjust-server";
 import { reportError } from "@/lib/report-error";
+import { syncManualAfterSiteEdit } from "@/lib/kp-manual-site";
+import type { KpManual } from "@/lib/kp-manual-key";
 
 /**
  * PATCH /api/estimates/[id]/items
@@ -38,7 +40,15 @@ export async function PATCH(
       return NextResponse.json({ error: estimateLockMessage(existing) }, { status: 409 });
     }
 
-    const calc = existing.calculationData as unknown as CalculationResult;
+    const calc = existing.calculationData as unknown as CalculationResult & { manual?: KpManual };
+
+    // Правка строк на сайте снимает/ставит отметки приложения (calculationData.manual),
+    // иначе «Открыть в дизайнере → Готово» в приложении вернула бы старую ручную цену
+    // или удалённую строку (14.11.2026). Суммы manual не трогает.
+    if (body.roomResults) {
+      const manual = syncManualAfterSiteEdit(calc.manual, calc.roomResults, body.roomResults);
+      if (manual !== calc.manual) calc.manual = manual;
+    }
 
     const updatedRoomResults = (body.roomResults ?? calc.roomResults ?? []).map(
       (rr) => recalcRoom(rr)
