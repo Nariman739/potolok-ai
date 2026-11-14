@@ -118,10 +118,12 @@ export function syncManualAfterSiteEdit(
     for (const a of added) room = dropHidden(room, ref(a), afterRefs);
     let next: KpManual = { ...(out ?? {}), [key]: room };
     for (const b of removed) {
-      // Точно такая же строка осталась в комнате (удалили одну из двух одинаковых) —
-      // скрывать нельзя: приложение по этой отметке убрало бы и оставшуюся.
+      // В комнате осталась строка с тем же кодом+вариантом — скрывать нельзя: приложение
+      // при несовпадении имени ищет отметку по коду+варианту (findRef) и убрало бы оставшуюся.
+      // Пример (8d): в КП «Софит GX53» (spot) + добавленный с сайта «Светильник GX53» (spot);
+      // удалили светильник → hidden {spot, «Светильник GX53»} скрыл бы настоящие софиты.
       const r = ref(b);
-      if (afterRefs.some((a) => sameRef(a, r))) continue;
+      if (afterRefs.some((a) => baseKey(a) === baseKey(r))) continue;
       next = addHidden(next, key, r);
     }
     const nr = next[key];
