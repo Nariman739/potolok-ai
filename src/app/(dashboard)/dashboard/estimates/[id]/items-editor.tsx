@@ -12,6 +12,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { unitLabel } from "@/lib/currency";
 import { PRODUCT_ITEMS } from "@/lib/constants";
 import type { LineItem, RoomResult } from "@/lib/types";
+import { isStandardSpotCode } from "@/lib/spot-types";
 
 /** Позиция каталога для «Добавить позицию» и «Сменить тип» — из прайса мастера. */
 export type CatalogPick = {
@@ -23,6 +24,7 @@ export type CatalogPick = {
   /** Цена мастера в его валюте (нет строки в прайсе — дефолт каталога в этой валюте). */
   price: number;
   installerPrice: number | null;
+  photoUrl?: string | null;
 };
 
 /** Без прайса (старый вызов) — дефолты каталога, как было. */
@@ -31,9 +33,20 @@ const DEFAULT_PICKS: CatalogPick[] = PRODUCT_ITEMS.filter(
 ).map((p) => ({ code: p.code, name: p.name, unit: p.unit, category: p.category, price: p.defaultPrice, installerPrice: null }));
 
 /**
+ * Ставка монтажа для строки из каталога. Явная «цена работы монтажнику» строки прайса —
+ * как в приложении; без неё обычный софит — 30 % цены, как spotInstallRate в calculate.ts.
+ * Остальное — undefined: наряд возьмёт ставку «Для бригады» по коду (work-order-lines).
+ */
+function installerRateFor(pick: CatalogPick): number | undefined {
+  if (pick.installerPrice != null) return pick.installerPrice;
+  if (isStandardSpotCode(pick.code)) return Math.round(pick.price * 0.3);
+  return undefined;
+}
+
+/**
  * Строка КП из позиции каталога. На КП с посредником позиция входит с той же наценкой,
  * что и остальные — иначе одна строка будет «голой» (ручную правку цены в строке не
- * трогаем: мастер видит уже наценённую). Ставка монтажа — из прайса, если задана.
+ * трогаем: мастер видит уже наценённую). Ставка монтажа — installerRateFor.
  */
 function lineFromPick(pick: CatalogPick, partnerCoef: number): LineItem {
   const unitPrice = partnerCoef === 1 ? pick.price : Math.round((pick.price * partnerCoef) / 10) * 10;
@@ -44,7 +57,8 @@ function lineFromPick(pick: CatalogPick, partnerCoef: number): LineItem {
     unit: pick.unit,
     unitPrice,
     total: unitPrice,
-    ...(pick.installerPrice != null && { installerRate: pick.installerPrice }),
+    ...(installerRateFor(pick) !== undefined && { installerRate: installerRateFor(pick) }),
+    ...(pick.photoUrl && { photoUrl: pick.photoUrl }),
   };
 }
 
@@ -395,16 +409,23 @@ function ItemRow({ item, editing, onChange, onDelete, partnerCoef, catalog }: It
     const target = catalog.find((p) => p.code === code);
     if (!target) return;
     const line = lineFromPick(target, partnerCoef);
-    // Ставку монтажа прежней позиции не тащим на новую: у новой своя или по умолчанию.
+    // Строка становится каталожной, как её даёт calculate.ts (makeLineItem). Всё от
+    // прежней позиции снимаем, в JSON undefined не попадает:
+    // - variantId — иначе строка выглядит «своим вариантом», ключ kp-manual смешан;
+    // - photoUrl — фото прежнего варианта в КП/PDF (у новой — своё из прайса, если есть);
+    // - installCode / installerName — наряд найдёт монтаж по новому коду
+    //   (work-order-lines: installCodeFor), а не по прежней позиции. С прежним
+    //   installerName наряд взял бы installerRate ?? 0 — монтажнику 0.
     onChange({
       itemCode: line.itemCode,
       itemName: line.itemName,
       unit: line.unit,
       unitPrice: line.unitPrice,
       installerRate: line.installerRate,
-      // Строка становится каталожной: чужой variantId сделал бы её «своим вариантом»
-      // и смешал ключ kp-manual (код + вариант). В JSON undefined не попадает.
       variantId: undefined,
+      photoUrl: line.photoUrl,
+      installCode: undefined,
+      installerName: undefined,
     });
     setShowSwap(false);
   }

@@ -84,7 +84,7 @@ export default async function EstimateDetailPage({
   ]);
   const catalogPicks: CatalogPick[] = legacyPricesView(priceRows, priceCurrency)
     .filter((p) => !p.isHidden && p.category !== "install" && p.category !== "special" && p.category !== "custom")
-    .map((p) => ({ code: p.code, name: p.name, unit: p.unit, category: p.category, price: p.price, installerPrice: p.installerPrice }));
+    .map((p) => ({ code: p.code, name: p.name, unit: p.unit, category: p.category, price: p.price, installerPrice: p.installerPrice, photoUrl: p.photoUrl }));
   return (
     <div className="space-y-6">
       {/* Header */}
