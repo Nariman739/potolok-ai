@@ -15,7 +15,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const master = await requireAuth();
+  let master: Awaited<ReturnType<typeof requireAuth>>;
+  try {
+    master = await requireAuth();
+  } catch (error) {
+    // Просроченная сессия — 401, а не 500 (сторож 14.11, как в соседнем /api/visualizations).
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+    throw error;
+  }
   const state = await loadBillingState(master.id);
   if (!state) {
     return NextResponse.json({ error: "Master not found" }, { status: 404 });
