@@ -112,20 +112,20 @@ export function syncManualAfterSiteEdit(
 
     const beforeRefs = beforeLines.map(ref);
     const afterRefs = afterLines.map(ref);
+    // Удалили строку, а в комнате осталась строка с тем же кодом+вариантом (двойник) —
+    // отметки удалённой не трогаем: строки без id, и отметка может принадлежать оставшейся.
+    // - hidden: приложение при несовпадении имени ищет отметку по коду+варианту (findRef) и
+    //   убрало бы оставшуюся. 8d: «Софит GX53» (spot) + добавленный с сайта «Светильник GX53»
+    //   (spot), удалили светильник → hidden скрыл бы настоящие софиты.
+    // - override: fe: «Полотно (до 3,2 м)» с ручным 13 + такое же из каталога, удалили
+    //   добавленное → снимался override оставшейся, в приложении 12 вместо 13.
+    const removedAlone = removed.filter((b) => !afterRefs.some((a) => baseKey(a) === baseKey(ref(b))));
     let room: KpManualRoom = out?.[key] ?? {};
     for (const b of changed) room = dropOverride(room, ref(b), beforeRefs);
-    for (const b of removed) room = dropOverride(room, ref(b), beforeRefs);
+    for (const b of removedAlone) room = dropOverride(room, ref(b), beforeRefs);
     for (const a of added) room = dropHidden(room, ref(a), afterRefs);
     let next: KpManual = { ...(out ?? {}), [key]: room };
-    for (const b of removed) {
-      // В комнате осталась строка с тем же кодом+вариантом — скрывать нельзя: приложение
-      // при несовпадении имени ищет отметку по коду+варианту (findRef) и убрало бы оставшуюся.
-      // Пример (8d): в КП «Софит GX53» (spot) + добавленный с сайта «Светильник GX53» (spot);
-      // удалили светильник → hidden {spot, «Светильник GX53»} скрыл бы настоящие софиты.
-      const r = ref(b);
-      if (afterRefs.some((a) => baseKey(a) === baseKey(r))) continue;
-      next = addHidden(next, key, r);
-    }
+    for (const b of removedAlone) next = addHidden(next, key, ref(b));
     const nr = next[key];
     const empty = !nr.hidden?.length && !nr.overrides?.length && !nr.podshtornik;
     if (empty && !out?.[key]) return; // нечего записывать — комнату в manual не заводим
